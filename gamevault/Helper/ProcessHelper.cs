@@ -1,5 +1,6 @@
 using GameVault.Core;
 using gamevault.Helper.Platform;
+using GameVault.Core.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,26 +9,16 @@ using System.Linq;
 
 namespace gamevault.Helper
 {
-    public enum LinuxRunner
-    {
-        /// <summary>Proton through umu-run if installed, otherwise Wine.</summary>
-        Auto,
-        Proton,
-        Wine,
-        /// <summary>User supplied command line, e.g. "gamemoderun wine {exe} {args}".</summary>
-        Custom,
-    }
-
     /// <summary>
-    /// Settings of the Linux compatibility layer. Filled from the user config by SettingsViewModel.
+    /// Global settings of the Linux compatibility layer. Filled from the user config by SettingsViewModel;
+    /// each game can override the tool and the prefix (see <see cref="GameCompatibility"/>).
     /// </summary>
     internal static class CompatibilitySettings
     {
-        public static LinuxRunner Runner { get; set; } = LinuxRunner.Auto;
-        /// <summary>WINEPREFIX used for all games; empty = ~/.local/share/GameVault/prefix.</summary>
+        /// <summary>Tool used by games that have no tool of their own, see <see cref="CompatibilityToolId"/>.</summary>
+        public static string DefaultToolId { get; set; } = CompatibilityToolId.Auto;
+        /// <summary>Shared WINEPREFIX; empty = ~/.local/share/GameVault/prefix.</summary>
         public static string WinePrefix { get; set; } = "";
-        /// <summary>PROTONPATH passed to umu-run; empty = let umu download GE-Proton.</summary>
-        public static string ProtonPath { get; set; } = "";
         public static string CustomCommand { get; set; } = "";
 
         public static string EffectiveWinePrefix => string.IsNullOrWhiteSpace(WinePrefix)
@@ -41,9 +32,10 @@ namespace gamevault.Helper
 
         /// <summary>
         /// Starts a game, installer or uninstaller. On Linux, Windows programs are started through
-        /// Proton (umu-run) or Wine, native ones directly.
+        /// Proton or Wine, native ones directly. <paramref name="installationDirectory"/> selects the game's own
+        /// compatibility tool and prefix; without it the global defaults are used.
         /// </summary>
-        internal static Process StartApp(string fileName, string parameter = "", bool asAdmin = false)
+        internal static Process StartApp(string fileName, string parameter = "", bool asAdmin = false, string? installationDirectory = null)
         {
             parameter ??= "";
             if (PlatformInfo.IsWindows)
@@ -63,7 +55,7 @@ namespace gamevault.Helper
             }
 
             ProcessStartInfo info = IsWindowsProgram(fileName)
-                ? CreateCompatibilityStartInfo(fileName, parameter)
+                ? CreateCompatibilityStartInfo(fileName, parameter, GameCompatibility.ForInstallation(installationDirectory))
                 : CreateNativeStartInfo(fileName, parameter);
             Log.Info($"Starting {info.FileName} {string.Join(' ', info.ArgumentList)}");
             return Process.Start(info) ?? throw new InvalidOperationException($"Could not start {fileName}");
@@ -96,11 +88,23 @@ namespace gamevault.Helper
             return info;
         }
 
-        private static ProcessStartInfo CreateCompatibilityStartInfo(string fileName, string parameter)
+        /// <summary>
+        /// Starts a Wine builtin (winecfg, regedit, ...) with the game's tool and prefix.
+        /// </summary>
+        internal static Process StartWineTool(string tool, string? installationDirectory)
         {
-            string extension = Path.GetExtension(fileName).ToLowerInvariant();
+            var compatibility = GameCompatibility.ForInstallation(installationDirectory);
+            ProcessStartInfo info = CreateCompatibilityStartInfo(tool, "", compatibility, isBuiltin: true);
+            info.WorkingDirectory = compatibility.PrefixPath;
+            Log.Info($"Starting {info.FileName} {string.Join(' ', info.ArgumentList)}");
+            return Process.Start(info) ?? throw new InvalidOperationException($"Could not start {tool}");
+        }
+
+        private static ProcessStartInfo CreateCompatibilityStartInfo(string fileName, string parameter, GameCompatibility compatibility, bool isBuiltin = false)
+        {
+            string extension = isBuiltin ? "" : Path.GetExtension(fileName).ToLowerInvariant();
             var programArgs = new List<string>();
-            // msiexec / cmd are Wine builtins, so installers and batch files work with both runners.
+            // msiexec / cmd are Wine builtins, so installers and batch files work with every tool.
             if (extension == ".msi")
             {
                 programArgs.AddRange(new[] { "msiexec", "/i", fileName });
@@ -117,26 +121,25 @@ namespace gamevault.Helper
             {
                 programArgs.Add(fileName);
             }
-            programArgs.AddRange(SplitArguments(parameter));
+            List<string> launchArgs = SplitArguments(parameter).ToList();
 
-            string prefix = CompatibilitySettings.EffectiveWinePrefix;
+            string prefix = compatibility.PrefixPath;
             Directory.CreateDirectory(prefix);
 
             var info = new ProcessStartInfo
             {
-                WorkingDirectory = Path.GetDirectoryName(fileName),
+                WorkingDirectory = isBuiltin ? prefix : Path.GetDirectoryName(fileName),
                 UseShellExecute = false,
             };
             info.Environment["WINEPREFIX"] = prefix;
 
-            LinuxRunner runner = ResolveRunner();
-            switch (runner)
+            CompatibilityTool tool = compatibility.ResolveTool();
+            switch (tool.Kind)
             {
-                case LinuxRunner.Custom:
+                case CompatibilityToolKind.Custom:
                     {
-                        // {exe} is replaced by the program (and its arguments), {args} by the launch parameters only.
-                        string template = CompatibilitySettings.CustomCommand.Trim();
-                        var parts = SplitArguments(template).ToList();
+                        // {exe} is replaced by the program, {args} by the launch parameters.
+                        var parts = SplitArguments(CompatibilitySettings.CustomCommand.Trim()).ToList();
                         if (parts.Count == 0)
                             throw new InvalidOperationException("The custom compatibility command is empty (Settings → Linux).");
                         info.FileName = parts[0];
@@ -146,13 +149,11 @@ namespace gamevault.Helper
                             if (part == "{exe}")
                             {
                                 usedExe = true;
-                                foreach (string a in programArgs.Take(programArgs.Count - SplitArguments(parameter).Count()))
-                                    info.ArgumentList.Add(a);
+                                programArgs.ForEach(info.ArgumentList.Add);
                             }
                             else if (part == "{args}")
                             {
-                                foreach (string a in SplitArguments(parameter))
-                                    info.ArgumentList.Add(a);
+                                launchArgs.ForEach(info.ArgumentList.Add);
                             }
                             else
                             {
@@ -161,37 +162,52 @@ namespace gamevault.Helper
                         }
                         if (!usedExe)
                         {
-                            foreach (string a in programArgs)
-                                info.ArgumentList.Add(a);
+                            programArgs.ForEach(info.ArgumentList.Add);
+                            launchArgs.ForEach(info.ArgumentList.Add);
                         }
-                        break;
+                        return info;
                     }
-                case LinuxRunner.Proton:
+                case CompatibilityToolKind.UmuLatest:
+                case CompatibilityToolKind.Proton:
                     {
-                        info.FileName = PlatformInfo.FindInPath("umu-run") ?? throw new InvalidOperationException("umu-run was not found. Install umu-launcher or choose Wine in Settings → Linux.");
-                        info.Environment["GAMEID"] = "umu-default";
-                        if (!string.IsNullOrWhiteSpace(CompatibilitySettings.ProtonPath))
-                            info.Environment["PROTONPATH"] = CompatibilitySettings.ProtonPath;
-                        foreach (string a in programArgs)
-                            info.ArgumentList.Add(a);
+                        string? umu = PlatformInfo.FindInPath("umu-run");
+                        if (umu != null)
+                        {
+                            // umu-run runs Proton inside the Steam Linux Runtime, like Steam does
+                            info.FileName = umu;
+                            info.Environment["GAMEID"] = "umu-default";
+                            if (tool.Kind == CompatibilityToolKind.Proton)
+                                info.Environment["PROTONPATH"] = tool.Path!;
+                        }
+                        else if (tool.Kind == CompatibilityToolKind.Proton)
+                        {
+                            // Without umu, Proton is started directly. Its prefix is $STEAM_COMPAT_DATA_PATH/pfx;
+                            // "pfx -> ." keeps the same layout as umu so both can use the prefix.
+                            string pfx = Path.Combine(prefix, "pfx");
+                            if (!Directory.Exists(pfx) && !File.Exists(pfx))
+                                File.CreateSymbolicLink(pfx, ".");
+                            info.FileName = Path.Combine(tool.Path!, "proton");
+                            info.ArgumentList.Add("waitforexitandrun");
+                            info.Environment["STEAM_COMPAT_DATA_PATH"] = prefix;
+                            string steam = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam", "root");
+                            info.Environment["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = Directory.Exists(steam) ? steam : prefix;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("umu-run was not found. Install umu-launcher or choose another compatibility tool.");
+                        }
                         break;
                     }
                 default:
                     {
-                        info.FileName = PlatformInfo.FindInPath("wine") ?? throw new InvalidOperationException("Neither umu-run nor wine was found. Install Wine (e.g. 'sudo apt install wine') to run Windows games.");
-                        foreach (string a in programArgs)
-                            info.ArgumentList.Add(a);
+                        // Wine build: <dir>/bin/wine, system Wine: the binary itself
+                        info.FileName = tool.Id == CompatibilityToolId.SystemWine ? tool.Path! : Path.Combine(tool.Path!, "bin", "wine");
                         break;
                     }
             }
+            programArgs.ForEach(info.ArgumentList.Add);
+            launchArgs.ForEach(info.ArgumentList.Add);
             return info;
-        }
-
-        internal static LinuxRunner ResolveRunner()
-        {
-            if (CompatibilitySettings.Runner != LinuxRunner.Auto)
-                return CompatibilitySettings.Runner;
-            return PlatformInfo.FindInPath("umu-run") != null ? LinuxRunner.Proton : LinuxRunner.Wine;
         }
 
         /// <summary>

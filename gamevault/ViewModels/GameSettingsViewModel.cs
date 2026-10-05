@@ -1,6 +1,8 @@
 using GameVault.Core;
 using gamevault.Models;
 using gamevault.Models.Mapping;
+using GameVault.Core.Compatibility;
+using gamevault.Helper.Platform;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -57,6 +59,41 @@ namespace gamevault.ViewModels
             }
             set { m_Executables = value; OnPropertyChanged(); }
         }
+        #region Compatibility (Linux)
+        public bool IsLinux => OperatingSystem.IsLinux();
+        private List<CompatibilityTool> gameCompatibilityTools = new();
+        /// <summary>"Default (…)" followed by every tool, as in Steam's "Force a specific compatibility tool".</summary>
+        public List<CompatibilityTool> GameCompatibilityTools
+        {
+            get => gameCompatibilityTools;
+            set { gameCompatibilityTools = value; OnPropertyChanged(); }
+        }
+        private CompatibilityTool? selectedGameCompatibilityTool;
+        public CompatibilityTool? SelectedGameCompatibilityTool
+        {
+            get => selectedGameCompatibilityTool;
+            set { selectedGameCompatibilityTool = value; OnPropertyChanged(); }
+        }
+        public WinePrefixMode[] WinePrefixModes => Enum.GetValues<WinePrefixMode>();
+        private WinePrefixMode selectedWinePrefixMode;
+        public WinePrefixMode SelectedWinePrefixMode
+        {
+            get => selectedWinePrefixMode;
+            set { selectedWinePrefixMode = value; OnPropertyChanged(); OnPropertyChanged(nameof(WinePrefixModeIndex)); OnPropertyChanged(nameof(IsSeparatePrefix)); }
+        }
+        public bool IsSeparatePrefix => selectedWinePrefixMode == WinePrefixMode.Game;
+        public int WinePrefixModeIndex
+        {
+            get => (int)selectedWinePrefixMode;
+            set => SelectedWinePrefixMode = (WinePrefixMode)Math.Max(0, value);
+        }
+        private string gamePrefixPath = "";
+        public string GamePrefixPath
+        {
+            get => gamePrefixPath;
+            set { gamePrefixPath = value; OnPropertyChanged(); }
+        }
+        #endregion
         public string LaunchParameter
         {
             get { return launchParameter; }

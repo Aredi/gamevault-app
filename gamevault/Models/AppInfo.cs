@@ -62,10 +62,14 @@ namespace gamevault.Models
         InstalledGameVersion,
         AdditionalRequestHeaders,
         //Linux compatibility layer
-        LinuxRunner,
+        LinuxRunner,//Legacy, replaced by LinuxCompatibilityTool
         LinuxWinePrefix,
-        LinuxProtonPath,
-        LinuxCustomRunner
+        LinuxProtonPath,//Legacy, replaced by LinuxCompatibilityTool
+        LinuxCustomRunner,
+        LinuxCompatibilityTool,
+        //Per game (gamevault-exec)
+        GameCompatibilityTool,
+        GameWinePrefixMode
     }
     public static class Globals
     {

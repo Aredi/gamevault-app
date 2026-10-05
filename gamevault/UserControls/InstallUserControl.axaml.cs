@@ -432,14 +432,20 @@ namespace gamevault.UserControls
             {
                 try
                 {
-                    ProcessHelper.StartApp(savedExecutable, parameter);
+                    ProcessHelper.StartApp(savedExecutable, parameter, installationDirectory: path);
+                }
+                catch (Exception ex) when (!OperatingSystem.IsWindows())
+                {
+                    // e.g. the game's compatibility tool is missing
+                    MainWindowViewModel.Instance.AppBarText = ex.Message;
+                    return;
                 }
                 catch
                 {
 
                     try
                     {
-                        ProcessHelper.StartApp(savedExecutable, parameter, true);
+                        ProcessHelper.StartApp(savedExecutable, parameter, true, path);
                     }
                     catch
                     {

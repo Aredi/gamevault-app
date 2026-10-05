@@ -43,8 +43,20 @@ Linux and Windows. The WPF version stays available on the `unlock-plus` branch.
 
 ## Linux specifics
 
-- Windows games (`.exe`, `.bat`, `.msi`) are launched through a compatibility layer:
-  `umu-run` (Proton) if installed, otherwise `wine`; configurable in Settings → Linux.
+- Windows games (`.exe`, `.bat`, `.msi`) are launched through a compatibility tool:
+  `umu-run` (latest GE-Proton) if installed, otherwise `wine`; the default is set in Settings → Linux.
+- Compatibility tool manager (Settings → Linux), similar to ProtonUp-Qt / the Steam Deck:
+  - lists the Proton and Wine builds of GameVault (`~/.local/share/GameVault/compatibilitytools.d`),
+    Steam (`compatibilitytools.d`, `steamapps/common/Proton*`, also Flatpak) and Lutris;
+  - downloads GE-Proton (GloriousEggroll/proton-ge-custom), Wine and Wine Staging
+    (Kron4ek/Wine-Builds, WoW64) with checksum verification, and deletes the downloaded ones.
+- Per game (Game Settings → Launch Options): the tool to use ("Force a specific compatibility tool")
+  and a shared or separate Wine prefix (`~/.local/share/GameVault/prefixes/<game id>`), plus
+  winecfg and prefix shortcuts. Stored in the game's `gamevault-exec` file; installers,
+  uninstallers and cloud saves use the same tool and prefix.
+- Proton builds run through `umu-run` (`PROTONPATH`) when it is installed, otherwise directly
+  (`proton waitforexitandrun`, `STEAM_COMPAT_DATA_PATH`). Both use the umu prefix layout
+  (`pfx -> .`), so a prefix can switch between them.
 - 7-Zip and Ludusavi come from the system (`7zz`/`7z`, `ludusavi`) when the bundled Windows
   binaries can't be used.
 - Play-time tracking reads `/proc` (exe, cmdline, cwd) instead of window handles, so games

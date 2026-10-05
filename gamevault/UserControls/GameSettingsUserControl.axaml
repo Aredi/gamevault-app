@@ -172,6 +172,37 @@
                         <TextBlock Classes="section" Text="Launch Parameter" Margin="0,20,0,0" />
                         <TextBlock Classes="text" Text="Advanced Users can modify the launch parameters of the executable above here." />
                         <TextBox x:Name="uiLaunchParameter" Text="{Binding LaunchParameter}" Watermark="e.g. -fullscreen" UseFloatingWatermark="False" FontSize="17" Margin="0,10,0,0" />
+                        <!-- Linux: compatibility tool and prefix of this game -->
+                        <StackPanel IsVisible="{Binding IsLinux}">
+                            <TextBlock Classes="section" Text="Compatibility Tool" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="Run this Windows game with a specific Proton or Wine version, like &quot;Force a specific compatibility tool&quot; on the Steam Deck. More versions can be downloaded in Settings → Linux." />
+                            <ComboBox x:Name="uiGameCompatibilityTool" ItemsSource="{Binding GameCompatibilityTools}" SelectedItem="{Binding SelectedGameCompatibilityTool}" HorizontalAlignment="Stretch" Margin="0,10,0,0"
+                                      SelectionChanged="GameCompatibilityTool_SelectionChanged">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel MaxWidth="740">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                                            <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Classes="section" Text="Wine Prefix" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="A separate prefix keeps the game's Windows settings, registry and saves apart from other games (Steam does this for every game). Switching does not move existing saves." />
+                            <ComboBox x:Name="uiGameWinePrefixMode" SelectedIndex="{Binding WinePrefixModeIndex}" HorizontalAlignment="Stretch" Margin="0,10,0,0" SelectionChanged="GameWinePrefixMode_SelectionChanged">
+                                <ComboBoxItem Content="Shared prefix (Settings → Linux)" />
+                                <ComboBoxItem Content="Separate prefix for this game" />
+                            </ComboBox>
+                            <Border CornerRadius="5" Background="{DynamicResource Brush.Background2}" Margin="0,5,0,0" Padding="8">
+                                <SelectableTextBlock Text="{Binding GamePrefixPath}" FontSize="13" TextWrapping="Wrap" />
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
+                                <local:IconButton Text="Open Prefix" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" FontSize="15" Width="140" Height="33" Click="OpenGamePrefix_Click" />
+                                <local:IconButton Text="Wine Configuration" FontSize="15" Width="170" Height="33" Click="GameWinecfg_Click" ToolTip.Tip="Starts winecfg with this game's tool and prefix" />
+                                <local:IconButton Text="Delete Prefix" Kind="Danger" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" FontSize="15" Width="150" Height="33" Click="DeleteGamePrefix_Click"
+                                                  IsVisible="{Binding IsSeparatePrefix}" ToolTip.Tip="Deletes the separate prefix of this game (it is created again on the next start)" />
+                            </StackPanel>
+                        </StackPanel>
                         <TextBlock Classes="section" Text="Desktop Icon" Margin="0,20,0,0" />
                         <TextBlock Classes="text" Text="You can press this button to create a desktop shortcut that starts the game via GameVault. Changed executable or parameters are updated immediately." />
                         <local:IconButton Text="Create Desktop Icon" FontSize="15" Icon="{DynamicResource IconGameSettingsLink}" IconMargin="0,0,5,2" Width="190" Height="33" Margin="0,10,0,0" HorizontalAlignment="Left" Click="CreateDesktopShortcut_Click" />

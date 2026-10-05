@@ -14,6 +14,7 @@ using GameVault.Core;
 using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
+using GameVault.Core.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -50,6 +51,8 @@ namespace gamevault.UserControls
             if (IsGameInstalled(game))
             {
                 FindGameExecutables(ViewModel.Directory, true);
+                if (OperatingSystem.IsLinux())
+                    LoadGameCompatibility();
                 if (Directory.Exists(ViewModel.Directory))
                 {
                     ViewModel.LaunchParameter = Preferences.Get(AppConfigKey.LaunchParameter, Path.Combine(ViewModel.Directory, "gamevault-exec"));
@@ -261,14 +264,19 @@ namespace gamevault.UserControls
                     Process uninstProcess = null;
                     try
                     {
-                        uninstProcess = ProcessHelper.StartApp(selectedUninstallerExecutablePath, ViewModel.Game?.Metadata?.UninstallerParameters);
+                        uninstProcess = ProcessHelper.StartApp(selectedUninstallerExecutablePath, ViewModel.Game?.Metadata?.UninstallerParameters, installationDirectory: ViewModel.Directory);
+                    }
+                    catch (Exception ex) when (!OperatingSystem.IsWindows())
+                    {
+                        MainWindowViewModel.Instance.AppBarText = ex.Message;
+                        return;
                     }
                     catch
                     {
 
                         try
                         {
-                            uninstProcess = ProcessHelper.StartApp(selectedUninstallerExecutablePath, ViewModel.Game?.Metadata?.UninstallerParameters, true);
+                            uninstProcess = ProcessHelper.StartApp(selectedUninstallerExecutablePath, ViewModel.Game?.Metadata?.UninstallerParameters, true, ViewModel.Directory);
                         }
                         catch
                         {
@@ -465,6 +473,81 @@ namespace gamevault.UserControls
             if (Directory.Exists(ViewModel.Directory))
             {
                 Preferences.Set(AppConfigKey.LaunchParameter, ViewModel.LaunchParameter, Path.Combine(ViewModel.Directory, "gamevault-exec"));
+            }
+        }
+        #endregion
+        #region COMPATIBILITY (Linux)
+        private GameCompatibility? gameCompatibility;
+        private bool loadingCompatibility;
+
+        private void LoadGameCompatibility()
+        {
+            loadingCompatibility = true;
+            gameCompatibility = GameCompatibility.ForInstallation(ViewModel.Directory);
+            string defaultName;
+            try { defaultName = CompatibilityManager.Resolve(CompatibilitySettings.DefaultToolId).Name; }
+            catch { defaultName = CompatibilityManager.DisplayName(CompatibilitySettings.DefaultToolId); }
+            var tools = new List<CompatibilityTool>
+            {
+                new CompatibilityTool(CompatibilityToolId.Default, $"Default ({defaultName})", CompatibilityToolKind.Wine, null, "the default tool of Settings → Linux", false),
+            };
+            tools.AddRange(CompatibilityManager.GetTools(refresh: true).Where(t => t.Id != CompatibilityToolId.Auto));
+            // Keep a tool that was deleted meanwhile visible, so the choice is not silently changed
+            if (!string.IsNullOrEmpty(gameCompatibility.ToolId) && tools.All(t => t.Id != gameCompatibility.ToolId))
+                tools.Add(new CompatibilityTool(gameCompatibility.ToolId, CompatibilityManager.DisplayName(gameCompatibility.ToolId), CompatibilityToolKind.Wine, null, "not found", false));
+            ViewModel.GameCompatibilityTools = tools;
+            ViewModel.SelectedGameCompatibilityTool = tools.First(t => t.Id == gameCompatibility.ToolId);
+            ViewModel.SelectedWinePrefixMode = gameCompatibility.PrefixMode;
+            ViewModel.GamePrefixPath = gameCompatibility.PrefixPath;
+            loadingCompatibility = false;
+        }
+        private void GameCompatibilityTool_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            // The binding also raises this when the panel opens, nothing changed then
+            if (loadingCompatibility || gameCompatibility == null || ViewModel.SelectedGameCompatibilityTool == null || ViewModel.SelectedGameCompatibilityTool.Id == gameCompatibility.ToolId)
+                return;
+            gameCompatibility.SetTool(ViewModel.SelectedGameCompatibilityTool.Id);
+            MainWindowViewModel.Instance.AppBarText = $"{ViewModel.Game?.Title} now runs with {ViewModel.SelectedGameCompatibilityTool.Name}";
+        }
+        private void GameWinePrefixMode_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (loadingCompatibility || gameCompatibility == null || ViewModel.SelectedWinePrefixMode == gameCompatibility.PrefixMode)
+                return;
+            gameCompatibility.SetPrefixMode(ViewModel.SelectedWinePrefixMode);
+            ViewModel.GamePrefixPath = gameCompatibility.PrefixPath;
+        }
+        private void OpenGamePrefix_Click(object sender, RoutedEventArgs e)
+        {
+            if (gameCompatibility == null)
+                return;
+            Directory.CreateDirectory(gameCompatibility.PrefixPath);
+            PlatformInfo.OpenFolder(gameCompatibility.PrefixPath);
+        }
+        private void GameWinecfg_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ProcessHelper.StartWineTool("winecfg", ViewModel.Directory);
+            }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = ex.Message;
+            }
+        }
+        private async void DeleteGamePrefix_Click(object sender, RoutedEventArgs e)
+        {
+            if (gameCompatibility == null || gameCompatibility.PrefixMode != WinePrefixMode.Game || !Directory.Exists(gameCompatibility.PrefixPath))
+                return;
+            if (!await DialogService.ConfirmAsync($"Delete the prefix of {ViewModel.Game?.Title}?\n{gameCompatibility.PrefixPath}\n\nSaves stored in the prefix are deleted too (unless they are in the cloud).", "Delete prefix"))
+                return;
+            try
+            {
+                Directory.Delete(gameCompatibility.PrefixPath, true);
+                MainWindowViewModel.Instance.AppBarText = "Prefix deleted";
+            }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = ex.Message;
             }
         }
         #endregion

@@ -222,9 +222,11 @@ namespace gamevault.Helper.Integrations
         {
             // Backups store the user folder as G:\gamevault\currentuser so they can be restored on any machine.
             // Windows games on Linux keep their saves in the Wine prefix, so that is the "user folder" there.
+            // Each game may have a prefix of its own; Proton prefixes use the "steamuser" account.
+            var compatibility = GameCompatibility.ForInstallation(installationPath);
             string userFolder = PlatformInfo.IsWindows
                 ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-                : Path.Combine(CompatibilitySettings.EffectiveWinePrefix, "drive_c", "users", Environment.UserName);
+                : compatibility.PrefixUserFolder;
 
             // Base configuration with redirects (always included)
             var redirects = new List<Dictionary<string, object>>
@@ -255,12 +257,12 @@ namespace gamevault.Helper.Integrations
         });
             }
 
-            if (!PlatformInfo.IsWindows && Directory.Exists(CompatibilitySettings.EffectiveWinePrefix))
+            if (!PlatformInfo.IsWindows && Directory.Exists(compatibility.PrefixPath))
             {
                 roots.Add(new Dictionary<string, object>
         {
             { "store", "otherWine" },
-            { "path", CompatibilitySettings.EffectiveWinePrefix }
+            { "path", compatibility.PrefixPath }
         });
             }
 

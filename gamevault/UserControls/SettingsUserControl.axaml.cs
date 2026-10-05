@@ -14,6 +14,7 @@ using GameVault.Core;
 using gamevault.Models;
 using gamevault.ViewModels;
 using System.IO;
+using GameVault.Core.Compatibility;
 using System;
 using gamevault.Helper;
 using System.Threading.Tasks;
@@ -611,11 +612,103 @@ namespace gamevault.UserControls
             if (!string.IsNullOrEmpty(folder))
                 ViewModel.WinePrefix = folder;
         }
-        private async void BrowseProtonPath_Click(object sender, RoutedEventArgs e)
+        #region Compatibility tools (Linux)
+        private void RefreshCompatibilityTools_Click(object sender, RoutedEventArgs e)
         {
-            string? folder = await StorageHelper.PickFolderAsync("Select a Proton build (e.g. ~/.steam/steam/compatibilitytools.d/GE-Proton...)");
-            if (!string.IsNullOrEmpty(folder))
-                ViewModel.ProtonPath = folder;
+            ViewModel.RefreshCompatibilityTools();
         }
+        private void OpenManagedToolsFolder_Click(object sender, RoutedEventArgs e)
+        {
+            Directory.CreateDirectory(CompatibilityManager.ManagedToolsDirectory);
+            PlatformInfo.OpenFolder(CompatibilityManager.ManagedToolsDirectory);
+        }
+        private void OpenToolFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (((Control)sender).Tag is CompatibilityTool { Path: string path } && Directory.Exists(path))
+                PlatformInfo.OpenFolder(path);
+        }
+        private async void DeleteTool_Click(object sender, RoutedEventArgs e)
+        {
+            if (((Control)sender).Tag is not CompatibilityTool tool)
+                return;
+            int users = InstallViewModel.Instance.InstalledGames
+                .Count(g => GameCompatibility.ForInstallation(g.Value).ToolId == tool.Id);
+            string warning = users > 0 ? $"\n\n{users} installed game(s) use it and will fall back to the default tool." : "";
+            if (CompatibilitySettings.DefaultToolId == tool.Id)
+                warning += "\n\nIt is the default tool, the default goes back to \"Automatic\".";
+            if (!await DialogService.ConfirmAsync($"Delete {tool.Name}?{warning}", "Delete compatibility tool"))
+                return;
+            try
+            {
+                CompatibilityManager.Delete(tool);
+                foreach (var game in InstallViewModel.Instance.InstalledGames)
+                {
+                    var compatibility = GameCompatibility.ForInstallation(game.Value);
+                    if (compatibility.ToolId == tool.Id)
+                        compatibility.SetTool(CompatibilityToolId.Default);
+                }
+                if (CompatibilitySettings.DefaultToolId == tool.Id)
+                    ViewModel.DefaultCompatibilityTool = CompatibilityManager.GetTools().First(t => t.Id == CompatibilityToolId.Auto);
+                MainWindowViewModel.Instance.AppBarText = $"Deleted {tool.Name}";
+            }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = ex.Message;
+            }
+            ViewModel.RefreshCompatibilityTools();
+        }
+        private async void LoadToolVersions_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ViewModel.ToolDownloadStatus = $"Loading {ToolCatalog.DisplayName(ViewModel.SelectedToolFlavor)} versions...";
+                var versions = await ToolCatalog.GetAvailableAsync(ViewModel.SelectedToolFlavor);
+                var installed = ViewModel.InstalledCompatibilityBuilds.Where(t => t.Path != null).Select(t => Path.GetFileName(t.Path!)).ToHashSet();
+                ViewModel.AvailableToolDownloads = versions;
+                ViewModel.ToolDownloadStatus = versions.Count == 0
+                    ? "No version found."
+                    : $"{versions.Count} versions available, {versions.Count(v => installed.Contains(v.FolderName))} already installed.";
+            }
+            catch (Exception ex)
+            {
+                ViewModel.ToolDownloadStatus = $"Could not load the versions: {ex.Message}";
+            }
+        }
+        private async void InstallTool_Click(object sender, RoutedEventArgs e)
+        {
+            DownloadableTool? tool = ViewModel.SelectedToolDownload;
+            if (tool == null)
+                return;
+            if (Directory.Exists(Path.Combine(CompatibilityManager.ManagedToolsDirectory, tool.FolderName))
+                && !await DialogService.ConfirmAsync($"{tool.Version} is already installed. Install it again?", "Compatibility tools"))
+                return;
+            ViewModel.IsToolDownloadRunning = true;
+            ViewModel.ToolDownloadProgress = 0;
+            ViewModel.ToolDownloadStatus = $"Downloading {ToolCatalog.DisplayName(tool.Flavor)} {tool.Version} ({tool.SizeText})...";
+            try
+            {
+                var progress = new Progress<double>(value =>
+                {
+                    // Progress callbacks are posted, a late one must not overwrite the final status
+                    if (!ViewModel.IsToolDownloadRunning)
+                        return;
+                    ViewModel.ToolDownloadProgress = value;
+                    if (value >= 0.9)
+                        ViewModel.ToolDownloadStatus = $"Verifying and extracting {tool.Version}...";
+                });
+                string installed = await ToolCatalog.InstallAsync(tool, CompatibilityManager.ManagedToolsDirectory, progress);
+                ViewModel.IsToolDownloadRunning = false;
+                ViewModel.RefreshCompatibilityTools();
+                ViewModel.ToolDownloadStatus = $"{tool.Version} installed in {installed}";
+                MainWindowViewModel.Instance.AppBarText = $"{ToolCatalog.DisplayName(tool.Flavor)} {tool.Version} installed";
+            }
+            catch (Exception ex)
+            {
+                ViewModel.IsToolDownloadRunning = false;
+                ViewModel.ToolDownloadStatus = $"Installing {tool.Version} failed: {ex.Message}";
+            }
+            ViewModel.IsToolDownloadRunning = false;
+        }
+        #endregion
     }
 }

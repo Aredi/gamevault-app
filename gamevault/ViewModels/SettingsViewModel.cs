@@ -1,4 +1,6 @@
 using GameVault.Core;
+using GameVault.Core.Compatibility;
+using gamevault.Helper.Platform;
 using gamevault.Helper;
 using gamevault.Helper.Integrations;
 using gamevault.Models;
@@ -133,11 +135,12 @@ namespace gamevault.ViewModels
             mountIso = mountIsoString == "1";
 
             //Linux compatibility layer
-            CompatibilitySettings.Runner = Enum.TryParse(Preferences.Get(AppConfigKey.LinuxRunner, userConfigFile), out LinuxRunner runner) ? runner : LinuxRunner.Auto;
+            CompatibilitySettings.DefaultToolId = ReadDefaultCompatibilityTool();
             CompatibilitySettings.WinePrefix = Preferences.Get(AppConfigKey.LinuxWinePrefix, userConfigFile);
-            CompatibilitySettings.ProtonPath = Preferences.Get(AppConfigKey.LinuxProtonPath, userConfigFile);
             CompatibilitySettings.CustomCommand = Preferences.Get(AppConfigKey.LinuxCustomRunner, userConfigFile);
-            OnPropertyChanged(nameof(LinuxRunner)); OnPropertyChanged(nameof(WinePrefix)); OnPropertyChanged(nameof(ProtonPath)); OnPropertyChanged(nameof(CustomRunnerCommand)); OnPropertyChanged(nameof(DetectedCompatibilityTools));
+            if (OperatingSystem.IsLinux())
+                RefreshCompatibilityTools();
+            OnPropertyChanged(nameof(WinePrefix)); OnPropertyChanged(nameof(CustomRunnerCommand));
 
             //DevMode
             devModeEnabled = Preferences.Get(AppConfigKey.DevModeEnabled, userConfigFile) == "1"; OnPropertyChanged(nameof(DevModeEnabled));
@@ -441,29 +444,63 @@ namespace gamevault.ViewModels
         }
         #region Linux
         public bool IsLinux => OperatingSystem.IsLinux();
-        public LinuxRunner[] LinuxRunners => Enum.GetValues<LinuxRunner>();
-        public LinuxRunner LinuxRunner
+
+        /// <summary>
+        /// Default tool of this profile. Profiles of older versions stored a runner (Auto/Proton/Wine/Custom)
+        /// and an optional Proton path instead.
+        /// </summary>
+        private string ReadDefaultCompatibilityTool()
         {
-            get => CompatibilitySettings.Runner;
+            string toolId = Preferences.Get(AppConfigKey.LinuxCompatibilityTool, userConfigFile);
+            if (!string.IsNullOrEmpty(toolId))
+                return toolId;
+            string protonPath = Preferences.Get(AppConfigKey.LinuxProtonPath, userConfigFile);
+            return Preferences.Get(AppConfigKey.LinuxRunner, userConfigFile) switch
+            {
+                "Proton" => string.IsNullOrWhiteSpace(protonPath) ? CompatibilityToolId.UmuLatest : CompatibilityToolId.ForProton(protonPath),
+                "Wine" => CompatibilityToolId.SystemWine,
+                "Custom" => CompatibilityToolId.Custom,
+                _ => CompatibilityToolId.Auto,
+            };
+        }
+
+        private ObservableCollection<CompatibilityTool> compatibilityTools = new();
+        /// <summary>Every tool a game can use (automatic choice, umu, system Wine, detected builds, custom command).</summary>
+        public ObservableCollection<CompatibilityTool> CompatibilityTools
+        {
+            get => compatibilityTools;
+            private set { compatibilityTools = value; OnPropertyChanged(); }
+        }
+        /// <summary>Proton / Wine builds found on this computer (the "manager" list).</summary>
+        public List<CompatibilityTool> InstalledCompatibilityBuilds => CompatibilityTools.Where(t => t.Path != null && t.Id != CompatibilityToolId.SystemWine).ToList();
+
+        public void RefreshCompatibilityTools()
+        {
+            CompatibilityTools = new ObservableCollection<CompatibilityTool>(CompatibilityManager.GetTools(refresh: true));
+            OnPropertyChanged(nameof(InstalledCompatibilityBuilds));
+            OnPropertyChanged(nameof(DefaultCompatibilityTool));
+            OnPropertyChanged(nameof(DetectedCompatibilityTools));
+        }
+
+        public CompatibilityTool? DefaultCompatibilityTool
+        {
+            get => CompatibilityTools.FirstOrDefault(t => t.Id == CompatibilitySettings.DefaultToolId);
             set
             {
-                CompatibilitySettings.Runner = value;
-                Preferences.Set(AppConfigKey.LinuxRunner, value.ToString(), userConfigFile);
+                if (value == null)
+                    return;
+                CompatibilitySettings.DefaultToolId = value.Id;
+                Preferences.Set(AppConfigKey.LinuxCompatibilityTool, value.Id, userConfigFile);
                 OnPropertyChanged(); OnPropertyChanged(nameof(IsCustomRunner)); OnPropertyChanged(nameof(DetectedCompatibilityTools));
             }
         }
-        public bool IsCustomRunner => CompatibilitySettings.Runner == LinuxRunner.Custom;
+        public bool IsCustomRunner => CompatibilitySettings.DefaultToolId == CompatibilityToolId.Custom;
         public string WinePrefix
         {
             get => CompatibilitySettings.WinePrefix;
             set { CompatibilitySettings.WinePrefix = value?.Trim() ?? ""; Preferences.Set(AppConfigKey.LinuxWinePrefix, CompatibilitySettings.WinePrefix, userConfigFile); OnPropertyChanged(); OnPropertyChanged(nameof(EffectiveWinePrefix)); }
         }
         public string EffectiveWinePrefix => CompatibilitySettings.EffectiveWinePrefix;
-        public string ProtonPath
-        {
-            get => CompatibilitySettings.ProtonPath;
-            set { CompatibilitySettings.ProtonPath = value?.Trim() ?? ""; Preferences.Set(AppConfigKey.LinuxProtonPath, CompatibilitySettings.ProtonPath, userConfigFile); OnPropertyChanged(); }
-        }
         public string CustomRunnerCommand
         {
             get => CompatibilitySettings.CustomCommand;
@@ -476,12 +513,54 @@ namespace gamevault.ViewModels
                 if (!OperatingSystem.IsLinux())
                     return "";
                 string Found(string? path) => path ?? "not found";
+                string startsWith;
+                try { startsWith = CompatibilityManager.Resolve(CompatibilitySettings.DefaultToolId).Name; }
+                catch (Exception ex) { startsWith = ex.Message; }
                 return $"umu-run: {Found(Helper.Platform.PlatformInfo.FindInPath("umu-run"))}\n" +
                        $"wine: {Found(Helper.Platform.PlatformInfo.FindInPath("wine"))}\n" +
                        $"7-Zip: {Found(Helper.Platform.ToolLocator.SevenZip())}\n" +
                        $"Ludusavi: {Helper.Platform.ToolLocator.Ludusavi()?.FileName ?? "not found"}\n" +
-                       $"Games will start with: {ProcessHelper.ResolveRunner()}";
+                       $"Games without a tool of their own start with: {startsWith}";
             }
+        }
+
+        // Download manager
+        public ToolFlavor[] ToolFlavors => Enum.GetValues<ToolFlavor>();
+        private ToolFlavor selectedToolFlavor = ToolFlavor.GeProton;
+        public ToolFlavor SelectedToolFlavor
+        {
+            get => selectedToolFlavor;
+            set { selectedToolFlavor = value; OnPropertyChanged(); AvailableToolDownloads = new List<DownloadableTool>(); }
+        }
+        private List<DownloadableTool> availableToolDownloads = new();
+        public List<DownloadableTool> AvailableToolDownloads
+        {
+            get => availableToolDownloads;
+            set { availableToolDownloads = value; OnPropertyChanged(); SelectedToolDownload = value.FirstOrDefault(); }
+        }
+        private DownloadableTool? selectedToolDownload;
+        public DownloadableTool? SelectedToolDownload
+        {
+            get => selectedToolDownload;
+            set { selectedToolDownload = value; OnPropertyChanged(); }
+        }
+        private bool isToolDownloadRunning;
+        public bool IsToolDownloadRunning
+        {
+            get => isToolDownloadRunning;
+            set { isToolDownloadRunning = value; OnPropertyChanged(); }
+        }
+        private double toolDownloadProgress;
+        public double ToolDownloadProgress
+        {
+            get => toolDownloadProgress;
+            set { toolDownloadProgress = value; OnPropertyChanged(); }
+        }
+        private string toolDownloadStatus = "";
+        public string ToolDownloadStatus
+        {
+            get => toolDownloadStatus;
+            set { toolDownloadStatus = value; OnPropertyChanged(); }
         }
         #endregion
         //DevMode

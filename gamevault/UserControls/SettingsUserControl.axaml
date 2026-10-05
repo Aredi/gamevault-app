@@ -7,6 +7,7 @@
         <conv:GameSizeConverter x:Key="sizeConv" />
         <conv:DownloadLimitConverter x:Key="downloadLimitConv" />
         <conv:StringToArrayConverter x:Key="stringToArrayConv" />
+        <conv:ToolFlavorNameConverter x:Key="toolFlavorConv" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TextBlock.h1">
@@ -304,25 +305,87 @@
                         <TextBlock FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left"
                                    Text="Windows games, installers and uninstallers are started through a compatibility layer. Native Linux games (Linux Portable) are started directly." />
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0">
-                            <TextBlock Text="Compatibility layer" FontSize="15" VerticalAlignment="Center" Width="200" />
-                            <ComboBox ItemsSource="{Binding LinuxRunners}" SelectedItem="{Binding LinuxRunner}" Width="220" />
+                            <TextBlock Text="Default tool" FontSize="15" VerticalAlignment="Center" Width="200" />
+                            <ComboBox x:Name="uiDefaultCompatibilityTool" ItemsSource="{Binding CompatibilityTools}" SelectedItem="{Binding DefaultCompatibilityTool}" Width="500">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel MaxWidth="480">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                                            <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                         </StackPanel>
                         <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                   Text="Auto: Proton via umu-run when it is installed, otherwise Wine. Proton: umu-launcher downloads and manages GE-Proton by itself. Custom: your own command, with {exe} (the program) and {args} (the launch parameters)." />
+                                   Text="Used by every game without a tool of its own. Like on the Steam Deck, each game can use another Proton or Wine version (Game Settings → Launch Options). Proton builds start through umu-run when it is installed, otherwise directly. Custom: your own command, with {exe} (the program) and {args} (the launch parameters)." />
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0" IsVisible="{Binding IsCustomRunner}">
                             <TextBlock Text="Custom command" FontSize="15" VerticalAlignment="Center" Width="200" />
                             <TextBox Text="{Binding CustomRunnerCommand}" Watermark="gamemoderun wine {exe} {args}" Width="500" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0">
-                            <TextBlock Text="Wine prefix" FontSize="15" VerticalAlignment="Center" Width="200" />
+                            <TextBlock Text="Shared Wine prefix" FontSize="15" VerticalAlignment="Center" Width="200" />
                             <TextBox Text="{Binding WinePrefix}" Watermark="{Binding EffectiveWinePrefix}" Width="500" />
                             <local:IconButton Text="Browse" FontSize="14" Width="90" Height="32" Click="BrowseWinePrefix_Click" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0">
-                            <TextBlock Text="Proton path (umu)" FontSize="15" VerticalAlignment="Center" Width="200" />
-                            <TextBox Text="{Binding ProtonPath}" Watermark="Empty: latest GE-Proton (downloaded by umu)" Width="500" />
-                            <local:IconButton Text="Browse" FontSize="14" Width="90" Height="32" Click="BrowseProtonPath_Click" />
+
+                        <!-- Compatibility tool manager -->
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,15,0,0" MaxWidth="900" HorizontalAlignment="Left" Width="900">
+                            <TextBlock Classes="h1" Text="Compatibility tools" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                                <local:IconButton Text="Open folder" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,0" FontSize="14" Height="32" Padding="10,0" Click="OpenManagedToolsFolder_Click" />
+                                <local:IconButton Text="Refresh" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" FontSize="14" Height="32" Padding="10,0" Click="RefreshCompatibilityTools_Click" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
+                                   Text="Proton and Wine builds found on this computer: downloaded by GameVault, installed for Steam (compatibilitytools.d, ProtonUp-Qt) or for Lutris." />
+                        <Border Classes="group" Width="900" HorizontalAlignment="Left" Margin="10,0,0,0">
+                            <Panel>
+                                <TextBlock Text="No Proton or Wine build found yet. Download one below." Opacity="0.7" IsVisible="{Binding !InstalledCompatibilityBuilds.Count}" />
+                                <ItemsControl x:Name="uiInstalledTools" ItemsSource="{Binding InstalledCompatibilityBuilds}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" />
+                                                        <Border CornerRadius="4" Padding="5,0" Background="{DynamicResource Brush.Accent}" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="White" />
+                                                        </Border>
+                                                        <TextBlock Text="{Binding Source}" FontSize="12" Opacity="0.7" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Path}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <local:IconButton Text="Open" Kind="Skeleton" FontSize="13" Height="28" Width="70" Tag="{Binding}" Click="OpenToolFolder_Click" />
+                                                    <local:IconButton Text="Delete" Kind="Danger" FontSize="13" Height="28" Width="80" Tag="{Binding}" Click="DeleteTool_Click" IsVisible="{Binding IsManaged}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Panel>
+                        </Border>
+                        <TextBlock Text="Download a version" FontSize="15" FontWeight="Bold" Margin="10,10,0,0" />
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,0,0,0" IsEnabled="{Binding !IsToolDownloadRunning}">
+                            <ComboBox ItemsSource="{Binding ToolFlavors}" SelectedItem="{Binding SelectedToolFlavor}" Width="170">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Converter={StaticResource toolFlavorConv}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <local:IconButton Text="Load versions" FontSize="14" Height="32" Width="130" Click="LoadToolVersions_Click" />
+                            <ComboBox ItemsSource="{Binding AvailableToolDownloads}" SelectedItem="{Binding SelectedToolDownload}" Width="300" PlaceholderText="Load the versions first" />
+                            <local:IconButton Text="Install" Icon="{DynamicResource IconDownload}" IconMargin="0,0,5,0" IconScale="0.8" FontSize="14" Height="32" Width="110" Click="InstallTool_Click"
+                                              IsEnabled="{Binding SelectedToolDownload, Converter={x:Static ObjectConverters.IsNotNull}}" />
                         </StackPanel>
+                        <StackPanel Margin="10,0,0,0" Spacing="4" IsVisible="{Binding ToolDownloadStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Width="900" HorizontalAlignment="Left">
+                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding ToolDownloadProgress}" Height="6" IsVisible="{Binding IsToolDownloadRunning}" />
+                            <TextBlock Text="{Binding ToolDownloadStatus}" FontSize="13" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
+                                   Text="GE-Proton comes from GloriousEggroll/proton-ge-custom, Wine and Wine Staging from Kron4ek/Wine-Builds (WoW64 builds, they also run 32-bit games). Downloads are checked against their published checksums." />
                         <TextBlock Classes="h1" Text="Detected tools" Margin="0,15,0,0" />
                         <Border Classes="group" Width="760">
                             <SelectableTextBlock x:Name="uiDetectedTools" Text="{Binding DetectedCompatibilityTools}" FontFamily="monospace" FontSize="13" TextWrapping="Wrap" />

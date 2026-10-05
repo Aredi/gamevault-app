@@ -837,13 +837,19 @@ namespace gamevault.UserControls
                     Process setupProcess = null;
                     try
                     {
-                        setupProcess = ProcessHelper.StartApp(setupEexecutable, ViewModel.Game?.Metadata?.InstallerParameters?.Replace("%INSTALLDIR%", ViewModel.InstallerInstallPath));
+                        setupProcess = ProcessHelper.StartApp(setupEexecutable, ViewModel.Game?.Metadata?.InstallerParameters?.Replace("%INSTALLDIR%", ViewModel.InstallerInstallPath), installationDirectory: ViewModel.InstallPath);
+                    }
+                    catch (Exception ex) when (!OperatingSystem.IsWindows())
+                    {
+                        MainWindowViewModel.Instance.AppBarText = ex.Message;
+                        uiProgressRingInstall.IsActive = false;
+                        return;
                     }
                     catch
                     {
                         try
                         {
-                            setupProcess = ProcessHelper.StartApp(setupEexecutable, ViewModel.Game?.Metadata?.InstallerParameters?.Replace("%INSTALLDIR%", ViewModel.InstallerInstallPath), true);
+                            setupProcess = ProcessHelper.StartApp(setupEexecutable, ViewModel.Game?.Metadata?.InstallerParameters?.Replace("%INSTALLDIR%", ViewModel.InstallerInstallPath), true, ViewModel.InstallPath);
                         }
                         catch
                         {
