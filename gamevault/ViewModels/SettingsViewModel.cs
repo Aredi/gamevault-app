@@ -49,7 +49,6 @@ namespace gamevault.ViewModels
         private long m_DownloadLimit { get; set; }
         private long m_DownloadLimitUIValue { get; set; }
         private string[] ignoreList { get; set; }
-        private PhalcodeProduct license { get; set; }
         private ObservableCollection<ThemeItem> themes { get; set; }
         private ObservableCollection<ThemeItem> communityThemes { get; set; }
         private bool showMappedTitle { get; set; }
@@ -366,15 +365,6 @@ namespace gamevault.ViewModels
         {
             get { return communityThemes; }
             set { communityThemes = value; OnPropertyChanged(); }
-        }
-        public PhalcodeProduct License
-        {
-            get
-            {
-                if (license == null) { license = new PhalcodeProduct(); }
-                return license;
-            }
-            set { license = value; OnPropertyChanged(); }
         }
 
         public bool UsePrimaryCloudSaveManifest

@@ -234,9 +234,6 @@ namespace gamevault.Helper
             {
                 try
                 {
-                    if (!SettingsViewModel.Instance.License.IsActive())
-                        return;
-
                     string shortcutsDirectory = GetMostRecentUserUserDirectory();
                     if (!Directory.Exists(shortcutsDirectory))
                         return;

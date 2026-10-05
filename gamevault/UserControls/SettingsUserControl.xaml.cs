@@ -252,53 +252,6 @@ namespace gamevault.UserControls
             }
             else { MainWindowViewModel.Instance.AppBarText = "You are not logged in or offline"; }
         }
-        private async void PhalcodeLoginLogout_Click(object sender, RoutedEventArgs e)
-        {
-            ((FrameworkElement)sender).IsEnabled = false;
-            if (string.IsNullOrEmpty(SettingsViewModel.Instance.License.UserName))
-            {
-                string phalcodeLoginMessage = await LoginManager.Instance.PhalcodeLogin();
-                if (phalcodeLoginMessage != string.Empty)
-                    MainWindowViewModel.Instance.AppBarText = phalcodeLoginMessage;
-            }
-            else
-            {
-                MessageDialogResult result = await ((MetroWindow)App.Current.MainWindow).ShowMessageAsync($"Are you sure you want to log out of your Phalcode account? GameVault Plus features will no longer be usable.", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No", AnimateHide = false });
-                if (result == MessageDialogResult.Affirmative)
-                {
-                    LoginManager.Instance.PhalcodeLogout();
-                }
-            }
-            ((FrameworkElement)sender).IsEnabled = true;
-        }
-        private async void RefreshLicense_Click(object sender, MouseButtonEventArgs e)
-        {
-            ((FrameworkElement)sender).IsEnabled = false;
-            await LoginManager.Instance.PhalcodeLogin(true);
-            ((FrameworkElement)sender).IsEnabled = true;
-        }
-        private void ManageBilling_Click(object sender, RoutedEventArgs e)
-        {
-            string url = "https://phalco.de/account";
-            if (SettingsViewModel.Instance.DevTargetPhalcodeTestBackend)
-            {
-                url = "https://test.phalco.de/account";
-            }
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        private void ManagePhalcodeUser_Click(object sender, RoutedEventArgs e)
-        {
-            ManageBilling_Click(null, null);//Will maybe change in the Future
-        }
-        private void SubscribeGVPlus_Click(object sender, RoutedEventArgs e)
-        {
-            string url = "https://phalco.de/products/gamevault-plus/checkout";
-            if (SettingsViewModel.Instance.DevTargetPhalcodeTestBackend)
-            {
-                url = "https://test.phalco.de/products/gamevault-plus/checkout";
-            }
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
         #region THEMES
         private void Themes_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -313,18 +266,6 @@ namespace gamevault.UserControls
                 return;
 
             ViewModel.IsCommunityThemeSelected = File.Exists(selectedTheme?.Path);
-            if (selectedTheme.IsPlus == true && ViewModel.License.IsActive() == false)
-            {
-                ((ComboBox)sender).SelectedItem = (ThemeItem)((ComboBox)sender).SelectionBoxItem;
-                try
-                {
-                    MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
-                    MainWindowViewModel.Instance.Settings.SetTabIndex(4);
-                    MainWindowViewModel.Instance.AppBarText = "Oops! You just reached a premium feature of GameVault - Upgrade now and support the devs!";
-                }
-                catch { }
-                return;
-            }
             try
             {
                 App.Instance.SetTheme(selectedTheme.Path);
@@ -382,7 +323,7 @@ namespace gamevault.UserControls
                 string currentThemeString = Preferences.Get(AppConfigKey.Theme, LoginManager.Instance.GetUserProfile().UserConfigFile, true);
                 ThemeItem currentTheme = JsonSerializer.Deserialize<ThemeItem>(currentThemeString);
                 int themeIndex = ViewModel.Themes.ToList().FindIndex(i => i.Path == currentTheme.Path);
-                if (themeIndex != -1 && (ViewModel.Themes[themeIndex].IsPlus == true ? ViewModel.License.IsActive() : true))
+                if (themeIndex != -1)
                 {
                     uiCbTheme.SelectedIndex = themeIndex;
                 }

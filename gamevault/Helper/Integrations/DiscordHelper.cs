@@ -46,7 +46,7 @@ namespace gamevault.Helper
         {
             try
             {
-                if (!SettingsViewModel.Instance.SyncDiscordPresence || !SettingsViewModel.Instance.License.IsActive())
+                if (!SettingsViewModel.Instance.SyncDiscordPresence)
                     return;
 
                 if (!client.IsInitialized)

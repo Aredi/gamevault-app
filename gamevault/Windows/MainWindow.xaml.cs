@@ -133,12 +133,6 @@ namespace gamevault.Windows
         }
 
 
-        private void Premium_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
-            MainWindowViewModel.Instance.Settings.SetTabIndex(4);
-        }
-
         private async Task<bool> CheckForNews()
         {
             try

@@ -78,11 +78,6 @@ namespace gamevault.Windows
             if (!SkipBootTasks)
             {
                 await CheckForUpdates(this);
-                ViewModel.StatusText = "Checking License...";
-                string phalcodeLoginMessage = await LoginManager.Instance.PhalcodeLogin(true);
-                if (phalcodeLoginMessage != string.Empty)
-                    ViewModel.AppBarText = phalcodeLoginMessage;
-
                 if (ViewModel.RememberMe)
                 {
                     try
@@ -108,15 +103,6 @@ namespace gamevault.Windows
         }
         private void NewProfile_Click(object sender, RoutedEventArgs e)
         {
-            if (!SettingsViewModel.Instance.License.IsActive() && ViewModel.UserProfiles.Count >= 1)
-            {
-                bool isDemoUserException = ViewModel.UserProfiles.Count == 1 && ViewModel.UserProfiles[0].ServerUrl == "https://demo.gamevau.lt";
-                if (!isDemoUserException)
-                {
-                    ViewModel.AppBarText = "Oops! You just reached a premium feature of GameVault - Upgrade now and support the devs!";
-                    return;
-                }                
-            }
             ViewModel.LoginStepIndex = (int)LoginStep.SignInOrSignUp;
         }
         private void SignIn_Click(object sender, RoutedEventArgs e)

@@ -57,7 +57,7 @@ namespace gamevault.Helper.Integrations
         }
         internal async Task<string> RestoreBackup(int gameId, string installationDir)
         {
-            if (!LoginManager.Instance.IsLoggedIn() || !SettingsViewModel.Instance.License.IsActive())
+            if (!LoginManager.Instance.IsLoggedIn())
                 return CloudSaveStatus.RestoreFailed;
 
             if (!SettingsViewModel.Instance.CloudSaves)
@@ -145,7 +145,7 @@ namespace gamevault.Helper.Integrations
 
             foreach (var removedId in removedIds)
             {
-                if (!SettingsViewModel.Instance.CloudSaves || !SettingsViewModel.Instance.License.IsActive())
+                if (!SettingsViewModel.Instance.CloudSaves)
                 {
                     break;
                 }
@@ -177,9 +177,6 @@ namespace gamevault.Helper.Integrations
         {
             if (!SettingsViewModel.Instance.CloudSaves)
                 return CloudSaveStatus.SettingDisabled;
-
-            if (!SettingsViewModel.Instance.License.IsActive())
-                return CloudSaveStatus.BackupFailed;
 
             var installedGame = InstallViewModel.Instance?.InstalledGames?.FirstOrDefault(g => g.Key?.ID == gameId);
             string gameMetadataTitle = installedGame?.Key?.Metadata?.Title ?? "";
@@ -400,7 +397,7 @@ namespace gamevault.Helper.Integrations
         public static string RestoreFailed = "Failed to restore the Savegame";
         public static string UpToDate = "Your Savegame is up to date";
 
-        public static string SettingDisabled = "Activate Cloud Saves under Settings -> GameVault+ -> Cloud Saves";
+        public static string SettingDisabled = "Activate Cloud Saves under Settings -> Integrations -> Cloud Saves";
         public static string ServerSettingDisabled = "Cloud Saves are not enabled on this Server";
         public static string Offline = "Can not synchronize the cloud saves, because you are offline";
     }

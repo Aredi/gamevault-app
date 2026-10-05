@@ -269,17 +269,6 @@ namespace gamevault.UserControls
                     }
                     if (GifHelper.IsGif(ms))
                     {
-                        if (!SettingsViewModel.Instance.License.IsActive())
-                        {
-                            try
-                            {
-                                MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
-                                MainWindowViewModel.Instance.Settings.SetTabIndex(4);
-                                MainWindowViewModel.Instance.AppBarText = "Oops! You just reached a premium feature of GameVault - Upgrade now and support the devs!";
-                            }
-                            catch { }
-                            return;
-                        }
                         filename = "x.gif";
                     }
                 }

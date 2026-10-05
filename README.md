@@ -1,5 +1,15 @@
 [![logo](https://gamevau.lt/img/logo-text-and-image-sbs.png)](https://gamevau.lt)
 
+> [!NOTE]
+> **This is an unofficial, non-commercial fork of [Phalcode/gamevault-app](https://github.com/Phalcode/gamevault-app)**, distributed under the same [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) license. It is not affiliated with or endorsed by Phalcode.
+>
+> **Changes from upstream:**
+> - All features previously gated behind a GameVault+ subscription are available without a Phalcode account: premium themes, community themes, animated (GIF) avatars, multiple server profiles, cloud saves, Steam shortcut sync, Discord Rich Presence, and `gamevault://` install/uninstall links.
+> - The Phalcode account login (OIDC + embedded WebView2), the subscription lookup and the in-app upsell UI were removed. The *GameVault+* settings tab is now called *Integrations*.
+> - The license status is no longer included in analytics payloads.
+>
+> If you enjoy GameVault, please consider supporting the original developers (see below).
+
 # GameVault Application
 
 ## Introduction

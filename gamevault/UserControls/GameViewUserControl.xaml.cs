@@ -410,12 +410,6 @@ namespace gamevault.UserControls
         {
             try
             {
-                if (!SettingsViewModel.Instance.License.IsActive())
-                {
-                    MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
-                    MainWindowViewModel.Instance.Settings.SetTabIndex(4);
-                    return;
-                }
                 if (!LoginManager.Instance.IsLoggedIn())
                 {
                     MainWindowViewModel.Instance.AppBarText = CloudSaveStatus.Offline;
@@ -436,12 +430,6 @@ namespace gamevault.UserControls
         {
             try
             {
-                if (!SettingsViewModel.Instance.License.IsActive())
-                {
-                    MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
-                    MainWindowViewModel.Instance.Settings.SetTabIndex(4);
-                    return;
-                }
                 MainWindowViewModel.Instance.AppBarText = $"Syncing cloud save...";
                 ((FrameworkElement)sender).IsEnabled = false;
                 string installationDir = InstallViewModel.Instance.InstalledGames.First(g => g.Key.ID == ViewModel!.Game!.ID).Value;

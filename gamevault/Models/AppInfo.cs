@@ -28,8 +28,6 @@ namespace gamevault.Models
         LaunchParameter,
         ShowMappedTitle,
         LastPlayed,
-        Phalcode1,
-        Phalcode2,
         Theme,
         ExtractionPassword,
         DownloadProgress,

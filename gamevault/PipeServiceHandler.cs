@@ -315,21 +315,6 @@ namespace gamevault
             if (options == null)
                 return null;
 
-            if ((options.Action == CommandOptions.ActionEnum.Install || options.Action == CommandOptions.ActionEnum.Uninstall) && !SettingsViewModel.Instance.License.IsActive())
-            {
-                try
-                {
-                    string url = "https://phalco.de/products/gamevault-plus/checkout?hit_paywall=true";
-                    if (SettingsViewModel.Instance.DevTargetPhalcodeTestBackend)
-                    {
-                        url = "https://test.phalco.de/products/gamevault-plus/checkout?hit_paywall=true";
-                    }
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-                    return null;
-                }
-                catch { return null; }
-            }
-
             if (!IsReadyForCommands)
                 await isReadyForCommandsTCS.Task;
 
@@ -388,7 +373,7 @@ namespace gamevault
                         {
                             showMainWindow = true;
 
-                            if (options.AutoInstall == true && SettingsViewModel.Instance.License.IsActive())
+                            if (options.AutoInstall == true)
                                 task = InstallGame(options.GameId.Value);
                             else
                                 task = ShowGame(options.GameId.Value);

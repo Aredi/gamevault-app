@@ -13,7 +13,6 @@ namespace gamevault.Helper
         private static string ProfileRootDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GameVault", "profiles");
         public static string ProfileConfigFile { get; private set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GameVault", "profileconfig");
         public static string ErrorLogDir { get; private set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GameVault", "errorlog");
-        public static string PhalcodeDir { get; private set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GameVault", "phalcode");
         public static void EnsureRootDirectory()
         {
             if (!Directory.Exists(ProfileRootDirectory))
