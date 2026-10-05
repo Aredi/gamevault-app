@@ -1,4 +1,5 @@
-﻿using gamevault.Converter;
+﻿using GameVault.Core;
+using gamevault.Converter;
 using gamevault.Helper;
 using gamevault.Helper.Integrations;
 using gamevault.Models;
@@ -155,7 +156,7 @@ namespace gamevault.UserControls
                         ViewModel.UserProgresses = ViewModel.Game.Progresses.Where(p => p.User.ID != LoginManager.Instance.GetCurrentUser().ID).ToArray();
                         ViewModel.CurrentUserProgress = ViewModel.Game.Progresses.FirstOrDefault(progress => progress.User.ID == LoginManager.Instance.GetCurrentUser()?.ID) ?? new Progress { MinutesPlayed = 0, State = State.UNPLAYED.ToString() };
                     }
-                    catch (Exception ex) { }
+                    catch (Exception ex) { Log.Ignored(ex); }
                 }
                 ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
                 ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
@@ -172,7 +173,7 @@ namespace gamevault.UserControls
                         }
                         ViewModel.CloudSaveMatchTitle = await SaveGameHelper.Instance.SearchForLudusaviGameTitle(gameMetadataTitle);
                     }
-                    catch { }
+                    catch (Exception ignored) { Log.Ignored(ignored); }
                 });
                 //MediaSlider
                 try
@@ -180,7 +181,7 @@ namespace gamevault.UserControls
                     await uiMediaSlider.InitVideoPlayer();
                     await PrepareMetadataMedia(ViewModel?.Game?.Metadata);
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
                 //###########              
             }
             if (!this.IsVisible && loaded && !uiMediaSlider.IsWebViewNull())
@@ -206,7 +207,7 @@ namespace gamevault.UserControls
                 ViewModel.UserProgresses = ViewModel.Game.Progresses.Where(p => p.User.ID != LoginManager.Instance.GetCurrentUser().ID).ToArray();
                 ViewModel.CurrentUserProgress = ViewModel.Game.Progresses.FirstOrDefault(progress => progress.User.ID == LoginManager.Instance.GetCurrentUser()?.ID) ?? new Progress { MinutesPlayed = 0, State = State.UNPLAYED.ToString() };
             }
-            catch (Exception ex) { }
+            catch (Exception ex) { Log.Ignored(ex); }
             ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
             ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
             PrepareMarkdownElements();
@@ -278,7 +279,7 @@ namespace gamevault.UserControls
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
                 e.Handled = true;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void GameState_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -311,7 +312,7 @@ namespace gamevault.UserControls
             {
                 SettingsViewModel.Instance.ShowMappedTitle = !SettingsViewModel.Instance.ShowMappedTitle;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void Bookmark_Click(object sender, RoutedEventArgs e)
         {
@@ -351,7 +352,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.Library.uiFilterGenreSelector.SetEntries(new Pill[] { new Pill() { ID = data.ID, Name = data.Name, ProviderDataId = data.ProviderDataId } });
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void Tag_Clicked(object sender, RoutedEventArgs e)
         {
@@ -362,7 +363,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.Library.uiFilterTagSelector.SetEntries(new Pill[] { new Pill() { ID = data.ID, Name = data.Name, ProviderDataId = data.ProviderDataId } });
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void Developer_Clicked(object sender, MouseButtonEventArgs e)
         {
@@ -373,7 +374,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.Library.uiFilterDeveloperSelector.SetEntries(new Pill[] { new Pill() { ID = (int)data.ID!, Name = data.Name, ProviderDataId = data.ProviderDataId } });
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void Publisher_Clicked(object sender, MouseButtonEventArgs e)
         {
@@ -384,7 +385,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.Library.uiFilterPublisherSelector.SetEntries(new Pill[] { new Pill() { ID = (int)data.ID!, Name = data.Name, ProviderDataId = data.ProviderDataId } });
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void GameType_Clicked(object sender, RoutedEventArgs e)
         {
@@ -394,7 +395,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.Library.uiFilterGameTypeSelector.SetEntries(new Pill[] { new Pill() { OriginName = ViewModel.Game.Type.ToString(), Name = (string)new EnumDescriptionConverter().Convert(ViewModel.Game.Type, null, null, null) } });
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void Share_Click(object sender, RoutedEventArgs e)
         {
@@ -404,7 +405,7 @@ namespace gamevault.UserControls
                 System.Windows.Clipboard.SetText(shareLink);
                 MainWindowViewModel.Instance.AppBarText = "Sharelink copied to clipboard";
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void BackupCloudSaves_Click(object sender, RoutedEventArgs e)
         {
@@ -452,7 +453,7 @@ namespace gamevault.UserControls
                     Process.Start(new ProcessStartInfo(e.Parameter.ToString()) { UseShellExecute = true });
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void PrepareMarkdownElements()
         {
@@ -463,7 +464,7 @@ namespace gamevault.UserControls
                     ViewModel.DescriptionMarkdown = ViewModel.Game.Metadata.Description;
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             try
             {
                 if (ViewModel?.Game?.Metadata?.Notes != null)
@@ -471,7 +472,7 @@ namespace gamevault.UserControls
                     ViewModel.NotesMarkdown = ViewModel.Game.Metadata.Notes;
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         #endregion

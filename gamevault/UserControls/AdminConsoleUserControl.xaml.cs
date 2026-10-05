@@ -246,7 +246,7 @@ namespace gamevault.UserControls
                 string newestServerVersion = (string)gitObj[0]["tag_name"];
                 string serverResponse = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/status");
                 string currentServerVersion = JsonSerializer.Deserialize<ServerInfo>(serverResponse).Version;
-                if (Convert.ToInt32(newestServerVersion.Replace(".", "")) > Convert.ToInt32(currentServerVersion.Replace(".", "")))
+                if (GameVault.Core.VersionHelper.IsNewer(newestServerVersion, currentServerVersion))
                 {
                     return new KeyValuePair<string, string>($"Server Version: {currentServerVersion}", (string)gitObj[0]["html_url"]);
                 }

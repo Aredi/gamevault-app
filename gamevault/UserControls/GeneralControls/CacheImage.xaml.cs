@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using gamevault.Windows;
@@ -142,9 +143,8 @@ namespace gamevault.UserControls
                     {
                         using (MemoryStream stream = new MemoryStream())
                         {
-                            using (HttpClient client = new HttpClient())
                             {
-                                using (HttpResponseMessage response = await client.GetAsync(uri))
+                                using (HttpResponseMessage response = await GameVault.Core.HttpClients.Shared.GetAsync(uri))
                                 {
                                     if (response.IsSuccessStatusCode)
                                     {
@@ -227,7 +227,7 @@ namespace gamevault.UserControls
                         }
                 }
             }
-            catch (Exception ex) { }
+            catch (Exception ex) { Log.Ignored(ex); }
             if (DoNotCache)
             {
                 try

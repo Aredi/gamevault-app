@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+﻿using GameVault.Core;
+using gamevault.Models;
 using gamevault.ViewModels;
 using System.IO;
 using System.Windows.Controls;
@@ -142,7 +143,7 @@ namespace gamevault.UserControls
                         size += await CalculateDirectorySize(di);
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
                 return size;
             });
         }
@@ -317,7 +318,7 @@ namespace gamevault.UserControls
                             res.Source = new Uri(file);
                             ViewModel.Themes.Add(new ThemeItem() { DisplayName = (string)res["Theme.DisplayName"], Description = (string)res["Theme.Description"], Author = (string)res["Theme.Author"], IsPlus = true, Path = res.Source.OriginalString });
                         }
-                        catch { }
+                        catch (Exception ignored) { Log.Ignored(ignored); }
                     }
                 }
                 string currentThemeString = Preferences.Get(AppConfigKey.Theme, LoginManager.Instance.GetUserProfile().UserConfigFile, true);
@@ -351,7 +352,7 @@ namespace gamevault.UserControls
                     UseShellExecute = true
                 });
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void OpenCommunityThemeRepository_Click(object sender, RoutedEventArgs e)
         {
@@ -359,7 +360,7 @@ namespace gamevault.UserControls
             {
                 Process.Start(new ProcessStartInfo("https://github.com/Phalcode/gamevault-community-themes") { UseShellExecute = true });
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void ReloadThemeList_Click(object sender, RoutedEventArgs e)
         {
@@ -400,7 +401,7 @@ namespace gamevault.UserControls
                     }
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void CommunityThemes_DropDownOpened(object sender, EventArgs e)
         {
@@ -444,7 +445,7 @@ namespace gamevault.UserControls
                     int installedThemeIndex = ViewModel.Themes.IndexOf(ViewModel.Themes.First(t => t.DisplayName == theme.DisplayName));
                     uiCbTheme.SelectedIndex = installedThemeIndex;
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
                 MainWindowViewModel.Instance.AppBarText = $"Successfully installed {theme.DisplayName}";
             }
             catch (Exception ex)
@@ -465,7 +466,7 @@ namespace gamevault.UserControls
                     LoadThemes();
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         #endregion
         private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
@@ -474,7 +475,7 @@ namespace gamevault.UserControls
             {
                 Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         private void Awesome_Click(object sender, MouseButtonEventArgs e)
@@ -498,7 +499,7 @@ namespace gamevault.UserControls
 
                 await SettingsViewModel.Instance.InitIgnoreList();
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void IgnoredExecutablesSave_Click(object sender, RoutedEventArgs e)
         {
@@ -506,7 +507,7 @@ namespace gamevault.UserControls
             {
                 Preferences.Set("IL", SettingsViewModel.Instance.IgnoreList, LoginManager.Instance.GetUserProfile().IgnoreList);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         private async void SyncSteamShortcuts_Toggled(object sender, RoutedEventArgs e)
@@ -562,7 +563,7 @@ namespace gamevault.UserControls
                 string result = string.Join(";", ViewModel.CustomCloudSaveManifests.Where(entry => !string.IsNullOrWhiteSpace(entry.Uri)).Select(entry => entry.Uri));
                 Preferences.Set(AppConfigKey.CustomCloudSaveManifests, result, LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             MainWindowViewModel.Instance.AppBarText = "Successfully saved custom Ludusavi Manifests";
         }
         private async void AddRootDirectory_Click(object sender, RoutedEventArgs e)

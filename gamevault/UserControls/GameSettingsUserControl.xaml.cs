@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using MahApps.Metro.Controls.Dialogs;
@@ -185,7 +186,7 @@ namespace gamevault.UserControls
                     }
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
 
             if (ViewModel.Game.Type == GameType.WINDOWS_PORTABLE)
             {
@@ -282,7 +283,7 @@ namespace gamevault.UserControls
                             DesktopHelper.RemoveShotcut(ViewModel.Game);
                             MainWindowViewModel.Instance.ClosePopup();
                         }
-                        catch { }
+                        catch (Exception ignored) { Log.Ignored(ignored); }
                     }
                 }
             }
@@ -805,7 +806,7 @@ namespace gamevault.UserControls
                 int gameId = ViewModel.Game.ID;
                 await RemapGame(providerId, currentProviderSlug, gameId);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void GameRemap_Click(object sender, RoutedEventArgs e)
         {
@@ -833,7 +834,7 @@ namespace gamevault.UserControls
                 await RemapGame(providerId, currentProviderSlug, gameId, (int?)uiProviderPriority.Value);
                 await LoadGameMedatataProviders();
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async Task RemapGame(string? providerId, string? providerSlug, int gameId, int? priority = null)
         {
@@ -981,7 +982,7 @@ namespace gamevault.UserControls
                 ViewModel.UpdateGame = null;
                 ViewModel.UpdateGame = temp;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         #endregion
@@ -999,7 +1000,7 @@ namespace gamevault.UserControls
                     checkBox.IsChecked = true;
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         private void CheckBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -1011,7 +1012,7 @@ namespace gamevault.UserControls
                     needEarlyAccessToggleFix = true;
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         #endregion
     }

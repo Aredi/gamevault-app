@@ -1,4 +1,5 @@
-﻿using DiscordRPC;
+﻿using GameVault.Core;
+using DiscordRPC;
 using DiscordRPC.Logging;
 using gamevault.Models;
 using gamevault.ViewModels;
@@ -40,7 +41,7 @@ namespace gamevault.Helper
             {
                 client = new DiscordRpcClient(Encoding.UTF8.GetString(Convert.FromBase64String("MTMxMzIyNTUxNjUwOTMwMjgxNQ==")));
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         internal void SyncGameWithDiscordPresence(List<int> trackedGameIds, Dictionary<int, string> installedGames)
         {
@@ -71,7 +72,7 @@ namespace gamevault.Helper
                 });
                 currentGameId = firstGame.Key;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
     }
 }

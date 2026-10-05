@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.ViewModels;
@@ -89,7 +90,7 @@ namespace gamevault
             {
                 Instance.RegisterUriScheme();
             }
-            catch { } //
+            catch (Exception ignored) { Log.Ignored(ignored); } //
 
             try
             {
@@ -176,7 +177,7 @@ namespace gamevault
                         // Handle the pipe in the background, so we don't block our thread and can handle the next connection asap
                         _ = HandlePipeConnection(server).ConfigureAwait(false);
                     }
-                    catch (Exception) { }
+                    catch (Exception ignored) { Log.Ignored(ignored); }
                 }
             }, TaskCreationOptions.LongRunning).ConfigureAwait(false);
         }
@@ -273,7 +274,7 @@ namespace gamevault
             {
                 disposable.Dispose();
             }
-            catch (Exception) { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         /// <summary>
@@ -451,7 +452,7 @@ namespace gamevault
                 {
                     await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames(true);
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
             game = InstallViewModel.Instance.InstalledGames.Where(g => g.Key.ID == id).Select(g => g.Key).FirstOrDefault();
             return game;
@@ -473,10 +474,8 @@ namespace gamevault
                     string result = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games/{id}");
                     game = JsonSerializer.Deserialize<Game>(result);
                 }
-                catch (Exception)
-                {
-
-                }
+                catch (Exception ignored)
+                { Log.Ignored(ignored); }
             }
 
             if (game == null)
@@ -491,7 +490,7 @@ namespace gamevault
                         game = deserializedObject;
                     }
                 }
-                catch (Exception) { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
 
             return game;
@@ -772,7 +771,7 @@ namespace gamevault
                             string result = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games?limit=-1");
                             return Convert.ToBase64String(Encoding.UTF8.GetBytes(result));
                         }
-                        catch { }
+                        catch (Exception ignored) { Log.Ignored(ignored); }
                         return "";
                     }
                 case ActionQueryEnum.GetServerUrl:

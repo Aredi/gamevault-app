@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+﻿using GameVault.Core;
+using gamevault.Models;
 using gamevault.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -30,7 +31,7 @@ namespace gamevault.Converter
                     return true;
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             return false;
         }
 

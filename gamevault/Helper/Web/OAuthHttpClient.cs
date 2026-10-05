@@ -1,4 +1,5 @@
-﻿using gamevault.ViewModels;
+﻿using GameVault.Core;
+using gamevault.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,7 +38,7 @@ namespace gamevault.Helper
             {
                 nextTokenRefresh = GetNextTokenRefresh(_accessToken);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         public string GetRefreshToken()
         {

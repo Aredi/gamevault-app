@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+﻿using GameVault.Core;
+using gamevault.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -45,7 +46,7 @@ namespace gamevault.Helper
                         }
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
         }
         private static void MoveLegacyCache()
@@ -77,7 +78,7 @@ namespace gamevault.Helper
                     Directory.Move(themes, themesDestination);
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         public static UserProfile CreateUserProfile(string serverUrl)
@@ -125,7 +126,7 @@ namespace gamevault.Helper
                                 break;
                             }
                         }
-                        catch { }
+                        catch (Exception ignored) { Log.Ignored(ignored); }
                     }
                 }
             }
@@ -165,7 +166,7 @@ namespace gamevault.Helper
                     Directory.CreateDirectory(userProfile.CacheDir);
 
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
     }
 }

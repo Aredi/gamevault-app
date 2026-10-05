@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GameVault.Core;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,7 +23,7 @@ namespace gamevault.Helper
                 JsonObject obj = JsonNode.Parse(resp).AsObject();
                 errMessage = obj["message"].ToString().Replace("\n", " ").Replace("\r", "");
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             return errMessage;
         }
         /// <summary>
@@ -86,7 +87,7 @@ namespace gamevault.Helper
                     JsonObject obj = JsonNode.Parse(resp).AsObject();
                     errMessage = obj["statusCode"].ToString().Replace("\n", " ").Replace("\r", "");
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
                 return errMessage;
             }
             else if (ex is HttpRequestException httpEx && httpEx.StatusCode.HasValue)

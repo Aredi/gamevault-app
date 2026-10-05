@@ -25,9 +25,7 @@ namespace gamevault.Helper
         {
             BitmapImage bitmap = null;
 
-            var httpclient = new HttpClient();
-
-            using (var response = await httpclient.GetAsync(uri))
+            using (var response = await GameVault.Core.HttpClients.Shared.GetAsync(uri))
             {
                 if (response.IsSuccessStatusCode)
                 {
@@ -63,9 +61,8 @@ namespace gamevault.Helper
         public static async Task<MemoryStream> UrlToMemoryStream(string url)
         {
             MemoryStream stream = new MemoryStream();
-            using (HttpClient client = new HttpClient())
             {
-                using (HttpResponseMessage response = await client.GetAsync(url))
+                using (HttpResponseMessage response = await GameVault.Core.HttpClients.Shared.GetAsync(url))
                 {
                     if (response.IsSuccessStatusCode)
                     {

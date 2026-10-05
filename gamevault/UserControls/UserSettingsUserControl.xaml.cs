@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.Models.Mapping;
 using gamevault.ViewModels;
@@ -416,7 +417,7 @@ namespace gamevault.UserControls
                 Clipboard.SetText(ViewModel.OriginUser.ApiKey);
                 MainWindowViewModel.Instance.AppBarText = "Copied API Key to Clipboard";
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void Help_Click(object sender, MouseButtonEventArgs e)
         {

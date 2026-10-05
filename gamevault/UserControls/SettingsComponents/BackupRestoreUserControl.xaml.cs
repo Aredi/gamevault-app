@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using System;
@@ -30,7 +31,7 @@ namespace gamevault.UserControls.SettingsComponents
             {
                 (uiBackupDirectoryScrollViewer.Template.FindName("PART_HorizontalScrollBar", uiBackupDirectoryScrollViewer) as ScrollBar).Height = 7;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void BackupRestorePopup_Close(object sender, MouseButtonEventArgs e)
         {

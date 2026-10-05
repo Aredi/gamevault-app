@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Helper.Integrations;
 using gamevault.Models;
 using gamevault.UserControls;
@@ -91,7 +92,7 @@ namespace gamevault.ViewModels
             retainLibarySortByAndOrderBy = Preferences.Get(AppConfigKey.RetainLibarySortByAndOrderBy, userConfigFile) == "1"; OnPropertyChanged(nameof(RetainLibarySortByAndOrderBy));
 
             string analyticsPreference = Preferences.Get(AppConfigKey.SendAnonymousAnalytics, userConfigFile);
-            sendAnonymousAnalytics = (analyticsPreference == "" || analyticsPreference == "1"); OnPropertyChanged(nameof(SendAnonymousAnalytics));
+            sendAnonymousAnalytics = analyticsPreference == "1"; OnPropertyChanged(nameof(SendAnonymousAnalytics));
 
             syncSteamShortcuts = Preferences.Get(AppConfigKey.SyncSteamShortcuts, userConfigFile) == "1"; OnPropertyChanged(nameof(SyncSteamShortcuts));
             syncDiscordPresence = Preferences.Get(AppConfigKey.SyncDiscordPresence, userConfigFile) == "1"; OnPropertyChanged(nameof(SyncDiscordPresence));
@@ -164,7 +165,7 @@ namespace gamevault.ViewModels
                     string result = Preferences.Get("IL", ignoreListFile);
                     IgnoreList = JsonSerializer.Deserialize<string[]>(result);
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
         }
 

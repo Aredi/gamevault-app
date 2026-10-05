@@ -1,4 +1,5 @@
-﻿using gamevault.Helper.Integrations;
+﻿using GameVault.Core;
+using gamevault.Helper.Integrations;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -57,7 +58,7 @@ namespace gamevault.Helper
                         childProcesses[count].Kill();
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using System;
 using System.Collections.Generic;
@@ -21,7 +22,7 @@ namespace gamevault.Converter
                     return ((List<User>)value).Any(u => u.ID == LoginManager.Instance.GetCurrentUser().ID);
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             return false;
         }
 

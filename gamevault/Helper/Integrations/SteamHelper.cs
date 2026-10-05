@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+﻿using GameVault.Core;
+using gamevault.Models;
 using gamevault.ViewModels;
 using Microsoft.Win32;
 using System;
@@ -253,7 +254,7 @@ namespace gamevault.Helper
                             shortcutFileMap = RemoveUninstalledGames(shortcutFileMap, games, out steamGridImageIDsToRemove);//Checks for gamevault games and compares them to the current installed game list. Extracts also the steam grid image ids for clean removal later on
                             games = TrimExistingGames(games, shortcutFileMap);//No need for double entries. So they will be removed
                         }
-                        catch { }
+                        catch (Exception ignored) { Log.Ignored(ignored); }
                     }
                     else
                     {
@@ -286,8 +287,7 @@ namespace gamevault.Helper
                     }
                 }
                 catch (Exception e)
-                {
-                }
+                { Log.Ignored(e); }
             });
         }
         internal static void RemoveGameVaultGamesFromSteamShortcuts()
@@ -329,7 +329,7 @@ namespace gamevault.Helper
                     }
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private static void RemoveSteamGridImages(string steamGridDirectory, string ID)
         {

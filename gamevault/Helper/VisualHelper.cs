@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GameVault.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -52,7 +53,7 @@ namespace gamevault.Helper
                 var btnCommands = (FrameworkElement)window.Template.FindName("PART_WindowButtonCommands", window);
                 System.Windows.Controls.Panel.SetZIndex(btnCommands, 8);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         internal static void HideWindow(Window window)
         {

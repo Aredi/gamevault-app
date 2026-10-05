@@ -1,4 +1,5 @@
-﻿using gamevault.Converter;
+﻿using GameVault.Core;
+using gamevault.Converter;
 using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
@@ -96,7 +97,7 @@ namespace gamevault.UserControls
                     }
                     ViewModel.TotalDataSize = size;
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             });
 
         }
@@ -118,7 +119,7 @@ namespace gamevault.UserControls
                     return true;
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
 
             return false;
         }
@@ -155,7 +156,7 @@ namespace gamevault.UserControls
                     File.Delete($"{m_DownloadPath}\\gamevault-metadata");
                     File.Delete($"{m_DownloadPath}\\{Path.GetFileName(ViewModel.Game.Path)}");
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
             else
             {
@@ -322,7 +323,7 @@ namespace gamevault.UserControls
                 if (File.Exists($"{m_DownloadPath}\\gamevault-metadata"))
                     File.Delete($"{m_DownloadPath}\\gamevault-metadata");
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             if (!Directory.Exists(ViewModel.InstallPath))
             {
                 Directory.CreateDirectory(ViewModel.InstallPath);
@@ -442,7 +443,7 @@ namespace gamevault.UserControls
                 downloadSpeedCalc.UpdateSpeed(totalBytesDownloaded);
                 ViewModel.ExtractionInfo = $"{$"{FormatBytesHumanReadable(totalBytesDownloaded, (DateTime.Now - startTime).TotalSeconds, 1000)}/s"} - {FormatBytesHumanReadable(totalBytesDownloaded)} of {FormatBytesHumanReadable(Convert.ToInt64(ViewModel.Game.Size))} | Time left: {CalculateTimeLeft(Convert.ToInt64(ViewModel.Game.Size), totalBytesDownloaded, (DateTime.Now - startTime).TotalMilliseconds)}";
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void Extract_Click(object sender, RoutedEventArgs e)
         {
@@ -575,7 +576,7 @@ namespace gamevault.UserControls
                     {
                         Directory.Delete($"{m_DownloadPath}\\Extract", true);
                     }
-                    catch { }
+                    catch (Exception ignored) { Log.Ignored(ignored); }
                 }
                 if (extractionCancelled)
                 {
@@ -670,7 +671,7 @@ namespace gamevault.UserControls
                 }
                 MainWindowViewModel.Instance.Library.GetGameInstalls().AddSystemFileWatcher(ViewModel.InstallPath);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             if (ViewModel.Game.Type == GameType.WINDOWS_PORTABLE || ViewModel.Game.Type == GameType.LINUX_PORTABLE)
             {
                 bool error = false;
@@ -773,7 +774,7 @@ namespace gamevault.UserControls
             {
                 Preferences.Set(AppConfigKey.InstalledGameVersion, ViewModel?.Game?.Version, $"{ViewModel.InstallPath}\\gamevault-exec");
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             //Save forced install type for uninstallation
             if (isGameTypeForced && Directory.Exists(ViewModel.InstallPath) && ViewModel?.Game?.Type != null)
             {
@@ -781,7 +782,7 @@ namespace gamevault.UserControls
                 {
                     Preferences.Set(AppConfigKey.ForcedInstallationType, ViewModel?.Game?.Type, $"{ViewModel.InstallPath}\\gamevault-exec");
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
             //Set default launch parameter if available
             if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.LaunchParameters) && Directory.Exists(ViewModel.InstallPath))
@@ -790,7 +791,7 @@ namespace gamevault.UserControls
                 {
                     Preferences.Set(AppConfigKey.LaunchParameter, ViewModel.Game?.Metadata?.LaunchParameters, $"{ViewModel.InstallPath}\\gamevault-exec");
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
             //Set default launch executable if available
             if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.LaunchExecutable) && Directory.Exists(ViewModel.InstallPath))
@@ -805,7 +806,7 @@ namespace gamevault.UserControls
                         Preferences.Set(AppConfigKey.Executable, targetFile, $"{ViewModel.InstallPath}\\gamevault-exec");
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
 
             if (ViewModel.CreateShortcut == true)
@@ -857,7 +858,7 @@ namespace gamevault.UserControls
                 Clipboard.SetText(ViewModel.InstallPath);
                 MainWindowViewModel.Instance.AppBarText = "Copied Installation Directory to Clipboard";
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         private void ContinueOverwriteGameType_Click(object sender, RoutedEventArgs e)

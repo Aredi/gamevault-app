@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using MahApps.Metro.Controls.Dialogs;
@@ -81,7 +82,7 @@ namespace gamevault.UserControls
                     LoadingPlaceholder.Visibility = Visibility.Visible;
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void LoadingPlaceholder_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
@@ -220,7 +221,7 @@ namespace gamevault.UserControls
                     return result;
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             return "Last played"; //default is 'Last played'
         }
         private User[] BringCurrentUserToTop(User[] users)
@@ -301,7 +302,7 @@ namespace gamevault.UserControls
                 SortBy_SelectionChanged(null, new SelectionChangedEventArgs(System.Windows.Controls.Primitives.Selector.SelectionChangedEvent, new List<string>(), new List<string> { uiSortBy.SelectedValue.ToString() }));
 
             }
-            catch (Exception ex) { }
+            catch (Exception ex) { Log.Ignored(ex); }
             uiBtnReloadUser.IsEnabled = true;
         }
         private void UserEdit_Clicked(object sender, RoutedEventArgs e)

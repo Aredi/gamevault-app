@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using gamevault.Windows;
@@ -58,7 +59,7 @@ namespace gamevault.UserControls.SettingsComponents
             {
                 ViewModel.SignupUser.ServerUrl = LoginManager.Instance.GetUserProfile()!.ServerUrl;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void UserRegistrationTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {

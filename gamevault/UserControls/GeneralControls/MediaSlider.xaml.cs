@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using Microsoft.Web.WebView2.Core;
@@ -122,7 +123,7 @@ namespace gamevault.UserControls
                 await uiWebView.CoreWebView2.ExecuteScriptAsync(setAndSaveMediaVolumeScript);
 
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void VolumeSlider_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
         {
@@ -146,7 +147,7 @@ namespace gamevault.UserControls
                     }
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         public async Task InitVideoPlayer()
         {
@@ -165,7 +166,7 @@ namespace gamevault.UserControls
                     await ResizeMediaSlider();
                     await uiWebView.CoreWebView2.ExecuteScriptAsync(cssscript);
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             };
         }
         public void SetMediaList(List<Tuple<string, string>> mediaUrls)
@@ -224,7 +225,7 @@ namespace gamevault.UserControls
             {
                 uiWebView.CoreWebView2.Navigate(url);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void ToggleFullscreen()
         {
@@ -245,8 +246,7 @@ namespace gamevault.UserControls
                 }
             }
             catch (Exception ex)
-            {
-            }//Probably is the Visual not disconnected from its Parent
+            { Log.Ignored(ex); }//Probably is the Visual not disconnected from its Parent
         }
         #endregion
 

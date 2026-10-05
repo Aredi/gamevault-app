@@ -1,4 +1,5 @@
-﻿using gamevault.UserControls;
+﻿using GameVault.Core;
+using gamevault.UserControls;
 using gamevault.ViewModels;
 using System;
 using System.CodeDom;
@@ -83,7 +84,7 @@ namespace gamevault.Helper
                 TimeZoneInfo.TryConvertWindowsIdToIanaId(TimeZoneInfo.Local.Id, RegionInfo.CurrentRegion.TwoLetterISORegionName, out timeZone);
                 language = CultureInfo.CurrentCulture.Name;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
 
         }
 
@@ -121,7 +122,7 @@ namespace gamevault.Helper
                     await client.PostAsync(AnalyticsTargets.CU, jsonContent);
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         private string ParseMethodName(ButtonBase buttonBase)
@@ -283,7 +284,7 @@ namespace gamevault.Helper
                     var jsonContent = new StringContent(JsonSerializer.Serialize(new AnalyticsData() { Event = eventName, Metadata = meta, Timezone = timeZone, Language = language }), Encoding.UTF8, "application/json");
                     await client.PostAsync(AnalyticsTargets.CU, jsonContent);
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             });
         }
 
@@ -337,7 +338,7 @@ namespace gamevault.Helper
 
                 return trimmedObject;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             return null;
         }
 

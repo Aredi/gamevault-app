@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+﻿using GameVault.Core;
+using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.ViewModels;
 using LiveChartsCore.Kernel;
@@ -73,7 +74,7 @@ namespace gamevault.Helper
                     }
                     AdditionalHeader?.Add("Range", $"bytes={ResumePosition}-");                  
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
         }
 
@@ -141,7 +142,7 @@ namespace gamevault.Helper
                                 File.Delete($"{DestinationFolderPath}\\gamevault-metadata");
                                 File.Delete(fullFilePath);
                             }
-                            catch { }
+                            catch (Exception ignored) { Log.Ignored(ignored); }
                             return;
                         }
 
@@ -196,7 +197,7 @@ namespace gamevault.Helper
                     File.Delete($"{DestinationFolderPath}\\gamevault-metadata");
                     File.Delete($"{DestinationFolderPath}\\{FileName}");
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
                 return;
             }
             Cancelled = true;

@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using MahApps.Metro.Controls;
@@ -50,7 +51,7 @@ namespace gamevault.UserControls
                         }
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
             uiFilterSortBy.SelectedIndex = sortByIndex;
             uiFilterOrderBy.Checked += OrderBy_Changed;
@@ -371,7 +372,7 @@ namespace gamevault.UserControls
                     timer.Start();
                     AnalyticsHelper.Instance.SendCustomEvent(CustomAnalyticsEventKeys.EASTER_EGG, new { name = "777" });
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
             else
             {
@@ -415,7 +416,7 @@ namespace gamevault.UserControls
                 }
                 parent.Tag = "";
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void CardBookmark_Click(object sender, RoutedEventArgs e)
         {
@@ -451,7 +452,7 @@ namespace gamevault.UserControls
                 }
                 parent.Tag = "";
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private async void Download_Click(object sender, RoutedEventArgs e)
         {

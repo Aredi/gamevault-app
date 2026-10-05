@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+﻿using GameVault.Core;
+using gamevault.Models;
 using gamevault.ViewModels;
 using ImageMagick;
 using LiveChartsCore.Drawing;
@@ -27,7 +28,7 @@ namespace gamevault.Helper
                 string compressedObject = StringCompressor.CompressString(serializedObject);
                 Preferences.Set(game.ID.ToString(), compressedObject, LoginManager.Instance.GetUserProfile().OfflineCache);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         internal static async Task LoadImageCacheToUIAsync(int identifier, int imageId, string cachePath, ImageCache cacheType, System.Windows.Controls.Image img)
@@ -108,7 +109,7 @@ namespace gamevault.Helper
                         return;
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
                 img.BeginAnimation(System.Windows.Controls.Image.SourceProperty, null);//Make sure all animations are removed, so a non animated image can be set to the source
                 img.Source = GetReplacementImage(cacheType);
             }
@@ -150,7 +151,7 @@ namespace gamevault.Helper
                     }
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         internal static BitmapImage GetReplacementImage(ImageCache cacheType)
         {
@@ -211,11 +212,11 @@ namespace gamevault.Helper
                                 }
                             }
                         }
-                        catch { }
+                        catch (Exception ignored) { Log.Ignored(ignored); }
                     }
                     Preferences.Set(AppConfigKey.LastImageOptimization, DateTime.Now.ToString(), imageOptimizationMetadata);
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             });
         }
         internal static async Task<string> CreateHashAsync(string input)

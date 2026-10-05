@@ -1,4 +1,5 @@
-﻿using Microsoft.Toolkit.Uwp.Notifications;
+﻿using GameVault.Core;
+using Microsoft.Toolkit.Uwp.Notifications;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,7 +22,7 @@ namespace gamevault.Helper
                 }
                 builder.Show();
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
     }
 }

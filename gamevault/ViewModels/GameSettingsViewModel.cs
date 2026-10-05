@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+﻿using GameVault.Core;
+using gamevault.Models;
 using gamevault.Models.Mapping;
 using System;
 using System.Collections.Generic;
@@ -119,7 +120,7 @@ namespace gamevault.ViewModels
                         return Game.ProviderMetadata.Where(m => m.ProviderSlug == currentSelectedProvider.Slug).First();
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
                 return new GameMetadata();
             }
             set

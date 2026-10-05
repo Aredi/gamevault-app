@@ -1,4 +1,5 @@
-﻿using gamevault.Helper.Integrations;
+﻿using GameVault.Core;
+using gamevault.Helper.Integrations;
 using gamevault.Models;
 using gamevault.ViewModels;
 using System;
@@ -144,7 +145,7 @@ namespace gamevault.Helper
                     result++;
                     Preferences.Set(gameid.ToString(), result, LoginManager.Instance.GetUserProfile().OfflineProgress, true);
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
         }
         private async Task SendOfflineProgess()
@@ -160,7 +161,7 @@ namespace gamevault.Helper
                         await WebHelper.PutAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/progresses/user/{LoginManager.Instance.GetCurrentUser().ID}/game/{key}/increment/{value}", string.Empty);
                         Preferences.DeleteKey(key, LoginManager.Instance.GetUserProfile().OfflineProgress);
                     }
-                    catch { }
+                    catch (Exception ignored) { Log.Ignored(ignored); }
                 }
             }
         }
@@ -173,7 +174,7 @@ namespace gamevault.Helper
                 int id = int.Parse(gameId);
                 return id;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             return -1;
         }
         private string[] GetAllOfflineCacheKeys()
@@ -189,7 +190,7 @@ namespace gamevault.Helper
                         int id = int.Parse(gameId);
                         keys.Add(gameId);
                     }
-                    catch { }
+                    catch (Exception ignored) { Log.Ignored(ignored); }
                 }
                 return keys.ToArray();
             }

@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Helper.Integrations;
 using gamevault.Models;
 using gamevault.ViewModels;
@@ -57,7 +58,7 @@ namespace gamevault.UserControls
                             offlineCacheGames.Add(deserializedObject);
                         }
                     }
-                    catch (FormatException exFormat) { }
+                    catch (FormatException exFormat) { Log.Ignored(exFormat); }
                 }
                 else
                 {
@@ -187,7 +188,7 @@ namespace gamevault.UserControls
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ignored) { Log.Ignored(ignored); }
                 }
                 InstallViewModel.Instance.InstalledGames = await SortInstalledGamesByLastPlayed(TempInstalledGames);
                 InstallViewModel.Instance.InstalledGamesFilter = CollectionViewSource.GetDefaultView(InstallViewModel.Instance.InstalledGames);
@@ -216,7 +217,7 @@ namespace gamevault.UserControls
                         return lastPlayedDates.Contains(key.ToString()) ? lastPlayedDates.IndexOf(key.ToString()) : int.MaxValue;
                     }).Reverse());
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
                 return collection;
             });
         }
@@ -232,7 +233,7 @@ namespace gamevault.UserControls
                 lastTimePlayed = lastTimePlayed.Insert(0, $"{gameID};");
                 Preferences.Set(AppConfigKey.LastPlayed, lastTimePlayed, LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         public void AddSystemFileWatcher(string path)
@@ -290,7 +291,7 @@ namespace gamevault.UserControls
                     });
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private int GetGameIdByDirectory(string dir)
         {
@@ -301,7 +302,7 @@ namespace gamevault.UserControls
                 int id = int.Parse(gameId);
                 return id;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             return -1;
         }
         private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
@@ -478,7 +479,7 @@ namespace gamevault.UserControls
                 }
                 Preferences.Set(AppConfigKey.InstalledGamesRows, uiRowsUpDown.Value, LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         private async void Collection_Updated(object sender, RoutedPropertyChangedEventArgs<double?> e)

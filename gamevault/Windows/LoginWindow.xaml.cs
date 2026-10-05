@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using MahApps.Metro.Controls.Dialogs;
@@ -74,7 +75,7 @@ namespace gamevault.Windows
                 ViewModel.AdditionalRequestHeaders = objResult;
                 WebHelper.SetAdditionalDefaultRequestHeaders(ViewModel.AdditionalRequestHeaders?.ToList());
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             if (!SkipBootTasks)
             {
                 await CheckForUpdates(this);
@@ -87,7 +88,7 @@ namespace gamevault.Windows
                         ProfileManager.EnsureUserProfileFileTree(lastUserProfile);
                         await Login(lastUserProfile);
                     }
-                    catch { }
+                    catch (Exception ignored) { Log.Ignored(ignored); }
                 }
             }
 
@@ -348,7 +349,7 @@ namespace gamevault.Windows
             {
                 this.DialogResult = true;//will throw error, if its called from the MainWindow
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             this.Close();
         }
         private async void SaveAndSignUp_Click(object sender, RoutedEventArgs e)
@@ -518,7 +519,7 @@ namespace gamevault.Windows
                     ViewModel.UserProfiles.Remove(demoProfile);
                 }
             }
-            catch (Exception ex) { }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
         public async Task CheckForUpdates(Window root)
         {
@@ -545,22 +546,19 @@ namespace gamevault.Windows
             {
                 if (App.IsWindowsPackage == false)
                 {
-                    var response = await WebHelper.BaseGetAsync("https://api.github.com/repos/Phalcode/gamevault-app/releases");
-                    dynamic obj = JsonNode.Parse(response);
-                    string version = (string)obj[0]["tag_name"];
-                    if (Convert.ToInt32(version.Replace(".", "")) > Convert.ToInt32(SettingsViewModel.Instance.Version.Replace(".", "")))
+                    ReleaseInfo? release = await UpdateChecker.GetNewerReleaseAsync(SettingsViewModel.Instance.Version, "win");
+                    if (release != null)
                     {
-                        MessageBoxResult result = MessageBox.Show($"A new version of GameVault is now available on GitHub.\nCurrent Version '{SettingsViewModel.Instance.Version}' -> new Version '{version}'\nWould you like to download it? (No automatic installation)", "Info", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                        MessageBoxResult result = MessageBox.Show($"A new version of GameVault is now available on GitHub.\nCurrent Version '{SettingsViewModel.Instance.Version}' -> new Version '{release.Version}'\nWould you like to download it? (No automatic installation)", "Info", MessageBoxButton.YesNo, MessageBoxImage.Information);
                         if (result == MessageBoxResult.Yes)
                         {
-                            string downloadUrl = (string)obj[0]["assets"][0]["browser_download_url"];
-                            Process.Start(new ProcessStartInfo(downloadUrl) { UseShellExecute = true });
+                            Process.Start(new ProcessStartInfo(release.DownloadUrl ?? release.PageUrl) { UseShellExecute = true });
                             App.Current.Shutdown();
                         }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         private async Task<bool> CheckIfServerIsOutdated(string serverUrl)
@@ -577,7 +575,7 @@ namespace gamevault.Windows
                 }
                 isServerOutdated = new Version(currentServerVersion) < new Version("15.0.0");
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
             if (isServerOutdated)
             {
                 try
@@ -594,14 +592,14 @@ namespace gamevault.Windows
                           });
                     if (result == MessageDialogResult.Affirmative)
                     {
-                        Process.Start(new ProcessStartInfo("https://github.com/Phalcode/gamevault-app/releases") { UseShellExecute = true });
+                        Process.Start(new ProcessStartInfo(AppRepository.ReleasesPage) { UseShellExecute = true });
                     }
                     else
                     {
                         Process.Start(new ProcessStartInfo("https://github.com/Phalcode/gamevault-backend/releases/tag/12.2.0") { UseShellExecute = true });
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
             return isServerOutdated;
         }

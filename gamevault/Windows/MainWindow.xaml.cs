@@ -1,4 +1,5 @@
-﻿using gamevault.ViewModels;
+﻿using GameVault.Core;
+using gamevault.ViewModels;
 using MahApps.Metro.Controls;
 using gamevault.UserControls;
 using System.Linq;
@@ -176,8 +177,8 @@ namespace gamevault.Windows
                 uiNewsBadge.Badge = "";
                 Preferences.Set(AppConfigKey.UnreadNews, "0", LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
-            catch
-            { }
+            catch (Exception ignored)
+            { Log.Ignored(ignored); }
         }
         private void Shortlink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
@@ -190,7 +191,7 @@ namespace gamevault.Windows
                 }
                 e.Handled = true;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         private void CopyMessage_Click(object sender, RoutedEventArgs e)
@@ -199,7 +200,7 @@ namespace gamevault.Windows
             {
                 System.Windows.Clipboard.SetText(MainWindowViewModel.Instance.AppBarText);
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void RestoreTheme()
         {
@@ -216,7 +217,7 @@ namespace gamevault.Windows
                     }
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         public void Dispose()
         {

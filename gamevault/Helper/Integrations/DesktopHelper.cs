@@ -1,4 +1,5 @@
-﻿using gamevault.ViewModels;
+﻿using GameVault.Core;
+using gamevault.ViewModels;
 using MahApps.Metro.Controls.Dialogs;
 using MahApps.Metro.Controls;
 using System;
@@ -40,7 +41,7 @@ namespace gamevault.Helper
                 }
 
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         public static void RemoveShotcut(Game game)
         {
@@ -53,7 +54,7 @@ namespace gamevault.Helper
                     File.Delete(shortcutPath);
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         public static bool ShortcutExists(Game game)
         {

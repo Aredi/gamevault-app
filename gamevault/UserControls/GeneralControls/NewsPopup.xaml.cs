@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using Markdig;
@@ -42,7 +43,7 @@ namespace gamevault.UserControls
                 string serverNews = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/config/news");
                 uiServerNews.Markdown = serverNews;
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         #region Markdown        
         private void OpenHyperlink(object sender, System.Windows.Input.ExecutedRoutedEventArgs e)
@@ -54,7 +55,7 @@ namespace gamevault.UserControls
                     Process.Start(new ProcessStartInfo(e.Parameter.ToString()) { UseShellExecute = true });
                 }
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         #endregion
 

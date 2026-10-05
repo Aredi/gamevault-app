@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using MahApps.Metro.Controls.Dialogs;
@@ -259,7 +260,7 @@ namespace gamevault.UserControls
                         await DownloadsViewModel.Instance.DownloadedGames[count].DeleteFile(false);
                     }
                 }
-                catch { }
+                catch (Exception ignored) { Log.Ignored(ignored); }
             }
         }
     }

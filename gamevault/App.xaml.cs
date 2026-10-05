@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+﻿using GameVault.Core;
+using gamevault.Models;
 using gamevault.ViewModels;
 using gamevault.Windows;
 using MahApps.Metro.Controls.Dialogs;
@@ -63,6 +64,7 @@ namespace gamevault
 
         private async void Application_Startup(object sender, StartupEventArgs e)
         {
+            Log.Initialize(ProfileManager.ErrorLogDir);
             Application.Current.DispatcherUnhandledException += new DispatcherUnhandledExceptionEventHandler(AppDispatcherUnhandledException);
 
             try
@@ -132,6 +134,7 @@ namespace gamevault
                 File.Create(errorLogPath).Close();
             }
             File.WriteAllText(errorLogPath, errorMessage + "\n" + errorStackTrace);
+            Log.Error(e, "Unhandled exception");
             AnalyticsHelper.Instance.SendErrorLog(e);
             ExceptionWindow exWin = new ExceptionWindow();
             exWin.ShowDialog();
@@ -198,7 +201,7 @@ namespace gamevault
 
                 jumpList.Apply();
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         public void ResetJumpListGames()
         {
@@ -207,7 +210,7 @@ namespace gamevault
                 jumpList.JumpItems.RemoveRange(5, jumpList.JumpItems.Count - 5);
                 jumpList.Apply();
             }
-            catch { }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         private void NotifyIcon_DoubleClick(Object sender, EventArgs e)
         {

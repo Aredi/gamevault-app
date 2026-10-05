@@ -1,4 +1,5 @@
-﻿using gamevault.Helper;
+﻿using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Helper.Integrations;
 using gamevault.Models;
 using gamevault.ViewModels;
@@ -108,7 +109,7 @@ namespace gamevault.UserControls
                     ResultTaskSource.TrySetResult(dataContext.Key.Uri);
                 }
             }
-            catch (Exception ex) { }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
         private bool AutoConfirmIfWindowIsHiddenOrOnlyOneEntry(string lastSelectedRootDirectory)
         {
