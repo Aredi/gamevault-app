@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.SettingsComponents.BackupRestoreUserControl">
+    <Grid>
+        <Grid Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,5,7,0" ZIndex="1" Height="20" Width="20" Cursor="Hand" PointerReleased="BackupRestorePopup_Close">
+            <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" Margin="-2,-1,0,0" />
+        </Grid>
+        <Border Background="{DynamicResource Brush.Background}" Padding="10" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" CornerRadius="10">
+            <TabControl Width="520" Height="285">
+                <TabItem Header="Backup">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Create and download a Database Backup. This process will generate an unencrypted file containing all the data currently stored in the database, which can be restored at a later time." FontSize="15" TextWrapping="Wrap" />
+                        <TextBlock Text="Select a directory in which the backup file should be saved." FontSize="15" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <controls:IconButton Text="Select Directory" Width="130" Height="28" FontSize="15" Click="ChooseBackupDirectory_Click" />
+                            <TextBlock x:Name="uiBackupDirectory" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Width="370" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBox x:Name="uiBackupDatabasePassword" PasswordChar="●" Classes="revealPasswordButton" Width="347" TextChanged="Backup_PasswordChanged" />
+                            <TextBlock Text="Database Password" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <controls:IconButton x:Name="uiBtnStartBackup" Text="Start Backup" IsEnabled="False" FontSize="15" Height="30" Click="StartBackup_Click" />
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="Restore">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Restoring your database from a file will completely replace your existing database. It is strongly discouraged to restore a database from another version and it is not possible to restore a database from another DBMS (SQLITE x POSTGRESQL)" FontSize="13" TextWrapping="Wrap" />
+                        <TextBlock Text="Select the Database File to upload." FontSize="13" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <controls:IconButton Text="Select Database File" Width="160" Height="28" FontSize="15" Click="ChooseRestoreFile_Click" />
+                            <TextBlock x:Name="uiRestoreFile" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBox x:Name="uiRestoreDatabasePassword" PasswordChar="●" Classes="revealPasswordButton" Width="347" TextChanged="Restore_PasswordChanged" />
+                            <TextBlock Text="Database Password" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <controls:IconButton x:Name="uiBtnStartRestore" Text="Start Restore" IsEnabled="False" Height="30" FontSize="15" Click="StartRestore_Click" />
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+        </Border>
+    </Grid>
+</UserControl>

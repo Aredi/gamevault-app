@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.DateRangeSelector">
+    <StackPanel Orientation="Horizontal" x:Name="uiContainer">
+        <TextBox x:Name="uiFilterYearFrom" Watermark="{Binding YearFromPlaceholder}" Background="{DynamicResource Brush.Background}" Width="62" MaxLength="4" />
+        <Rectangle Fill="{DynamicResource Brush.Foreground}" Height="3" Width="7" Margin="5" VerticalAlignment="Center" />
+        <TextBox x:Name="uiFilterYearTo" Watermark="{Binding YearToPlaceholder}" Background="{DynamicResource Brush.Background}" Width="62" MaxLength="4" />
+    </StackPanel>
+</UserControl>

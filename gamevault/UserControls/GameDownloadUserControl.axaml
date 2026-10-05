@@ -1,0 +1,217 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:gamevault.Converter"
+             xmlns:vm="clr-namespace:gamevault.ViewModels"
+             xmlns:models="clr-namespace:gamevault.Models"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.GameDownloadUserControl">
+    <UserControl.Resources>
+        <conv:GameSizeConverter x:Key="sizeConv" />
+        <conv:EnumDescriptionConverter x:Key="enumDescConv" />
+        <conv:GreaterThanConverter x:Key="greaterThanConv" />
+        <conv:MappedTitleConverter x:Key="mappedTitleConv" />
+        <conv:BoolToValueConverter x:Key="pauseTextConv" TrueValue="Resume" FalseValue="Pause" />
+        <conv:BoolToValueConverter x:Key="pauseTipConv" TrueValue="Resume Download" FalseValue="Pause Download" />
+        <conv:BoolToValueConverter x:Key="pauseIconConv" TrueValue="{StaticResource IconPlay}" FalseValue="{StaticResource IconPause}" />
+        <x:Int32 x:Key="Two">2</x:Int32>
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="Ellipse.step">
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="Stroke" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Width" Value="6" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Ellipse.step.done">
+            <Setter Property="Fill" Value="{DynamicResource Brush.Accent}" />
+        </Style>
+        <Style Selector="Line.stepLine">
+            <Setter Property="StartPoint" Value="0,0" />
+            <Setter Property="EndPoint" Value="0,16" />
+            <Setter Property="Stroke" Value="{DynamicResource Brush.Foreground}" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="StrokeThickness" Value="0.5" />
+            <Setter Property="StrokeDashArray" Value="4,4" />
+            <Setter Property="Margin" Value="3,2,0,0" />
+        </Style>
+        <Style Selector="TextBlock.small">
+            <Setter Property="FontSize" Value="4" />
+        </Style>
+        <Style Selector="Border.chip">
+            <Setter Property="Background" Value="Gainsboro" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Padding" Value="1" />
+        </Style>
+        <Style Selector="Border.copyPath">
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Border.copyPath:pointerover">
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+        <Style Selector="ProgressBar">
+            <Setter Property="MinHeight" Value="3" />
+            <Setter Property="CornerRadius" Value="1" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="{DynamicResource Brush.Background2}" Margin="1" Height="80" Width="180" CornerRadius="2">
+        <Grid>
+            <Button Classes="wrapper" HorizontalAlignment="Left" VerticalAlignment="Top" Width="52" Height="76" Margin="2" Click="GoToGame_Click">
+                <local:CacheImage ImageCacheType="GameCover" Stretch="Fill" Data="{Binding Game}" CornerRadius="2" />
+            </Button>
+            <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Margin="56,2,0,0" MaxWidth="106" FontSize="6" FontWeight="Bold" TextTrimming="CharacterEllipsis">
+                <TextBlock.Text>
+                    <MultiBinding Converter="{StaticResource mappedTitleConv}">
+                        <Binding Path="Game" />
+                        <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+            <StackPanel VerticalAlignment="Top" HorizontalAlignment="Right">
+                <Button Classes="wrapper" HorizontalAlignment="Right" Width="8" Height="9" Margin="0,2,2,0" Click="DeleteFile_Click" ToolTip.Tip="Delete Download">
+                    <Grid Classes="hover" Background="Transparent">
+                        <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Stretch="Uniform" Width="7" Height="8" />
+                    </Grid>
+                </Button>
+                <TextBlock Text="{Binding TotalDataSize, Converter={StaticResource sizeConv}}" FontSize="2" HorizontalAlignment="Center" Margin="0,0,1.3,0"
+                           IsVisible="{Binding TotalDataSize, Converter={StaticResource greaterThanConv}, ConverterParameter=0}" />
+            </StackPanel>
+            <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Right" Width="8" Height="9" Margin="0,2,12,0" Click="OpenDirectory_Click" ToolTip.Tip="Open Directory">
+                <Grid Classes="hover" Background="Transparent">
+                    <Path Data="{StaticResource IconGameSettingsFolder}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="7" Height="7" />
+                </Grid>
+            </Button>
+            <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Margin="56,10,0,0" Text="{Binding State, StringFormat='State: {0}'}" ToolTip.Tip="{Binding State}" FontSize="4" Width="110" TextTrimming="CharacterEllipsis" />
+
+            <local:IconButton Text="Retry" FontSize="5" Icon="{StaticResource IconReload}" IconScale="0.3" IconMargin="-9,-5.5,-5,-5" IsVisible="{Binding DownloadFailedVisibility}" CornerRadius="2" Height="9" Width="34" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="64,18.3,0,0" ToolTip.Tip="Download Game" Click="RetryDownload_Click" />
+            <TextBlock IsVisible="{Binding DownloadUIVisibility}" Text="{Binding DownloadInfo}" FontSize="4" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="64,18,0,0" Width="115" TextTrimming="CharacterEllipsis" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,30,3,0" Spacing="2">
+                <local:IconButton Kind="Danger" Text="Cancel" FontSize="4" IsVisible="{Binding DownloadUIVisibility}" CornerRadius="2" Height="8" Width="22" ToolTip.Tip="Cancel Download" Click="CancelDownload_Click" />
+                <local:IconButton IsEnabled="{Binding IsDownloadResumed}" FontSize="4" IconScale="0.3" IconMargin="-8,-6.3,-4.5,-5" IsVisible="{Binding DownloadUIVisibility}" CornerRadius="2" Height="8" Width="22" Click="PauseResume_Click"
+                                  Text="{Binding IsDownloadPaused, Converter={StaticResource pauseTextConv}}"
+                                  Icon="{Binding IsDownloadPaused, Converter={StaticResource pauseIconConv}}"
+                                  ToolTip.Tip="{Binding IsDownloadPaused, Converter={StaticResource pauseTipConv}}" />
+            </StackPanel>
+            <ProgressBar IsVisible="{Binding DownloadUIVisibility}" VerticalAlignment="Top" Height="4" Margin="64,24,3,0" Minimum="0" Maximum="100" Value="{Binding GameDownloadProgress}" />
+
+            <local:IconButton x:Name="uiBtnExtract" IsEnabled="False" Text="Extract" FontSize="5" Icon="{StaticResource IconExtract}" IconScale="0.3" IconMargin="-9,-6.5,-5,-6" Height="9" Width="34" CornerRadius="2"
+                              IsVisible="{Binding !ExtractionUIVisibility}" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="64,42.4,0,0" ToolTip.Tip="Extract Game" Click="Extract_Click" />
+
+            <TextBlock IsVisible="{Binding ExtractionUIVisibility}" Text="{Binding ExtractionInfo}" FontSize="4" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="64,41,0,0" Width="115" TextTrimming="CharacterEllipsis" />
+            <local:IconButton Kind="Danger" Text="Cancel" FontSize="4" IsVisible="{Binding ExtractionUIVisibility}" CornerRadius="2" Height="8" Width="22" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,34,3,0" Click="CancelExtraction_Click" />
+            <ProgressBar IsVisible="{Binding ExtractionUIVisibility}" VerticalAlignment="Top" Height="4" Margin="64,47,3,0" Minimum="0" Maximum="100" Value="{Binding GameExtractionProgress}" />
+
+            <StackPanel VerticalAlignment="Top" HorizontalAlignment="Left" Margin="56,20,0,0">
+                <Ellipse Classes="step" Classes.done="{Binding InstallationStepperProgress, Converter={StaticResource greaterThanConv}, ConverterParameter=-1}" />
+                <Line Classes="stepLine" />
+                <Ellipse Classes="step" Classes.done="{Binding InstallationStepperProgress, Converter={StaticResource greaterThanConv}, ConverterParameter=0}" />
+                <Line Classes="stepLine" />
+                <Ellipse Classes="step" Classes.done="{Binding InstallationStepperProgress, Converter={StaticResource greaterThanConv}, ConverterParameter=1}" />
+            </StackPanel>
+            <Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="64,62,1,0">
+                <local:IconButton x:Name="uiBtnInstall" Kind="Primary" IsEnabled="False" Text="Install" FontSize="5" Icon="{StaticResource IconInstalledGamesSettings}" IconScale="0.29" IconMargin="-9,-7,-5.5,-7" CornerRadius="2" Height="9" Width="34" ToolTip.Tip="Install Game" Click="OpenInstallOptions_Click"
+                                  IsVisible="{Binding InstallationStepperProgress, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={StaticResource Two}}" />
+                <local:IconButton Kind="Primary" Text="Go to Game" FontSize="5" CornerRadius="2" Height="9" Width="34" Click="GoToGame_Click"
+                                  IsVisible="{Binding InstallationStepperProgress, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Two}}" />
+            </Grid>
+
+            <!-- Installation options overlay -->
+            <Grid x:Name="uiInstallOptions" IsVisible="False" Margin="56,10,1,2" Width="122" Background="{DynamicResource Brush.Background2}">
+                <!-- Windows setup -->
+                <Grid IsVisible="{Binding Game.Type, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:GameType.WINDOWS_SETUP}}">
+                    <Border Classes="chip" Width="48" HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding Game.Type, Converter={StaticResource enumDescConv}}" FontSize="4" Foreground="#FF424242" HorizontalAlignment="Center" />
+                    </Border>
+                    <StackPanel Margin="0,10,0,0" Spacing="1">
+                        <TextBlock Classes="small" Text="To install this game, please follow the steps below:" FontWeight="Bold" />
+                        <TextBlock Classes="small" TextWrapping="Wrap" Text="1. Pick the correct installer from the dropdown menu below." />
+                        <Viewbox Height="8" HorizontalAlignment="Left" Stretch="Uniform">
+                            <ComboBox x:Name="uiCbSetupExecutable" MinWidth="200">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Key}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Viewbox>
+                        <TextBlock Classes="small" Text="2. Hit the 'Install' button to launch the games installer." />
+                        <TextBlock Classes="small" Text="3. Go through the game's setup process." />
+                        <TextBlock Classes="small" Text="Make sure to select this folder as the installers destination:" Margin="4,0,0,0" />
+                        <Border Classes="chip copyPath" ToolTip.Tip="Copy to clipboard" PointerReleased="CopyInstallPathToClipboard_Click">
+                            <TextBlock Text="{Binding InstallerInstallPath}" FontSize="3" IsHitTestVisible="False" Foreground="#FF424242" TextTrimming="CharacterEllipsis" />
+                        </Border>
+                    </StackPanel>
+                    <local:IconButton x:Name="uiBtnInstallSetup" Kind="Primary" Text="Install" FontSize="5" Icon="{StaticResource IconInstalledGamesSettings}" IconScale="0.29" IconMargin="-8,-7,-5.5,-7" CornerRadius="2" Height="9" Width="34" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,0" Click="Install_Click"
+                                      IsEnabled="{Binding #uiCbSetupExecutable.SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </Grid>
+                <!-- Portable -->
+                <Grid>
+                    <Grid.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                            <Binding Path="Game.Type" Converter="{x:Static ObjectConverters.Equal}" ConverterParameter="{x:Static models:GameType.WINDOWS_PORTABLE}" />
+                            <Binding Path="Game.Type" Converter="{x:Static ObjectConverters.Equal}" ConverterParameter="{x:Static models:GameType.LINUX_PORTABLE}" />
+                        </MultiBinding>
+                    </Grid.IsVisible>
+                    <Border Classes="chip" Width="48" HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding Game.Type, Converter={StaticResource enumDescConv}}" FontSize="4" Foreground="#FF424242" HorizontalAlignment="Center" />
+                    </Border>
+                    <TextBlock Classes="small" Text="To install this game, please follow the steps below:" FontWeight="Bold" Margin="0,10,0,0" VerticalAlignment="Top" />
+                    <TextBlock Classes="small" TextWrapping="Wrap" Text="This is a Portable Game, so there's no need for any setup. Once you click 'Install', the files will be automatically moved to the installation folder." MaxWidth="120" Margin="0,18,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" />
+                    <local:IconButton x:Name="uiBtnInstallPortable" Kind="Primary" Text="Install" FontSize="5" Icon="{StaticResource IconInstalledGamesSettings}" IconScale="0.29" IconMargin="-8,-7,-5.5,-7" CornerRadius="2" Height="9" Width="34" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,0" Click="Install_Click" />
+                </Grid>
+                <!-- Undetectable -->
+                <StackPanel Margin="0,5,0,0" Spacing="2" IsVisible="{Binding Game.Type, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:GameType.UNDETECTABLE}}">
+                    <TextBlock Classes="small" Text="Unable to detect game type. You can try forcing an installation procedure by selecting it from the options below." TextWrapping="Wrap" MaxWidth="120" HorizontalAlignment="Left" />
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                        <Viewbox Height="9" Stretch="Uniform">
+                            <ComboBox x:Name="uiCbOverwriteGameType" ItemsSource="{Binding GameTypes}" SelectedValueBinding="{Binding Key}" MinWidth="180">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Value}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Viewbox>
+                        <local:IconButton Kind="Danger" Text="Force Install" FontSize="5" CornerRadius="2" Height="9" Width="30" Click="ContinueOverwriteGameType_Click"
+                                          IsEnabled="{Binding #uiCbOverwriteGameType.SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+                    <TextBlock Classes="small" Text="Or alternatively install the game manually to this folder:" TextWrapping="Wrap" MaxWidth="120" HorizontalAlignment="Left" />
+                    <Border Classes="chip copyPath" ToolTip.Tip="Copy to clipboard" PointerReleased="CopyInstallPathToClipboard_Click">
+                        <TextBlock Text="{Binding InstallPath}" FontSize="3" Foreground="#FF424242" TextTrimming="CharacterEllipsis" />
+                    </Border>
+                </StackPanel>
+
+                <local:ProgressRing x:Name="uiProgressRingInstall" IsActive="False" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,40,0" />
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="38,0,0,0">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="Game.Type" Converter="{x:Static ObjectConverters.NotEqual}" ConverterParameter="{x:Static models:GameType.UNDETECTABLE}" />
+                            <Binding ElementName="uiProgressRingInstall" Path="!IsActive" />
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
+                    <LayoutTransformControl>
+                        <LayoutTransformControl.LayoutTransform>
+                            <ScaleTransform ScaleX="0.2" ScaleY="0.2" />
+                        </LayoutTransformControl.LayoutTransform>
+                        <CheckBox Content="Create Shortcut" IsChecked="{Binding CreateShortcut, Mode=TwoWay}" />
+                    </LayoutTransformControl>
+                </StackPanel>
+                <Button Classes="wrapper" HorizontalAlignment="Left" VerticalAlignment="Top" Width="8" Height="8" Margin="49,0,0,0" Click="InitOverwriteGameType_Click" ToolTip.Tip="Overwrite game type">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="Game.Type" Converter="{x:Static ObjectConverters.NotEqual}" ConverterParameter="{x:Static models:GameType.UNDETECTABLE}" />
+                            <Binding ElementName="uiProgressRingInstall" Path="!IsActive" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                    <Grid Classes="hover" Background="Transparent">
+                        <Path Data="{StaticResource IconGameSettingsEditDetails}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="6" Height="6" />
+                    </Grid>
+                </Button>
+                <local:IconButton Kind="Skeleton" Text="Back" FontSize="5" CornerRadius="2" Height="9" Width="34" BorderThickness="0.2" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="InstallOptionCancel_Click" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

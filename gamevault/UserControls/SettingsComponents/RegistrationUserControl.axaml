@@ -1,0 +1,90 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:uc="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.SettingsComponents.RegistrationUserControl"
+             Height="520" Width="500" Margin="0,200,0,200">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="TextDecorations" Value="Underline" />
+            <Setter Property="Margin" Value="0,15,0,5" />
+        </Style>
+        <Style Selector="TextBlock.mandatory">
+            <Setter Property="Margin" Value="5,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+    <Grid>
+        <Button Classes="wrapper" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,3,0" ZIndex="1" Click="Close_Click">
+            <Grid Classes="hover" Background="Transparent" Height="25" Width="23">
+                <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" />
+            </Grid>
+        </Button>
+        <Border CornerRadius="5" Background="{DynamicResource Brush.Background2}" BorderThickness="1" BorderBrush="{DynamicResource Brush.Accent3}">
+            <Grid>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Width="400" Margin="0,8,0,0">
+                    <TextBlock Text="Register New User" FontSize="30" HorizontalAlignment="Center" />
+                    <TextBlock Classes="label" Text="Specify Your Server URL" />
+                    <Panel>
+                        <TextBox Text="{Binding SignupUser.ServerUrl}" TextChanged="ServerUrlInput_TextChanged" />
+                        <Path Data="{StaticResource IconCheck}" Fill="Green" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding SignUpServerInfo.IsAvailable}" />
+                        <Path Data="{StaticResource IconErrorCircle}" Fill="IndianRed" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
+                              IsVisible="{Binding SignUpServerInfo.HasError}" ToolTip.Tip="{Binding SignUpServerInfo.ErrorMessage}" />
+                    </Panel>
+                    <StackPanel>
+                        <StackPanel.IsEnabled>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="SignUpServerInfo.IsBasicAuthEnabled" />
+                                <Binding Path="!SignupUser.IsLoggedInWithSSO" />
+                            </MultiBinding>
+                        </StackPanel.IsEnabled>
+                        <Grid ColumnDefinitions="195,10,195">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Classes="label" Text="Username" />
+                                <TextBox Text="{Binding SignupUser.Username}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <StackPanel Orientation="Horizontal" Margin="0,15,0,5">
+                                    <TextBlock Text="Birth Date" TextDecorations="Underline" />
+                                    <TextBlock Classes="mandatory" Text="(Mandatory)" IsVisible="{Binding SignUpServerInfo.IsBirthDateMandatory}" />
+                                </StackPanel>
+                                <CalendarDatePicker SelectedDate="{Binding SignupUser.BirthDate}" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,15,0,5">
+                            <TextBlock Text="E-Mail" TextDecorations="Underline" />
+                            <TextBlock Classes="mandatory" Text="(Mandatory)" IsVisible="{Binding SignUpServerInfo.IsEMailMandatory}" />
+                        </StackPanel>
+                        <TextBox Text="{Binding SignupUser.EMail}" />
+                        <Grid ColumnDefinitions="195,10,195">
+                            <StackPanel Grid.Column="0">
+                                <StackPanel Orientation="Horizontal" Margin="0,15,0,5">
+                                    <TextBlock Text="First Name" TextDecorations="Underline" />
+                                    <TextBlock Classes="mandatory" Text="(Mandatory)" IsVisible="{Binding SignUpServerInfo.IsFirstNameMandatory}" />
+                                </StackPanel>
+                                <TextBox Text="{Binding SignupUser.FirstName}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <StackPanel Orientation="Horizontal" Margin="0,15,0,5">
+                                    <TextBlock Text="Last Name" TextDecorations="Underline" />
+                                    <TextBlock Classes="mandatory" Text="(Mandatory)" IsVisible="{Binding SignUpServerInfo.IsLastNameMandatory}" />
+                                </StackPanel>
+                                <TextBox Text="{Binding SignupUser.LastName}" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="195,10,195">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Classes="label" Text="Password" />
+                                <TextBox Text="{Binding SignupUser.Password}" PasswordChar="●" Classes="revealPasswordButton" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Repeat Password" />
+                                <TextBox Text="{Binding SignupUser.RepeatPassword}" PasswordChar="●" Classes="revealPasswordButton" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+                <uc:IconButton Text="Register" Height="30" Margin="0,0,10,10" Width="100" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="RegisterNewUser_Click" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

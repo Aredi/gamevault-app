@@ -1,15 +1,12 @@
-﻿using gamevault.Helper;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.UserControls;
-using MahApps.Metro.Controls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
+using Avalonia.Controls;
 
 namespace gamevault.ViewModels
 {
@@ -73,7 +70,18 @@ namespace gamevault.ViewModels
         public string AppBarText
         {
             get { return m_AppBarText; }
-            set { m_AppBarText = value; OnPropertyChanged(); IsAppBarOpen = true; }
+            set { m_AppBarText = value; OnPropertyChanged(); IsAppBarOpen = true; Avalonia.Threading.Dispatcher.UIThread.Post(RestartAppBarTimer); }
+        }
+        private Avalonia.Threading.DispatcherTimer? appBarTimer;
+        private void RestartAppBarTimer()
+        {
+            if (appBarTimer == null)
+            {
+                appBarTimer = new Avalonia.Threading.DispatcherTimer { Interval = System.TimeSpan.FromSeconds(4) };
+                appBarTimer.Tick += (_, _) => { appBarTimer.Stop(); IsAppBarOpen = false; };
+            }
+            appBarTimer.Stop();
+            appBarTimer.Start();
         }
         private User? m_UserAvatar { get; set; }
         public User? UserAvatar
@@ -90,9 +98,9 @@ namespace gamevault.ViewModels
         #region PrivateMembers     
         private double m_TaskbarProgress = 0;
         private int m_ActiveControlIndex = -1;
-        private Visibility onlineState = Visibility.Collapsed;
+        private bool isOffline = false;
         private UserControl m_ActiveControl { get; set; }
-        private FrameworkElement m_Popup { get; set; }
+        private Control m_Popup { get; set; }
         private SettingsUserControl m_Settings { get; set; }
         private DownloadsUserControl m_Downloads { get; set; }
         private LibraryUserControl m_Library { get; set; }
@@ -110,30 +118,26 @@ namespace gamevault.ViewModels
             get { return m_ActiveControlIndex; }
             set { m_ActiveControlIndex = value; OnPropertyChanged(); }
         }
-        public Visibility OnlineState
+        public bool IsOffline
         {
-            get { return onlineState; }
-            set { onlineState = value; OnPropertyChanged(); }
+            get { return isOffline; }
+            set { isOffline = value; OnPropertyChanged(); }
         }
         public UserControl ActiveControl
         {
             get { return m_ActiveControl; }
             set
             {
-                if (m_ActiveControl != null) { m_ActiveControl.Visibility = System.Windows.Visibility.Collapsed; }
-                if (value != null)
-                {
-                    AnalyticsHelper.Instance.SendPageView(value);
-                }
+                if (m_ActiveControl != null) { m_ActiveControl.IsVisible = false; }
                 m_ActiveControl = value;
                 if (m_ActiveControl != null)
                 {
-                    m_ActiveControl.Visibility = System.Windows.Visibility.Visible;
+                    m_ActiveControl.IsVisible = true;
                 }
                 OnPropertyChanged();
             }
         }
-        public FrameworkElement Popup
+        public Control Popup
         {
             get { return m_Popup; }
             set
@@ -142,11 +146,11 @@ namespace gamevault.ViewModels
                 OnPropertyChanged();
             }
         }
-        public void OpenPopup(FrameworkElement userControl)
+        public void OpenPopup(Control userControl)
         {
-            if (MainWindowViewModel.Instance.ActiveControl?.GetType() == typeof(GameViewUserControl) && userControl?.GetType() != typeof(MediaSlider))//Else the popup would be rendered below the media slider because of the airspace problem
+            if (MainWindowViewModel.Instance.ActiveControl is GameViewUserControl gameView && userControl is not MediaSlider)//Else the popup would be rendered below the native trailer view (airspace problem)
             {
-                ((GameViewUserControl)MainWindowViewModel.Instance.ActiveControl).uiMediaSlider.UnloadMediaSlider();
+                gameView.uiMediaSlider.UnloadMediaSlider();
             }
             Popup = userControl;
         }

@@ -1,8 +1,6 @@
-﻿using gamevault.Models;
+using gamevault.Models;
 using gamevault.ViewModels;
 using gamevault.Windows;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
 using System;
 using System.IO;
 using System.Linq;
@@ -11,8 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Timers;
-using System.Windows;
-using System.Windows.Threading;
+using GameVault.Core;
 
 namespace gamevault.Helper
 {
@@ -68,7 +65,7 @@ namespace gamevault.Helper
         }
         public void SwitchToOfflineMode()
         {
-            MainWindowViewModel.Instance.OnlineState = System.Windows.Visibility.Visible;
+            MainWindowViewModel.Instance.IsOffline = true;
             m_User = null;
         }
         public UserProfile GetUserProfile()
@@ -138,83 +135,32 @@ namespace gamevault.Helper
 
             if (sessionTokenReuseFailed)
             {
-                Window win = new Window()
+                AuthResponse? authResponse = await SsoAuthenticator.AuthenticateAsync(profile.ServerUrl, profile.WebConfigDir);
+                if (authResponse == null)
                 {
-                    Height = 600,
-                    Width = 800,
-                    WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                };
-                WebView2 uiWebView = new WebView2();
-                bool windowClosedByCompleted = false;
-
-                win.Content = uiWebView;
-                win.Show(); // Window is shown but may be hidden based on Visibility property
-
-                var env = await CoreWebView2Environment.CreateAsync(null, profile.WebConfigDir);
-                await uiWebView.EnsureCoreWebView2Async(env);
-                uiWebView?.CoreWebView2?.CookieManager.DeleteAllCookies();
-                // Create a TaskCompletionSource to await the navigation completion
-                var tcs = new TaskCompletionSource<LoginState>();
-
-                win.Closing += (s, e) =>
+                    m_LoginState = LoginState.Error;
+                    m_LoginMessage = "Authentication canceled by user.";
+                    return LoginState.Error;
+                }
+                WebHelper.InjectTokens(authResponse.AccessToken, authResponse.RefreshToken);
+                Preferences.Set(AppConfigKey.SessionToken, authResponse.RefreshToken, profile.UserConfigFile, true);
+                //Actual Login with gathered Tokens
+                try
                 {
-                    // Only set the result if it hasn't been set already
-                    if (!windowClosedByCompleted)
-                    {
-                        uiWebView.Dispose();
-                        m_LoginState = LoginState.Error;
-                        m_LoginMessage = "Authentication canceled by user.";
-                        tcs.SetResult(LoginState.Error);
-                    }
-                };
-
-                uiWebView.NavigationCompleted += async (s, e) =>
+                    string userResult = await WebHelper.GetAsync(@$"{profile.ServerUrl}/api/users/me");
+                    m_User = JsonSerializer.Deserialize<User>(userResult);
+                }
+                catch (Exception ex)
                 {
-                    string content = await uiWebView.CoreWebView2.ExecuteScriptAsync("document.body.innerText");
-
-                    try
+                    string code = WebExceptionHelper.GetServerStatusCode(ex);
+                    state = DetermineLoginState(code);
+                    if (state == LoginState.Error)
                     {
-                        string result = System.Text.Json.JsonSerializer.Deserialize<string>(content);
-                        var authResponse = JsonSerializer.Deserialize<AuthResponse>(result);
-                        string accessToken = authResponse?.AccessToken;
-                        string refreshToken = authResponse?.RefreshToken;
-
-                        if (!string.IsNullOrEmpty(accessToken))
-                        {
-                            windowClosedByCompleted = true;
-                            win.Close();
-                            uiWebView.Dispose();
-
-                            WebHelper.InjectTokens(accessToken, refreshToken);
-                            Preferences.Set(AppConfigKey.SessionToken, refreshToken, profile.UserConfigFile, true);
-                            //Actual Login with gathered Tokens                           
-                            try
-                            {
-                                string userResult = await WebHelper.GetAsync(@$"{profile.ServerUrl}/api/users/me");
-                                m_User = JsonSerializer.Deserialize<User>(userResult);
-                            }
-                            catch (Exception ex)
-                            {
-                                string code = WebExceptionHelper.GetServerStatusCode(ex);
-                                state = DetermineLoginState(code);
-                                if (state == LoginState.Error)
-                                {
-                                    m_LoginMessage = WebExceptionHelper.TryGetServerMessage(ex);
-                                }
-                            }
-                            m_LoginState = state;
-                            tcs.SetResult(state);
-                        }
+                        m_LoginMessage = WebExceptionHelper.TryGetServerMessage(ex);
                     }
-                    catch (Exception ex)
-                    {
-                        // Only set the result if it's a valid auth response
-                        // Otherwise, let the navigation continue
-                    }
-                };
-                uiWebView.CoreWebView2.Navigate($"{profile.ServerUrl}/api/auth/oauth2/login");
-                // Wait for the navigation to complete and tokens to be processed
-                return await tcs.Task;
+                }
+                m_LoginState = state;
+                return state;
             }
             return LoginState.Error;
         }
@@ -326,14 +272,14 @@ namespace gamevault.Helper
                     }
                     if (IsLoggedIn())
                     {
-                        MainWindowViewModel.Instance.OnlineState = System.Windows.Visibility.Collapsed;
+                        MainWindowViewModel.Instance.IsOffline = false;
                         MainWindowViewModel.Instance.AppBarText = "Connected to the server. You’re back online.";
                     }
                 }
                 else
                 {
                     await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/status");
-                    MainWindowViewModel.Instance.OnlineState = System.Windows.Visibility.Collapsed;
+                    MainWindowViewModel.Instance.IsOffline = false;
                 }
             }
             catch (Exception ex)

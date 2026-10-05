@@ -1,4 +1,4 @@
-﻿using GameVault.Core;
+using GameVault.Core;
 using gamevault.Helper;
 using gamevault.Helper.Integrations;
 using gamevault.Models;
@@ -131,6 +131,13 @@ namespace gamevault.ViewModels
 
             string mountIsoString = Preferences.Get(AppConfigKey.MountIso, userConfigFile);
             mountIso = mountIsoString == "1";
+
+            //Linux compatibility layer
+            CompatibilitySettings.Runner = Enum.TryParse(Preferences.Get(AppConfigKey.LinuxRunner, userConfigFile), out LinuxRunner runner) ? runner : LinuxRunner.Auto;
+            CompatibilitySettings.WinePrefix = Preferences.Get(AppConfigKey.LinuxWinePrefix, userConfigFile);
+            CompatibilitySettings.ProtonPath = Preferences.Get(AppConfigKey.LinuxProtonPath, userConfigFile);
+            CompatibilitySettings.CustomCommand = Preferences.Get(AppConfigKey.LinuxCustomRunner, userConfigFile);
+            OnPropertyChanged(nameof(LinuxRunner)); OnPropertyChanged(nameof(WinePrefix)); OnPropertyChanged(nameof(ProtonPath)); OnPropertyChanged(nameof(CustomRunnerCommand)); OnPropertyChanged(nameof(DetectedCompatibilityTools));
 
             //DevMode
             devModeEnabled = Preferences.Get(AppConfigKey.DevModeEnabled, userConfigFile) == "1"; OnPropertyChanged(nameof(DevModeEnabled));
@@ -410,31 +417,20 @@ namespace gamevault.ViewModels
         }
         public async Task<string> SelectDownloadPath()
         {
-            return await Task.Run(() =>
+            string? selectedPath = await StorageHelper.PickFolderAsync("Select a folder");
+            if (string.IsNullOrEmpty(selectedPath) || !Directory.Exists(selectedPath))
+                return "";
+            try
             {
-                string selectedDirectory = "";
-                App.Current.Dispatcher.Invoke(() =>
-                {
-                    using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
-                    {
-                        System.Windows.Forms.DialogResult result = dialog.ShowDialog();
-                        if (result == System.Windows.Forms.DialogResult.OK && Directory.Exists(dialog.SelectedPath))
-                        {
-                            try
-                            {
-                                File.Create(@$"{dialog.SelectedPath}\accesscheck.file").Close();
-                                File.Delete(@$"{dialog.SelectedPath}\accesscheck.file");
-                            }
-                            catch (Exception ex)
-                            {
-                                MainWindowViewModel.Instance.AppBarText = $"Access to the path {dialog.SelectedPath} is denied";
-                            }
-                            selectedDirectory = dialog.SelectedPath.Replace(@"\\", @"\");
-                        }
-                    }
-                });
-                return selectedDirectory;
-            });
+                string accessCheck = Path.Combine(selectedPath, "accesscheck.file");
+                File.Create(accessCheck).Close();
+                File.Delete(accessCheck);
+            }
+            catch (Exception)
+            {
+                MainWindowViewModel.Instance.AppBarText = $"Access to the path {selectedPath} is denied";
+            }
+            return selectedPath;
         }
         public string Version
         {
@@ -443,6 +439,51 @@ namespace gamevault.ViewModels
                 return Assembly.GetExecutingAssembly().GetName().Version.ToString();
             }
         }
+        #region Linux
+        public bool IsLinux => OperatingSystem.IsLinux();
+        public LinuxRunner[] LinuxRunners => Enum.GetValues<LinuxRunner>();
+        public LinuxRunner LinuxRunner
+        {
+            get => CompatibilitySettings.Runner;
+            set
+            {
+                CompatibilitySettings.Runner = value;
+                Preferences.Set(AppConfigKey.LinuxRunner, value.ToString(), userConfigFile);
+                OnPropertyChanged(); OnPropertyChanged(nameof(IsCustomRunner)); OnPropertyChanged(nameof(DetectedCompatibilityTools));
+            }
+        }
+        public bool IsCustomRunner => CompatibilitySettings.Runner == LinuxRunner.Custom;
+        public string WinePrefix
+        {
+            get => CompatibilitySettings.WinePrefix;
+            set { CompatibilitySettings.WinePrefix = value?.Trim() ?? ""; Preferences.Set(AppConfigKey.LinuxWinePrefix, CompatibilitySettings.WinePrefix, userConfigFile); OnPropertyChanged(); OnPropertyChanged(nameof(EffectiveWinePrefix)); }
+        }
+        public string EffectiveWinePrefix => CompatibilitySettings.EffectiveWinePrefix;
+        public string ProtonPath
+        {
+            get => CompatibilitySettings.ProtonPath;
+            set { CompatibilitySettings.ProtonPath = value?.Trim() ?? ""; Preferences.Set(AppConfigKey.LinuxProtonPath, CompatibilitySettings.ProtonPath, userConfigFile); OnPropertyChanged(); }
+        }
+        public string CustomRunnerCommand
+        {
+            get => CompatibilitySettings.CustomCommand;
+            set { CompatibilitySettings.CustomCommand = value ?? ""; Preferences.Set(AppConfigKey.LinuxCustomRunner, CompatibilitySettings.CustomCommand, userConfigFile); OnPropertyChanged(); }
+        }
+        public string DetectedCompatibilityTools
+        {
+            get
+            {
+                if (!OperatingSystem.IsLinux())
+                    return "";
+                string Found(string? path) => path ?? "not found";
+                return $"umu-run: {Found(Helper.Platform.PlatformInfo.FindInPath("umu-run"))}\n" +
+                       $"wine: {Found(Helper.Platform.PlatformInfo.FindInPath("wine"))}\n" +
+                       $"7-Zip: {Found(Helper.Platform.ToolLocator.SevenZip())}\n" +
+                       $"Ludusavi: {Helper.Platform.ToolLocator.Ludusavi()?.FileName ?? "not found"}\n" +
+                       $"Games will start with: {ProcessHelper.ResolveRunner()}";
+            }
+        }
+        #endregion
         //DevMode
         public bool DevModeEnabled
         {

@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:gamevault.Converter"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.CommunityUserControl"
+             Focusable="True">
+    <UserControl.Resources>
+        <conv:PermissionRoleToVisibilityConverter x:Key="roleToVisConv" />
+        <conv:GameStateColorConverter x:Key="gameStateColorConv" />
+        <conv:GameStateDescriptionConverter x:Key="gameStateDescConv" />
+        <conv:GameTimeConverter x:Key="gameTimeConv" />
+        <conv:UTCtoLocalTimeConverter x:Key="UtcTimeConv" />
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="TextBlock.deleted">
+            <Setter Property="TextDecorations" Value="Strikethrough" />
+        </Style>
+        <Style Selector="Border.skeleton">
+            <Setter Property="Background" Value="#FFEFEFEF" />
+        </Style>
+    </UserControl.Styles>
+    <Grid RowDefinitions="50,*">
+        <Border Background="{DynamicResource Brush.Background2}" Grid.Row="0">
+            <TextBlock Text="Community" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
+        </Border>
+        <Grid Grid.Row="1" ColumnDefinitions="*,*,*">
+            <Viewbox Grid.ColumnSpan="3" Stretch="UniformToFill" HorizontalAlignment="Center">
+                <local:CacheImage ImageCacheType="UserBackground" Data="{Binding CurrentShownUser}" />
+            </Viewbox>
+            <!-- Loading placeholder -->
+            <Viewbox Stretch="UniformToFill" Grid.ColumnSpan="3" ZIndex="1" IsVisible="{Binding LoadingUser}">
+                <Grid Background="{DynamicResource Brush.Background}" Width="1000" Height="560">
+                    <Border Background="{DynamicResource Brush.Background2}" Opacity="0.8" Width="286" CornerRadius="5" Margin="0,5,0,4" />
+                    <StackPanel Width="286" HorizontalAlignment="Center" Margin="0,20,0,0" Spacing="25">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <Border Classes="skeleton" Height="77" Width="77" />
+                            <StackPanel Spacing="5" VerticalAlignment="Center">
+                                <Border Classes="skeleton" Height="15" Width="130" HorizontalAlignment="Left" />
+                                <Border Classes="skeleton" Height="15" Width="180" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <Border Classes="skeleton" Height="54" Width="54" />
+                            <StackPanel Spacing="5" VerticalAlignment="Center">
+                                <Border Classes="skeleton" Height="15" Width="130" HorizontalAlignment="Left" />
+                                <Border Classes="skeleton" Height="15" Width="195" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <Border Classes="skeleton" Height="54" Width="54" />
+                            <StackPanel Spacing="5" VerticalAlignment="Center">
+                                <Border Classes="skeleton" Height="15" Width="130" HorizontalAlignment="Left" />
+                                <Border Classes="skeleton" Height="15" Width="195" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Viewbox>
+            <Border Grid.Column="1" Background="{DynamicResource Brush.Background2}" Opacity="0.8" CornerRadius="10" Margin="0,10,0,10" MaxWidth="800" />
+            <DockPanel Grid.Column="1" LastChildFill="True" Background="Transparent" Margin="0,10,0,0" MaxWidth="800">
+                <Viewbox DockPanel.Dock="Top" Stretch="Uniform">
+                    <Grid Width="520" Height="140">
+                        <local:CacheImage Height="130" Width="130" Margin="5,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Stretch="Fill" ImageCacheType="UserAvatar" CornerRadius="10" Data="{Binding CurrentShownUser}" />
+                        <TextBlock Text="{Binding CurrentShownUser.FirstName}" FontSize="20" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="145,0,0,0" />
+                        <Border Background="{DynamicResource Brush.Accent}" MinWidth="47" Height="23" Padding="3" CornerRadius="5" Margin="145,30,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <TextBlock Text="{Binding CurrentShownUser.Role}" Foreground="{DynamicResource Brush.Foreground2}" TextAlignment="Center" />
+                        </Border>
+                        <ComboBox x:Name="uiSelectUser" FontWeight="Bold" ItemsSource="{Binding Users}" Margin="145,0,0,5" Width="200" HorizontalAlignment="Left" VerticalAlignment="Bottom" SelectionChanged="Users_SelectionChanged">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Username}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0" Spacing="5">
+                            <Button Classes="wrapper" x:Name="uiBtnReloadUser" Width="25" Height="25" ToolTip.Tip="Reload current user (F5)">
+                                <Grid Classes="hover" Background="Transparent">
+                                    <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
+                            <Button Classes="wrapper" Width="25" Height="25" Click="UserEdit_Clicked" ToolTip.Tip="Edit user"
+                                    IsVisible="{Binding #uiSelectUser.SelectedIndex, Converter={StaticResource roleToVisConv}}">
+                                <Grid Classes="hover" Background="Transparent">
+                                    <Path Data="{StaticResource IconEditUser}" Fill="{DynamicResource Brush.Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                        <ComboBox x:Name="uiSortBy" ItemsSource="{Binding SortBy}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,5" SelectionChanged="SortBy_SelectionChanged" />
+                    </Grid>
+                </Viewbox>
+                <ScrollViewer x:Name="uiProgressScrollView" Margin="10,10,0,20" VerticalAlignment="Top">
+                    <Viewbox Stretch="Uniform" VerticalAlignment="Top">
+                        <Grid Width="75">
+                            <ItemsControl ItemsSource="{Binding UserProgresses}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel LastChildFill="True" Height="18">
+                                            <Button Classes="wrapper" Width="15" Height="15" Click="GameImage_Click" DockPanel.Dock="Left">
+                                                <local:CacheImage ImageCacheType="GameCover" Data="{Binding}" CornerRadius="2" Stretch="Fill" />
+                                            </Button>
+                                            <Grid>
+                                                <TextBlock FontSize="3" Margin="1,3,5,0" Width="50" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Game.Metadata.Title, FallbackValue={x:Null}, TargetNullValue={x:Null}}"
+                                                           Classes.deleted="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                <TextBlock FontSize="3" Margin="1,3,5,0" Width="50" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Game.Title}"
+                                                           IsVisible="{Binding Game.Metadata.Title, Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}"
+                                                           Classes.deleted="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Right" Height="4" Width="3" Margin="0,3.5,0.5,0" Click="DeleteProgress_Click"
+                                                        IsVisible="{Binding #uiSelectUser.SelectedIndex, Converter={StaticResource roleToVisConv}}">
+                                                    <Grid Classes="hover" Background="Transparent">
+                                                        <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Stretch="Uniform" Width="3" Height="4" />
+                                                    </Grid>
+                                                </Button>
+                                                <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,1,3">
+                                                    <TextBlock Text="{Binding MinutesPlayed, Converter={StaticResource gameTimeConv}, StringFormat='Time played: {0}'}" FontSize="2" ToolTip.Tip="{Binding MinutesPlayed, StringFormat='{}{0} min'}" />
+                                                    <TextBlock FontSize="2" Text="{Binding LastPlayedAt, Converter={StaticResource UtcTimeConv}, StringFormat='Last played: {0:dd.MM.yyyy}'}"
+                                                               ToolTip.Tip="{Binding LastPlayedAt, Converter={StaticResource UtcTimeConv}, StringFormat='{}{0:HH:mm:ss dd.MM.yyyy}'}" />
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" Margin="1,0,0,3">
+                                                    <TextBlock Text="State: " FontSize="2" />
+                                                    <TextBlock Text="{Binding State, Converter={StaticResource gameStateDescConv}}" Foreground="{Binding State, Converter={StaticResource gameStateColorConv}}" FontSize="2" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="No games played yet" FontSize="3" Margin="5,9,5,0"
+                                       IsVisible="{Binding UserProgresses.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}}" />
+                        </Grid>
+                    </Viewbox>
+                </ScrollViewer>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</UserControl>

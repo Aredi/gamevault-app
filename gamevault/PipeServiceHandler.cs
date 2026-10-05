@@ -1,4 +1,4 @@
-﻿using GameVault.Core;
+using GameVault.Core;
 using gamevault.Helper;
 using gamevault.Models;
 using gamevault.UserControls;
@@ -9,12 +9,12 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
-using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Windows;
-using Windows.Devices.Sms;
+using Avalonia.Controls;
+using Avalonia.Threading;
+using gamevault.Helper.Platform;
 
 namespace gamevault
 {
@@ -98,7 +98,7 @@ namespace gamevault
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show(ex.Message, "An error while startin the internal pipe server", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                Log.Error(ex, "An error while starting the internal pipe server");
             }
         }
 
@@ -107,18 +107,11 @@ namespace gamevault
         /// </summary>
         private void RegisterUriScheme()
         {
-            string? executablePath = null;
-
-            // winexe does not easily support getting our .exe file
-            //executablePath = System.Reflection.Assembly.GetEntryAssembly()?.Location;
-            // so get it from the process
-            executablePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
-
+            string executablePath = PlatformInfo.ExecutablePath;
             if (string.IsNullOrEmpty(executablePath))
                 return;
 
-#if WINDOWS
-            if (!App.IsWindowsPackage)
+            if (OperatingSystem.IsWindows())
             {
                 var view = Microsoft.Win32.RegistryView.Registry32;
                 if (Environment.Is64BitOperatingSystem)
@@ -140,11 +133,43 @@ namespace gamevault
                 using var command = newEntry.CreateSubKey(@"shell\open\command");
                 command.SetValue("", openString);
             }
-            else
+            else if (OperatingSystem.IsLinux())
             {
-                //Add MC Store Code if necessary
+                // freedesktop.org: an application entry that declares the x-scheme-handler, registered with xdg-mime.
+                string dataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME") is { Length: > 0 } xdg
+                    ? xdg
+                    : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
+                string applicationsDir = Path.Combine(dataHome, "applications");
+                string desktopFile = Path.Combine(applicationsDir, "gamevault.desktop");
+                string content = DesktopEntry.Create(
+                    name: "GameVault",
+                    exec: $"{DesktopEntry.Quote(executablePath)} --uridata %u",
+                    comment: "Self-hosted gaming platform client",
+                    extra: $"MimeType=x-scheme-handler/{GAMEVAULT_URI_SCHEME};\nCategories=Game;\nStartupWMClass=gamevault\n");
+
+                if (File.Exists(desktopFile) && File.ReadAllText(desktopFile) == content)
+                    return;
+
+                Directory.CreateDirectory(applicationsDir);
+                File.WriteAllText(desktopFile, content);
+                RunQuietly("xdg-mime", "default", "gamevault.desktop", $"x-scheme-handler/{GAMEVAULT_URI_SCHEME}");
+                RunQuietly("update-desktop-database", applicationsDir);
             }
-#endif
+        }
+
+        private static void RunQuietly(string program, params string[] args)
+        {
+            try
+            {
+                string? path = PlatformInfo.FindInPath(program);
+                if (path == null)
+                    return;
+                var info = new ProcessStartInfo(path) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+                foreach (string arg in args)
+                    info.ArgumentList.Add(arg);
+                Process.Start(info)?.WaitForExit(5000);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         /// <summary>
@@ -155,31 +180,43 @@ namespace gamevault
         {
             _ = Task.Factory.StartNew(async () =>
             {
-                var pipeSecurity = new PipeSecurity();
-
-                // Allow all users on the current machine to connect
-                pipeSecurity.AddAccessRule(new PipeAccessRule(
-                    new SecurityIdentifier(WellKnownSidType.WorldSid, null),
-                    PipeAccessRights.ReadWrite | PipeAccessRights.CreateNewInstance,
-                    System.Security.AccessControl.AccessControlType.Allow));
-
                 while (true)
                 {
                     // Each time we accept a connection, we create a new named pipe
-
+                    // (a Unix domain socket on Linux, only reachable by the current user)
                     try
                     {
-                        var server = NamedPipeServerStreamAcl.Create(GAMEVAULT_PIPE_NAME, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
-                            PipeTransmissionMode.Byte, PipeOptions.None, 0, 0, pipeSecurity);
+                        var server = CreatePipeServer();
 
                         await server.WaitForConnectionAsync().ConfigureAwait(false);
 
                         // Handle the pipe in the background, so we don't block our thread and can handle the next connection asap
                         _ = HandlePipeConnection(server).ConfigureAwait(false);
                     }
-                    catch (Exception ignored) { Log.Ignored(ignored); }
+                    catch (Exception ignored)
+                    {
+                        Log.Ignored(ignored);
+                        await Task.Delay(1000).ConfigureAwait(false);
+                    }
                 }
             }, TaskCreationOptions.LongRunning).ConfigureAwait(false);
+        }
+
+        private static NamedPipeServerStream CreatePipeServer()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                var pipeSecurity = new PipeSecurity();
+                // Allow all users on the current machine to connect
+                pipeSecurity.AddAccessRule(new PipeAccessRule(
+                    new System.Security.Principal.SecurityIdentifier(System.Security.Principal.WellKnownSidType.WorldSid, null),
+                    PipeAccessRights.ReadWrite | PipeAccessRights.CreateNewInstance,
+                    System.Security.AccessControl.AccessControlType.Allow));
+                return NamedPipeServerStreamAcl.Create(GAMEVAULT_PIPE_NAME, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
+                    PipeTransmissionMode.Byte, PipeOptions.None, 0, 0, pipeSecurity);
+            }
+            return new NamedPipeServerStream(GAMEVAULT_PIPE_NAME, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
+                PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
         }
 
         /// <summary>
@@ -234,13 +271,13 @@ namespace gamevault
         public static async Task<string?> SendMessage(string message, bool expectsResult = false)
         {
             string? result = null;
-            var client = new NamedPipeClientStream(GAMEVAULT_PIPE_NAME);
+            var client = new NamedPipeClientStream(".", GAMEVAULT_PIPE_NAME, PipeDirection.InOut, PipeOptions.Asynchronous);
             StreamWriter? writer = null;
             StreamReader? reader = null;
 
             try
             {
-                await client.ConnectAsync();
+                await client.ConnectAsync(5000);
 
                 writer = new StreamWriter(client, leaveOpen: true) { AutoFlush = true };
                 await writer.WriteLineAsync(message);
@@ -412,23 +449,7 @@ namespace gamevault
             if (showMainWindow)
             {
                 // Dispatch is used to ensure that we're on the UI thread
-                await Dispatch(() =>
-                {
-                    var mainWindow = System.Windows.Application.Current.MainWindow;
-
-                    if (mainWindow != null)
-                    {
-                        // Make visible
-                        mainWindow.Show();
-
-                        // Restore
-                        if (mainWindow.WindowState == System.Windows.WindowState.Minimized)
-                            mainWindow.WindowState = System.Windows.WindowState.Normal;
-
-                        // Bring to foreground
-                        mainWindow.Activate();
-                    }
-                });
+                await Dispatch(() => App.Instance.ShowMainWindow());
 
 
                 if (task != null)
@@ -553,7 +574,7 @@ namespace gamevault
             // Ensure we're on the UI thread
             await Dispatch(async () =>
             {
-                var gameSettingsUserControl = new UserControls.GameSettingsUserControl(game) { Width = 1200, Height = 800, Margin = new Thickness(50) };
+                var gameSettingsUserControl = new UserControls.GameSettingsUserControl(game) { Width = 1200, Height = 800, Margin = new Avalonia.Thickness(50) };
 
                 // Would be nice to have this all in the background but there's potentially multiple popups that could have multiple options
                 MainWindowViewModel.Instance.OpenPopup(gameSettingsUserControl);
@@ -576,7 +597,7 @@ namespace gamevault
 
                 if (game == null)
                 {
-                    MessageBox.Show($"Game with ID {id} not found", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    await DialogService.ShowInfoAsync($"Game with ID {id} not found", "Error");
                     return;
                 }
 
@@ -612,7 +633,7 @@ namespace gamevault
             }
             else
             {
-                MessageBox.Show($"Game with ID {id} not found", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                await DialogService.ShowInfoAsync($"Game with ID {id} not found", "Error");
             }
         }
         private async Task ExecuteJumpListCommand(int id)
@@ -787,37 +808,25 @@ namespace gamevault
         }
 
         /// <summary>
-        /// Dispatches an action on the UI thread (if available)
+        /// Dispatches an action on the UI thread
         /// </summary>
-        private async Task Dispatch(Action action)
+        private static async Task Dispatch(Action action)
         {
-            var dispatcher = System.Windows.Application.Current.Dispatcher;
-
-            if (dispatcher != null)
-            {
-                await dispatcher.InvokeAsync(action);
-            }
+            if (Dispatcher.UIThread.CheckAccess())
+                action();
             else
-            {
-                action.Invoke();
-            }
+                await Dispatcher.UIThread.InvokeAsync(action);
         }
 
         /// <summary>
-        /// Dispatches an async action on the UI thread (if available)
+        /// Dispatches an async action on the UI thread
         /// </summary>
-        private async Task Dispatch(Func<Task> action)
+        private static async Task Dispatch(Func<Task> action)
         {
-            var dispatcher = System.Windows.Application.Current.Dispatcher;
-
-            if (dispatcher != null)
-            {
-                await dispatcher.InvokeAsync(action);
-            }
+            if (Dispatcher.UIThread.CheckAccess())
+                await action();
             else
-            {
-                await action.Invoke();
-            }
+                await Dispatcher.UIThread.InvokeAsync(action);
         }
     }
 }

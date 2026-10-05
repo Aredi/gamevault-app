@@ -1,12 +1,12 @@
-﻿using gamevault.Models;
+using Avalonia.Data.Converters;
+using Avalonia.Media.Imaging;
+using gamevault.Models;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Data;
-using System.Windows.Media.Imaging;
 
 namespace gamevault.Converter
 {
@@ -14,11 +14,15 @@ namespace gamevault.Converter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
+            // Only local files / avares assets can be loaded synchronously; remote images go through CacheImage.
             try
             {
-                return new BitmapImage(new Uri((string)value)) { CacheOption = BitmapCacheOption.OnLoad };
+                string path = (string)value;
+                if (path.StartsWith("avares://"))
+                    return new Bitmap(Avalonia.Platform.AssetLoader.Open(new Uri(path)));
+                return System.IO.File.Exists(path) ? new Bitmap(path) : null;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return null;
             }

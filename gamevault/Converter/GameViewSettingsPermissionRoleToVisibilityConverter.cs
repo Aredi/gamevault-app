@@ -1,9 +1,8 @@
-﻿using gamevault.Helper;
+using Avalonia.Data.Converters;
+using gamevault.Helper;
 using gamevault.Models;
 using System;
 using System.Globalization;
-using System.Windows;
-using System.Windows.Data;
 
 namespace gamevault.Converter
 {
@@ -14,9 +13,9 @@ namespace gamevault.Converter
             bool isInstalled = (bool)value;
             if (isInstalled || ((LoginManager.Instance.GetCurrentUser() != null && LoginManager.Instance.GetCurrentUser().Role >= PERMISSION_ROLE.EDITOR)))
             {
-                return Visibility.Visible;
+                return true;
             }
-            return Visibility.Collapsed;
+            return false;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

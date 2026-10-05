@@ -1,7 +1,7 @@
-﻿using GameVault.Core;
+using GameVault.Core;
 using gamevault.Models;
 using gamevault.ViewModels;
-using Microsoft.Win32;
+using gamevault.Helper.Platform;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,12 +9,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
-using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Windows.Controls;
-using System.Windows.Navigation;
 
 namespace gamevault.Helper
 {
@@ -229,6 +226,31 @@ namespace gamevault.Helper
         }
         #endregion
 
+        private static string EntryValue(object entry, string key)
+        {
+            if (entry is VdfMap map)
+            {
+                foreach (var pair in map)
+                {
+                    if (pair.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
+                        return pair.Value?.ToString() ?? "";
+                }
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// GameVault entries start the game through gamevault:// (Windows) or "gamevault start --gameid=N" (Linux).
+        /// </summary>
+        private static bool IsGameVaultEntry(object entry)
+        {
+            string exe = EntryValue(entry, "Exe");
+            if (exe.Contains("gamevault://", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return EntryValue(entry, "LaunchOptions").Contains("--gameid=", StringComparison.OrdinalIgnoreCase)
+                && Path.GetFileNameWithoutExtension(exe.Trim('"')).StartsWith("gamevault", StringComparison.OrdinalIgnoreCase);
+        }
+
         internal static async Task SyncGamesWithSteamShortcuts(Dictionary<Game, string> games)
         {
             await Task.Run(async () =>
@@ -305,12 +327,10 @@ namespace gamevault.Helper
                 List<string> steamGridImageIDsToRemove = new List<string>();
                 for (int count = 0; count < shortcutFileMap.Count; count++)
                 {
-                    string currentGameExe = ((VdfMap)shortcutFileMap.Values.ElementAt(count)).ElementAt(2).Value.ToString();
-                    string currentGameTitle = ((VdfMap)shortcutFileMap.Values.ElementAt(count)).ElementAt(1).Value.ToString();
-                    //Check for gamevault protocol
-                    if (currentGameExe.Contains("gamevault://", StringComparison.OrdinalIgnoreCase))
+                    object entry = shortcutFileMap.Values.ElementAt(count);
+                    if (IsGameVaultEntry(entry))
                     {
-                        steamGridImageIDsToRemove.Add(((VdfMap)shortcutFileMap.Values.ElementAt(count)).ElementAt(0).Value.ToString());
+                        steamGridImageIDsToRemove.Add(EntryValue(entry, "appid"));
                         shortcutFileMap.Remove(shortcutFileMap.ElementAt(count).Key);
                         count--;
                     }
@@ -359,12 +379,11 @@ namespace gamevault.Helper
             steamGridImagesToRemove = new List<string>();
             for (int count = 0; count < shortcutFileMap.Count; count++)
             {
-                string currentGameExe = ((VdfMap)shortcutFileMap.Values.ElementAt(count)).ElementAt(2).Value.ToString();
-                string currentGameTitle = ((VdfMap)shortcutFileMap.Values.ElementAt(count)).ElementAt(1).Value.ToString();
-                //Check for gamevault protocol
-                if (currentGameExe!.Contains("gamevault://", StringComparison.OrdinalIgnoreCase) && !games.Keys.Any(g => g?.Title == currentGameTitle))
+                object entry = shortcutFileMap.Values.ElementAt(count);
+                string currentGameTitle = EntryValue(entry, "AppName");
+                if (IsGameVaultEntry(entry) && !games.Keys.Any(g => g?.Title == currentGameTitle))
                 {
-                    steamGridImagesToRemove.Add(((VdfMap)shortcutFileMap.Values.ElementAt(count)).ElementAt(0).Value.ToString());
+                    steamGridImagesToRemove.Add(EntryValue(entry, "appid"));
                     shortcutFileMap.Remove(shortcutFileMap.ElementAt(count).Key);
                     count--;
                 }
@@ -392,16 +411,19 @@ namespace gamevault.Helper
             uint steamGridId = VdfUtilities.GenerateSteamGridID(idInput);
             steamGridGamesToAdd.Add(game, steamGridId);
             string steamGridIconPath = Path.Combine(shortcutDir, "grid", $"{steamGridId}p.png");
-            string launchUrl = $"gamevault://start?gameid={game.ID}";
+            // Steam on Linux runs shortcuts as programs and cannot open URLs, so it starts GameVault directly.
+            string exe = PlatformInfo.IsWindows ? $"gamevault://start?gameid={game.ID}" : $"\"{PlatformInfo.ExecutablePath}\"";
+            string startDir = PlatformInfo.IsWindows ? "" : $"\"{Path.GetDirectoryName(PlatformInfo.ExecutablePath)}\"";
+            string launchOptions = PlatformInfo.IsWindows ? "" : $"start --gameid={game.ID}";
             var newGame = new VdfMap
 {
     { "appid", steamGridId },
     { "AppName", game.Title },
-    { "Exe", launchUrl },
-    { "StartDir","" },
+    { "Exe", exe },
+    { "StartDir", startDir },
     { "icon", steamGridIconPath },
     { "ShortcutPath", "" },
-    { "LaunchOptions", "" },
+    { "LaunchOptions", launchOptions },
     { "IsHidden", 0 },
     { "AllowDesktopConfig", 1 },
     { "AllowOverlay", 1 },
@@ -427,10 +449,10 @@ namespace gamevault.Helper
         {
             for (int count = 0; count < shortcutFileMap.Values.Count; count++)
             {
-                string currentGameExe = ((VdfMap)shortcutFileMap.Values.ElementAt(count)).ElementAt(2).Value.ToString();
-                if (currentGameExe!.Contains("gamevault://", StringComparison.OrdinalIgnoreCase))
+                object entry = shortcutFileMap.Values.ElementAt(count);
+                if (IsGameVaultEntry(entry))
                 {
-                    string shortcutAppName = ((VdfMap)shortcutFileMap.Values.ElementAt(count)).ElementAt(1).Value as string;
+                    string shortcutAppName = EntryValue(entry, "AppName");
                     KeyValuePair<Game, string> foundGame = games.Where(g => g.Key.Title == shortcutAppName).FirstOrDefault();
                     if (foundGame.Key != null)
                     {
@@ -468,18 +490,33 @@ namespace gamevault.Helper
         {
             try
             {
-                RegistryKey? rk = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Valve\\Steam", true);
-                if (rk == null)
-                {
-                    rk = Registry.LocalMachine.OpenSubKey("SOFTWARE\\Valve\\Steam", true);//32 bit version
-                }
-                string steamInstallDir = (string)rk.GetValue("InstallPath");
+                string? steamInstallDir = GetSteamInstallDirectory();
+                if (steamInstallDir == null)
+                    return "";
                 string userId = GetMostRecentUserID(steamInstallDir);
                 string userDir = Path.Combine(steamInstallDir, "userdata", userId, "config");
                 return userDir;
             }
             catch { return ""; }
         }
+        private static string? GetSteamInstallDirectory()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                using var rk = Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Valve\\Steam", false)
+                    ?? Microsoft.Win32.Registry.LocalMachine.OpenSubKey("SOFTWARE\\Valve\\Steam", false);//32 bit version
+                return rk?.GetValue("InstallPath") as string;
+            }
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string[] candidates =
+            {
+                Path.Combine(home, ".steam", "steam"),
+                Path.Combine(home, ".local", "share", "Steam"),
+                Path.Combine(home, ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam"),
+            };
+            return candidates.FirstOrDefault(dir => File.Exists(Path.Combine(dir, "config", "loginusers.vdf")));
+        }
+
         private static string GetMostRecentUserID(string steamBaseDir)
         {
             string steamid = null;

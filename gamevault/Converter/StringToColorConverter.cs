@@ -1,7 +1,7 @@
-﻿using System;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
+using System;
 using System.Globalization;
-using System.Windows.Data;
-using System.Windows.Media;
 
 namespace gamevault.Converter
 {
@@ -11,13 +11,26 @@ namespace gamevault.Converter
         {
             if (value is string stringValue)
             {
-                int hashCode = stringValue.GetHashCode();
+                // string.GetHashCode() is randomized per process on .NET Core, so names changed colour on every start.
+                int hashCode = StableHash(stringValue);
                 Color generatedColor = GenerateColor(hashCode);
                 SolidColorBrush brush = new SolidColorBrush(generatedColor);
-                brush.Freeze();
-                return brush;
+                                return brush;
             }
             return Brushes.Black;
+        }
+        private static int StableHash(string value)
+        {
+            unchecked
+            {
+                uint hash = 2166136261;
+                foreach (char c in value)
+                {
+                    hash ^= c;
+                    hash *= 16777619;
+                }
+                return (int)hash;
+            }
         }
         private Color GenerateColor(int numericValue)
         {

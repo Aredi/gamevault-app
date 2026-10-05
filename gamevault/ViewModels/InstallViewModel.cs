@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+using gamevault.Helper;
+using gamevault.Models;
 using gamevault.UserControls;
 using System;
 using System.Collections.Generic;
@@ -33,7 +34,7 @@ namespace gamevault.ViewModels
         #endregion
         #region PrivateMembers      
         private ObservableCollection<KeyValuePair<Game, string>> m_InstalledGames { get; set; }
-        public ICollectionView? installedGamesFilter { get; set; }
+        public FilteredCollectionView<KeyValuePair<Game, string>>? installedGamesFilter { get; set; }
         private int rows { get; set; } = 0;
         private int colums { get; set; } = 0;
         #endregion      
@@ -50,7 +51,7 @@ namespace gamevault.ViewModels
             set { m_InstalledGames = value; OnPropertyChanged(); }
         }
         public Dictionary<int,string> InstalledGamesDuplicates= new Dictionary<int, string>();
-        public ICollectionView? InstalledGamesFilter
+        public FilteredCollectionView<KeyValuePair<Game, string>>? InstalledGamesFilter
         {
             get { return installedGamesFilter; }
             set { installedGamesFilter = value; OnPropertyChanged(); }

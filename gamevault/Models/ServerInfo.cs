@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using System.Windows.Controls;
 
 namespace gamevault.Models
 {

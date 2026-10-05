@@ -17,12 +17,15 @@ jobs:
       - name: Run tests
         run: dotnet test GameVault.Core.Tests/GameVault.Core.Tests.csproj --configuration Release
 
-  build-windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
-      - name: Build WPF client
+      - name: Build Avalonia client
         run: dotnet build gamevault/gamevault.csproj --configuration Release

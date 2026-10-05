@@ -1,4 +1,16 @@
-﻿using gamevault.Models;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using gamevault.Helper;
+using gamevault.Helper.Platform;
+using gamevault.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,7 +20,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
 
 namespace gamevault.Helper
 {
@@ -124,21 +135,13 @@ namespace gamevault.Helper
             var imageBytes = await response.Content.ReadAsByteArrayAsync();
             await File.WriteAllBytesAsync(cacheFile, imageBytes);
         }
-        public static async Task<BitmapImage> DownloadImageFromUrlAsync(string imageUrl)
+        public static async Task<Bitmap> DownloadImageFromUrlAsync(string imageUrl)
         {
             var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             var imageData = await response.Content.ReadAsByteArrayAsync();
-            using (var memoryStream = new MemoryStream(imageData))
-            {
-                BitmapImage bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.StreamSource = memoryStream;
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                bitmap.Freeze();
-                return bitmap;
-            }
+            using var memoryStream = new MemoryStream(imageData);
+            return new Bitmap(memoryStream);
         }
         public static async Task<string> UploadFileAsync(string apiUrl, Stream imageStream, string fileName, List<RequestHeader>? additionalHeaders = null)
         {

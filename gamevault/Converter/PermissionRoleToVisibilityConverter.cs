@@ -1,14 +1,12 @@
-﻿using gamevault.Helper;
+using Avalonia.Data.Converters;
+using gamevault.Helper;
 using gamevault.Models;
-using MahApps.Metro.Controls;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Data;
 
 namespace gamevault.Converter
 {
@@ -18,9 +16,9 @@ namespace gamevault.Converter
         {
             if ((int)value == 0 || (LoginManager.Instance.GetCurrentUser() != null && LoginManager.Instance.GetCurrentUser().Role == PERMISSION_ROLE.ADMIN))
             {
-                return Visibility.Visible;
+                return true;
             }
-            return Visibility.Hidden;
+            return false;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

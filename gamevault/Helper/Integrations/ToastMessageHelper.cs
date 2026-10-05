@@ -1,28 +1,72 @@
-﻿using GameVault.Core;
-using Microsoft.Toolkit.Uwp.Notifications;
+using DesktopNotifications;
+using GameVault.Core;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace gamevault.Helper
 {
+    /// <summary>
+    /// Desktop notifications: org.freedesktop.Notifications (DBus) on Linux, toast notifications on Windows.
+    /// </summary>
     public class ToastMessageHelper
     {
-        public static void CreateToastMessage(string title, string message, string imageUri = "")
+        private static INotificationManager? manager;
+        private static readonly SemaphoreSlim initLock = new SemaphoreSlim(1, 1);
+        private static bool initFailed;
+
+        private static async Task<INotificationManager?> GetManager()
         {
+            if (manager != null || initFailed)
+                return manager;
+            await initLock.WaitAsync();
             try
             {
-                var builder = new ToastContentBuilder().AddText(title).AddText(message);
-                if (imageUri != "" && File.Exists(imageUri))
+                if (manager != null || initFailed)
+                    return manager;
+                INotificationManager created;
+                if (OperatingSystem.IsWindows())
                 {
-                    builder.AddInlineImage(new Uri(imageUri));
+                    created = new DesktopNotifications.Windows.WindowsNotificationManager(
+                        DesktopNotifications.Windows.WindowsApplicationContext.FromCurrentProcess("GameVault"));
                 }
-                builder.Show();
+                else
+                {
+                    created = new DesktopNotifications.FreeDesktop.FreeDesktopNotificationManager(
+                        DesktopNotifications.FreeDesktop.FreeDesktopApplicationContext.FromCurrentProcess(DesktopEntry.IconPath));
+                }
+                await created.Initialize();
+                manager = created;
             }
-            catch (Exception ignored) { Log.Ignored(ignored); }
+            catch (Exception ex)
+            {
+                initFailed = true;
+                Log.Error(ex, "Desktop notifications unavailable");
+            }
+            finally
+            {
+                initLock.Release();
+            }
+            return manager;
+        }
+
+        public static void CreateToastMessage(string title, string message, string imageUri = "")
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    INotificationManager? notifications = await GetManager();
+                    if (notifications == null)
+                        return;
+                    var notification = new Notification { Title = title, Body = message };
+                    if (!string.IsNullOrEmpty(imageUri) && File.Exists(imageUri))
+                        notification.BodyImagePath = imageUri;
+                    await notifications.ShowNotification(notification);
+                }
+                catch (Exception ignored) { Log.Ignored(ignored); }
+            });
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using gamevault.Models;
+using Avalonia.Data.Converters;
+using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.ViewModels;
 using System;
@@ -7,7 +8,6 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Data;
 
 namespace gamevault.Converter
 {

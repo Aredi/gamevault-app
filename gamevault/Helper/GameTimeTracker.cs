@@ -1,4 +1,4 @@
-﻿using GameVault.Core;
+using GameVault.Core;
 using gamevault.Helper.Integrations;
 using gamevault.Models;
 using gamevault.ViewModels;
@@ -61,42 +61,9 @@ namespace gamevault.Helper
                         foundGames.Add(id, dir);
                     }
                 }
-                List<int> gamesToCountUp = new List<int>();
-                var processes = Process.GetProcesses().Where(x => x.MainWindowHandle != IntPtr.Zero).ToArray();
-                for (int x = 0; x < processes.Length; x++)
-                {
-
-                    for (int y = 0; y < foundGames.Count; y++)
-                    {
-                        try
-                        {
-                            if (processes[x].MainModule.FileName.Contains(foundGames.ElementAt(y).Value))
-                            {
-                                if (!ContainsValueFromIgnoreList(Path.GetFileNameWithoutExtension(processes[x].MainModule.FileName)) && !gamesToCountUp.Contains(foundGames.ElementAt(y).Key))
-                                {
-                                    gamesToCountUp.Add(foundGames.ElementAt(y).Key);
-                                }
-                            }
-                        }
-                        catch
-                        {
-
-                            string[] allExecutables = Directory.GetFiles(foundGames.ElementAt(y).Value, "*.EXE", SearchOption.AllDirectories);
-
-                            foreach (string executable in allExecutables)
-                            {
-                                if (Path.GetFileNameWithoutExtension(executable) == processes[x].ProcessName)
-                                {
-                                    if (!ContainsValueFromIgnoreList(processes[x].ProcessName) && !gamesToCountUp.Contains(foundGames.ElementAt(y).Key))
-                                    {
-                                        gamesToCountUp.Add(foundGames.ElementAt(y).Key);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+                List<int> gamesToCountUp = OperatingSystem.IsWindows()
+                    ? FindRunningGamesWindows(foundGames)
+                    : FindRunningGamesLinux(foundGames);
                 if (LoginManager.Instance.IsLoggedIn())
                 {
                     try
@@ -123,6 +90,108 @@ namespace gamevault.Helper
                 }
             });
         }
+        private List<int> FindRunningGamesWindows(Dictionary<int, string> foundGames)
+        {
+            List<int> gamesToCountUp = new List<int>();
+            var processes = Process.GetProcesses().Where(x => x.MainWindowHandle != IntPtr.Zero).ToArray();
+            for (int x = 0; x < processes.Length; x++)
+            {
+                for (int y = 0; y < foundGames.Count; y++)
+                {
+                    try
+                    {
+                        if (processes[x].MainModule.FileName.Contains(foundGames.ElementAt(y).Value))
+                        {
+                            if (!ContainsValueFromIgnoreList(Path.GetFileNameWithoutExtension(processes[x].MainModule.FileName)) && !gamesToCountUp.Contains(foundGames.ElementAt(y).Key))
+                            {
+                                gamesToCountUp.Add(foundGames.ElementAt(y).Key);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        string[] allExecutables = Directory.GetFiles(foundGames.ElementAt(y).Value, "*.EXE", SearchOption.AllDirectories);
+
+                        foreach (string executable in allExecutables)
+                        {
+                            if (Path.GetFileNameWithoutExtension(executable) == processes[x].ProcessName)
+                            {
+                                if (!ContainsValueFromIgnoreList(processes[x].ProcessName) && !gamesToCountUp.Contains(foundGames.ElementAt(y).Key))
+                                {
+                                    gamesToCountUp.Add(foundGames.ElementAt(y).Key);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return gamesToCountUp;
+        }
+
+        /// <summary>
+        /// Linux has no window handles to look at, and games under Wine/Proton run as wine-preloader.
+        /// A process belongs to a game if its executable, its working directory or one of its arguments
+        /// (Wine passes the .exe, possibly as a Z:\ path) is inside the installation directory.
+        /// </summary>
+        private List<int> FindRunningGamesLinux(Dictionary<int, string> foundGames)
+        {
+            List<int> gamesToCountUp = new List<int>();
+            int ownPid = Environment.ProcessId;
+            foreach (string procDir in Directory.EnumerateDirectories("/proc"))
+            {
+                if (!int.TryParse(Path.GetFileName(procDir), out int pid) || pid == ownPid)
+                    continue;
+                try
+                {
+                    var candidates = new List<string>();
+                    string? exe = ReadLink(Path.Combine(procDir, "exe"));
+                    if (exe != null) candidates.Add(exe);
+                    string cmdline = File.ReadAllText(Path.Combine(procDir, "cmdline"));
+                    candidates.AddRange(cmdline.Split('\0', StringSplitOptions.RemoveEmptyEntries).Select(NormalizeWinePath));
+                    string? cwd = ReadLink(Path.Combine(procDir, "cwd"));
+                    if (cwd != null) candidates.Add(cwd + "/");
+
+                    foreach (var game in foundGames)
+                    {
+                        if (gamesToCountUp.Contains(game.Key))
+                            continue;
+                        string installDir = game.Value.TrimEnd('/') + "/";
+                        string? match = candidates.FirstOrDefault(c => c.StartsWith(installDir, StringComparison.Ordinal));
+                        if (match != null && !ContainsValueFromIgnoreList(Path.GetFileNameWithoutExtension(match.TrimEnd('/'))))
+                        {
+                            gamesToCountUp.Add(game.Key);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Processes of other users or ones that just exited can't be read.
+                }
+            }
+            return gamesToCountUp;
+        }
+
+        private static string? ReadLink(string path)
+        {
+            try
+            {
+                return new FileInfo(path).LinkTarget;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string NormalizeWinePath(string arg)
+        {
+            // Wine maps the Linux root to Z:
+            if (arg.Length > 2 && (arg[0] == 'Z' || arg[0] == 'z') && arg[1] == ':')
+                return arg.Substring(2).Replace('\\', '/');
+            return arg;
+        }
+
         private bool AnyOfflineProgressToSend()
         {
             try
@@ -169,8 +238,8 @@ namespace gamevault.Helper
         {
             try
             {
-                string dirName = dir.Substring(dir.LastIndexOf('\\'));
-                string gameId = dirName.Substring(2, dirName.IndexOf(')') - 2);
+                string dirName = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
+                string gameId = dirName.Substring(1, dirName.IndexOf(')') - 1);
                 int id = int.Parse(gameId);
                 return id;
             }

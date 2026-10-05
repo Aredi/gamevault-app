@@ -1,63 +1,118 @@
-﻿using gamevault.ViewModels;
-using Microsoft.Win32;
+using GameVault.Core;
+using gamevault.Helper.Platform;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Windows.ApplicationModel;
 
 namespace gamevault.Helper
 {
-    internal class AutostartHelper
+    /// <summary>
+    /// Start GameVault with the session: HKCU Run key on Windows, XDG autostart entry on Linux.
+    /// </summary>
+    internal static class AutostartHelper
     {
-        internal static void RegistryCreateAutostartKey()
+        private const string RunKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+
+        private static string LinuxAutostartFile => Path.Combine(XdgConfigHome, "autostart", "gamevault.desktop");
+
+        internal static string XdgConfigHome
         {
-            RegistryKey? rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
-            string exePath = $"{Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)}\\gamevault.exe";
-            rk.SetValue("GameVault", exePath);
-        }
-        internal static void RegistryDeleteAutostartKey()
-        {
-            RegistryKey? rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
-            if (rk.GetValue("GameVault") != null)
+            get
             {
-                rk.DeleteValue("GameVault");
+                string? xdg = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+                return string.IsNullOrEmpty(xdg) ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config") : xdg;
             }
         }
-        internal static bool RegistryAutoStartKeyExists()
+
+        internal static bool IsEnabled()
         {
-            RegistryKey? rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
-            return rk.GetValue("GameVault") != null;
-        }
-        internal async static Task<bool> IsWindowsPackageAutostartEnabled()
-        {
-            StartupTask startupTask = await StartupTask.GetAsync("AutostartGameVault");
-            return startupTask.State == StartupTaskState.Enabled;
-        }
-        internal async static Task HandleWindowsPackageAutostart()
-        {
-            StartupTask startupTask = await StartupTask.GetAsync("AutostartGameVault");
-            switch (startupTask.State)
+            if (OperatingSystem.IsWindows())
             {
-                case StartupTaskState.Disabled:
-                    StartupTaskState newState = await startupTask.RequestEnableAsync();
-                    if (newState != StartupTaskState.Enabled)
+                using var rk = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, false);
+                return rk?.GetValue("GameVault") != null;
+            }
+            return File.Exists(LinuxAutostartFile);
+        }
+
+        internal static void Enable()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                using var rk = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, true);
+                rk?.SetValue("GameVault", $"\"{PlatformInfo.ExecutablePath}\"");
+                return;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(LinuxAutostartFile)!);
+            File.WriteAllText(LinuxAutostartFile, DesktopEntry.Create(
+                name: "GameVault",
+                exec: $"{DesktopEntry.Quote(PlatformInfo.ExecutablePath)} show --minimized=true",
+                comment: "Start GameVault in the background",
+                extra: "X-GNOME-Autostart-enabled=true\n"));
+        }
+
+        internal static void Disable()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                using var rk = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, true);
+                if (rk?.GetValue("GameVault") != null)
+                    rk.DeleteValue("GameVault");
+                return;
+            }
+            try
+            {
+                if (File.Exists(LinuxAutostartFile))
+                    File.Delete(LinuxAutostartFile);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+    }
+
+    /// <summary>
+    /// Helpers to write freedesktop.org .desktop files.
+    /// </summary>
+    internal static class DesktopEntry
+    {
+        public static string IconPath
+        {
+            get
+            {
+                // The icon is exported once next to the other user data so .desktop files can reference it.
+                string icon = Path.Combine(PlatformInfo.LocalDataDirectory, "gamevault.png");
+                if (!File.Exists(icon))
+                {
+                    try
                     {
-                        MainWindowViewModel.Instance.AppBarText = "Unable to activate autostart.";
+                        Directory.CreateDirectory(PlatformInfo.LocalDataDirectory);
+                        using Stream source = Avalonia.Platform.AssetLoader.Open(new Uri("avares://gamevault/Resources/Images/icon.png"));
+                        using FileStream target = File.Create(icon);
+                        source.CopyTo(target);
                     }
-                    break;
-                case StartupTaskState.DisabledByUser:
-                    MainWindowViewModel.Instance.AppBarText = "Autostart was disabled manually. Please access task manager to reactivate it.";
-                    break;
-                case StartupTaskState.DisabledByPolicy:
-                    MainWindowViewModel.Instance.AppBarText = "Autostart is either disabled due to policy or not supported on your device.";
-                    break;
-                case StartupTaskState.Enabled:
-                    startupTask.Disable();
-                    break;
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
+                return icon;
             }
+        }
+
+        public static string Create(string name, string exec, string comment = "", string? icon = null, string extra = "")
+        {
+            return "[Desktop Entry]\n" +
+                   "Type=Application\n" +
+                   $"Name={name}\n" +
+                   (string.IsNullOrEmpty(comment) ? "" : $"Comment={comment}\n") +
+                   $"Exec={exec}\n" +
+                   $"Icon={icon ?? IconPath}\n" +
+                   "Terminal=false\n" +
+                   extra;
+        }
+
+        /// <summary>
+        /// Quotes an argument for the Exec key (see the Desktop Entry Specification).
+        /// </summary>
+        public static string Quote(string value)
+        {
+            if (value.IndexOfAny(new[] { ' ', '\t', '"', '\'', '\\', '>', '<', '~', '|', '&', ';', '$', '*', '?', '#', '(', ')', '`' }) < 0)
+                return value;
+            return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("`", "\\`").Replace("$", "\\$") + "\"";
         }
     }
 }

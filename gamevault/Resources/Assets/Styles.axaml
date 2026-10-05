@@ -1,0 +1,267 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctxt="clr-namespace:ColorTextBlock.Avalonia;assembly=ColorTextBlock.Avalonia">
+
+    <!-- Defaults -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+    </Style>
+    <Style Selector="TextBlock">
+        <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+    <Style Selector="Path">
+        <Setter Property="Stretch" Value="None" />
+    </Style>
+
+    <!-- Former "ButtonWrapper": a button that only shows its content -->
+    <Style Selector="Button.wrapper">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ContentPresenter Content="{TemplateBinding Content}"
+                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                  Background="Transparent"
+                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Former "HoverEffect": grow a little while hovered -->
+    <Style Selector=":is(Control).hover">
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        <Setter Property="RenderTransform" Value="scale(1)" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector=":is(Control).hover:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.2)" />
+    </Style>
+
+    <!-- Former "GameCardAnimation": shrink a little while hovered -->
+    <Style Selector=":is(Control).cardAnimation">
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        <Setter Property="RenderTransform" Value="scale(1)" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector=":is(Control).cardAnimation:pointerover">
+        <Setter Property="RenderTransform" Value="scale(0.95)" />
+    </Style>
+
+    <!-- Former "BaseToggleButton" -->
+    <Style Selector="ToggleButton.base">
+        <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="MinHeight" Value="25" />
+        <Setter Property="Padding" Value="5,6" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="ToggleButton.base:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="ToggleButton.base:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource GameVault.Brushes.Button.MouseOver}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GameVault.Brushes.Button.MouseOver}" />
+    </Style>
+    <Style Selector="ToggleButton.base:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent2}" />
+    </Style>
+
+    <!-- ComboBox: rounded, themed popup -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MinHeight" Value="35" />
+        <Setter Property="MinWidth" Value="150" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter, ComboBoxItem:selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent4}" />
+    </Style>
+
+    <!-- TextBox: themed border like the MahApps ones -->
+    <Style Selector="TextBox">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Foreground}" />
+    </Style>
+    <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent2}" />
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+
+    <!-- Former "SearchTextBox" -->
+    <Style Selector="TextBox.search">
+        <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+        <Setter Property="Watermark" Value="Search..." />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="6,4" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <!-- Former "SkeletonBorderStyle": loading placeholder that pulses -->
+    <Style Selector="Border.skeleton">
+        <Setter Property="Background" Value="{DynamicResource Brush.Background2}" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Style.Animations>
+            <Animation Duration="0:0:1.2" IterationCount="Infinite" PlaybackDirection="Alternate">
+                <KeyFrame Cue="0%">
+                    <Setter Property="Opacity" Value="0.4" />
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="Opacity" Value="1" />
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+
+    <!-- Hover highlight for the round sidebar shortcut buttons -->
+    <Style Selector="Border.shortcut">
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Padding" Value="2" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.shortcut:pointerover">
+        <Setter Property="Background" Value="{DynamicResource GameVault.Brushes.Button.MouseOver}" />
+    </Style>
+
+    <!-- Tab headers used by the settings pages -->
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+    <Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+
+    <!-- CheckBox / ToggleSwitch accent -->
+    <Style Selector="ToggleSwitch">
+        <Setter Property="OnContent" Value="" />
+        <Setter Property="OffContent" Value="" />
+    </Style>
+
+    <!-- Hyperlink-like text button -->
+    <Style Selector="Button.link">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ContentPresenter Content="{TemplateBinding Content}" Background="Transparent" />
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.link:pointerover">
+        <Setter Property="Opacity" Value="0.8" />
+    </Style>
+
+    <!-- Icon toggle buttons (bookmark, early access, sort order) -->
+    <Style Selector="ToggleButton.icon">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel Classes="hover" Background="Transparent">
+                    <Path Name="PART_Icon" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.bookmark /template/ Path#PART_Icon">
+        <Setter Property="Data" Value="{DynamicResource IconBookmark}" />
+        <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="RenderTransform" Value="scale(1.4)" />
+    </Style>
+    <Style Selector="ToggleButton.bookmark:checked /template/ Path#PART_Icon">
+        <Setter Property="Data" Value="{DynamicResource IconBookmarkFilled}" />
+        <Setter Property="Fill" Value="Yellow" />
+    </Style>
+    <Style Selector="ToggleButton.earlyAccess /template/ Path#PART_Icon">
+        <Setter Property="Data" Value="{DynamicResource IconEarlyAccess}" />
+        <Setter Property="Stroke" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="StrokeThickness" Value="2" />
+        <Setter Property="RenderTransform" Value="scale(1.1)" />
+    </Style>
+    <Style Selector="ToggleButton.earlyAccess:checked /template/ Path#PART_Icon">
+        <Setter Property="Fill" Value="LightBlue" />
+        <Setter Property="Stroke" Value="LightBlue" />
+    </Style>
+    <Style Selector="ToggleButton.orderBy /template/ Path#PART_Icon">
+        <Setter Property="Data" Value="{DynamicResource IconFilterOrderByDESC}" />
+        <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="RenderTransform" Value="scale(2)" />
+    </Style>
+    <Style Selector="ToggleButton.orderBy:checked /template/ Path#PART_Icon">
+        <Setter Property="Data" Value="{DynamicResource IconFilterOrderByASC}" />
+    </Style>
+
+    <!-- Expanders with an accent header (former MahApps expander look) -->
+    <Style Selector="Expander.gv">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0,5,0,0" />
+    </Style>
+    <Style Selector="Expander.gv /template/ ToggleButton#ExpanderHeader">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground2}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="MinHeight" Value="45" />
+    </Style>
+    <Style Selector="Expander.gv /template/ ToggleButton#ExpanderHeader:pointerover /template/ Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+    </Style>
+
+    <!-- Markdown (news, game descriptions), formerly MarkdownStyles.xaml -->
+    <Style Selector="ctxt|CTextBlock.Heading1">
+        <Setter Property="FontSize" Value="42" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="ctxt|CTextBlock.Heading2">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="ctxt|CTextBlock.Heading3">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="ctxt|CTextBlock.Heading4">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="FontWeight" Value="Light" />
+    </Style>
+
+</Styles>

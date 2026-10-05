@@ -1,8 +1,8 @@
-﻿using gamevault.Models;
+using Avalonia.Data.Converters;
+using gamevault.Models;
 using System;
 using System.ComponentModel;
 using System.Globalization;
-using System.Windows.Data;
 
 namespace gamevault.Converter
 {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -60,7 +60,12 @@ namespace gamevault.Models
         LastImageOptimization,
         SessionToken,
         InstalledGameVersion,
-        AdditionalRequestHeaders
+        AdditionalRequestHeaders,
+        //Linux compatibility layer
+        LinuxRunner,
+        LinuxWinePrefix,
+        LinuxProtonPath,
+        LinuxCustomRunner
     }
     public static class Globals
     {

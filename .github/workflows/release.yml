@@ -8,19 +8,65 @@ permissions:
   contents: write
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x'
-      - name: Build
+      - name: Publish
+        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime linux-x64 --self-contained true --output publish/GameVault
+      - name: Bundle Ludusavi (cloud saves)
         run: |
-          dotnet build gamevault/gamevault.csproj --configuration Release
-          7z a GameVault-win-x64.zip ./gamevault/bin/Release/*
+          gh release download --repo mtkennerly/ludusavi --pattern '*-linux.tar.gz' --output ludusavi.tar.gz
+          mkdir -p publish/GameVault/Lib/savegame
+          tar -xzf ludusavi.tar.gz -C publish/GameVault/Lib/savegame
+          chmod +x publish/GameVault/gamevault publish/GameVault/Lib/savegame/ludusavi
+      - name: Package
+        run: tar -czf GameVault-linux-x64.tar.gz -C publish GameVault
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: GameVault-linux-x64.tar.gz
+
+  windows:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x'
+      - name: Publish
+        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime win-x64 --self-contained true --output publish/GameVault
+      - name: Bundle Ludusavi (cloud saves)
+        shell: bash
+        run: |
+          gh release download --repo mtkennerly/ludusavi --pattern '*-win64.zip' --output ludusavi.zip
+          mkdir -p publish/GameVault/Lib/savegame
+          7z x ludusavi.zip -opublish/GameVault/Lib/savegame
+      - name: Package
+        run: 7z a GameVault-win-x64.zip ./publish/GameVault/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: GameVault-win-x64.zip
+
+  release:
+    needs: [linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: GameVault-win-x64.zip
+          files: |
+            GameVault-linux-x64.tar.gz
+            GameVault-win-x64.zip
           generate_release_notes: true

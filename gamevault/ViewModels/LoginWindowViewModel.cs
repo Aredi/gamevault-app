@@ -1,4 +1,4 @@
-﻿using gamevault.Helper;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.Windows;
 using System;
@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Threading;
 
 namespace gamevault.ViewModels
 {
@@ -92,7 +91,18 @@ namespace gamevault.ViewModels
         public string AppBarText
         {
             get { return m_AppBarText; }
-            set { m_AppBarText = value; OnPropertyChanged(); IsAppBarOpen = true; }
+            set { m_AppBarText = value; OnPropertyChanged(); IsAppBarOpen = true; Avalonia.Threading.Dispatcher.UIThread.Post(RestartAppBarTimer); }
+        }
+        private Avalonia.Threading.DispatcherTimer? appBarTimer;
+        private void RestartAppBarTimer()
+        {
+            if (appBarTimer == null)
+            {
+                appBarTimer = new Avalonia.Threading.DispatcherTimer { Interval = System.TimeSpan.FromSeconds(3) };
+                appBarTimer.Tick += (_, _) => { appBarTimer.Stop(); IsAppBarOpen = false; };
+            }
+            appBarTimer.Stop();
+            appBarTimer.Start();
         }
         private bool rememberMe { get; set; }
         public bool RememberMe

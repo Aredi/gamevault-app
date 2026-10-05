@@ -1,8 +1,8 @@
-﻿using gamevault.Models;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
+using gamevault.Models;
 using System;
 using System.Globalization;
-using System.Windows.Data;
-using System.Windows.Media;
 
 namespace gamevault.Converter
 {

@@ -1,8 +1,10 @@
-﻿using GameVault.Core;
+using Avalonia.Media.Imaging;
+using gamevault.UserControls;
+using gamevault.Helper;
+using GameVault.Core;
 using gamevault.Models;
 using gamevault.ViewModels;
 using ImageMagick;
-using LiveChartsCore.Drawing;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,9 +14,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Markup;
-using System.Windows.Media.Imaging;
 
 namespace gamevault.Helper
 {
@@ -31,9 +30,9 @@ namespace gamevault.Helper
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
-        internal static async Task LoadImageCacheToUIAsync(int identifier, int imageId, string cachePath, ImageCache cacheType, System.Windows.Controls.Image img)
+        internal static async Task LoadImageCacheToUIAsync(int identifier, int imageId, string cachePath, ImageCache cacheType, CacheImage img)
         {
-            string cacheFile = $"{cachePath}/{identifier}.{imageId}";
+            string cacheFile = Path.Combine(cachePath, $"{identifier}.{imageId}");
             try
             {
                 if (imageId == -1)
@@ -48,15 +47,9 @@ namespace gamevault.Helper
                         {
                             await TaskQueue.Instance.WaitForProcessToFinish(imageId);
                         }
-                        if (GifHelper.IsGif(cacheFile))
-                        {
-                            await GifHelper.LoadGif(cacheFile, img);
-                            return;
-                        }
-                        img.BeginAnimation(System.Windows.Controls.Image.SourceProperty, null);
                     }
-                    //if file exists then return it directly                   
-                    img.Source = BitmapHelper.GetBitmapImage(cacheFile);
+                    //if file exists then return it directly
+                    await img.SetImageFileAsync(cacheFile);
                 }
                 else
                 {
@@ -72,15 +65,7 @@ namespace gamevault.Helper
                             File.Delete(files[0]);
                         }
                         await TaskQueue.Instance.Enqueue(() => WebHelper.DownloadImageFromUrlAsync($"{SettingsViewModel.Instance.ServerUrl}/api/media/{imageId}", cacheFile), imageId);
-                        if (cacheType == ImageCache.UserAvatar)
-                        {
-                            if (GifHelper.IsGif(cacheFile))
-                            {
-                                await GifHelper.LoadGif(cacheFile, img);
-                                return;
-                            }
-                        }
-                        img.Source = BitmapHelper.GetBitmapImage(cacheFile);
+                        await img.SetImageFileAsync(cacheFile);
                     }
                     else
                     {
@@ -88,7 +73,7 @@ namespace gamevault.Helper
                         {
                             //if we are offline, we will try to load an old image with the same identifier
                             cacheFile = files[0];
-                            img.Source = BitmapHelper.GetBitmapImage(cacheFile);
+                            await img.SetImageFileAsync(cacheFile);
                         }
                         else
                         {
@@ -105,13 +90,12 @@ namespace gamevault.Helper
                     if (TaskQueue.Instance.IsAlreadyInProcess(imageId))
                     {
                         await TaskQueue.Instance.WaitForProcessToFinish(imageId);
-                        img.Source = BitmapHelper.GetBitmapImage(cacheFile);
+                        await img.SetImageFileAsync(cacheFile);
                         return;
                     }
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
-                img.BeginAnimation(System.Windows.Controls.Image.SourceProperty, null);//Make sure all animations are removed, so a non animated image can be set to the source
-                img.Source = GetReplacementImage(cacheType);
+                img.SetReplacement();
             }
         }
         internal static async Task EnsureImageCacheForGame(Game game)
@@ -129,15 +113,15 @@ namespace gamevault.Helper
                         await TaskQueue.Instance.WaitForProcessToFinish(game.Metadata.Cover.ID);
                     }
 
-                    string backGroundCacheFile = $"{LoginManager.Instance.GetUserProfile().ImageCacheDir}/gbg/{game.ID}.{game.Metadata.Background.ID}";
-                    string boxArtCacheFile = $"{LoginManager.Instance.GetUserProfile().ImageCacheDir}/gbox/{game.ID}.{game.Metadata.Cover.ID}";
-                    if (!Directory.Exists($"{LoginManager.Instance.GetUserProfile().ImageCacheDir}/gbg"))
+                    string backGroundCacheFile = Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbg", $"{game.ID}.{game.Metadata.Background.ID}");
+                    string boxArtCacheFile = Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{game.ID}.{game.Metadata.Cover.ID}");
+                    if (!Directory.Exists(Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbg")))
                     {
-                        Directory.CreateDirectory($"{LoginManager.Instance.GetUserProfile().ImageCacheDir}/gbg");
+                        Directory.CreateDirectory(Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbg"));
                     }
-                    if (!Directory.Exists($"{LoginManager.Instance.GetUserProfile().ImageCacheDir}/gbox"))
+                    if (!Directory.Exists(Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox")))
                     {
-                        Directory.CreateDirectory($"{LoginManager.Instance.GetUserProfile().ImageCacheDir}/gbox");
+                        Directory.CreateDirectory(Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox"));
                     }
 
                     if (!File.Exists(backGroundCacheFile))
@@ -153,22 +137,33 @@ namespace gamevault.Helper
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
-        internal static BitmapImage GetReplacementImage(ImageCache cacheType)
+        private static readonly System.Collections.Generic.Dictionary<ImageCache, Bitmap> replacementImages = new();
+
+        internal static Bitmap GetReplacementImage(ImageCache cacheType)
+        {
+            if (replacementImages.TryGetValue(cacheType, out Bitmap? cached))
+                return cached;
+            Bitmap bitmap = LoadReplacementImage(cacheType);
+            replacementImages[cacheType] = bitmap;
+            return bitmap;
+        }
+
+        private static Bitmap LoadReplacementImage(ImageCache cacheType)
         {
             switch (cacheType)
             {
                 case ImageCache.GameCover:
                     {
-                        return BitmapHelper.GetBitmapImage("pack://application:,,,/gamevault;component/Resources/Images/library_NoGameCover.png");
+                        return BitmapHelper.GetBitmapImage("avares://gamevault/Resources/Images/library_NoGameCover.png");
                     }
                 case ImageCache.UserAvatar:
                     {
-                        return BitmapHelper.GetBitmapImage("pack://application:,,,/gamevault;component/Resources/Images/com_NoUserAvatar.png");
+                        return BitmapHelper.GetBitmapImage("avares://gamevault/Resources/Images/com_NoUserAvatar.png");
 
                     }
                 default:
                     {
-                        return BitmapHelper.GetBitmapImage("pack://application:,,,/gamevault;component/Resources/Images/gameView_NoBackground.jpg");
+                        return BitmapHelper.GetBitmapImage("avares://gamevault/Resources/Images/gameView_NoBackground.jpg");
                     }
             }
         }
@@ -179,13 +174,16 @@ namespace gamevault.Helper
             {
                 try
                 {
-                    double maxHeight = SystemParameters.FullPrimaryScreenHeight / 2;
+                    var screen = ScreenHelper.PrimaryScreenSize;
+                    double maxHeight = screen.Height / 2;
                     string imageOptimizationMetadata = Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "optmetadata");
 
                     bool lastOptimizedSet = DateTime.TryParse(Preferences.Get(AppConfigKey.LastImageOptimization, imageOptimizationMetadata), out DateTime lastOptimized);
                     var files = Directory.GetFiles(LoginManager.Instance.GetUserProfile().ImageCacheDir, "*.*", SearchOption.AllDirectories);
                     foreach (string file in files)
                     {
+                        if (file == imageOptimizationMetadata)
+                            continue;
                         try
                         {
                             var image = new FileInfo(file);
@@ -238,8 +236,8 @@ namespace gamevault.Helper
         {
             Dictionary<string, string> imageCache = new Dictionary<string, string>();
             string cachePath = LoginManager.Instance.GetUserProfile().ImageCacheDir;
-            var boxArt = Directory.GetFiles(Path.Combine(cachePath, "gbox").Replace("/", "\\"), $"{game.ID}.*").FirstOrDefault();
-            var background = Directory.GetFiles(Path.Combine(cachePath, "gbg").Replace("/", "\\"), $"{game.ID}.*").FirstOrDefault();
+            var boxArt = Directory.GetFiles(Path.Combine(cachePath, "gbox"), $"{game.ID}.*").FirstOrDefault();
+            var background = Directory.GetFiles(Path.Combine(cachePath, "gbg"), $"{game.ID}.*").FirstOrDefault();
             imageCache.Add("gbox", boxArt);
             imageCache.Add("gbg", background);
             return imageCache;
@@ -267,9 +265,10 @@ namespace gamevault.Helper
                     imageMagick.Resize(size);
                     imageMagick.Write(path);
                 }
-                else if (imageMagick.Height > SystemParameters.FullPrimaryScreenHeight)
+                else if (imageMagick.Height > ScreenHelper.PrimaryScreenSize.Height)
                 {
-                    var size = new MagickGeometry((uint)SystemParameters.FullPrimaryScreenWidth, (uint)SystemParameters.FullPrimaryScreenHeight);
+                    var screen = ScreenHelper.PrimaryScreenSize;
+                    var size = new MagickGeometry((uint)screen.Width, (uint)screen.Height);
                     size.IgnoreAspectRatio = false;
                     imageMagick.Resize(size);
                     imageMagick.Write(path);

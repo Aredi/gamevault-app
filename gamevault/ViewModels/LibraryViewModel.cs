@@ -1,11 +1,10 @@
-﻿using gamevault.Models;
+using gamevault.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace gamevault.ViewModels
 {
@@ -14,8 +13,8 @@ namespace gamevault.ViewModels
         #region PrivateMembers      
         private ObservableCollection<Game> gameCards { get; set; }
         private int totalGamesCount = -1;
-        private Visibility scrollToTopVisibility { get; set; }
-        private Visibility filterVisibility = Visibility.Collapsed;
+        private bool scrollToTopVisibility { get; set; }
+        private bool filterVisibility = false;
         private KeyValuePair<string, string> m_SelectedGameFilterSortBy { get; set; }
         private string filterCounter { get; set; } = string.Empty;
         private bool canLoadServerGames { get; set; } = true;
@@ -35,14 +34,14 @@ namespace gamevault.ViewModels
         public int TotalGamesCount
         {
             get { return totalGamesCount; }
-            set { totalGamesCount = value; OnPropertyChanged(); }
+            set { totalGamesCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowNoGamesFound)); }
         }
-        public Visibility ScrollToTopVisibility
+        public bool ScrollToTopVisibility
         {
             get { return scrollToTopVisibility; }
             set { scrollToTopVisibility = value; OnPropertyChanged(); }
         }
-        public Visibility FilterVisibility
+        public bool FilterVisibility
         {
             get { return filterVisibility; }
             set { filterVisibility = value; OnPropertyChanged(); }
@@ -78,7 +77,11 @@ namespace gamevault.ViewModels
         public bool CanLoadServerGames
         {
             get { return canLoadServerGames; }
-            set { canLoadServerGames = value; OnPropertyChanged(); }
+            set { canLoadServerGames = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowNoGamesFound)); }
+        }
+        public bool ShowNoGamesFound
+        {
+            get { return TotalGamesCount == 0 && CanLoadServerGames; }
         }
     }
 }

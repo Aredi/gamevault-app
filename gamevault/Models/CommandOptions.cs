@@ -214,7 +214,7 @@ $",
             }
             else
             {
-                System.Windows.MessageBox.Show($"Invalid action: {action}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                GameVault.Core.Log.Info($"Invalid gamevault:// action: {action}");
             }
 
             if (!string.IsNullOrEmpty(parameters))

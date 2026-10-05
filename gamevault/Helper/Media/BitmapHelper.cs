@@ -1,78 +1,61 @@
-﻿using SkiaSharp;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using ImageMagick;
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
 
 namespace gamevault.Helper
 {
     internal class BitmapHelper
     {
-        public static BitmapImage GetBitmapImage(string uri)
+        /// <summary>
+        /// Loads a local file or avares:// asset fully into memory (the file is not kept open).
+        /// </summary>
+        public static Bitmap GetBitmapImage(string uri)
         {
-            var image = new BitmapImage();
-            image.BeginInit();
-            image.CacheOption = BitmapCacheOption.OnLoad;
-            image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-            image.UriSource = new Uri(uri);
-            image.EndInit();
-            return image;
-        }
-        public static async Task<BitmapImage> GetBitmapImageAsync(string uri)
-        {
-            BitmapImage bitmap = null;
-
-            using (var response = await GameVault.Core.HttpClients.Shared.GetAsync(uri))
+            if (uri.StartsWith("avares://", StringComparison.OrdinalIgnoreCase))
             {
-                if (response.IsSuccessStatusCode)
-                {
-                    using (var stream = new MemoryStream())
-                    {
-                        await response.Content.CopyToAsync(stream);
-                        stream.Seek(0, SeekOrigin.Begin);
-
-                        bitmap = new BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                        bitmap.StreamSource = stream;
-                        bitmap.EndInit();
-                        bitmap.Freeze();
-                    }
-                }
+                using Stream asset = AssetLoader.Open(new Uri(uri));
+                return new Bitmap(asset);
             }
+            using FileStream file = new FileStream(uri, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            return new Bitmap(file);
+        }
 
-            return bitmap;
-        }
-        public static async Task<BitmapImage> GetBitmapImageAsync(MemoryStream stream)
+        public static async Task<Bitmap?> GetBitmapImageAsync(string uri)
         {
-            BitmapImage bitmap = null;
+            using var response = await GameVault.Core.HttpClients.Shared.GetAsync(uri);
+            if (!response.IsSuccessStatusCode)
+                return null;
+            using var stream = new MemoryStream();
+            await response.Content.CopyToAsync(stream);
             stream.Position = 0;
-            bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.StreamSource = stream;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            return bitmap;
+            return new Bitmap(stream);
         }
+
+        public static Task<Bitmap> GetBitmapImageAsync(MemoryStream stream)
+        {
+            stream.Position = 0;
+            return Task.FromResult(new Bitmap(stream));
+        }
+
         public static async Task<MemoryStream> UrlToMemoryStream(string url)
         {
             MemoryStream stream = new MemoryStream();
+            using (HttpResponseMessage response = await GameVault.Core.HttpClients.Shared.GetAsync(url))
             {
-                using (HttpResponseMessage response = await GameVault.Core.HttpClients.Shared.GetAsync(url))
+                if (response.IsSuccessStatusCode)
                 {
-                    if (response.IsSuccessStatusCode)
-                    {
-                        await response.Content.CopyToAsync(stream);
-                        stream.Position = 0;
-                    }
+                    await response.Content.CopyToAsync(stream);
+                    stream.Position = 0;
                 }
             }
             return stream;
         }
+
         public static MemoryStream UriToMemoryStream(string url)
         {
             MemoryStream ms = new MemoryStream();
@@ -82,20 +65,23 @@ namespace gamevault.Helper
             ms.Position = 0;
             return ms;
         }
-        public static MemoryStream BitmapSourceToMemoryStream(BitmapSource src)
+
+        /// <summary>
+        /// Encodes an in-memory image as JPEG (for uploads).
+        /// </summary>
+        public static MemoryStream BitmapSourceToMemoryStream(IImage src)
         {
-            System.Drawing.Bitmap bitmap;
-            MemoryStream pasteStream = new MemoryStream();
-            using (MemoryStream outStream = new MemoryStream())
-            {
-                BitmapEncoder enc = new JpegBitmapEncoder();
-                enc.Frames.Add(BitmapFrame.Create(src));
-                enc.Save(outStream);
-                bitmap = new System.Drawing.Bitmap(outStream);
-                bitmap.Save(pasteStream, ImageFormat.Jpeg);
-            }
-            pasteStream.Seek(0, SeekOrigin.Begin);
-            return pasteStream;
+            if (src is not Bitmap bitmap)
+                throw new ArgumentException("Only bitmaps can be uploaded", nameof(src));
+            using var png = new MemoryStream();
+            bitmap.Save(png);
+            png.Position = 0;
+            using var image = new MagickImage(png);
+            image.Format = MagickFormat.Jpeg;
+            var jpeg = new MemoryStream();
+            image.Write(jpeg);
+            jpeg.Position = 0;
+            return jpeg;
         }
     }
 }

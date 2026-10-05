@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             xmlns:vm="clr-namespace:gamevault.ViewModels"
+             x:Class="gamevault.UserControls.AdminConsoleUserControl"
+             Focusable="True">
+    <UserControl.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource Brush.Background2}" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="15" />
+            <Setter Property="Margin" Value="0,10,0,0" />
+        </Style>
+        <Style Selector="TextBlock.cardTitle">
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="Border.userRow">
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="5" />
+            <Setter Property="Margin" Value="0,10,0,0" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.userRow.deleted">
+            <Setter Property="Background" Value="#26FF0000" />
+        </Style>
+    </UserControl.Styles>
+    <Grid RowDefinitions="50,*">
+        <Border Background="{DynamicResource Brush.Background2}" Grid.Row="0">
+            <TextBlock Text="Admin Console" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel MaxWidth="1200" Margin="20,0,20,20">
+                <!-- Server information -->
+                <Border Classes="card">
+                    <StackPanel Spacing="5">
+                        <TextBlock Classes="cardTitle" Text="Server Information" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="{Binding ServerVersionInfo.Key}" FontSize="16" VerticalAlignment="Center" />
+                            <Button Classes="link" Content="(Update Available)" Foreground="Red" FontSize="16" VerticalAlignment="Center" Click="ServerUpdate_Navigate"
+                                    IsVisible="{Binding ServerVersionInfo.Value, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Source={x:Static vm:SettingsViewModel.Instance}, Path=ServerUrl, StringFormat='Server Address: {0}'}" FontSize="16" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Actions -->
+                <Border Classes="card">
+                    <StackPanel Spacing="10">
+                        <TextBlock Classes="cardTitle" Text="Action Buttons" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <local:IconButton Text="Backup / Restore Database" Icon="{StaticResource IconDatabase}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="BackupRestore_Click" />
+                            <local:IconButton Text="Reindex Games" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="Reindex_Click" />
+                            <ToggleSwitch Content="Show deleted Users" IsChecked="{Binding ShowDeletedUsers}" VerticalAlignment="Center" Margin="20,0,0,0" />
+                            <Grid x:Name="uiBtnReload" Classes="hover" Background="Transparent" Cursor="Hand" VerticalAlignment="Center" Margin="10,0,0,0"
+                                  ToolTip.Tip="Refresh admin console (F5)">
+                                <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" />
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Users -->
+                <Border Classes="card">
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock Classes="cardTitle" Text="Users" />
+                        <Button Classes="wrapper" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Hand" Click="RegistrateUser_Click" ToolTip.Tip="Registrate new User">
+                            <Grid Classes="hover" Background="Transparent">
+                                <Path Data="{StaticResource IconAddSimple}" Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" />
+                            </Grid>
+                        </Button>
+                        <ItemsControl Grid.Row="1" ItemsSource="{Binding Users}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="userRow" Height="70"
+                                            Classes.deleted="{Binding DeletedAt, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                                <Binding Path="$parent[UserControl].DataContext.ShowDeletedUsers" />
+                                                <Binding Path="DeletedAt" Converter="{x:Static ObjectConverters.IsNull}" />
+                                            </MultiBinding>
+                                        </Border.IsVisible>
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="15">
+                                            <Button Grid.Column="0" Classes="wrapper" Width="60" Height="60" Cursor="Hand" Click="ShowUser_Click">
+                                                <local:CacheImage ImageCacheType="UserAvatar" Data="{Binding}" Stretch="Fill" CornerRadius="5" />
+                                            </Button>
+                                            <TextBlock Grid.Column="1" FontSize="22" Text="{Binding Username}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <ToggleSwitch Grid.Column="2" OnContent="Activated" OffContent="Deactivated" IsChecked="{Binding Activated}" VerticalAlignment="Center" Click="Activated_Toggled" />
+                                            <ComboBox Grid.Column="3" Width="140" VerticalAlignment="Center"
+                                                      ItemsSource="{Binding $parent[UserControl].DataContext.PermissionRoleEnumTypes}"
+                                                      SelectedItem="{Binding Role}" SelectionChanged="PermissionRole_SelectionChanged" />
+                                            <Button Grid.Column="4" Classes="wrapper" VerticalAlignment="Center" Cursor="Hand" Click="EditUser_Clicked" ToolTip.Tip="Edit user">
+                                                <Grid Classes="hover" Background="Transparent">
+                                                    <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" />
+                                                </Grid>
+                                            </Button>
+                                            <Button Grid.Column="5" Classes="wrapper" VerticalAlignment="Center" Cursor="Hand" Margin="0,0,5,0" Click="DeleteUser_Clicked">
+                                                <Grid Classes="hover" Background="Transparent">
+                                                    <Path Data="{DynamicResource IconTrash}" Fill="IndianRed" ToolTip.Tip="Delete user"
+                                                          IsVisible="{Binding DeletedAt, Converter={x:Static ObjectConverters.IsNull}}" />
+                                                    <Path Data="{DynamicResource IconReload}" Fill="{DynamicResource Brush.Foreground}" ToolTip.Tip="Recover user"
+                                                          IsVisible="{Binding DeletedAt, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                </Grid>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

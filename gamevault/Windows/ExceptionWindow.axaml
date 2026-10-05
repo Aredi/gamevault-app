@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="gamevault.Windows.ExceptionWindow"
+        Title="Unhandled Error" Width="480" Height="170" CanResize="False" Topmost="True"
+        WindowStartupLocation="CenterScreen" Icon="/Resources/Images/icon.ico">
+    <Grid Margin="10" RowDefinitions="*,Auto">
+        <TextBlock FontSize="13" TextWrapping="Wrap">
+            An unhandled error has occurred in GameVault.
+            <LineBreak />
+            You can view technical details in the error log that has been created.
+        </TextBlock>
+        <Grid Grid.Row="1" Height="60" HorizontalAlignment="Left">
+            <Image Source="/Resources/Images/icon.png" />
+            <Path Data="{DynamicResource IconAppError}" Fill="IndianRed" HorizontalAlignment="Right" VerticalAlignment="Bottom" RenderTransform="scale(1.7)" />
+        </Grid>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Spacing="10">
+            <Button Content="Open Log Folder" Click="OpenLog_Click" />
+            <Button Content="Close" Click="Close_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

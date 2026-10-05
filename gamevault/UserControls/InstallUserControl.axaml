@@ -1,0 +1,105 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:gamevault.ViewModels"
+             xmlns:conv="clr-namespace:gamevault.Converter"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.InstallUserControl">
+    <UserControl.Resources>
+        <conv:GameUpdateAvailableConverter x:Key="gameUpdateAvailableConv" />
+        <conv:MappedTitleConverter x:Key="mappedTitleConv" />
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="Button.card Grid.cardInner">
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.card:pointerover Grid.cardInner">
+            <Setter Property="RenderTransform" Value="scale(0.95)" />
+        </Style>
+        <Style Selector="Button.card Border.cardOverlay">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Button.card:pointerover Border.cardOverlay">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+    </UserControl.Styles>
+    <Grid>
+        <Expander x:Name="uiInstalledGames" Classes="gv" Margin="10">
+            <Expander.Header>
+                <Grid Height="35" Width="1920">
+                    <TextBlock Text="{Binding InstalledGames.Count, StringFormat='Installed Games ({0})'}" Foreground="{DynamicResource Brush.Foreground2}" FontWeight="Bold" HorizontalAlignment="Left" FontSize="20" VerticalAlignment="Center" />
+                    <TextBox HorizontalAlignment="Center" Width="376" Margin="0,4,44,4" Classes="search" TextChanged="Search_TextChanged" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <TextBlock Text="Rows" Foreground="{DynamicResource Brush.Foreground2}" VerticalAlignment="Center" FontSize="15" Margin="0,0,10,0" />
+                        <NumericUpDown x:Name="uiRowsUpDown" Minimum="1" Increment="1" FormatString="0" Width="110" ValueChanged="Rows_ValueChanged" />
+                    </StackPanel>
+                </Grid>
+            </Expander.Header>
+            <Border Background="{DynamicResource Brush.Background2}" CornerRadius="5" Margin="-6,5,-6,0" VerticalAlignment="Top">
+                <Grid>
+                    <StackPanel ZIndex="1" HorizontalAlignment="Center" IsVisible="{Binding InstalledGamesFilter.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}, FallbackValue=True}">
+                        <Image Source="/Resources/Images/library_NoGameFound.png" Height="190" />
+                        <TextBlock Text="No Games found" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0" />
+                        <Button Classes="link" HorizontalAlignment="Center" FontSize="10" Margin="0,5,0,10" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#games-not-appearing-in-the-installations--servers-list" Click="Hyperlink_RequestNavigate">
+                            <TextBlock Text="Troubleshooting" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
+                        </Button>
+                    </StackPanel>
+                    <ScrollViewer x:Name="uiInstalledGamesScroll" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding InstalledGamesFilter}" Background="Transparent">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="{Binding Rows}" Columns="{Binding Colums}" Margin="6,5,0,5" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="wrapper card" Click="GameCard_Clicked">
+                                        <Grid Background="Transparent" Height="267" Width="178" Margin="9,10,10,10">
+                                            <Grid Classes="cardInner">
+                                                <Border Background="{DynamicResource Brush.Background}" CornerRadius="8">
+                                                    <Grid>
+                                                        <local:CacheImage Stretch="Fill" ImageCacheType="GameCover" Data="{Binding Key}" CornerRadius="8" />
+                                                        <Border Background="IndianRed" CornerRadius="5" VerticalAlignment="Bottom" IsVisible="{Binding Key, Converter={StaticResource gameUpdateAvailableConv}}">
+                                                            <TextBlock Text="Update available!" FontWeight="DemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,3,0,3" />
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                                <Border Classes="cardOverlay" Background="{DynamicResource GameVault.Brushes.Blur}" CornerRadius="5">
+                                                    <Grid>
+                                                        <Button Classes="wrapper" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,10,0" Click="Settings_Click">
+                                                            <Grid Classes="hover" Background="#02000000">
+                                                                <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.3)" />
+                                                            </Grid>
+                                                        </Button>
+                                                        <TextBlock FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="5,0">
+                                                            <TextBlock.Text>
+                                                                <MultiBinding Converter="{StaticResource mappedTitleConv}">
+                                                                    <Binding Path="Key" />
+                                                                    <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
+                                                        <Button Classes="wrapper" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,40" Click="Play_Click" ToolTip.Tip="Play">
+                                                            <Grid Classes="hover" Background="Transparent" Height="40" Width="40">
+                                                                <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="34" Height="34" />
+                                                            </Grid>
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
+                                            </Grid>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Expander>
+    </Grid>
+</UserControl>

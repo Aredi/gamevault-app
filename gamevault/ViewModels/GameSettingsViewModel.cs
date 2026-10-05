@@ -1,4 +1,4 @@
-﻿using GameVault.Core;
+using GameVault.Core;
 using gamevault.Models;
 using gamevault.Models.Mapping;
 using System;
@@ -7,7 +7,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Media;
 
 namespace gamevault.ViewModels
 {
@@ -23,8 +22,8 @@ namespace gamevault.ViewModels
         private MinimalGame[]? remapSearchResults { get; set; }
         private bool backgroundImageChanged { get; set; }
         private bool boxArtImageChanged { get; set; }
-        private ImageSource backgroundImageSource { get; set; }
-        private ImageSource boxArtImageSource { get; set; }
+        private Avalonia.Media.IImage backgroundImageSource { get; set; }
+        private Avalonia.Media.IImage boxArtImageSource { get; set; }
         private string diskSize { get; set; }
         private MetadataProviderDto[]? metadataProviders { get; set; }
         private bool metadataProvidersLoaded { get; set; }
@@ -78,12 +77,12 @@ namespace gamevault.ViewModels
             get { return boxArtImageChanged; }
             set { boxArtImageChanged = value; OnPropertyChanged(); }
         }
-        public ImageSource BackgroundImageSource
+        public Avalonia.Media.IImage BackgroundImageSource
         {
             get { return backgroundImageSource; }
             set { backgroundImageSource = value; OnPropertyChanged(); BackgroundImageChanged = true; }
         }
-        public ImageSource GameCoverImageSource
+        public Avalonia.Media.IImage GameCoverImageSource
         {
             get { return boxArtImageSource; }
             set { boxArtImageSource = value; OnPropertyChanged(); GameCoverImageChanged = true; }

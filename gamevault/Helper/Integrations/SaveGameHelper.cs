@@ -1,4 +1,15 @@
-﻿using gamevault.Models;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using gamevault.Helper;
+using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.ViewModels;
 using gamevault.Windows;
@@ -13,9 +24,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
-using Windows.Gaming.Input;
-using Windows.Gaming.Preview.GamesEnumeration;
+using gamevault.Helper.Platform;
 using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
 using ImageMagick.Drawing;
@@ -211,7 +220,11 @@ namespace gamevault.Helper.Integrations
         }
         public void PrepareConfigFile(string installationPath, string yamlPath)
         {
-            string userFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            // Backups store the user folder as G:\gamevault\currentuser so they can be restored on any machine.
+            // Windows games on Linux keep their saves in the Wine prefix, so that is the "user folder" there.
+            string userFolder = PlatformInfo.IsWindows
+                ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                : Path.Combine(CompatibilitySettings.EffectiveWinePrefix, "drive_c", "users", Environment.UserName);
 
             // Base configuration with redirects (always included)
             var redirects = new List<Dictionary<string, object>>
@@ -239,6 +252,15 @@ namespace gamevault.Helper.Integrations
         {
             { "store", "other" },
             { "path", Path.Combine(rootPath.Uri,"GameVault","Installations") }
+        });
+            }
+
+            if (!PlatformInfo.IsWindows && Directory.Exists(CompatibilitySettings.EffectiveWinePrefix))
+            {
+                roots.Add(new Dictionary<string, object>
+        {
+            { "store", "otherWine" },
+            { "path", CompatibilitySettings.EffectiveWinePrefix }
         });
             }
 
@@ -382,7 +404,10 @@ namespace gamevault.Helper.Integrations
             info.RedirectStandardOutput = redirectConsole;
             info.RedirectStandardError = redirectConsole;
             info.UseShellExecute = false;
-            info.FileName = $"{AppDomain.CurrentDomain.BaseDirectory}Lib\\savegame\\ludusavi.exe";
+            var ludusavi = ToolLocator.Ludusavi() ?? throw new FileNotFoundException(ToolLocator.MissingToolMessage("ludusavi"));
+            info.FileName = ludusavi.FileName;
+            foreach (string arg in ludusavi.PrefixArguments)
+                info.ArgumentList.Add(arg);
             return info;
         }
     }

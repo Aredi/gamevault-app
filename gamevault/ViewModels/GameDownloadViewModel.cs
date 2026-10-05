@@ -1,4 +1,4 @@
-﻿using gamevault.Converter;
+using gamevault.Converter;
 using gamevault.Helper;
 using gamevault.Models;
 using gamevault.UserControls;
@@ -8,7 +8,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace gamevault.ViewModels
 {
@@ -26,9 +25,9 @@ namespace gamevault.ViewModels
         private double totalDataSize { get; set; }
         private bool m_IsDownloadPaused { get; set; }
         private bool m_IsDownloadResumed { get; set; } = true;
-        private Visibility m_DownloadUIVisibility { get; set; }
-        private Visibility m_ExtractionUIVisibility { get; set; }
-        private Visibility m_DownloadFailedVisibility { get; set; }
+        private bool m_DownloadUIVisibility { get; set; }
+        private bool m_ExtractionUIVisibility { get; set; }
+        private bool m_DownloadFailedVisibility { get; set; }
         private bool? createShortcut { get; set; }
 
         #endregion
@@ -69,17 +68,17 @@ namespace gamevault.ViewModels
             set { m_ExtractionInfo = value; OnPropertyChanged(); }
         }
 
-        public Visibility DownloadUIVisibility
+        public bool DownloadUIVisibility
         {
             get { return m_DownloadUIVisibility; }
             set { m_DownloadUIVisibility = value; OnPropertyChanged(); }
         }
-        public Visibility ExtractionUIVisibility
+        public bool ExtractionUIVisibility
         {
             get { return m_ExtractionUIVisibility; }
             set { m_ExtractionUIVisibility = value; OnPropertyChanged(); }
         }
-        public Visibility DownloadFailedVisibility
+        public bool DownloadFailedVisibility
         {
             get { return m_DownloadFailedVisibility; }
             set { m_DownloadFailedVisibility = value; OnPropertyChanged(); }
@@ -87,8 +86,14 @@ namespace gamevault.ViewModels
         public string InstallPath
         {
             get { return m_InstallPath; }
-            set { m_InstallPath = value; OnPropertyChanged(); }
+            set { m_InstallPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(InstallerInstallPath)); }
         }
+        /// <summary>
+        /// The installation folder as a Windows installer sees it (a Z:\ path under Wine/Proton on Linux).
+        /// </summary>
+        public string InstallerInstallPath => OperatingSystem.IsWindows() || string.IsNullOrEmpty(m_InstallPath)
+            ? m_InstallPath
+            : "Z:" + m_InstallPath.Replace('/', '\\');
         public double TotalDataSize
         {
             get { return totalDataSize; }

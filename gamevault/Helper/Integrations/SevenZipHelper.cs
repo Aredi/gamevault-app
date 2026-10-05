@@ -1,5 +1,6 @@
-﻿using GameVault.Core;
+using GameVault.Core;
 using gamevault.Helper.Integrations;
+using gamevault.Helper.Platform;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -75,7 +76,7 @@ namespace gamevault.Helper
             info.RedirectStandardOutput = true;
             info.RedirectStandardError = true;
             info.UseShellExecute = false;
-            info.FileName = $"{AppDomain.CurrentDomain.BaseDirectory}Lib\\7z\\7z.exe";
+            info.FileName = ToolLocator.SevenZip() ?? throw new FileNotFoundException(ToolLocator.MissingToolMessage("7z"));
             return info;
         }
         internal async Task<bool> IsArchiveEncrypted(string archivePath)

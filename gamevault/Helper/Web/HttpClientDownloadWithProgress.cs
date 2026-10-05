@@ -1,8 +1,7 @@
-﻿using GameVault.Core;
+using GameVault.Core;
 using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.ViewModels;
-using LiveChartsCore.Kernel;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -51,8 +50,8 @@ namespace gamevault.Helper
             else
             {
                 //Edge case where the Library download overrrides the current download. But if its was a paused download, we also have to reset the metadata
-                if (File.Exists($"{DestinationFolderPath}\\gamevault-metadata"))
-                    File.Delete($"{DestinationFolderPath}\\gamevault-metadata");
+                if (File.Exists(Path.Combine(DestinationFolderPath, "gamevault-metadata")))
+                    File.Delete(Path.Combine(DestinationFolderPath, "gamevault-metadata"));
             }
 
             using (HttpResponseMessage response = await WebHelper.GetAsync(DownloadUrl, AdditionalHeader, HttpCompletionOption.ResponseHeadersRead))
@@ -60,7 +59,7 @@ namespace gamevault.Helper
         }
         private void InitResume()
         {
-            string resumeData = Preferences.Get(AppConfigKey.DownloadProgress, $"{DestinationFolderPath}\\gamevault-metadata");
+            string resumeData = Preferences.Get(AppConfigKey.DownloadProgress, Path.Combine(DestinationFolderPath, "gamevault-metadata"));
             if (!string.IsNullOrEmpty(resumeData))
             {
                 try
@@ -115,7 +114,7 @@ namespace gamevault.Helper
             byte[] buffer = new byte[8192];
             bool isMoreToRead = true;
             LastTime = DateTime.Now;
-            string fullFilePath = $"{DestinationFolderPath}\\{FileName}";
+            string fullFilePath = Path.Combine(DestinationFolderPath, FileName);
             using (var fileStream = new FileStream(fullFilePath, ResumePosition == -1 ? FileMode.Create : FileMode.Open, FileAccess.Write, FileShare.None, 8192, true))
             {
                 try
@@ -130,7 +129,7 @@ namespace gamevault.Helper
                         {
                             if (Paused)
                             {
-                                Preferences.Set(AppConfigKey.DownloadProgress, $"{fileStream.Position};{(PreResumeSize == -1 ? currentDownloadSize : PreResumeSize)}", $"{DestinationFolderPath}\\gamevault-metadata");
+                                Preferences.Set(AppConfigKey.DownloadProgress, $"{fileStream.Position};{(PreResumeSize == -1 ? currentDownloadSize : PreResumeSize)}", Path.Combine(DestinationFolderPath, "gamevault-metadata"));
                                 TriggerProgressChanged(currentDownloadSize, 0, fileStream.Position);
                                 fileStream.Close();
                                 return;
@@ -139,7 +138,7 @@ namespace gamevault.Helper
                             try
                             {
                                 await Task.Delay(1000);
-                                File.Delete($"{DestinationFolderPath}\\gamevault-metadata");
+                                File.Delete(Path.Combine(DestinationFolderPath, "gamevault-metadata"));
                                 File.Delete(fullFilePath);
                             }
                             catch (Exception ignored) { Log.Ignored(ignored); }
@@ -161,7 +160,7 @@ namespace gamevault.Helper
                         if ((DateTime.Now - LastTime).TotalMilliseconds > 2000)
                         {
                             //Save checkpoints all two seconds in case the app is closed by the user, or hardly crashed
-                            Preferences.Set(AppConfigKey.DownloadProgress, $"{fileStream.Position};{(PreResumeSize == -1 ? currentDownloadSize : PreResumeSize)}", $"{DestinationFolderPath}\\gamevault-metadata");
+                            Preferences.Set(AppConfigKey.DownloadProgress, $"{fileStream.Position};{(PreResumeSize == -1 ? currentDownloadSize : PreResumeSize)}", Path.Combine(DestinationFolderPath, "gamevault-metadata"));
                             TriggerProgressChanged(currentDownloadSize, currentBytesRead, fileStream.Position);
                             LastTime = DateTime.Now;
                         }
@@ -172,7 +171,7 @@ namespace gamevault.Helper
                 {
                     if (currentBytesRead > 0)
                     {
-                        Preferences.Set(AppConfigKey.DownloadProgress, $"{fileStream.Position};{(PreResumeSize == -1 ? currentDownloadSize : PreResumeSize)}", $"{DestinationFolderPath}\\gamevault-metadata");
+                        Preferences.Set(AppConfigKey.DownloadProgress, $"{fileStream.Position};{(PreResumeSize == -1 ? currentDownloadSize : PreResumeSize)}", Path.Combine(DestinationFolderPath, "gamevault-metadata"));
                     }
                     throw;
                 }
@@ -194,8 +193,8 @@ namespace gamevault.Helper
             {
                 try
                 {
-                    File.Delete($"{DestinationFolderPath}\\gamevault-metadata");
-                    File.Delete($"{DestinationFolderPath}\\{FileName}");
+                    File.Delete(Path.Combine(DestinationFolderPath, "gamevault-metadata"));
+                    File.Delete(Path.Combine(DestinationFolderPath, FileName));
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
                 return;

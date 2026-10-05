@@ -1,0 +1,129 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:uc="clr-namespace:gamevault.UserControls"
+        xmlns:conv="clr-namespace:gamevault.Converter"
+        x:Class="gamevault.Windows.MainWindow"
+        Title="GameVault" Icon="/Resources/Images/icon.ico"
+        Width="1280" Height="800" MinWidth="600" MinHeight="345"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized">
+    <Window.Resources>
+        <conv:PermissionRoleConverter x:Key="permissionRoleConv" />
+    </Window.Resources>
+    <Window.Styles>
+        <Style Selector="ListBox#uiNavigation">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem">
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem Path">
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource GameVault.Brushes.Button.MouseOver}" />
+        </Style>
+        <Style Selector="Border.shortcut Path">
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
+        </Style>
+    </Window.Styles>
+
+    <Panel>
+        <Grid ColumnDefinitions="48,*">
+            <!-- Navigation bar -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*,Auto" Background="{DynamicResource Brush.Background2}">
+                <Button Grid.Row="0" Classes="wrapper" Click="UserAvatar_Clicked" Width="48" Height="50" ToolTip.Tip="Your profile">
+                    <Grid>
+                        <uc:CacheImage ImageCacheType="UserAvatar" Stretch="Fill" Data="{Binding UserAvatar}" />
+                        <Border Background="{DynamicResource Brush.Background2}" CornerRadius="5,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                IsVisible="{Binding IsOffline}" ToolTip.Tip="Offline">
+                            <Path Data="{DynamicResource IconNoSignal}" Fill="IndianRed" />
+                        </Border>
+                    </Grid>
+                </Button>
+                <ListBox Grid.Row="1" x:Name="uiNavigation" SelectionMode="Single" SelectedIndex="{Binding ActiveControlIndex}" SelectionChanged="Navigation_SelectionChanged">
+                    <ListBoxItem ToolTip.Tip="Library">
+                        <Path Data="{StaticResource IconNavLibrary}" />
+                    </ListBoxItem>
+                    <ListBoxItem ToolTip.Tip="Downloads">
+                        <Path Data="{StaticResource IconNavDownloads}" />
+                    </ListBoxItem>
+                    <ListBoxItem ToolTip.Tip="Community">
+                        <Path Data="{StaticResource IconNavCommunity}" />
+                    </ListBoxItem>
+                    <ListBoxItem ToolTip.Tip="Settings">
+                        <Path Data="{StaticResource IconNavSettings}" />
+                    </ListBoxItem>
+                    <ListBoxItem ToolTip.Tip="Admin Console" IsVisible="{Binding UserAvatar, Converter={StaticResource permissionRoleConv}}">
+                        <Path Data="{StaticResource IconNavAdmin}" />
+                    </ListBoxItem>
+                </ListBox>
+                <StackPanel Grid.Row="3" HorizontalAlignment="Center" Spacing="10" Margin="0,0,0,10">
+                    <Border Classes="shortcut" Tag="https://phalco.de/support-us" PointerReleased="Shortlink_Click" ToolTip.Tip="Support the GameVault developers">
+                        <Path Data="{StaticResource IconNavDonate}" />
+                    </Border>
+                    <Border Classes="shortcut" Tag="https://discord.com/invite/NEdNen2dSu" PointerReleased="Shortlink_Click" ToolTip.Tip="Open Discord">
+                        <Path Data="{StaticResource IconNavDiscord}" />
+                    </Border>
+                    <Border Classes="shortcut" Tag="https://gamevau.lt/docs/intro" PointerReleased="Shortlink_Click" ToolTip.Tip="Open Documentation">
+                        <Path Data="{StaticResource IconNavDocs}" />
+                    </Border>
+                    <Border Classes="shortcut" x:Name="uiGithubShortcut" PointerReleased="Shortlink_Click" ToolTip.Tip="Open GitHub">
+                        <Path Data="{StaticResource IconNavGithub}" />
+                    </Border>
+                    <Border Classes="shortcut" x:Name="uiBugReportShortcut" PointerReleased="Shortlink_Click" ToolTip.Tip="Bug Report">
+                        <Path Data="{StaticResource IconNavBug}" />
+                    </Border>
+                    <Border Classes="shortcut" PointerReleased="News_Click" ToolTip.Tip="Open News">
+                        <uc:Badged x:Name="uiNewsBadge" BadgeBackground="Red">
+                            <Path Data="{StaticResource IconNavNews}" />
+                        </uc:Badged>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- Pages -->
+            <TransitioningContentControl Grid.Column="1" Content="{Binding ActiveControl}">
+                <TransitioningContentControl.PageTransition>
+                    <CrossFade Duration="0:0:0.15" />
+                </TransitioningContentControl.PageTransition>
+            </TransitioningContentControl>
+        </Grid>
+
+        <!-- Popups (game settings, user settings, news, ...) -->
+        <Panel x:Name="uiPopupLayer" ZIndex="1" Background="#7F000000"
+               IsVisible="{Binding Popup, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Viewbox>
+                <ContentControl Content="{Binding Popup}" />
+            </Viewbox>
+        </Panel>
+
+        <!-- App bar (bottom toast) -->
+        <Border IsVisible="{Binding IsAppBarOpen}" VerticalAlignment="Bottom" Height="80" ZIndex="2"
+                Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="0,2,0,0">
+            <Grid>
+                <TextBlock VerticalAlignment="Center" Text="{Binding AppBarText}" FontSize="25" Margin="10,0,45,0" TextTrimming="CharacterEllipsis" />
+                <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,10,0" ToolTip.Tip="Copy Message" Click="CopyMessage_Click">
+                    <Grid Classes="hover" Background="Transparent">
+                        <Path Data="{StaticResource IconCopy}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
+                    </Grid>
+                </Button>
+            </Grid>
+        </Border>
+
+        <Panel x:Name="DialogLayer" IsHitTestVisible="False" ZIndex="10" />
+    </Panel>
+</Window>
