@@ -11,6 +11,7 @@ namespace GameVault.Core
 
         public const string UpstreamOwner = "Phalcode";
 
+        public static string RepositoryUrl => $"https://github.com/{Owner}/{Name}";
         public static string ReleasesPage => $"https://github.com/{Owner}/{Name}/releases";
         // The list endpoint returns [] while the repository has no release yet (".../releases/latest" answers 404).
         public static string ReleasesApi => $"https://api.github.com/repos/{Owner}/{Name}/releases?per_page=10";

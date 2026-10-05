@@ -7,7 +7,10 @@
 		<ImplicitUsings>disable</ImplicitUsings>
 		<ApplicationIcon>Resources\Images\icon.ico</ApplicationIcon>
 		<StartupObject>gamevault.Program</StartupObject>
-		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+		<!-- Release builds pass -p:Version=<tag>; Velopack packages use the same version -->
+		<Version>1.17.5</Version>
+		<Product>GameVault</Product>
+		<Copyright>© Phalcode™. All Rights Reserved.</Copyright>
 		<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
 		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 		<!-- The code base predates nullable annotations; keep the build output readable. -->
@@ -31,6 +34,7 @@
 		<PackageReference Include="Avalonia.Diagnostics" Version="11.3.22" Condition="'$(Configuration)' == 'Debug'" />
 		<PackageReference Include="Markdown.Avalonia.Tight" Version="11.0.3" />
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
+		<PackageReference Include="Velopack" Version="1.2.161" />
 		<PackageReference Include="DesktopNotifications.FreeDesktop" Version="1.3.1" />
 		<PackageReference Include="DesktopNotifications.Windows" Version="1.3.1" />
 		<PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />

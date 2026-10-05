@@ -22,6 +22,9 @@ namespace gamevault
         [STAThread]
         public static void Main(string[] args)
         {
+            // Must run first: handles the install/update/uninstall hooks of the Velopack installer and exits for them
+            Velopack.VelopackApp.Build().Run();
+
             CommandOptions cmdLineOptions;
             if (args.Length > 0 && args.Any(s => s.Contains("gamevault://")) && !args[0].Contains("--uridata"))
             {

@@ -544,7 +544,13 @@ namespace gamevault.Windows
             try
             {
                 ViewModel.StatusText = "Searching for Updates...";
-                ReleaseInfo? release = await UpdateChecker.GetNewerReleaseAsync(SettingsViewModel.Instance.Version, OperatingSystem.IsWindows() ? "win" : "linux");
+                if (AppUpdater.IsInstalled)
+                {
+                    await CheckForInstalledUpdates();
+                    return;
+                }
+                // Portable build: point to the portable download of the new release
+                ReleaseInfo? release = await UpdateChecker.GetNewerReleaseAsync(SettingsViewModel.Instance.Version, OperatingSystem.IsWindows() ? "Portable.zip" : ".AppImage");
                 if (release != null)
                 {
                     var result = await this.ShowMessageAsync("Update available",
@@ -558,6 +564,33 @@ namespace gamevault.Windows
                 }
             }
             catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>
+        /// Installed with Setup.exe / AppImage: the update is downloaded and installed by GameVault itself.
+        /// </summary>
+        private async Task CheckForInstalledUpdates()
+        {
+            var update = await AppUpdater.CheckAsync();
+            if (update == null)
+                return;
+            string newVersion = update.TargetFullRelease.Version.ToString();
+            var result = await this.ShowMessageAsync("Update available",
+                $"GameVault {newVersion} is available (installed: {AppUpdater.CurrentVersion}).\nInstall it now? GameVault restarts after the download.",
+                MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Update", NegativeButtonText = "Later" });
+            if (result != MessageDialogResult.Affirmative)
+                return;
+            try
+            {
+                ViewModel.StatusText = $"Downloading GameVault {newVersion}...";
+                await AppUpdater.DownloadAndRestartAsync(update, percent =>
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => ViewModel.StatusText = $"Downloading GameVault {newVersion}... {percent}%"));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Update failed");
+                await this.ShowMessageAsync("Update failed", ex.Message);
+            }
         }
 
         private async Task<bool> CheckIfServerIsOutdated(string serverUrl)

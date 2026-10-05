@@ -1,11 +1,18 @@
 name: Release
+# Push a tag like 1.18.0 to publish:
+#  - Windows: GameVault-win-Setup.exe (installer + automatic updates) and GameVault-win-Portable.zip
+#  - Linux: GameVault.AppImage (automatic updates) and GameVault-linux-x64.tar.gz
+# Installed builds update themselves from the Velopack packages (*.nupkg, releases.*.json) of the latest release.
 on:
   push:
     tags:
-      - '[0-9]+.[0-9]+.[0-9]+*'
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
+
+env:
+  VPK_VERSION: 1.2.161
 
 jobs:
   linux:
@@ -18,19 +25,29 @@ jobs:
         with:
           dotnet-version: '8.x'
       - name: Publish
-        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime linux-x64 --self-contained true --output publish/GameVault
+        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime linux-x64 --self-contained true -p:Version=${{ github.ref_name }} --output publish/GameVault
       - name: Bundle Ludusavi (cloud saves)
         run: |
           gh release download --repo mtkennerly/ludusavi --pattern '*-linux.tar.gz' --output ludusavi.tar.gz
           mkdir -p publish/GameVault/Lib/savegame
           tar -xzf ludusavi.tar.gz -C publish/GameVault/Lib/savegame
           chmod +x publish/GameVault/gamevault publish/GameVault/Lib/savegame/ludusavi
-      - name: Package
+      - name: Portable archive
         run: tar -czf GameVault-linux-x64.tar.gz -C publish GameVault
+      - name: AppImage (Velopack)
+        run: |
+          dotnet tool install -g vpk --version $VPK_VERSION
+          # The previous release lets vpk create a small delta update
+          vpk download github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ github.token }} --channel linux -o releases || true
+          vpk pack -u GameVault -v ${{ github.ref_name }} -p publish/GameVault -e gamevault --channel linux \
+            --packTitle GameVault -i gamevault/Resources/Images/icon.png -o releases
+          mkdir upload
+          cp releases/*${{ github.ref_name }}*.nupkg releases/*.json releases/RELEASES* releases/GameVault.AppImage upload/
+          cp GameVault-linux-x64.tar.gz upload/
       - uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: GameVault-linux-x64.tar.gz
+          path: upload/*
 
   windows:
     runs-on: windows-latest
@@ -42,19 +59,26 @@ jobs:
         with:
           dotnet-version: '8.x'
       - name: Publish
-        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime win-x64 --self-contained true --output publish/GameVault
+        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime win-x64 --self-contained true -p:Version=${{ github.ref_name }} --output publish/GameVault
       - name: Bundle Ludusavi (cloud saves)
         shell: bash
         run: |
           gh release download --repo mtkennerly/ludusavi --pattern '*-win64.zip' --output ludusavi.zip
           mkdir -p publish/GameVault/Lib/savegame
           7z x ludusavi.zip -opublish/GameVault/Lib/savegame
-      - name: Package
-        run: 7z a GameVault-win-x64.zip ./publish/GameVault/*
+      - name: Setup.exe (Velopack)
+        shell: bash
+        run: |
+          dotnet tool install -g vpk --version $VPK_VERSION
+          vpk download github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ github.token }} --channel win -o releases || true
+          vpk pack -u GameVault -v ${{ github.ref_name }} -p publish/GameVault -e gamevault.exe --channel win --runtime win-x64 \
+            --packTitle GameVault --packAuthors "Phalcode (fork: ${{ github.repository_owner }})" -i gamevault/Resources/Images/icon.ico -o releases
+          mkdir upload
+          cp releases/*${{ github.ref_name }}*.nupkg releases/*.json releases/RELEASES* releases/GameVault-win-Setup.exe releases/GameVault-win-Portable.zip upload/
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: GameVault-win-x64.zip
+          path: upload/*
 
   release:
     needs: [linux, windows]
@@ -62,11 +86,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          path: dist
           merge-multiple: true
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            GameVault-linux-x64.tar.gz
-            GameVault-win-x64.zip
+          files: dist/*
           generate_release_notes: true
