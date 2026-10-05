@@ -280,6 +280,12 @@ namespace gamevault.UserControls
             }
             await MainWindowViewModel.Instance.Downloads.TryStartDownload(ViewModel.Game);
         }
+        private void Collections_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game == null || sender is not Control anchor)
+                return;
+            CollectionsFlyout.ShowForGame(anchor, ViewModel.Game.ID, ViewModel.Game.Title);
+        }
         private void Website_Navigate(object? sender, RoutedEventArgs e)
         {
             try

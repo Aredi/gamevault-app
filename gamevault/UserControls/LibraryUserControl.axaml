@@ -102,9 +102,30 @@
                                         <TextBlock Text="Early Access" FontSize="15" />
                                         <ToggleButton x:Name="uiFilterEarlyAccess" Classes="icon earlyAccess" Width="30" Height="30" Margin="3,3,0,0" HorizontalAlignment="Left" />
                                     </StackPanel>
-                                    <StackPanel>
+                                    <StackPanel Margin="0,0,40,0">
                                         <TextBlock Text="Bookmarks" FontSize="15" />
                                         <ToggleButton x:Name="uiFilterBookmarks" Classes="icon bookmark" Width="30" Height="30" Margin="0,3,0,0" HorizontalAlignment="Left" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Text="Played" FontSize="15" />
+                                        <ComboBox x:Name="uiFilterPlayStatus" Width="150" Margin="0,3,0,0" ItemsSource="{Binding PlayStatusValues}" SelectedItem="{Binding SelectedPlayStatus}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Key}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Collection" FontSize="15" />
+                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,3,0,0">
+                                            <ComboBox x:Name="uiFilterCollection" Width="170" ItemsSource="{Binding CollectionNames}" SelectedItem="{Binding SelectedCollection}" />
+                                            <Button Classes="wrapper" Width="30" Height="30" ToolTip.Tip="Manage collections" Click="ManageCollections_Click">
+                                                <Grid Classes="hover" Background="Transparent">
+                                                    <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Grid>
+                                            </Button>
+                                        </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">

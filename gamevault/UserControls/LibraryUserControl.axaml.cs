@@ -13,6 +13,7 @@ using GameVault.Core;
 using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
+using GameVault.Core.Library;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -67,6 +68,15 @@ namespace gamevault.UserControls
             uiBtnReloadLibrary.Click += ReloadLibrary_Click;
             uiFilterEarlyAccess.Click += FilterUpdated;
             uiFilterBookmarks.Click += FilterUpdated;
+            uiFilterPlayStatus.SelectedIndex = 0;
+            ReloadCollectionNames();
+            uiFilterPlayStatus.SelectionChanged += FilterUpdated;
+            uiFilterCollection.SelectionChanged += (s, e) =>
+            {
+                if (!reloadingCollections)
+                    FilterUpdated(s, e);
+            };
+            LibraryData.CollectionsChanged += (_, _) => Dispatcher.UIThread.Post(ReloadCollectionNames);
             PropertyChanged += (_, e) =>
             {
                 if (e.Property == IsVisibleProperty && IsVisible)
@@ -125,12 +135,48 @@ namespace gamevault.UserControls
             string gameSortByFilter = ViewModel.SelectedGameFilterSortBy.Value;
             string gameOrderByFilter = (bool)uiFilterOrderBy.IsChecked ? "DESC" : "ASC";
             ViewModel.GameCards.Clear();
-            string filterUrl = @$"{SettingsViewModel.Instance.ServerUrl}/api/games?search={inputTimer.Data}&sortBy={gameSortByFilter}:{gameOrderByFilter}&limit=50";
-            filterUrl = ApplyFilter(filterUrl);
+
+            // Collections, played / never played and sorting by play data are resolved here,
+            // then sent to the server as a list of game ids.
+            bool sortByPlay = gameSortByFilter is LibraryViewModel.LastPlayedSort or LibraryViewModel.MyPlaytimeSort;
+            PlayStatusFilter playStatus = ViewModel.SelectedPlayStatus.Value;
+            List<PlayRecord> playRecords = new();
+            if (sortByPlay || playStatus != PlayStatusFilter.All)
+            {
+                try { playRecords = await LibraryData.GetMyPlayRecordsAsync(); }
+                catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+            }
+            List<int>? collectionIds = null;
+            if (!string.IsNullOrEmpty(ViewModel.SelectedCollection) && ViewModel.SelectedCollection != LibraryViewModel.AllCollections)
+                collectionIds = LibraryData.Collections.Load().FirstOrDefault(c => c.Name == ViewModel.SelectedCollection)?.GameIds ?? new List<int>();
+            var playedIds = playRecords.Select(r => r.GameId).ToList();
+            List<int>? playOrder = null;
+            string idFilter;
+            if (sortByPlay)
+            {
+                // Only games with play data can be sorted by it
+                playOrder = LibraryQuery.OrderByPlay(playRecords, gameSortByFilter == LibraryViewModel.MyPlaytimeSort, ascending: gameOrderByFilter == "ASC");
+                idFilter = LibraryQuery.IdFilter(collectionIds, playStatus == PlayStatusFilter.NeverPlayed ? PlayStatusFilter.NeverPlayed : PlayStatusFilter.Played, playedIds);
+                if (playStatus == PlayStatusFilter.NeverPlayed)
+                    idFilter = "&filter.id=$eq:-1";
+            }
+            else
+            {
+                idFilter = LibraryQuery.IdFilter(collectionIds, playStatus, playedIds);
+            }
+            string serverSort = sortByPlay ? "sort_title:ASC" : $"{gameSortByFilter}:{gameOrderByFilter}";
+            string filterUrl = @$"{SettingsViewModel.Instance.ServerUrl}/api/games?search={inputTimer.Data}&sortBy={serverSort}&limit={(sortByPlay ? -1 : 50)}";
+            filterUrl = ApplyFilter(filterUrl) + idFilter;
 
             PaginatedData<Game>? gameResult = await GetGamesData(filterUrl);
             if (currentSearchToken != searchCancellationToken)
                 return;
+            if (gameResult?.Data != null && playOrder != null)
+            {
+                var position = playOrder.Select((id, index) => (id, index)).ToDictionary(p => p.id, p => p.index);
+                gameResult.Data = gameResult.Data.OrderBy(g => position.TryGetValue(g.ID, out int index) ? index : int.MaxValue).ToArray();
+                gameResult.Links.Next = null;
+            }
 
             if (gameResult != null)
             {
@@ -248,6 +294,8 @@ namespace gamevault.UserControls
             uiFilterDeveloperSelector.ClearEntries();
             uiFilterBookmarks.IsChecked = false;
             uiFilterEarlyAccess.IsChecked = false;
+            uiFilterPlayStatus.SelectedIndex = 0;
+            uiFilterCollection.SelectedIndex = 0;
 
             RefreshFilterCounter();
         }
@@ -452,6 +500,24 @@ namespace gamevault.UserControls
             e.Handled = true;
             await MainWindowViewModel.Instance.Downloads.TryStartDownload((Game)(((Control)sender).DataContext));
         }
+        private bool reloadingCollections;
+        private void ReloadCollectionNames()
+        {
+            if (!LoginManager.Instance.IsLoggedIn() && LoginManager.Instance.GetUserProfile() == null)
+                return;
+            reloadingCollections = true;
+            string? selected = ViewModel.SelectedCollection;
+            var names = new List<string> { LibraryViewModel.AllCollections };
+            try { names.AddRange(LibraryData.Collections.Load().Select(c => c.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            ViewModel.CollectionNames = names;
+            ViewModel.SelectedCollection = names.Contains(selected ?? "") ? selected : LibraryViewModel.AllCollections;
+            reloadingCollections = false;
+        }
+        private void ManageCollections_Click(object sender, RoutedEventArgs e)
+        {
+            CollectionsFlyout.ShowManager((Control)sender);
+        }
         private void RefreshFilterCounter()
         {
             int filterCount = 0;
@@ -463,6 +529,8 @@ namespace gamevault.UserControls
             filterCount += uiFilterGameStateSelector.HasEntries() ? 1 : 0;
             filterCount += (bool)uiFilterEarlyAccess.IsChecked ? 1 : 0;
             filterCount += (bool)uiFilterBookmarks.IsChecked ? 1 : 0;
+            filterCount += uiFilterPlayStatus.SelectedIndex > 0 ? 1 : 0;
+            filterCount += uiFilterCollection.SelectedIndex > 0 ? 1 : 0;
 
             filterCount += (uiFilterReleaseDateRangeSelector.IsValid()) ? 1 : 0;
             ViewModel.FilterCounter = filterCount == 0 ? string.Empty : filterCount.ToString();

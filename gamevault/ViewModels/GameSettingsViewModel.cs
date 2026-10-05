@@ -87,6 +87,38 @@ namespace gamevault.ViewModels
             get => (int)selectedWinePrefixMode;
             set => SelectedWinePrefixMode = (WinePrefixMode)Math.Max(0, value);
         }
+        private int umuModeIndex;
+        /// <summary>0 = automatic (umu database), 1 = custom umu id, 2 = no fixes.</summary>
+        public int UmuModeIndex
+        {
+            get => umuModeIndex;
+            set { umuModeIndex = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsCustomUmuId)); }
+        }
+        public bool IsCustomUmuId => umuModeIndex == 1;
+        private string customUmuId = "";
+        public string CustomUmuId
+        {
+            get => customUmuId;
+            set { customUmuId = value; OnPropertyChanged(); }
+        }
+        private string umuStatus = "";
+        public string UmuStatus
+        {
+            get => umuStatus;
+            set { umuStatus = value; OnPropertyChanged(); }
+        }
+        private string winetricksVerbs = "";
+        public string WinetricksVerbs
+        {
+            get => winetricksVerbs;
+            set { winetricksVerbs = value; OnPropertyChanged(); }
+        }
+        private string winetricksStatus = "";
+        public string WinetricksStatus
+        {
+            get => winetricksStatus;
+            set { winetricksStatus = value; OnPropertyChanged(); }
+        }
         private string gamePrefixPath = "";
         public string GamePrefixPath
         {

@@ -499,7 +499,91 @@ namespace gamevault.UserControls
             ViewModel.SelectedGameCompatibilityTool = tools.First(t => t.Id == gameCompatibility.ToolId);
             ViewModel.SelectedWinePrefixMode = gameCompatibility.PrefixMode;
             ViewModel.GamePrefixPath = gameCompatibility.PrefixPath;
+            string umuSetting = gameCompatibility.UmuIdSetting;
+            ViewModel.UmuModeIndex = umuSetting == GameCompatibility.NoFixes ? 2 : umuSetting == "" ? 0 : 1;
+            ViewModel.CustomUmuId = ViewModel.UmuModeIndex == 1 ? umuSetting : "";
+            ViewModel.WinetricksVerbs = string.Join(' ', gameCompatibility.WinetricksVerbs);
+            RefreshFixesStatus();
             loadingCompatibility = false;
+        }
+        private void RefreshFixesStatus()
+        {
+            if (gameCompatibility == null)
+                return;
+            string detected = gameCompatibility.DetectedUmuId;
+            ViewModel.UmuStatus = ViewModel.UmuModeIndex switch
+            {
+                2 => "No fixes are applied (umu-default).",
+                1 => $"The game starts as {gameCompatibility.EffectiveUmuId}.",
+                _ => detected == "" ? "The game is looked up in the umu database when it starts."
+                   : detected == "-" ? "The umu database does not know this title: no specific fixes (umu-default). A custom id can be set."
+                   : $"Found in the umu database: {detected}. Its fixes are applied with Proton.",
+            };
+            string[] verbs = gameCompatibility.WinetricksVerbs;
+            string[] pending = gameCompatibility.PendingWinetricks;
+            ViewModel.WinetricksStatus = verbs.Length == 0 ? ""
+                : pending.Length == 0 ? "All components are installed in the current prefix."
+                : $"Installed at the next start: {string.Join(", ", pending)}";
+        }
+        private void UmuMode_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (loadingCompatibility || gameCompatibility == null)
+                return;
+            gameCompatibility.SetUmuId(ViewModel.UmuModeIndex switch { 2 => GameCompatibility.NoFixes, 1 => ViewModel.CustomUmuId, _ => "" });
+            RefreshFixesStatus();
+        }
+        private void CustomUmuId_LostFocus(object? sender, RoutedEventArgs e)
+        {
+            if (gameCompatibility == null || ViewModel.UmuModeIndex != 1)
+                return;
+            if (!string.IsNullOrWhiteSpace(ViewModel.CustomUmuId) && !GameVault.Core.Compatibility.UmuDatabase.IsValidId(ViewModel.CustomUmuId.Trim()))
+            {
+                ViewModel.UmuStatus = "An umu id looks like umu-271590 (see the umu database).";
+                return;
+            }
+            gameCompatibility.SetUmuId(ViewModel.CustomUmuId);
+            RefreshFixesStatus();
+        }
+        private async void UmuLookup_Click(object sender, RoutedEventArgs e)
+        {
+            if (gameCompatibility == null)
+                return;
+            ViewModel.UmuStatus = "Looking up...";
+            string title = ViewModel.Game?.Metadata?.Title ?? ViewModel.Game?.Title ?? "";
+            await GameFixes.LookUpAsync(gameCompatibility, title);
+            RefreshFixesStatus();
+        }
+        private void WinetricksVerbs_LostFocus(object? sender, RoutedEventArgs e)
+        {
+            if (gameCompatibility == null)
+                return;
+            gameCompatibility.SetWinetricksVerbs(ViewModel.WinetricksVerbs);
+            ViewModel.WinetricksVerbs = string.Join(' ', gameCompatibility.WinetricksVerbs);
+            RefreshFixesStatus();
+        }
+        private async void WinetricksInstall_Click(object sender, RoutedEventArgs e)
+        {
+            if (gameCompatibility == null)
+                return;
+            gameCompatibility.SetWinetricksVerbs(ViewModel.WinetricksVerbs);
+            string[] pending = gameCompatibility.PendingWinetricks;
+            if (pending.Length == 0)
+            {
+                RefreshFixesStatus();
+                return;
+            }
+            ((Control)sender).IsEnabled = false;
+            ViewModel.WinetricksStatus = $"Installing {string.Join(", ", pending)}... (this can take a few minutes)";
+            try
+            {
+                await GameFixes.RunWinetricksAsync(gameCompatibility, pending);
+                RefreshFixesStatus();
+            }
+            catch (Exception ex)
+            {
+                ViewModel.WinetricksStatus = ex.Message;
+            }
+            ((Control)sender).IsEnabled = true;
         }
         private void GameCompatibilityTool_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {

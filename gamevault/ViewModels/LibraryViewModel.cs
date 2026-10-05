@@ -1,3 +1,4 @@
+using GameVault.Core.Library;
 using gamevault.Models;
 using System;
 using System.Collections.Generic;
@@ -60,10 +61,44 @@ namespace gamevault.ViewModels
                     {"Rating","metadata.rating" },
                     {"Download Count","download_count" },
                     {"Average Playtime","metadata.average_playtime" },
+                    // Sorted by GameVault from the user's own play records, not by the server
+                    {"Last Played", LastPlayedSort },
+                    {"My Playtime", MyPlaytimeSort },
                 };
                 return dict;
             }
         }
+        public const string LastPlayedSort = "gv:last_played";
+        public const string MyPlaytimeSort = "gv:my_playtime";
+
+        public Dictionary<string, PlayStatusFilter> PlayStatusValues { get; } = new()
+        {
+            { "All games", PlayStatusFilter.All },
+            { "Played", PlayStatusFilter.Played },
+            { "Never played", PlayStatusFilter.NeverPlayed },
+        };
+        private KeyValuePair<string, PlayStatusFilter> selectedPlayStatus;
+        public KeyValuePair<string, PlayStatusFilter> SelectedPlayStatus
+        {
+            get => selectedPlayStatus;
+            set { selectedPlayStatus = value; OnPropertyChanged(); }
+        }
+
+        public const string AllCollections = "All games";
+        private List<string> collectionNames = new() { AllCollections };
+        /// <summary>"All games" followed by the profile's collections.</summary>
+        public List<string> CollectionNames
+        {
+            get => collectionNames;
+            set { collectionNames = value; OnPropertyChanged(); }
+        }
+        private string? selectedCollection = AllCollections;
+        public string? SelectedCollection
+        {
+            get => selectedCollection;
+            set { selectedCollection = value; OnPropertyChanged(); }
+        }
+
         public KeyValuePair<string, string> SelectedGameFilterSortBy
         {
             get { return m_SelectedGameFilterSortBy; }

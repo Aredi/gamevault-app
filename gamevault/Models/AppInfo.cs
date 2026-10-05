@@ -69,7 +69,19 @@ namespace gamevault.Models
         LinuxCompatibilityTool,
         //Per game (gamevault-exec)
         GameCompatibilityTool,
-        GameWinePrefixMode
+        GameWinePrefixMode,
+        GameUmuId,//"" = look up automatically, "none" = no fixes, else the umu id to use
+        GameUmuIdDetected,//cached lookup result, "-" when the umu database does not know the game
+        GameWinetricks,
+        GameWinetricksApplied,
+        //New game notifications
+        NotifyNewGames,
+        LastSeenGameId,
+        //Download queue
+        MaxConcurrentDownloads,
+        DownloadScheduleEnabled,
+        DownloadScheduleStart,
+        DownloadScheduleEnd
     }
     public static class Globals
     {

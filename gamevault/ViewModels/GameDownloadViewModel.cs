@@ -99,6 +99,13 @@ namespace gamevault.ViewModels
             get { return totalDataSize; }
             set { totalDataSize = value; OnPropertyChanged(); }
         }
+        private bool isQueued;
+        /// <summary>Waiting in the download queue (limit of simultaneous downloads or download schedule).</summary>
+        public bool IsQueued
+        {
+            get => isQueued;
+            set { isQueued = value; OnPropertyChanged(); }
+        }
         public bool IsDownloadPaused
         {
             get { return m_IsDownloadPaused; }

@@ -175,7 +175,8 @@ namespace gamevault.Helper
                         {
                             // umu-run runs Proton inside the Steam Linux Runtime, like Steam does
                             info.FileName = umu;
-                            info.Environment["GAMEID"] = "umu-default";
+                            // umu applies the protonfixes known for this id
+                            info.Environment["GAMEID"] = compatibility.EffectiveUmuId;
                             if (tool.Kind == CompatibilityToolKind.Proton)
                                 info.Environment["PROTONPATH"] = tool.Path!;
                         }
@@ -189,6 +190,8 @@ namespace gamevault.Helper
                             info.FileName = Path.Combine(tool.Path!, "proton");
                             info.ArgumentList.Add("waitforexitandrun");
                             info.Environment["STEAM_COMPAT_DATA_PATH"] = prefix;
+                            // GE-Proton runs the protonfixes of UMU_ID by itself
+                            info.Environment["UMU_ID"] = compatibility.EffectiveUmuId;
                             string steam = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam", "root");
                             info.Environment["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = Directory.Exists(steam) ? steam : prefix;
                         }

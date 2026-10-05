@@ -159,3 +159,26 @@ namespace GameVault.Core.Tests
         }
     }
 }
+
+namespace GameVault.Core.Tests
+{
+    public class UmuDatabaseTests
+    {
+        [Fact]
+        public void TitleCandidates_DropMarksSubtitlesAndEditions()
+        {
+            Assert.Equal(new[] { "The Witcher® 3: Wild Hunt - Game of the Year Edition", "The Witcher 3: Wild Hunt - Game of the Year Edition", "The Witcher 3: Wild Hunt", "The Witcher 3" },
+                Compatibility.UmuDatabase.TitleCandidates("The Witcher® 3: Wild Hunt - Game of the Year Edition"));
+            Assert.Equal(new[] { "Celeste" }, Compatibility.UmuDatabase.TitleCandidates("  Celeste "));
+        }
+
+        [Fact]
+        public void ParseId_ReadsTheFirstId()
+        {
+            Assert.Equal("umu-271590", Compatibility.UmuDatabase.ParseId("""[{"umu_id":"umu-271590"},{"umu_id":"umu-271590"}]"""));
+            Assert.Null(Compatibility.UmuDatabase.ParseId("[]"));
+            Assert.True(Compatibility.UmuDatabase.IsValidId("umu-dauntless"));
+            Assert.False(Compatibility.UmuDatabase.IsValidId("rm -rf"));
+        }
+    }
+}

@@ -430,6 +430,12 @@ namespace gamevault.UserControls
             }
             if (File.Exists(savedExecutable))
             {
+                if (OperatingSystem.IsLinux() && ProcessHelper.IsWindowsProgram(savedExecutable))
+                {
+                    // protonfixes lookup and winetricks components of this game
+                    try { await GameFixes.PrepareAsync(path, result.Key?.Metadata?.Title ?? result.Key?.Title, status => MainWindowViewModel.Instance.AppBarText = status); }
+                    catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+                }
                 try
                 {
                     ProcessHelper.StartApp(savedExecutable, parameter, installationDirectory: path);

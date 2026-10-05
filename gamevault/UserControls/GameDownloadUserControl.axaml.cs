@@ -61,7 +61,7 @@ namespace gamevault.UserControls
             InitRetryTimer();
             if (download)
             {
-                _ = DownloadGame();
+                DownloadQueue.Enqueue(this);
             }
             else
             {
@@ -130,6 +130,7 @@ namespace gamevault.UserControls
 
             return false;
         }
+        public bool IsPaused() => ViewModel.IsDownloadPaused;
         public bool IsDownloading()
         {
             return IsDownloadActive;
@@ -154,8 +155,63 @@ namespace gamevault.UserControls
         {
             return ViewModel.GameDownloadProgress;
         }
+        #region Download queue
+        /// <summary>Started with "Start now" or resumed by the user: not limited by the queue and the schedule.</summary>
+        public bool BypassesQueue { get; private set; }
+        private bool pausedBySchedule;
+
+        public void SetQueuedState(string state)
+        {
+            ViewModel.IsQueued = true;
+            ViewModel.State = state;
+        }
+
+        public void StartFromQueue()
+        {
+            ViewModel.IsQueued = false;
+            if (ViewModel.IsDownloadPaused || pausedBySchedule)
+            {
+                pausedBySchedule = false;
+                ViewModel.IsDownloadResumed = false;
+                ViewModel.IsDownloadPaused = false;
+                _ = DownloadGame(true);
+            }
+            else
+            {
+                // A partial download (e.g. after a failed attempt) is continued
+                _ = DownloadGame(File.Exists(Path.Combine(m_DownloadPath, "gamevault-metadata")));
+            }
+        }
+
+        public void PauseForSchedule()
+        {
+            if (!IsDownloadActive)
+                return;
+            PauseDownload();
+            pausedBySchedule = true;
+        }
+
+        private void StartQueuedNow_Click(object sender, RoutedEventArgs e)
+        {
+            DownloadQueue.Remove(this);
+            BypassesQueue = true;
+            StartFromQueue();
+        }
+
+        private void RemoveFromQueue_Click(object sender, RoutedEventArgs e)
+        {
+            CancelDownload();
+        }
+        #endregion
+
         public void CancelDownload()
         {
+            if (DownloadQueue.IsWaiting(this))
+            {
+                DownloadQueue.Remove(this);
+                ViewModel.IsQueued = false;
+                pausedBySchedule = false;
+            }
             if (client == null)
             {
                 try
@@ -175,7 +231,7 @@ namespace gamevault.UserControls
             ViewModel.State = "Download Cancelled";
             ViewModel.DownloadUIVisibility = false;
             ViewModel.DownloadFailedVisibility = true;
-
+            DownloadQueue.Advance();
         }
         private async Task DownloadGame(bool tryResume = false)
         {
@@ -212,7 +268,8 @@ namespace gamevault.UserControls
                         ToastMessageHelper.CreateToastMessage("Download Failed", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata.Cover?.ID}"));
                 }
                 StartRetryTimer();
-                }
+                DownloadQueue.Advance();
+            }
         }
         private void StartRetryTimer()
         {
@@ -244,12 +301,19 @@ namespace gamevault.UserControls
 
             ViewModel.DownloadInfo = string.Empty;
             ViewModel.GameDownloadProgress = 0;
-            _ = DownloadGame(true);
+            ViewModel.DownloadFailedVisibility = false;
+            // Through the queue, so a retry does not exceed the limits
+            DownloadQueue.Enqueue(this, atFront: true);
         }
         private void PauseResume_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel.IsDownloadPaused)
             {
+                // Resumed by the user: runs now, even outside of the schedule
+                DownloadQueue.Remove(this);
+                BypassesQueue = true;
+                ViewModel.IsQueued = false;
+                pausedBySchedule = false;
                 ViewModel.IsDownloadResumed = false;
                 ViewModel.IsDownloadPaused = false;
                 _ = DownloadGame(true);
@@ -263,6 +327,7 @@ namespace gamevault.UserControls
                 client.Pause();
                 IsDownloadActive = false;
                 ViewModel.State = "Download Paused";
+                DownloadQueue.Advance();
             }
         }
         public void PauseDownload()
@@ -319,7 +384,9 @@ namespace gamevault.UserControls
             UpdateDataSizeUI();
             ViewModel.DownloadUIVisibility = false;
             IsDownloadActive = false;
+            BypassesQueue = false;
             ViewModel.State = "Downloaded";
+            DownloadQueue.Advance();
             uiBtnExtract.IsEnabled = true;
             ViewModel.InstallationStepperProgress = 0;
             try
@@ -834,6 +901,12 @@ namespace gamevault.UserControls
                 setupEexecutable = ((KeyValuePair<string, string>)uiCbSetupExecutable.SelectedItem!).Value;
                 if (File.Exists(setupEexecutable))
                 {
+                    if (OperatingSystem.IsLinux())
+                    {
+                        Directory.CreateDirectory(ViewModel.InstallPath);
+                        try { await GameFixes.PrepareAsync(ViewModel.InstallPath, ViewModel.Game?.Metadata?.Title ?? ViewModel.Game?.Title, status => MainWindowViewModel.Instance.AppBarText = status); }
+                        catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+                    }
                     Process setupProcess = null;
                     try
                     {

@@ -612,6 +612,81 @@ namespace gamevault.UserControls
             if (!string.IsNullOrEmpty(folder))
                 ViewModel.WinePrefix = folder;
         }
+        #region Storage cleanup
+        private async void AnalyzeStorage_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.IsStorageCleanupRunning = true;
+            ViewModel.StorageCleanupSummary = "Analyzing...";
+            try
+            {
+                var installed = InstallViewModel.Instance.InstalledGames.ToList();
+                var installedIds = installed.Select(g => g.Key.ID).ToHashSet();
+                var activeDownloads = DownloadsViewModel.Instance.DownloadedGames
+                    .Where(d => d.IsDownloading() || DownloadQueue.IsWaiting(d) || d.IsPaused())
+                    .Select(d => d.GetGameId()).ToHashSet();
+                var usedTools = new HashSet<string>();
+                if (OperatingSystem.IsLinux())
+                {
+                    foreach (string id in installed.Select(g => GameCompatibility.ForInstallation(g.Value).ToolId).Append(CompatibilitySettings.DefaultToolId))
+                    {
+                        if (CompatibilityToolId.IsProton(id, out string dir) || CompatibilityToolId.IsWineBuild(id, out dir))
+                            usedTools.Add(dir);
+                    }
+                }
+                var inputs = new GameVault.Core.Storage.CleanupInputs
+                {
+                    RootDirectories = ViewModel.RootDirectories.Select(r => r.Uri).ToList(),
+                    InstalledGameIds = installedIds,
+                    ActiveDownloadIds = activeDownloads,
+                    PrefixesDirectory = OperatingSystem.IsLinux() ? CompatibilityManager.PrefixesDirectory : null,
+                    ManagedToolsDirectory = OperatingSystem.IsLinux() ? CompatibilityManager.ManagedToolsDirectory : null,
+                    UsedToolDirectories = usedTools,
+                };
+                var candidates = await Task.Run(() => GameVault.Core.Storage.StorageCleanup.Scan(inputs));
+                ViewModel.StorageCleanupItems.Clear();
+                foreach (var candidate in candidates)
+                    ViewModel.StorageCleanupItems.Add(new StorageCleanupItem(candidate, ViewModel.RefreshStorageCleanupSummary));
+                ViewModel.RefreshStorageCleanupSummary();
+            }
+            catch (Exception ex)
+            {
+                ViewModel.StorageCleanupSummary = $"Analysis failed: {ex.Message}";
+            }
+            ViewModel.IsStorageCleanupRunning = false;
+        }
+
+        private async void CleanStorage_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = ViewModel.StorageCleanupItems.Where(i => i.IsSelected).ToList();
+            if (selected.Count == 0)
+                return;
+            long total = selected.Sum(i => i.Candidate.Size);
+            if (!await DialogService.ConfirmAsync($"Delete {selected.Count} item(s) and free {GameVault.Core.Storage.StorageCleanup.FormatSize(total)}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", "Free up disk space"))
+                return;
+            ViewModel.IsStorageCleanupRunning = true;
+            var failed = new List<string>();
+            await Task.Run(() =>
+            {
+                foreach (var item in selected)
+                {
+                    try { Directory.Delete(item.Candidate.Path, true); }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, $"Could not delete {item.Candidate.Path}");
+                        failed.Add(item.Candidate.Title);
+                    }
+                }
+            });
+            await MainWindowViewModel.Instance.Downloads.RestoreDownloadedGames();
+            if (OperatingSystem.IsLinux())
+                ViewModel.RefreshCompatibilityTools();
+            MainWindowViewModel.Instance.AppBarText = failed.Count == 0
+                ? $"Freed {GameVault.Core.Storage.StorageCleanup.FormatSize(total)}"
+                : $"Could not delete: {string.Join(", ", failed)}";
+            ViewModel.IsStorageCleanupRunning = false;
+            AnalyzeStorage_Click(sender, e);
+        }
+        #endregion
         #region Compatibility tools (Linux)
         private void RefreshCompatibilityTools_Click(object sender, RoutedEventArgs e)
         {

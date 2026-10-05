@@ -53,6 +53,7 @@ namespace gamevault.Windows
                 }
             });
             PipeServiceHandler.Instance.IsReadyForCommands = true;
+            NewGamesNotifier.Start();
         }
 
         private void Navigation_SelectionChanged(object? sender, SelectionChangedEventArgs e)

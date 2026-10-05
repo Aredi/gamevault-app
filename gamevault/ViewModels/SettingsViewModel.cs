@@ -89,6 +89,14 @@ namespace gamevault.ViewModels
             showMappedTitle = showMappedTitleString == "1" || showMappedTitleString == "";
             //Setting the private members to avoid writing to the user config file over and over again
             m_BackgroundStart = (Preferences.Get(AppConfigKey.BackgroundStart, userConfigFile) == "1"); OnPropertyChanged(nameof(BackgroundStart));
+            notifyNewGames = Preferences.Get(AppConfigKey.NotifyNewGames, userConfigFile) != "0"; OnPropertyChanged(nameof(NotifyNewGames));
+            maxConcurrentDownloads = int.TryParse(Preferences.Get(AppConfigKey.MaxConcurrentDownloads, userConfigFile), out int maxDownloads) ? Math.Clamp(maxDownloads, 0, 10) : 0;
+            downloadScheduleEnabled = Preferences.Get(AppConfigKey.DownloadScheduleEnabled, userConfigFile) == "1";
+            string scheduleStart = Preferences.Get(AppConfigKey.DownloadScheduleStart, userConfigFile);
+            string scheduleEnd = Preferences.Get(AppConfigKey.DownloadScheduleEnd, userConfigFile);
+            downloadScheduleStart = string.IsNullOrEmpty(scheduleStart) ? "01:00" : scheduleStart;
+            downloadScheduleEnd = string.IsNullOrEmpty(scheduleEnd) ? "07:00" : scheduleEnd;
+            OnPropertyChanged(nameof(MaxConcurrentDownloadsIndex)); OnPropertyChanged(nameof(DownloadScheduleEnabled)); OnPropertyChanged(nameof(DownloadScheduleStart)); OnPropertyChanged(nameof(DownloadScheduleEnd));
             m_AutoExtract = (Preferences.Get(AppConfigKey.AutoExtract, userConfigFile) == "1"); OnPropertyChanged(nameof(AutoExtract));
             autoDeletePortableGameFiles = Preferences.Get(AppConfigKey.AutoDeletePortable, userConfigFile) == "1"; OnPropertyChanged(nameof(AutoDeletePortableGameFiles));
             retainLibarySortByAndOrderBy = Preferences.Get(AppConfigKey.RetainLibarySortByAndOrderBy, userConfigFile) == "1"; OnPropertyChanged(nameof(RetainLibarySortByAndOrderBy));
@@ -183,6 +191,92 @@ namespace gamevault.ViewModels
         {
             get { return m_UserName; }
             set { m_UserName = value; OnPropertyChanged(); }
+        }
+        #region Storage cleanup
+        public ObservableCollection<StorageCleanupItem> StorageCleanupItems { get; } = new();
+        private string storageCleanupSummary = "";
+        public string StorageCleanupSummary
+        {
+            get => storageCleanupSummary;
+            set { storageCleanupSummary = value; OnPropertyChanged(); }
+        }
+        private bool isStorageCleanupRunning;
+        public bool IsStorageCleanupRunning
+        {
+            get => isStorageCleanupRunning;
+            set { isStorageCleanupRunning = value; OnPropertyChanged(); }
+        }
+        public void RefreshStorageCleanupSummary()
+        {
+            var selected = StorageCleanupItems.Where(i => i.IsSelected).ToList();
+            StorageCleanupSummary = StorageCleanupItems.Count == 0
+                ? "Nothing to clean up."
+                : $"{selected.Count} of {StorageCleanupItems.Count} selected: {GameVault.Core.Storage.StorageCleanup.FormatSize(selected.Sum(i => i.Candidate.Size))} can be freed.";
+        }
+        #endregion
+        #region Download queue
+        private int maxConcurrentDownloads;
+        /// <summary>0 = no limit (every download starts at once).</summary>
+        public int MaxConcurrentDownloads => maxConcurrentDownloads;
+        public string[] MaxConcurrentDownloadsValues { get; } = { "Unlimited", "1", "2", "3", "4", "5" };
+        public int MaxConcurrentDownloadsIndex
+        {
+            get => maxConcurrentDownloads;
+            set
+            {
+                maxConcurrentDownloads = Math.Clamp(value, 0, 5);
+                Preferences.Set(AppConfigKey.MaxConcurrentDownloads, maxConcurrentDownloads.ToString(), userConfigFile);
+                OnPropertyChanged();
+                Helper.DownloadQueue.Advance();
+            }
+        }
+        private bool downloadScheduleEnabled;
+        public bool DownloadScheduleEnabled
+        {
+            get => downloadScheduleEnabled;
+            set { downloadScheduleEnabled = value; Preferences.Set(AppConfigKey.DownloadScheduleEnabled, value ? "1" : "0", userConfigFile); OnPropertyChanged(); Helper.DownloadQueue.Advance(); }
+        }
+        private string downloadScheduleStart = "01:00";
+        public string DownloadScheduleStart
+        {
+            get => downloadScheduleStart;
+            set
+            {
+                downloadScheduleStart = value;
+                if (GameVault.Core.Downloads.DownloadSchedule.TryParseTime(value, out _))
+                {
+                    Preferences.Set(AppConfigKey.DownloadScheduleStart, value.Trim(), userConfigFile);
+                    Helper.DownloadQueue.Advance();
+                }
+                OnPropertyChanged();
+            }
+        }
+        private string downloadScheduleEnd = "07:00";
+        public string DownloadScheduleEnd
+        {
+            get => downloadScheduleEnd;
+            set
+            {
+                downloadScheduleEnd = value;
+                if (GameVault.Core.Downloads.DownloadSchedule.TryParseTime(value, out _))
+                {
+                    Preferences.Set(AppConfigKey.DownloadScheduleEnd, value.Trim(), userConfigFile);
+                    Helper.DownloadQueue.Advance();
+                }
+                OnPropertyChanged();
+            }
+        }
+        public GameVault.Core.Downloads.DownloadSchedule DownloadSchedule =>
+            GameVault.Core.Downloads.DownloadSchedule.TryParseTime(downloadScheduleStart, out TimeOnly start) && GameVault.Core.Downloads.DownloadSchedule.TryParseTime(downloadScheduleEnd, out TimeOnly end)
+                ? new GameVault.Core.Downloads.DownloadSchedule(downloadScheduleEnabled, start, end)
+                : GameVault.Core.Downloads.DownloadSchedule.Always;
+        #endregion
+        private bool notifyNewGames = true;
+        /// <summary>Desktop notification when games are added to the server (checked every 15 minutes).</summary>
+        public bool NotifyNewGames
+        {
+            get => notifyNewGames;
+            set { notifyNewGames = value; Preferences.Set(AppConfigKey.NotifyNewGames, value ? "1" : "0", userConfigFile); OnPropertyChanged(); }
         }
         public bool BackgroundStart
         {

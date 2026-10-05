@@ -175,6 +175,52 @@ namespace gamevault.Helper.Platform
 
         public CompatibilityTool ResolveTool() => CompatibilityManager.Resolve(ToolId);
 
+        #region Game fixes
+        public const string NoFixes = "none";
+        /// <summary>"" = automatic (umu database), <see cref="NoFixes"/>, or an umu id chosen by the user.</summary>
+        public string UmuIdSetting => Read(AppConfigKey.GameUmuId);
+        /// <summary>Result of the last umu database lookup ("-" = unknown game, "" = not looked up yet).</summary>
+        public string DetectedUmuId => Read(AppConfigKey.GameUmuIdDetected);
+
+        /// <summary>GAMEID for umu-run / UMU_ID for Proton: selects the protonfixes applied to the game.</summary>
+        public string EffectiveUmuId
+        {
+            get
+            {
+                string setting = UmuIdSetting;
+                if (setting == NoFixes)
+                    return UmuDatabase.DefaultGameId;
+                if (UmuDatabase.IsValidId(setting))
+                    return setting;
+                return UmuDatabase.IsValidId(DetectedUmuId) ? DetectedUmuId : UmuDatabase.DefaultGameId;
+            }
+        }
+
+        /// <summary>Winetricks verbs installed once into the prefix before the game starts (e.g. "vcrun2019 d3dx9").</summary>
+        public string[] WinetricksVerbs => SplitVerbs(Read(AppConfigKey.GameWinetricks));
+        /// <summary>Verbs already installed, per prefix ("prefix|verb").</summary>
+        public string[] AppliedWinetricks => Read(AppConfigKey.GameWinetricksApplied).Split(';', StringSplitOptions.RemoveEmptyEntries);
+        public string[] PendingWinetricks => WinetricksVerbs.Where(v => !AppliedWinetricks.Contains($"{PrefixPath}|{v}")).ToArray();
+
+        public void SetUmuId(string value) => Write(AppConfigKey.GameUmuId, value?.Trim() ?? "");
+        public void SetDetectedUmuId(string? id) => Write(AppConfigKey.GameUmuIdDetected, string.IsNullOrEmpty(id) ? "-" : id);
+        public void SetWinetricksVerbs(string verbs) => Write(AppConfigKey.GameWinetricks, string.Join(' ', SplitVerbs(verbs)));
+        public void MarkWinetricksApplied(IEnumerable<string> verbs) =>
+            Write(AppConfigKey.GameWinetricksApplied, string.Join(';', AppliedWinetricks.Concat(verbs.Select(v => $"{PrefixPath}|{v}")).Distinct()));
+
+        public static string[] SplitVerbs(string? verbs) =>
+            (verbs ?? "").Split(new[] { ' ', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(v => Regex.IsMatch(v, @"^[A-Za-z0-9_.=-]+$"))
+                .Distinct().ToArray();
+
+        private string Read(AppConfigKey key) => SettingsFile != null && File.Exists(SettingsFile) ? Preferences.Get(key, SettingsFile) : "";
+        private void Write(AppConfigKey key, string value)
+        {
+            if (SettingsFile != null)
+                Preferences.Set(key, value, SettingsFile);
+        }
+        #endregion
+
         public string PrefixPath => PrefixMode == WinePrefixMode.Game && GameId != null
             ? Path.Combine(CompatibilityManager.PrefixesDirectory, GameId.Value.ToString())
             : CompatibilitySettings.EffectiveWinePrefix;

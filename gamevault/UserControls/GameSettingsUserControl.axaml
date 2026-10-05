@@ -202,6 +202,24 @@
                                 <local:IconButton Text="Delete Prefix" Kind="Danger" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" FontSize="15" Width="150" Height="33" Click="DeleteGamePrefix_Click"
                                                   IsVisible="{Binding IsSeparatePrefix}" ToolTip.Tip="Deletes the separate prefix of this game (it is created again on the next start)" />
                             </StackPanel>
+                            <TextBlock Classes="section" Text="Game Fixes" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="With Proton, fixes known for the game (umu-protonfixes: missing runtimes, DLL overrides, ...) are applied automatically, like Steam does for its games. The game is found in the umu database by its title." />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                                <ComboBox SelectedIndex="{Binding UmuModeIndex}" HorizontalAlignment="Stretch" SelectionChanged="UmuMode_SelectionChanged">
+                                    <ComboBoxItem Content="Automatic (umu database)" />
+                                    <ComboBoxItem Content="Custom umu id" />
+                                    <ComboBoxItem Content="No fixes" />
+                                </ComboBox>
+                                <local:IconButton Grid.Column="1" Text="Look up again" FontSize="14" Width="130" Height="32" Margin="10,0,0,0" Click="UmuLookup_Click" />
+                            </Grid>
+                            <TextBox Text="{Binding CustomUmuId}" Watermark="umu-271590" Margin="0,5,0,0" IsVisible="{Binding IsCustomUmuId}" LostFocus="CustomUmuId_LostFocus" />
+                            <TextBlock Text="{Binding UmuStatus}" FontSize="13" Opacity="0.8" Margin="0,5,0,0" TextWrapping="Wrap" />
+                            <TextBlock Classes="text" Text="Winetricks components installed once into the prefix before the next start (e.g. vcrun2019 d3dx9 xact)." Margin="0,10,0,0" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
+                                <TextBox Text="{Binding WinetricksVerbs}" Watermark="vcrun2019 d3dx9" LostFocus="WinetricksVerbs_LostFocus" />
+                                <local:IconButton Grid.Column="1" Text="Install now" FontSize="14" Width="130" Height="32" Margin="10,0,0,0" Click="WinetricksInstall_Click" />
+                            </Grid>
+                            <TextBlock Text="{Binding WinetricksStatus}" FontSize="13" Opacity="0.8" Margin="0,5,0,0" TextWrapping="Wrap" />
                         </StackPanel>
                         <TextBlock Classes="section" Text="Desktop Icon" Margin="0,20,0,0" />
                         <TextBlock Classes="text" Text="You can press this button to create a desktop shortcut that starts the game via GameVault. Changed executable or parameters are updated immediately." />

@@ -107,6 +107,11 @@
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                             IsVisible="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNull}}">
                                     <ToggleButton Classes="icon bookmark" Width="35" Height="35" IsChecked="{Binding Game.BookmarkedUsers, Converter={StaticResource containsCurrentUserConv}, Mode=OneWay}" Click="Bookmark_Click" ToolTip.Tip="Bookmark" />
+                                    <Button Classes="wrapper" Width="35" Height="35" Margin="10,0,0,0" Click="Collections_Click" ToolTip.Tip="Collections">
+                                        <Grid Classes="hover" Background="#02000000">
+                                            <Path Data="{StaticResource IconCollection}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="26" Height="26" />
+                                        </Grid>
+                                    </Button>
                                     <Button Classes="wrapper" Width="35" Height="35" Margin="10,0,0,0" Click="Share_Click" ToolTip.Tip="Copy share link">
                                         <Grid Classes="hover" Background="#02000000">
                                             <Path Data="{StaticResource IconGameViewShare}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.5)" RenderTransformOrigin="0%,0%" />

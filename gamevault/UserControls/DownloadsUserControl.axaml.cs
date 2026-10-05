@@ -203,6 +203,7 @@ namespace gamevault.UserControls
                 GameDownloadUserControl? oldDownloadEntry = DownloadsViewModel.Instance.DownloadedGames.Where(g => g.GetGameId() == game.ID).FirstOrDefault();
                 if (oldDownloadEntry != null)
                 {
+                    DownloadQueue.Remove(oldDownloadEntry);
                     DownloadsViewModel.Instance.DownloadedGames.Remove(oldDownloadEntry);
                 }
                 DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, selectedDirectory, true));
@@ -230,7 +231,7 @@ namespace gamevault.UserControls
         }
         private bool IsAlreadyDownloading(int id)
         {
-            if (DownloadsViewModel.Instance.DownloadedGames.Where(gameUC => gameUC.IsGameIdDownloading(id) == true).Count() > 0)
+            if (DownloadsViewModel.Instance.DownloadedGames.Any(gameUC => gameUC.IsGameIdDownloading(id) || (gameUC.GetGameId() == id && DownloadQueue.IsWaiting(gameUC))))
             {
                 return true;
             }

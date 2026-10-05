@@ -24,8 +24,11 @@ namespace gamevault.Models
             OfflineCache = Path.Combine(rootDirectory, "cache", "local");
             IgnoreList = Path.Combine(rootDirectory, "cache", "ignorelist");
             UserConfigFile = Path.Combine(rootDirectory, "config", "user");
+            CollectionsFile = Path.Combine(rootDirectory, "config", "collections.json");
         }
         public string UserCacheAvatar { get; set; }
+        /// <summary>Personal game collections of this profile.</summary>
+        public string CollectionsFile { get; set; }
         public string RootDir { get; set; }
         private string name { get; set; }
         public string Name
