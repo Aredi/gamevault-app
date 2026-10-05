@@ -24,7 +24,12 @@ namespace gamevault.Helper.Platform
                 string? appImage = Environment.GetEnvironmentVariable("APPIMAGE");
                 if (!string.IsNullOrEmpty(appImage) && File.Exists(appImage))
                     return appImage;
-                return Environment.ProcessPath ?? Path.Combine(AppDirectory, IsWindows ? "gamevault.exe" : "gamevault");
+                string appHost = Path.Combine(AppDirectory, IsWindows ? "gamevault.exe" : "gamevault");
+                string? process = Environment.ProcessPath;
+                // Started as "dotnet gamevault.dll": other programs must start the app host, not bare dotnet
+                if (process == null || Path.GetFileNameWithoutExtension(process).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
+                    return appHost;
+                return process;
             }
         }
 

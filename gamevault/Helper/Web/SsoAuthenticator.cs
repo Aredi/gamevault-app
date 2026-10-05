@@ -15,6 +15,41 @@ namespace gamevault.Helper
     /// </summary>
     internal static class SsoAuthenticator
     {
+        // WebView2 returns script results JSON encoded, WebKitGTK returns plain strings.
+        private static string Unquote(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "";
+            string trimmed = value.Trim();
+            return trimmed.StartsWith("\"") ? JsonSerializer.Deserialize<string>(trimmed) ?? "" : trimmed;
+        }
+
+        internal static AuthResponse? ParseTokenJson(string body)
+        {
+            if (!body.TrimStart().StartsWith("{"))
+                return null;
+            var authResponse = JsonSerializer.Deserialize<AuthResponse>(body);
+            return string.IsNullOrEmpty(authResponse?.AccessToken) ? null : authResponse;
+        }
+
+        internal static AuthResponse? TryReadTokensFromUrl(Uri? url)
+        {
+            if (url == null || string.IsNullOrEmpty(url.Query))
+                return null;
+            string? access = null, refresh = null;
+            foreach (string part in url.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+            {
+                int separator = part.IndexOf('=');
+                if (separator < 0)
+                    continue;
+                string key = part[..separator];
+                string value = Uri.UnescapeDataString(part[(separator + 1)..].Replace('+', ' '));
+                if (key == "access_token") access = value;
+                else if (key == "refresh_token") refresh = value;
+            }
+            return string.IsNullOrEmpty(access) ? null : new AuthResponse { AccessToken = access, RefreshToken = refresh ?? "" };
+        }
+
         public static async Task<AuthResponse?> AuthenticateAsync(string serverUrl, string webDataDirectory)
         {
             if (Dispatcher.UIThread.CheckAccess())
@@ -51,30 +86,42 @@ namespace gamevault.Helper
                 }
             };
 
+            gamevault.Helper.Platform.NativeWebViewPlacement.KeepPlaced(webView);
+            // After the token page the server redirects to "<origin>?access_token=..&refresh_token=.." (its web UI).
+            // Taking the tokens from that URL does not depend on reading the page in time.
+            webView.NavigationStarted += (_, e) =>
+            {
+                AuthResponse? fromUrl = TryReadTokensFromUrl(e.Request);
+                if (fromUrl == null || tcs.Task.IsCompleted)
+                    return;
+                e.Cancel = true;
+                tcs.TrySetResult(fromUrl);
+                window.Close();
+            };
             webView.NavigationCompleted += async (_, e) =>
             {
-                if (tcs.Task.IsCompleted)
-                    return;
-                try
+                // WebKitGTK reports completion before the token page is parsed, and the page's JavaScript redirect
+                // raises no navigation event, so the page is polled for a moment: the token JSON in its body,
+                // or the tokens in the URL it redirected to.
+                for (int attempt = 0; attempt < 25 && !tcs.Task.IsCompleted; attempt++)
                 {
-                    string? content = await webView.InvokeScript("document.body.innerText");
-                    if (string.IsNullOrWhiteSpace(content))
-                        return;
-                    // WebView2 returns the script result JSON encoded, WebKitGTK returns the plain string.
-                    string body = content.TrimStart().StartsWith("\"") ? JsonSerializer.Deserialize<string>(content) ?? "" : content;
-                    if (!body.TrimStart().StartsWith("{"))
-                        return;
-                    var authResponse = JsonSerializer.Deserialize<AuthResponse>(body);
-                    if (!string.IsNullOrEmpty(authResponse?.AccessToken))
+                    try
                     {
-                        tcs.TrySetResult(authResponse);
-                        window.Close();
+                        AuthResponse? authResponse = TryReadTokensFromUrl(Uri.TryCreate(Unquote(await webView.InvokeScript("window.location.href")), UriKind.Absolute, out Uri? href) ? href : null)
+                            ?? ParseTokenJson(Unquote(await webView.InvokeScript("(document.getElementById('jsonData') || document.body || {}).textContent || ''")));
+                        if (authResponse != null)
+                        {
+                            tcs.TrySetResult(authResponse);
+                            window.Close();
+                            return;
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    // Not the token page yet, keep navigating.
-                    Log.Ignored(ex);
+                    catch (Exception ex)
+                    {
+                        // The page is changing, try again.
+                        Log.Ignored(ex);
+                    }
+                    await Task.Delay(200);
                 }
             };
 

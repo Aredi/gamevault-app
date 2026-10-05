@@ -239,6 +239,12 @@ namespace gamevault.Helper
             return "";
         }
 
+        private static void SetEntryValue(VdfMap map, string key, string value)
+        {
+            string existingKey = map.Keys.FirstOrDefault(k => k.Equals(key, StringComparison.OrdinalIgnoreCase)) ?? key;
+            map[existingKey] = value;
+        }
+
         /// <summary>
         /// GameVault entries start the game through gamevault:// (Windows) or "gamevault start --gameid=N" (Linux).
         /// </summary>
@@ -457,6 +463,12 @@ namespace gamevault.Helper
                     if (foundGame.Key != null)
                     {
                         games.Remove(foundGame.Key);
+                        // Linux entries point at the GameVault binary, which may have moved (e.g. a new AppImage)
+                        if (!PlatformInfo.IsWindows && entry is VdfMap map)
+                        {
+                            SetEntryValue(map, "Exe", $"\"{PlatformInfo.ExecutablePath}\"");
+                            SetEntryValue(map, "StartDir", $"\"{Path.GetDirectoryName(PlatformInfo.ExecutablePath)}\"");
+                        }
                     }
                 }
             }

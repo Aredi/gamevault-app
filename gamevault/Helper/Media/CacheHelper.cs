@@ -102,40 +102,30 @@ namespace gamevault.Helper
         {
             try
             {
-                if (LoginManager.Instance.IsLoggedIn())
-                {
-                    if (TaskQueue.Instance.IsAlreadyInProcess(game.Metadata.Background.ID))
-                    {
-                        await TaskQueue.Instance.WaitForProcessToFinish(game.Metadata.Background.ID);
-                    }
-                    if (TaskQueue.Instance.IsAlreadyInProcess(game.Metadata.Cover.ID))
-                    {
-                        await TaskQueue.Instance.WaitForProcessToFinish(game.Metadata.Cover.ID);
-                    }
-
-                    string backGroundCacheFile = Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbg", $"{game.ID}.{game.Metadata.Background.ID}");
-                    string boxArtCacheFile = Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{game.ID}.{game.Metadata.Cover.ID}");
-                    if (!Directory.Exists(Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbg")))
-                    {
-                        Directory.CreateDirectory(Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbg"));
-                    }
-                    if (!Directory.Exists(Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox")))
-                    {
-                        Directory.CreateDirectory(Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox"));
-                    }
-
-                    if (!File.Exists(backGroundCacheFile))
-                    {
-                        //Not in que because its not loading images for the UI
-                        await WebHelper.DownloadImageFromUrlAsync($"{SettingsViewModel.Instance.ServerUrl}/api/media/{game.Metadata.Background.ID}", backGroundCacheFile);
-                    }
-                    if (!File.Exists(boxArtCacheFile))
-                    {
-                        await WebHelper.DownloadImageFromUrlAsync($"{SettingsViewModel.Instance.ServerUrl}/api/media/{game.Metadata.Cover.ID}", boxArtCacheFile);
-                    }
-                }
+                if (!LoginManager.Instance.IsLoggedIn())
+                    return;
+                // Games without metadata images (e.g. not matched yet) have nothing to cache
+                await EnsureCachedMedia(game, "gbg", game.Metadata?.Background?.ID);
+                await EnsureCachedMedia(game, "gbox", game.Metadata?.Cover?.ID);
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
+        }
+        private static async Task EnsureCachedMedia(Game game, string folder, int? mediaId)
+        {
+            if (mediaId == null)
+                return;
+            if (TaskQueue.Instance.IsAlreadyInProcess(mediaId.Value))
+            {
+                await TaskQueue.Instance.WaitForProcessToFinish(mediaId.Value);
+            }
+            string directory = Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, folder);
+            Directory.CreateDirectory(directory);
+            string cacheFile = Path.Combine(directory, $"{game.ID}.{mediaId}");
+            if (!File.Exists(cacheFile))
+            {
+                //Not in que because its not loading images for the UI
+                await WebHelper.DownloadImageFromUrlAsync($"{SettingsViewModel.Instance.ServerUrl}/api/media/{mediaId}", cacheFile);
+            }
         }
         private static readonly System.Collections.Generic.Dictionary<ImageCache, Bitmap> replacementImages = new();
 
@@ -236,8 +226,12 @@ namespace gamevault.Helper
         {
             Dictionary<string, string> imageCache = new Dictionary<string, string>();
             string cachePath = LoginManager.Instance.GetUserProfile().ImageCacheDir;
-            var boxArt = Directory.GetFiles(Path.Combine(cachePath, "gbox"), $"{game.ID}.*").FirstOrDefault();
-            var background = Directory.GetFiles(Path.Combine(cachePath, "gbg"), $"{game.ID}.*").FirstOrDefault();
+            // The cache folders only exist once an image was cached (games without cover/background)
+            string? FindCached(string folder) => Directory.Exists(Path.Combine(cachePath, folder))
+                ? Directory.GetFiles(Path.Combine(cachePath, folder), $"{game.ID}.*").FirstOrDefault()
+                : null;
+            var boxArt = FindCached("gbox");
+            var background = FindCached("gbg");
             imageCache.Add("gbox", boxArt);
             imageCache.Add("gbg", background);
             return imageCache;

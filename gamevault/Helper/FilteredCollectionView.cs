@@ -10,24 +10,23 @@ namespace gamevault.Helper
 {
     /// <summary>
     /// Minimal stand-in for WPF's CollectionViewSource.GetDefaultView: a read-only, filtered live view of a collection.
-    /// Setting <see cref="Filter"/> re-evaluates the view.
+    /// Setting <see cref="Filter"/> re-evaluates the view. It is an IList so that Avalonia's ItemsControl tracks
+    /// its changes (a plain IEnumerable is copied once).
     /// </summary>
-    public class FilteredCollectionView<T> : IEnumerable<T>, INotifyCollectionChanged, INotifyPropertyChanged
+    public class FilteredCollectionView<T> : ReadOnlyObservableCollection<T>
     {
         private readonly ObservableCollection<T> source;
-        private readonly ObservableCollection<T> view = new ObservableCollection<T>();
+        private readonly ObservableCollection<T> view;
         private Predicate<object>? filter;
 
-        public event NotifyCollectionChangedEventHandler? CollectionChanged
+        public FilteredCollectionView(ObservableCollection<T> source) : this(source, new ObservableCollection<T>())
         {
-            add => view.CollectionChanged += value;
-            remove => view.CollectionChanged -= value;
         }
-        public event PropertyChangedEventHandler? PropertyChanged;
 
-        public FilteredCollectionView(ObservableCollection<T> source)
+        private FilteredCollectionView(ObservableCollection<T> source, ObservableCollection<T> view) : base(view)
         {
             this.source = source;
+            this.view = view;
             source.CollectionChanged += (_, _) => Refresh();
             Refresh();
         }
@@ -38,8 +37,6 @@ namespace gamevault.Helper
             set { filter = value; Refresh(); }
         }
 
-        public int Count => view.Count;
-
         public void Refresh()
         {
             var items = source.Where(i => filter == null || filter(i!)).ToList();
@@ -48,10 +45,6 @@ namespace gamevault.Helper
             view.Clear();
             foreach (T item in items)
                 view.Add(item);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Count)));
         }
-
-        public IEnumerator<T> GetEnumerator() => view.GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => view.GetEnumerator();
     }
 }

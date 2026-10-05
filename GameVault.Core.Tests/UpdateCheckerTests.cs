@@ -37,5 +37,25 @@ namespace GameVault.Core.Tests
             Assert.Null(info!.DownloadUrl);
             Assert.Equal(AppRepository.ReleasesPage, info.PageUrl);
         }
+
+        [Fact]
+        public void EmptyReleaseList_MeansNoUpdate()
+        {
+            Assert.Null(UpdateChecker.ParseReleaseList("[]", "1.0.0", null));
+        }
+
+        [Fact]
+        public void ReleaseList_SkipsDraftsAndPreReleases()
+        {
+            string list = """
+            [
+              { "tag_name": "3.0.0", "draft": true },
+              { "tag_name": "2.5.0", "prerelease": true },
+              { "tag_name": "2.0.0", "draft": false, "prerelease": false }
+            ]
+            """;
+            Assert.Equal("2.0.0", UpdateChecker.ParseReleaseList(list, "1.0.0", null)?.Version);
+            Assert.Null(UpdateChecker.ParseReleaseList(list, "2.0.0", null));
+        }
     }
 }

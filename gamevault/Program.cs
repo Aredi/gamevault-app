@@ -15,7 +15,9 @@ namespace gamevault
     public class Program
     {
         // Unique ID for the mutex, which will not be shared by another application
-        private const string GAMEVAULT_MUTEX = "0C8E52D8-ECD4-4F12-95B5-CE3412C073EA:GameVault";
+        // On Unix a named mutex without "Global\" only exists in the current login session (setsid), so GameVault
+        // started by Steam or a desktop launcher would not find the running instance.
+        private static readonly string GAMEVAULT_MUTEX = (OperatingSystem.IsWindows() ? "" : "Global\\") + "0C8E52D8-ECD4-4F12-95B5-CE3412C073EA:GameVault";
 
         [STAThread]
         public static void Main(string[] args)

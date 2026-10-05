@@ -28,6 +28,15 @@ namespace gamevault.Windows
             uiBugReportShortcut.Tag = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}/issues/new";
             Opened += MainWindow_Loaded;
             Closing += MainWindow_Closing;
+            // Popups close themselves on Escape only while they have the keyboard focus (lost e.g. after a dialog)
+            KeyDown += (_, e) =>
+            {
+                var popup = MainWindowViewModel.Instance.Popup;
+                if (e.Handled || e.Key != Key.Escape || popup == null || popup is UserControls.MediaSlider || DialogLayer.Children.Count > 0)
+                    return;
+                MainWindowViewModel.Instance.ClosePopup();
+                e.Handled = true;
+            };
             InitBootTasks();
         }
 

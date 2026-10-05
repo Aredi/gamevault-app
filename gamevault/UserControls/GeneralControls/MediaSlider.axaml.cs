@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GameVault.Core;
 using gamevault.Helper;
+using gamevault.Helper.Platform;
 using gamevault.Models;
 using gamevault.ViewModels;
 using System;
@@ -148,17 +149,6 @@ namespace gamevault.UserControls
             await SetAndSaveMediaVolume();
         }
         /// <summary>
-        /// On Linux the GTK web view is attached asynchronously; when that happens after the last layout pass
-        /// the native window is never positioned (it stays 1x1). A tiny size change forces a new placement.
-        /// </summary>
-        private void NudgeNativeHost()
-        {
-            if (uiWebView == null || !OperatingSystem.IsLinux())
-                return;
-            uiWebView.Margin = new Thickness(0, 0, 0, 1);
-            Dispatcher.UIThread.Post(() => uiWebView.Margin = default, DispatcherPriority.Background);
-        }
-        /// <summary>
         /// WebKitGTK fails scripts whose completion value is not serializable ("Unsupported result type"),
         /// e.g. an assignment of a DOM element, so every script ends with an empty string.
         /// </summary>
@@ -177,7 +167,9 @@ namespace gamevault.UserControls
             {
                 if (!e.IsSuccess)
                     return;
-                NudgeNativeHost();
+                NativeWebViewPlacement.Nudge(uiWebView);
+                if (mediaIndex < 0 || mediaIndex >= MediaUrls.Count)
+                    return;// Blank page (unloaded slider or a game without media)
                 try
                 {
                     await CreateAudioStream();
@@ -194,7 +186,7 @@ namespace gamevault.UserControls
             this.MediaUrls = mediaUrls;
             uiMediaCountLoadingRing.IsActive = false;
             uiTxtMediaIndex.IsVisible = true;
-            uiTxtMediaIndex.Text = $"{mediaIndex + 1}/{MediaUrls.Count}";
+            uiTxtMediaIndex.Text = MediaUrls.Count == 0 ? "0/0" : $"{mediaIndex + 1}/{MediaUrls.Count}";
         }
 
         public async Task LoadFirstElement(Tuple<string, string>? first = null)
@@ -325,6 +317,9 @@ if(video)
    ";
         private async Task CreateAudioStream()
         {
+            // Navigations to the blank page (unload, game without media) have no media entry
+            if (mediaIndex < 0 || mediaIndex >= MediaUrls.Count)
+                return;
             string audioScript = @"
     // Select the video element by name attribute 'media'
     var video = document.querySelector('video[name=""media""]');
