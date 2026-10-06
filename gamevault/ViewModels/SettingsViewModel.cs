@@ -97,7 +97,8 @@ namespace gamevault.ViewModels
             downloadScheduleStart = string.IsNullOrEmpty(scheduleStart) ? "01:00" : scheduleStart;
             downloadScheduleEnd = string.IsNullOrEmpty(scheduleEnd) ? "07:00" : scheduleEnd;
             OnPropertyChanged(nameof(MaxConcurrentDownloadsIndex)); OnPropertyChanged(nameof(DownloadScheduleEnabled)); OnPropertyChanged(nameof(DownloadScheduleStart)); OnPropertyChanged(nameof(DownloadScheduleEnd));
-            m_AutoExtract = (Preferences.Get(AppConfigKey.AutoExtract, userConfigFile) == "1"); OnPropertyChanged(nameof(AutoExtract));
+            // On unless the user turned it off: downloaded games are ready without an extra click
+            m_AutoExtract = (Preferences.Get(AppConfigKey.AutoExtract, userConfigFile) != "0"); OnPropertyChanged(nameof(AutoExtract));
             autoDeletePortableGameFiles = Preferences.Get(AppConfigKey.AutoDeletePortable, userConfigFile) == "1"; OnPropertyChanged(nameof(AutoDeletePortableGameFiles));
             retainLibarySortByAndOrderBy = Preferences.Get(AppConfigKey.RetainLibarySortByAndOrderBy, userConfigFile) == "1"; OnPropertyChanged(nameof(RetainLibarySortByAndOrderBy));
 

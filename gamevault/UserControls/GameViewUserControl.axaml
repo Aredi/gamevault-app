@@ -86,6 +86,15 @@
                                 </Grid>
                                 <StackPanel Margin="90,0,0,0" Background="Transparent" HorizontalAlignment="Left" VerticalAlignment="Bottom" Orientation="Horizontal"
                                             IsVisible="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNull}}">
+                                    <!-- Not installed yet: one click downloads, installs and starts the game -->
+                                    <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Left" Height="35" Margin="0,0,15,0" Click="InstallAndPlay_Click" IsVisible="{Binding !IsInstalled}" ToolTip.Tip="Download, install and start the game">
+                                        <Border Classes="hover" Background="{DynamicResource Brush.Accent}" CornerRadius="5" Padding="10,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <Path Data="{StaticResource IconPlay}" Fill="White" Stretch="Uniform" Width="18" Height="18" VerticalAlignment="Center" />
+                                                <TextBlock Text="Install &amp; Play" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Button>
                                     <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Left" Width="35" Height="35" Margin="0,0,15,0" Click="GamePlay_Click" IsVisible="{Binding IsInstalled}" ToolTip.Tip="Play">
                                         <Grid Classes="hover" Background="#02000000">
                                             <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="30" Height="30" />

@@ -81,7 +81,9 @@ namespace gamevault.Models
         MaxConcurrentDownloads,
         DownloadScheduleEnabled,
         DownloadScheduleStart,
-        DownloadScheduleEnd
+        DownloadScheduleEnd,
+        //Admin: game publishing
+        PublishTargetDirectory
     }
     public static class Globals
     {

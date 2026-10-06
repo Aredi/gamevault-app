@@ -50,6 +50,7 @@
                     <StackPanel Spacing="10">
                         <TextBlock Classes="cardTitle" Text="Action Buttons" />
                         <StackPanel Orientation="Horizontal" Spacing="10">
+                            <local:IconButton Text="Publish a Game" Icon="{StaticResource IconAddSimple}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="PublishGame_Click" />
                             <local:IconButton Text="Backup / Restore Database" Icon="{StaticResource IconDatabase}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="BackupRestore_Click" />
                             <local:IconButton Text="Reindex Games" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="Reindex_Click" />
                             <ToggleSwitch Content="Show deleted Users" IsChecked="{Binding ShowDeletedUsers}" VerticalAlignment="Center" Margin="20,0,0,0" />

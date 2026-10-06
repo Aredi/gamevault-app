@@ -113,7 +113,7 @@ namespace gamevault.Helper
                     }
                     catch
                     {
-                        string[] allExecutables = Directory.GetFiles(foundGames.ElementAt(y).Value, "*.EXE", SearchOption.AllDirectories);
+                        string[] allExecutables = Directory.GetFiles(foundGames.ElementAt(y).Value, "*.EXE", new EnumerationOptions { RecurseSubdirectories = true, MatchCasing = MatchCasing.CaseInsensitive });
 
                         foreach (string executable in allExecutables)
                         {

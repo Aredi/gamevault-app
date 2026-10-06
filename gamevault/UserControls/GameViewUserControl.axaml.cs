@@ -138,8 +138,10 @@ namespace gamevault.UserControls
             gameID = game.ID;
             this.DataContext = ViewModel;
             Loaded += UserControl_Loaded;
+            Loaded += (_, _) => ObserveInstallState(true);
             Unloaded += (_, _) =>
             {
+                ObserveInstallState(false);
                 // Stop trailers when the page is left.
                 if (loaded && !uiMediaSlider.IsWebViewNull())
                     uiMediaSlider.UnloadMediaSlider();
@@ -233,6 +235,39 @@ namespace gamevault.UserControls
             PrepareMarkdownElements();
         }
 
+        #region Install state
+        // Keeps Play / Install & Play right while the page is open (e.g. after "Install & Play" finished).
+        private System.Collections.Specialized.INotifyCollectionChanged? observedInstalledGames;
+        private void ObserveInstallState(bool observe)
+        {
+            InstallViewModel.Instance.PropertyChanged -= InstallViewModel_PropertyChanged;
+            DownloadsViewModel.Instance.DownloadedGames.CollectionChanged -= InstallState_CollectionChanged;
+            if (observedInstalledGames != null)
+                observedInstalledGames.CollectionChanged -= InstallState_CollectionChanged;
+            observedInstalledGames = null;
+            if (!observe)
+                return;
+            InstallViewModel.Instance.PropertyChanged += InstallViewModel_PropertyChanged;
+            DownloadsViewModel.Instance.DownloadedGames.CollectionChanged += InstallState_CollectionChanged;
+            observedInstalledGames = InstallViewModel.Instance.InstalledGames;
+            observedInstalledGames.CollectionChanged += InstallState_CollectionChanged;
+            RefreshInstallState();
+        }
+        private void InstallViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(InstallViewModel.InstalledGames))
+                ObserveInstallState(true);
+        }
+        private void InstallState_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => RefreshInstallState();
+        private void RefreshInstallState() => Dispatcher.UIThread.Post(() =>
+        {
+            if (ViewModel.Game == null)
+                return;
+            ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
+            ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
+        });
+        #endregion
+
         private bool IsGameInstalled(Game? game)
         {
             if (game == null)
@@ -268,6 +303,12 @@ namespace gamevault.UserControls
                 return;
 
             MainWindowViewModel.Instance.OpenPopup(new GameSettingsUserControl(ViewModel.Game) { Width = 1200, Height = 800, Margin = new Thickness(50) });
+        }
+        private async void InstallAndPlay_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game == null)
+                return;
+            await MainWindowViewModel.Instance.Downloads.InstallAndPlay(ViewModel.Game);
         }
         private async void GameDownload_Click(object sender, RoutedEventArgs e)
         {

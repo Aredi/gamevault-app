@@ -160,6 +160,10 @@ namespace gamevault.UserControls
             User user = JsonSerializer.Deserialize<User>(JsonSerializer.Serialize((User)((Control)sender).DataContext));//Dereference
             MainWindowViewModel.Instance.OpenPopup(new UserSettingsUserControl(user.ID == LoginManager.Instance.GetCurrentUser()?.ID ? LoginManager.Instance.GetCurrentUser() : user) { Width = 1200, Height = 800, Margin = new Thickness(50) });
         }
+        private void PublishGame_Click(object sender, RoutedEventArgs e)
+        {
+            MainWindowViewModel.Instance.OpenPopup(new PublishGameUserControl() { Margin = new Thickness(80, 40) });
+        }
         private void BackupRestore_Click(object sender, RoutedEventArgs e)
         {
             var obj = new BackupRestoreUserControl() { Margin = new Thickness(220) };

@@ -166,7 +166,27 @@ namespace gamevault.UserControls
             }
         }
 
-        public async Task TryStartDownload(Game game)
+        /// <summary>
+        /// One click from the game page: download (or continue an existing download), extract, install and start.
+        /// </summary>
+        public async Task InstallAndPlay(Game game)
+        {
+            GameDownloadUserControl? existing = DownloadsViewModel.Instance.DownloadedGames.FirstOrDefault(d => d.GetGameId() == game.ID);
+            if (existing != null && (existing.IsDownloading() || DownloadQueue.IsWaiting(existing) || existing.IsPaused()))
+            {
+                existing.PlayWhenInstalled = true;
+                MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' starts as soon as it is installed";
+                return;
+            }
+            if (existing != null && existing.HasDownloadedFiles())
+            {
+                MainWindowViewModel.Instance.AppBarText = $"Installing '{game.Title}'...";
+                await existing.ContinueToPlay();
+                return;
+            }
+            await TryStartDownload(game, playWhenInstalled: true);
+        }
+        public async Task TryStartDownload(Game game, bool playWhenInstalled = false)
         {
             if (SettingsViewModel.Instance.RootDirectories.Count == 0)
             {
@@ -206,8 +226,10 @@ namespace gamevault.UserControls
                     DownloadQueue.Remove(oldDownloadEntry);
                     DownloadsViewModel.Instance.DownloadedGames.Remove(oldDownloadEntry);
                 }
-                DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, selectedDirectory, true));
-                MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' has been added to the download queue";
+                DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, selectedDirectory, true) { PlayWhenInstalled = playWhenInstalled });
+                MainWindowViewModel.Instance.AppBarText = playWhenInstalled
+                    ? $"'{game.Title}' is downloaded, installed and started for you"
+                    : $"'{game.Title}' has been added to the download queue";
             }
             else
             {

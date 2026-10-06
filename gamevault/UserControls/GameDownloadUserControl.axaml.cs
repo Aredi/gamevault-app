@@ -131,6 +131,67 @@ namespace gamevault.UserControls
             return false;
         }
         public bool IsPaused() => ViewModel.IsDownloadPaused;
+
+        #region Install and play
+        /// <summary>"Install &amp; Play": extraction, installation and the first start follow the download by themselves.</summary>
+        public bool PlayWhenInstalled { get; set; }
+
+        /// <summary>The archive is downloaded completely, or already extracted.</summary>
+        public bool HasDownloadedFiles()
+        {
+            if (Directory.Exists(Path.Combine(m_DownloadPath, "Extract")))
+                return true;
+            string archive = Path.Combine(m_DownloadPath, Path.GetFileName(ViewModel.Game?.Path ?? ""));
+            // An unfinished download still has its resume data
+            return File.Exists(archive) && !File.Exists(Path.Combine(m_DownloadPath, "gamevault-metadata"));
+        }
+
+        /// <summary>Continues a finished download (or extraction) up to the start of the game.</summary>
+        public async Task ContinueToPlay()
+        {
+            PlayWhenInstalled = true;
+            bool extracted = File.Exists(Path.Combine(m_DownloadPath, "Extract", "gamevault-metadata"))
+                && Preferences.Get(AppConfigKey.ExtractionFinished, Path.Combine(m_DownloadPath, "Extract", "gamevault-metadata")) == "1";
+            if (!extracted)
+            {
+                await Extract();// continues with the installation when it is done
+                return;
+            }
+            if (ViewModel.Game?.Type == GameType.WINDOWS_SETUP)
+                await InstallSetupForPlay();
+            else
+                await Install();
+        }
+
+        /// <summary>
+        /// Setups install silently when the game has installer parameters (Custom Metadata); otherwise the
+        /// installation options open so the user picks the installer, and the game starts afterwards.
+        /// </summary>
+        private async Task InstallSetupForPlay()
+        {
+            LoadSetupExecutables();
+            if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.InstallerParameters) && uiCbSetupExecutable.SelectedItem != null)
+            {
+                MainWindowViewModel.Instance.AppBarText = $"Installing {ViewModel.Game?.Title}...";
+                await Install();
+                return;
+            }
+            uiInstallOptions.IsVisible = true;
+            MainWindowViewModel.Instance.AppBarText = $"Choose the installer of {ViewModel.Game?.Title}: the game starts after the installation.";
+        }
+
+        private async Task StartGameIfRequested()
+        {
+            if (!PlayWhenInstalled || ViewModel.State != "Installed")
+                return;
+            PlayWhenInstalled = false;
+            // The installation is registered by a file watcher
+            for (int i = 0; i < 30 && !InstallViewModel.Instance.InstalledGames.Any(g => g.Key.ID == ViewModel.Game.ID); i++)
+                await Task.Delay(500);
+            if (InstallViewModel.Instance.InstalledGames.Any(g => g.Key.ID == ViewModel.Game.ID))
+                await InstallUserControl.PlayGame(ViewModel.Game.ID);
+        }
+        #endregion
         public bool IsDownloading()
         {
             return IsDownloadActive;
@@ -404,7 +465,7 @@ namespace gamevault.UserControls
             if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
                 ToastMessageHelper.CreateToastMessage("Download Complete", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata?.Cover?.ID}"));
 
-            if (SettingsViewModel.Instance.AutoExtract)
+            if (SettingsViewModel.Instance.AutoExtract || PlayWhenInstalled)
             {
                 Dispatcher.UIThread.Invoke((Action)async delegate
                 {
@@ -723,10 +784,16 @@ namespace gamevault.UserControls
                 if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
                     ToastMessageHelper.CreateToastMessage("Extraction Complete", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game?.ID}.{ViewModel.Game?.Metadata?.Cover?.ID}"));
 
-                if (SettingsViewModel.Instance.AutoInstallPortable && (ViewModel.Game?.Type == GameType.WINDOWS_PORTABLE || ViewModel.Game?.Type == GameType.LINUX_PORTABLE))
+                bool portable = ViewModel.Game?.Type == GameType.WINDOWS_PORTABLE || ViewModel.Game?.Type == GameType.LINUX_PORTABLE;
+                if (portable && (SettingsViewModel.Instance.AutoInstallPortable || PlayWhenInstalled))
                 {
                     await Task.Delay(1000);//Just to be sure the extraction stream is closed and the files are ready to copy
                     await Install();
+                }
+                else if (PlayWhenInstalled && ViewModel.Game?.Type == GameType.WINDOWS_SETUP)
+                {
+                    uiBtnInstall.IsEnabled = true;
+                    await InstallSetupForPlay();
                 }
                 else
                 {
@@ -772,6 +839,26 @@ namespace gamevault.UserControls
         {
             uiInstallOptions.IsVisible = false;
         }
+        /// <summary>
+        /// Removes the installation folder when the setup left nothing in it but GameVault's own settings file.
+        /// </summary>
+        private async Task<bool> RemoveEmptyInstallationAsync()
+        {
+            // Some installers hand over to a child process and exit at once
+            await Task.Delay(2000);
+            try
+            {
+                if (!Directory.Exists(ViewModel.InstallPath))
+                    return false;
+                bool empty = Directory.EnumerateFileSystemEntries(ViewModel.InstallPath)
+                    .All(entry => Path.GetFileName(entry) == "gamevault-exec" && File.Exists(entry));
+                if (empty)
+                    Directory.Delete(ViewModel.InstallPath, true);
+                return empty;
+            }
+            catch (Exception ex) { Log.Ignored(ex); return false; }
+        }
+
         private void LoadSetupExecutables()
         {
             string targedDir = (SettingsViewModel.Instance.MountIso && Directory.Exists(mountedDrive)) ? mountedDrive : Path.Combine(m_DownloadPath, "Extract");
@@ -780,7 +867,7 @@ namespace gamevault.UserControls
                 Dictionary<string, string> allExecutables = new Dictionary<string, string>();
                 foreach (string fileType in Globals.SupportedExecutables)
                 {
-                    foreach (string entry in Directory.GetFiles(targedDir, $"*.{fileType}", SearchOption.AllDirectories))
+                    foreach (string entry in Directory.GetFiles(targedDir, $"*.{fileType}", new EnumerationOptions { RecurseSubdirectories = true, MatchCasing = MatchCasing.CaseInsensitive }))
                     {
                         string keyToAdd = Path.GetFileName(entry);
                         if (!allExecutables.ContainsKey(keyToAdd))
@@ -932,6 +1019,17 @@ namespace gamevault.UserControls
                     if (setupProcess != null)
                     {
                         await setupProcess.WaitForExitAsync();
+                        if (await RemoveEmptyInstallationAsync())
+                        {
+                            // Cancelled, failed, or installed somewhere else: an empty folder must not count as installed
+                            PlayWhenInstalled = false;
+                            MainWindowViewModel.Instance.AppBarText = $"The installer of '{ViewModel.Game?.Title}' finished without installing anything into '{ViewModel.InstallerInstallPath}'";
+                            uiBtnInstallPortable.IsEnabled = true;
+                            uiBtnInstallSetup.IsEnabled = true;
+                            uiProgressRingInstall.IsActive = false;
+                            uiBtnExtract.IsEnabled = true;
+                            return;
+                        }
                         ViewModel.InstallationStepperProgress = 2;
                         if (InstallViewModel.Instance.InstalledGames.Any(g => g.Key.ID == ViewModel.Game.ID))
                         {
@@ -990,6 +1088,7 @@ namespace gamevault.UserControls
                 catch (Exception ignored) { Log.Ignored(ignored); }
             }
 
+            await StartGameIfRequested();
             if (ViewModel.CreateShortcut == true)
             {
                 await Task.Delay(1000);
