@@ -65,7 +65,7 @@ jobs:
         run: |
           gh release download --repo mtkennerly/ludusavi --pattern '*-win64.zip' --output ludusavi.zip
           mkdir -p publish/GameVault/Lib/savegame
-          7z x ludusavi.zip -opublish/GameVault/Lib/savegame
+          7z x -y ludusavi.zip -opublish/GameVault/Lib/savegame
       - name: Setup.exe (Velopack)
         shell: bash
         run: |
