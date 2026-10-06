@@ -7,8 +7,28 @@
 > - All features previously gated behind a GameVault+ subscription are available without a Phalcode account: premium themes, community themes, animated (GIF) avatars, multiple server profiles, cloud saves, Steam shortcut sync, Discord Rich Presence, and `gamevault://` install/uninstall links.
 > - The Phalcode account login (OIDC + embedded WebView2), the subscription lookup and the in-app upsell UI were removed. The *GameVault+* settings tab is now called *Integrations*.
 > - The license status is no longer included in analytics payloads.
+> - The client was ported from WPF to **Avalonia**: one code base for **Windows and Linux**.
+> - Windows installer with automatic updates (Velopack), Linux AppImage.
+> - Linux: Proton / Wine version per game (like on the Steam Deck), automatic protonfixes (umu database) and winetricks components.
+> - Download queue with a schedule, full offline mode, collections, played / never played filters, disk cleanup, notifications for new games.
+> - "Install & Play" (download, extract, install silently and start in one click) and a "Publish a Game" assistant in the admin console.
 >
 > If you enjoy GameVault, please consider supporting the original developers (see below).
+
+## Download ⬇️
+
+Get the [latest release](https://github.com/Aredi/gamevault-app/releases/latest):
+
+| System | File | |
+|---|---|---|
+| Windows | `GameVault-win-Setup.exe` | Installer, updates itself |
+| Windows | `GameVault-win-Portable.zip` | No installation |
+| Linux | `GameVault.AppImage` | `chmod +x GameVault.AppImage`, updates itself |
+| Linux | `GameVault-linux-x64.tar.gz` | Portable |
+
+The Windows installer is not code-signed: if SmartScreen warns about it, choose *More info* → *Run anyway*.
+
+On Linux, Windows games need Wine, or [umu-launcher](https://github.com/Open-Wine-Components/umu-launcher) for Proton. Builds of GE-Proton and Wine can also be downloaded in *Settings → Linux*. Extraction uses 7-Zip (`sudo apt install 7zip`).
 
 # GameVault Application
 
