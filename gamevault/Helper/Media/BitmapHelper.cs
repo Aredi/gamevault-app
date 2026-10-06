@@ -1,7 +1,7 @@
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using ImageMagick;
+using SkiaSharp;
 using System;
 using System.IO;
 using System.Net.Http;
@@ -76,12 +76,19 @@ namespace gamevault.Helper
             using var png = new MemoryStream();
             bitmap.Save(png);
             png.Position = 0;
-            using var image = new MagickImage(png);
-            image.Format = MagickFormat.Jpeg;
+            using SKBitmap image = SKBitmap.Decode(png) ?? throw new ArgumentException("The image could not be read", nameof(src));
+            using SKData data = image.Encode(SKEncodedImageFormat.Jpeg, 90);
             var jpeg = new MemoryStream();
-            image.Write(jpeg);
+            data.SaveTo(jpeg);
             jpeg.Position = 0;
             return jpeg;
+        }
+
+        /// <summary>The largest size with the image's aspect ratio that fits into <paramref name="maxWidth"/> × <paramref name="maxHeight"/>.</summary>
+        public static SKSizeI FitInto(int width, int height, int maxWidth, int maxHeight)
+        {
+            double scale = Math.Min((double)maxWidth / width, (double)maxHeight / height);
+            return new SKSizeI(Math.Max(1, (int)Math.Round(width * scale)), Math.Max(1, (int)Math.Round(height * scale)));
         }
     }
 }

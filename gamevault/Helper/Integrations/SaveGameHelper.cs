@@ -28,7 +28,6 @@ using System.Threading.Tasks;
 using gamevault.Helper.Platform;
 using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
-using ImageMagick.Drawing;
 
 namespace gamevault.Helper.Integrations
 {

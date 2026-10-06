@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.x'
+          dotnet-version: '10.x'
       - name: Publish
         run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime linux-x64 --self-contained true -p:Version=${{ github.ref_name }} --output publish/GameVault
       - name: Bundle Ludusavi (cloud saves)
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.x'
+          dotnet-version: '10.x'
       - name: Publish
         run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime win-x64 --self-contained true -p:Version=${{ github.ref_name }} --output publish/GameVault
       - name: Bundle Ludusavi (cloud saves)

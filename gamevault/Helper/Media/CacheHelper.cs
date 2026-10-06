@@ -4,7 +4,7 @@ using gamevault.Helper;
 using GameVault.Core;
 using gamevault.Models;
 using gamevault.ViewModels;
-using ImageMagick;
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -181,16 +181,9 @@ namespace gamevault.Helper
                             {
                                 if (image.Length > 0)
                                 {
-                                    if (file.Contains("uico"))
-                                    {
-                                        if (GifHelper.IsGif(file))
-                                        {
-                                            uint maxGifHeightWidth = 400;
-                                            GifHelper.OptimizeGIF(file, maxGifHeightWidth);
-                                            image.Refresh();
-                                            continue;
-                                        }
-                                    }
+                                    // Animated avatars are kept as they are: the GIF player scales them while drawing
+                                    if (file.Contains("uico") && GifHelper.IsGif(file))
+                                        continue;
                                     ResizeImage(file, Convert.ToUInt32(maxHeight));
                                     image.Refresh();
                                 }
@@ -247,26 +240,36 @@ namespace gamevault.Helper
             }
             return "";
         }
+        /// <summary>Downscales cached covers and backgrounds to what the screen can show (saved as JPEG).</summary>
         private static void ResizeImage(string path, uint maxHeight)
         {
-            using (var imageMagick = new MagickImage(path))
+            SKSizeI? target;
+            using (SKBitmap? source = SKBitmap.Decode(path))
             {
-                imageMagick.Format = MagickFormat.Jpeg;
-                if (imageMagick.Width <= imageMagick.Height && imageMagick.Height > maxHeight)
+                if (source == null)
+                    return;
+                if (source.Width <= source.Height && source.Height > maxHeight)
                 {
-                    var size = new MagickGeometry(maxHeight);
-                    size.IgnoreAspectRatio = false;
-                    imageMagick.Resize(size);
-                    imageMagick.Write(path);
+                    target = BitmapHelper.FitInto(source.Width, source.Height, (int)maxHeight, (int)maxHeight);
                 }
-                else if (imageMagick.Height > ScreenHelper.PrimaryScreenSize.Height)
+                else if (source.Height > ScreenHelper.PrimaryScreenSize.Height)
                 {
                     var screen = ScreenHelper.PrimaryScreenSize;
-                    var size = new MagickGeometry((uint)screen.Width, (uint)screen.Height);
-                    size.IgnoreAspectRatio = false;
-                    imageMagick.Resize(size);
-                    imageMagick.Write(path);
+                    target = BitmapHelper.FitInto(source.Width, source.Height, (int)screen.Width, (int)screen.Height);
                 }
+                else
+                {
+                    return;
+                }
+                using SKBitmap? resized = source.Resize(new SKImageInfo(target.Value.Width, target.Value.Height), SKFilterQuality.High);
+                if (resized == null)
+                    return;
+                using SKData data = resized.Encode(SKEncodedImageFormat.Jpeg, 90);
+                // Replaced only once the new file is complete
+                string temp = path + ".tmp";
+                using (FileStream file = File.Create(temp))
+                    data.SaveTo(file);
+                File.Move(temp, path, true);
             }
         }
     }
