@@ -215,6 +215,11 @@ namespace gamevault.Windows
             { Log.Ignored(ignored); }
         }
 
+        private void ProblemReport_Click(object? sender, PointerReleasedEventArgs e)
+        {
+            e.Handled = true;
+            MainWindowViewModel.Instance.OpenPopup(new UserControls.SettingsComponents.ProblemReportUserControl());
+        }
         private void Shortlink_Click(object? sender, PointerReleasedEventArgs e)
         {
             try

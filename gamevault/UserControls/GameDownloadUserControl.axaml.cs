@@ -145,6 +145,9 @@ namespace gamevault.UserControls
             return false;
         }
         public bool IsPaused() => ViewModel.IsDownloadPaused;
+        /// <summary>The state shown in the download list (problem reports).</summary>
+        public string StateText => ViewModel.State ?? "";
+        public string GameTitle => ViewModel.Game?.Title ?? "";
         /// <summary>Downloading, extracting or installing: its files must not be touched.</summary>
         public bool IsBusy() => IsDownloadActive || ViewModel.ExtractionUIVisibility || uiProgressRingInstall.IsActive;
 

@@ -85,7 +85,7 @@
                     <Border Classes="shortcut" x:Name="uiGithubShortcut" PointerReleased="Shortlink_Click" ToolTip.Tip="{l:T 'Open GitHub'}">
                         <Path Data="{StaticResource IconNavGithub}" />
                     </Border>
-                    <Border Classes="shortcut" x:Name="uiBugReportShortcut" PointerReleased="Shortlink_Click" ToolTip.Tip="{l:T 'Bug Report'}">
+                    <Border Classes="shortcut" x:Name="uiBugReportShortcut" PointerReleased="ProblemReport_Click" ToolTip.Tip="{l:T 'Report a problem'}">
                         <Path Data="{StaticResource IconNavBug}" />
                     </Border>
                     <Border Classes="shortcut" PointerReleased="News_Click" ToolTip.Tip="{l:T 'Open News'}">
