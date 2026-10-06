@@ -95,3 +95,86 @@ namespace GameVault.UiTests
         }
     }
 }
+
+namespace GameVault.UiTests
+{
+    /// <summary>Big archives come in several parts at once; damaged ones are downloaded again.</summary>
+    public class ParallelDownloadScenarios
+    {
+        private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(120);
+
+        [AvaloniaFact]
+        public async Task ABigArchive_IsDownloadedInSeveralRangesAtOnce()
+        {
+            var session = await TestSession.GetAsync();
+            byte[] archive = TestSession.LinuxGameArchive(70 * 1024 * 1024);
+            Game game = session.Server.AddGame(301, "Big Game", GameType.LINUX_PORTABLE, archive, "Big Game (L_P).tar.gz");
+            int rangesBefore = session.Server.RangeHeaders.Count;
+
+            await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+
+            await TestSession.WaitUntil(() => File.Exists(Path.Combine(session.DownloadFolder(game), "Extract", "start.sh")), Timeout, "the parallel download to be extracted");
+            Assert.Equal(archive, File.ReadAllBytes(Path.Combine(session.DownloadFolder(game), "Big Game (L_P).tar.gz")));
+            var ranges = session.Server.RangeHeaders.Skip(rangesBefore).ToList();
+            Assert.Contains("bytes=0-", ranges);
+            Assert.Contains(ranges, r => System.Text.RegularExpressions.Regex.IsMatch(r, @"^bytes=[1-9]\d*-\d+$"));
+        }
+
+        [AvaloniaFact]
+        public async Task ABigArchive_FromAStandardHttpServer_IsAlsoDownloadedInRanges()
+        {
+            var session = await TestSession.GetAsync();
+            byte[] archive = TestSession.LinuxGameArchive(70 * 1024 * 1024);
+            Game game = session.Server.AddGame(304, "Big Standard Game", GameType.LINUX_PORTABLE, archive, "Big Standard Game (L_P).tar.gz");
+            session.Server.StandardRanges = true;
+            int rangesBefore = session.Server.RangeHeaders.Count;
+            try
+            {
+                await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+
+                await TestSession.WaitUntil(() => File.Exists(Path.Combine(session.DownloadFolder(game), "Extract", "start.sh")), Timeout, "the parallel download to be extracted");
+                Assert.Equal(archive, File.ReadAllBytes(Path.Combine(session.DownloadFolder(game), "Big Standard Game (L_P).tar.gz")));
+                Assert.Contains(session.Server.RangeHeaders.Skip(rangesBefore), r => System.Text.RegularExpressions.Regex.IsMatch(r, @"^bytes=[1-9]\d*-\d+$"));
+            }
+            finally
+            {
+                session.Server.StandardRanges = false;
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task AnInterruptedParallelDownload_ContinuesEachRange()
+        {
+            var session = await TestSession.GetAsync();
+            byte[] archive = TestSession.LinuxGameArchive(70 * 1024 * 1024);
+            Game game = session.Server.AddGame(302, "Big Cut Game", GameType.LINUX_PORTABLE, archive, "Big Cut Game (L_P).tar.gz");
+            // The first connection (first range) breaks after 5 MB
+            session.Server.CutNextDownloadAfter[game.ID] = 5 * 1024 * 1024;
+            int rangesBefore = session.Server.RangeHeaders.Count;
+
+            await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+
+            await TestSession.WaitUntil(() => File.Exists(Path.Combine(session.DownloadFolder(game), "Extract", "start.sh")), Timeout, "the resumed parallel download to be extracted");
+            Assert.Equal(archive, File.ReadAllBytes(Path.Combine(session.DownloadFolder(game), "Big Cut Game (L_P).tar.gz")));
+            // The first range was continued, not started again
+            var ranges = session.Server.RangeHeaders.Skip(rangesBefore).ToList();
+            Assert.Contains(ranges, r => System.Text.RegularExpressions.Regex.IsMatch(r, @"^bytes=[1-9]\d*-\d+$") && long.Parse(r[6..r.IndexOf('-')]) < archive.Length / 2);
+        }
+
+        [AvaloniaFact]
+        public async Task ADamagedArchive_IsDownloadedAgainAndInstalled()
+        {
+            var session = await TestSession.GetAsync();
+            byte[] archive = TestSession.LinuxGameArchive(2 * 1024 * 1024);
+            Game game = session.Server.AddGame(303, "Damaged Game", GameType.LINUX_PORTABLE, archive, "Damaged Game (L_P).tar.gz");
+            session.Server.DamageNextDownload[game.ID] = true;
+            int downloadsBefore = session.Server.Requests.Count(r => r.StartsWith($"GET /api/games/{game.ID}/download"));
+
+            await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+
+            await TestSession.WaitUntil(() => File.Exists(Path.Combine(session.InstallFolder(game), "Files", "start.sh")), Timeout, "the game to be installed from a good archive");
+            Assert.Equal(archive, File.ReadAllBytes(Path.Combine(session.DownloadFolder(game), "Damaged Game (L_P).tar.gz")));
+            Assert.Equal(2, session.Server.Requests.Count(r => r.StartsWith($"GET /api/games/{game.ID}/download")) - downloadsBefore);
+        }
+    }
+}

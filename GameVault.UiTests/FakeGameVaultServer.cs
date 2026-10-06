@@ -24,6 +24,13 @@ namespace GameVault.UiTests
 
         /// <summary>The next download of this game ends after this many bytes (the connection closes early).</summary>
         public ConcurrentDictionary<int, long> CutNextDownloadAfter { get; } = new();
+        /// <summary>The next download of this game sends damaged bytes (same size), like a disk or network fault.</summary>
+        public ConcurrentDictionary<int, bool> DamageNextDownload { get; } = new();
+        /// <summary>
+        /// Ranges answered like standard HTTP servers (206 + Content-Range). By default they are answered like the
+        /// real GameVault server: 200 with the part only, its size in X-Download-Size and no Content-Range.
+        /// </summary>
+        public bool StandardRanges { get; set; }
         /// <summary>Downloads ignore the Range header and always send the whole file with 200.</summary>
         public bool IgnoreRange { get; set; }
         /// <summary>Delay between two chunks of a download, to keep downloads running for a while.</summary>
@@ -133,24 +140,43 @@ namespace GameVault.UiTests
                 return;
             }
             byte[] file = entry.File;
+            if (DamageNextDownload.TryRemove(id, out _))
+            {
+                file = (byte[])file.Clone();
+                for (int i = file.Length / 2; i < file.Length / 2 + 4096 && i < file.Length; i++)
+                    file[i] ^= 0x5A;
+            }
             long start = 0;
+            long last = file.Length - 1;
             string? range = context.Request.Headers["Range"];
             if (range != null)
                 RangeHeaders.Enqueue(range);
             if (range != null && !IgnoreRange)
             {
-                Match match = Regex.Match(range, @"bytes=(\d+)-");
+                Match match = Regex.Match(range, @"bytes=(\d+)-(\d*)");
                 if (match.Success)
+                {
                     start = long.Parse(match.Groups[1].Value);
-                response.StatusCode = 206;
-                response.Headers["Content-Range"] = $"bytes {start}-{file.Length - 1}/{file.Length}";
+                    if (match.Groups[2].Value.Length > 0)
+                        last = Math.Min(last, long.Parse(match.Groups[2].Value));
+                }
+                if (StandardRanges)
+                {
+                    response.StatusCode = 206;
+                    response.Headers["Content-Range"] = $"bytes {start}-{last}/{file.Length}";
+                }
+            }
+            if (!IgnoreRange)
+            {
+                response.Headers["Accept-Ranges"] = "bytes";
+                response.Headers["X-Download-Size"] = (last - start + 1).ToString();
             }
             response.Headers["Content-Disposition"] = $"attachment; filename=\"{Path.GetFileName(entry.Game.Path)}\"";
             response.ContentType = "application/octet-stream";
-            long length = file.Length - start;
+            long length = last - start + 1;
             response.ContentLength64 = length;
 
-            long end = file.Length;
+            long end = last + 1;
             bool cut = CutNextDownloadAfter.TryRemove(id, out long cutAfter);
             if (cut)
                 end = Math.Min(file.Length, start + cutAfter);

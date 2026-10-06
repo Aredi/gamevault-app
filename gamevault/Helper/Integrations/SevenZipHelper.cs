@@ -73,6 +73,8 @@ namespace gamevault.Helper
     internal class SevenZipHelper
     {
         private Process process { get; set; }
+        /// <summary>Error output of the last extraction (tells a damaged archive from other failures).</summary>
+        public string LastError { get; private set; } = "";
         public delegate void ProcessHandler(object sender, SevenZipProgressEventArgs e);
         public event ProcessHandler Process;
         private ProcessStartInfo CreateProcessHeader()
@@ -124,9 +126,14 @@ namespace gamevault.Helper
                      process.StartInfo.ArgumentList.Add($"-p{password}");
                  }
                  process.EnableRaisingEvents = true;
+                 var errors = new System.Text.StringBuilder();
                  process.ErrorDataReceived += (sender, e) =>
                  {
-                     if (e.Data != null && e.Data.Contains("Wrong password"))
+                     if (e.Data == null)
+                         return;
+                     lock (errors)
+                         errors.AppendLine(e.Data);
+                     if (e.Data.Contains("Wrong password"))
                      {
                          exitCode = 69;
                      }
@@ -158,6 +165,8 @@ namespace gamevault.Helper
                  process.BeginErrorReadLine();
                  process.WaitForExit();
                  ProcessShepherd.Instance.RemoveProcess(process);
+                 lock (errors)
+                     LastError = errors.ToString();
              });
             try
             {

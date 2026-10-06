@@ -129,6 +129,11 @@
                                     <TextBlock Text="Simultaneous downloads" VerticalAlignment="Center" Width="200" />
                                     <ComboBox ItemsSource="{Binding MaxConcurrentDownloadsValues}" SelectedIndex="{Binding MaxConcurrentDownloadsIndex}" Width="130" />
                                 </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="Connections per download" VerticalAlignment="Center" Width="200" />
+                                    <ComboBox ItemsSource="{Binding DownloadConnectionsValues}" SelectedIndex="{Binding DownloadConnectionsIndex}" Width="130"
+                                              ToolTip.Tip="Big archives (from 64 MB) are downloaded in several parts at once. Faster over the internet; 1 is enough on a local network." />
+                                </StackPanel>
                                 <ToggleSwitch Content="Only download during these hours" IsChecked="{Binding DownloadScheduleEnabled}" />
                                 <StackPanel Orientation="Horizontal" Spacing="10" IsEnabled="{Binding DownloadScheduleEnabled}">
                                     <TextBlock Text="From" VerticalAlignment="Center" />

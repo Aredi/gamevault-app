@@ -91,6 +91,8 @@ namespace gamevault.ViewModels
             m_BackgroundStart = (Preferences.Get(AppConfigKey.BackgroundStart, userConfigFile) == "1"); OnPropertyChanged(nameof(BackgroundStart));
             notifyNewGames = Preferences.Get(AppConfigKey.NotifyNewGames, userConfigFile) != "0"; OnPropertyChanged(nameof(NotifyNewGames));
             maxConcurrentDownloads = int.TryParse(Preferences.Get(AppConfigKey.MaxConcurrentDownloads, userConfigFile), out int maxDownloads) ? Math.Clamp(maxDownloads, 0, 10) : 0;
+            downloadConnections = int.TryParse(Preferences.Get(AppConfigKey.DownloadConnections, userConfigFile), out int connections) ? Math.Clamp(connections, 1, 8) : 4;
+            OnPropertyChanged(nameof(DownloadConnectionsIndex));
             downloadScheduleEnabled = Preferences.Get(AppConfigKey.DownloadScheduleEnabled, userConfigFile) == "1";
             string scheduleStart = Preferences.Get(AppConfigKey.DownloadScheduleStart, userConfigFile);
             string scheduleEnd = Preferences.Get(AppConfigKey.DownloadScheduleEnd, userConfigFile);
@@ -219,6 +221,20 @@ namespace gamevault.ViewModels
         private int maxConcurrentDownloads;
         /// <summary>0 = no limit (every download starts at once).</summary>
         public int MaxConcurrentDownloads => maxConcurrentDownloads;
+        private int downloadConnections = 4;
+        /// <summary>Connections per download: big archives are fetched in that many ranges at once.</summary>
+        public int DownloadConnections => downloadConnections;
+        public string[] DownloadConnectionsValues { get; } = { "1", "2", "3", "4", "5", "6", "7", "8" };
+        public int DownloadConnectionsIndex
+        {
+            get => downloadConnections - 1;
+            set
+            {
+                downloadConnections = Math.Clamp(value + 1, 1, 8);
+                Preferences.Set(AppConfigKey.DownloadConnections, downloadConnections.ToString(), userConfigFile);
+                OnPropertyChanged();
+            }
+        }
         public string[] MaxConcurrentDownloadsValues { get; } = { "Unlimited", "1", "2", "3", "4", "5" };
         public int MaxConcurrentDownloadsIndex
         {

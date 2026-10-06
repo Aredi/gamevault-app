@@ -39,6 +39,7 @@ namespace gamevault.UserControls
         private GameSizeConverter gameSizeConverter { get; set; }
         private InputTimer downloadRetryTimer { get; set; }
         private bool isGameTypeForced = false;
+        private bool downloadedAgainAfterDamage;
         private double downloadRetryTimerTickValue = 10;
         private string mountedDrive = "";
 
@@ -325,6 +326,7 @@ namespace gamevault.UserControls
                 additionalRequestHeaders.Add("X-Download-Speed-Limit", SettingsViewModel.Instance.DownloadLimit.ToString());
             }
             client = new HttpClientDownloadWithProgress($"{SettingsViewModel.Instance.ServerUrl}/api/games/{ViewModel.Game.ID}/download", m_DownloadPath, Path.GetFileName(ViewModel.Game.Path), additionalRequestHeaders);
+            client.Connections = SettingsViewModel.Instance.DownloadConnections;
             client.ProgressChanged += DownloadProgress;
             startTime = DateTime.Now;
             downloadSpeedCalc = new DownloadSpeedCalculator();
@@ -698,7 +700,7 @@ namespace gamevault.UserControls
         /// <summary>
         /// Linux games usually come as tarballs; tar keeps the executable bits that 7-Zip would drop.
         /// </summary>
-        private static async Task<int> ExtractTar(string archive, string outputDir)
+        private static async Task<(int ExitCode, string Error)> ExtractTar(string archive, string outputDir)
         {
             Directory.CreateDirectory(outputDir);
             var info = new ProcessStartInfo("tar") { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true };
@@ -706,10 +708,10 @@ namespace gamevault.UserControls
                 info.ArgumentList.Add(arg);
             using Process process = Process.Start(info)!;
             ProcessShepherd.Instance.AddProcess(process);
-            await process.StandardError.ReadToEndAsync();
+            string error = await process.StandardError.ReadToEndAsync();
             await process.WaitForExitAsync();
             ProcessShepherd.Instance.RemoveProcess(process);
-            return process.ExitCode;
+            return (process.ExitCode, error);
         }
 
         private async Task Extract()
@@ -756,12 +758,13 @@ namespace gamevault.UserControls
             sevenZipHelper.Process += ExtractionProgress;
             startTime = DateTime.Now;
             int result;
+            string extractionError = "";
             bool useTar = !OperatingSystem.IsWindows() && IsTarArchive(files[0].Name) && PlatformInfo.FindInPath("tar") != null;
             bool isEncrypted = !useTar && await sevenZipHelper.IsArchiveEncrypted(Path.Combine(m_DownloadPath, files[0].Name));
             if (useTar)
             {
                 ViewModel.ExtractionInfo = "Extracting archive...";
-                result = await ExtractTar(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"));
+                (result, extractionError) = await ExtractTar(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"));
                 ViewModel.GameExtractionProgress = 100;
             }
             else if (isEncrypted)
@@ -843,6 +846,23 @@ namespace gamevault.UserControls
                 else if (result == 69)
                 {
                     ViewModel.State = "Error: Wrong password";
+                }
+                else if (!downloadedAgainAfterDamage && GameVault.Core.Downloads.ArchiveErrors.IsDamaged(useTar ? extractionError : sevenZipHelper.LastError))
+                {
+                    // Damaged on the way or on the disk: one new download, then extraction, installation... as before
+                    downloadedAgainAfterDamage = true;
+                    Log.Info($"The archive of {ViewModel.Game?.Title} is damaged, downloading it again: {(useTar ? extractionError : sevenZipHelper.LastError).Trim()}");
+                    ViewModel.ExtractionUIVisibility = false;
+                    MainWindowViewModel.Instance.AppBarText = $"The archive of '{ViewModel.Game?.Title}' is damaged, it is downloaded again";
+                    try
+                    {
+                        foreach (FileInfo damaged in files)
+                            damaged.Delete();
+                        File.Delete(Path.Combine(m_DownloadPath, "gamevault-metadata"));
+                    }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                    DownloadQueue.Enqueue(this, atFront: true);
+                    return;
                 }
                 else
                 {
