@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Platform.Storage;
 using Avalonia;
 using Avalonia.Controls;
@@ -205,7 +206,7 @@ namespace gamevault.UserControls
 
             if (ViewModel.Game.Type is GameType.WINDOWS_PORTABLE or GameType.LINUX_PORTABLE)
             {
-                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to uninstall '{ViewModel.Game.Title}' ?", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Are you sure you want to uninstall '{0}' ?", ViewModel.Game.Title), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                 if (result == MessageDialogResult.Affirmative)
                 {
                     try
@@ -219,13 +220,13 @@ namespace gamevault.UserControls
                     }
                     catch
                     {
-                        MainWindowViewModel.Instance.AppBarText = "Something went wrong when deleting the files. Maybe they are opened by another process.";
+                        MainWindowViewModel.Instance.AppBarText = Loc.T("Something went wrong when deleting the files. Maybe they are opened by another process.");
                     }
                 }
             }
             else if (ViewModel.Game.Type == GameType.WINDOWS_SETUP)
             {
-                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to uninstall '{ViewModel.Game.Title}' ?\nAs this is a Windows Setup Game, you will need to select an uninstall executable manually", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Are you sure you want to uninstall '{0}' ?\nAs this is a Windows Setup Game, you will need to select an uninstall executable manually", ViewModel.Game.Title), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                 if (result == MessageDialogResult.Affirmative)
                 {
                     string selectedUninstallerExecutablePath = "";
@@ -248,7 +249,7 @@ namespace gamevault.UserControls
                         string? pickedFile = await StorageHelper.PickFileAsync("Select the uninstaller", new Dictionary<string, string[]> { { "uninstall", new[] { "*.exe", "*.EXE" } } }, ViewModel.Directory);
                         if (!string.IsNullOrEmpty(pickedFile) && File.Exists(pickedFile))
                         {
-                            MessageDialogResult pickResult = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to uninstall the game using '{Path.GetFileName(pickedFile)}' ?", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                            MessageDialogResult pickResult = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Are you sure you want to uninstall the game using '{0}' ?", Path.GetFileName(pickedFile)), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                             if (pickResult != MessageDialogResult.Affirmative)
                             {
                                 return;
@@ -258,7 +259,7 @@ namespace gamevault.UserControls
                     }
                     if (!File.Exists(selectedUninstallerExecutablePath))
                     {
-                        MainWindowViewModel.Instance.AppBarText = "No valid uninstall executable selected";
+                        MainWindowViewModel.Instance.AppBarText = Loc.T("No valid uninstall executable selected");
                         return;
                     }
                     Process uninstProcess = null;
@@ -280,7 +281,7 @@ namespace gamevault.UserControls
                         }
                         catch
                         {
-                            MainWindowViewModel.Instance.AppBarText = $"Can not execute '{selectedUninstallerExecutablePath}'";
+                            MainWindowViewModel.Instance.AppBarText = Loc.F("Can not execute '{0}'", selectedUninstallerExecutablePath);
                         }
                     }
                     if (uninstProcess != null)
@@ -304,7 +305,7 @@ namespace gamevault.UserControls
             }
             else if (ViewModel.Game.Type == GameType.UNDETECTABLE)
             {
-                MainWindowViewModel.Instance.AppBarText = "Game Type cannot be determined";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Game Type cannot be determined");
             }
         }
 
@@ -346,7 +347,7 @@ namespace gamevault.UserControls
                         percentages[i] = 5;
                     }
                 }
-                string[] names = { $"This Game ({ViewModel.Game.Title})", "Other installed GameVault Games", "Unmanaged Data", "Free Space" };
+                string[] names = { Loc.F("This Game ({0})", ViewModel.Game.Title), Loc.T("Other installed GameVault Games"), Loc.T("Unmanaged Data"), Loc.T("Free Space") };
                 long[] sizes = { currentGameSize, otherGamesSize, unmanagedDiskSize, freeSpace };
                 Color[] colors = { Colors.DeepPink, Colors.LightSeaGreen, Colors.PaleVioletRed, Colors.DarkGray };
                 var slices = new List<PieSlice>();
@@ -513,17 +514,17 @@ namespace gamevault.UserControls
             string detected = gameCompatibility.DetectedUmuId;
             ViewModel.UmuStatus = ViewModel.UmuModeIndex switch
             {
-                2 => "No fixes are applied (umu-default).",
-                1 => $"The game starts as {gameCompatibility.EffectiveUmuId}.",
-                _ => detected == "" ? "The game is looked up in the umu database when it starts."
-                   : detected == "-" ? "The umu database does not know this title: no specific fixes (umu-default). A custom id can be set."
-                   : $"Found in the umu database: {detected}. Its fixes are applied with Proton.",
+                2 => Loc.T("No fixes are applied (umu-default)."),
+                1 => Loc.F("The game starts as {0}.", gameCompatibility.EffectiveUmuId),
+                _ => detected == "" ? Loc.T("The game is looked up in the umu database when it starts.")
+                   : detected == "-" ? Loc.T("The umu database does not know this title: no specific fixes (umu-default). A custom id can be set.")
+                   : Loc.F("Found in the umu database: {0}. Its fixes are applied with Proton.", detected),
             };
             string[] verbs = gameCompatibility.WinetricksVerbs;
             string[] pending = gameCompatibility.PendingWinetricks;
             ViewModel.WinetricksStatus = verbs.Length == 0 ? ""
-                : pending.Length == 0 ? "All components are installed in the current prefix."
-                : $"Installed at the next start: {string.Join(", ", pending)}";
+                : pending.Length == 0 ? Loc.T("All components are installed in the current prefix.")
+                : Loc.F("Installed at the next start: {0}", string.Join(", ", pending));
         }
         private void UmuMode_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
@@ -591,7 +592,7 @@ namespace gamevault.UserControls
             if (loadingCompatibility || gameCompatibility == null || ViewModel.SelectedGameCompatibilityTool == null || ViewModel.SelectedGameCompatibilityTool.Id == gameCompatibility.ToolId)
                 return;
             gameCompatibility.SetTool(ViewModel.SelectedGameCompatibilityTool.Id);
-            MainWindowViewModel.Instance.AppBarText = $"{ViewModel.Game?.Title} now runs with {ViewModel.SelectedGameCompatibilityTool.Name}";
+            MainWindowViewModel.Instance.AppBarText = Loc.F("{0} now runs with {1}", ViewModel.Game?.Title, ViewModel.SelectedGameCompatibilityTool.Name);
         }
         private void GameWinePrefixMode_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
@@ -622,12 +623,12 @@ namespace gamevault.UserControls
         {
             if (gameCompatibility == null || gameCompatibility.PrefixMode != WinePrefixMode.Game || !Directory.Exists(gameCompatibility.PrefixPath))
                 return;
-            if (!await DialogService.ConfirmAsync($"Delete the prefix of {ViewModel.Game?.Title}?\n{gameCompatibility.PrefixPath}\n\nSaves stored in the prefix are deleted too (unless they are in the cloud).", "Delete prefix"))
+            if (!await DialogService.ConfirmAsync(Loc.F("Delete the prefix of {0}?\n{1}\n\nSaves stored in the prefix are deleted too (unless they are in the cloud).", ViewModel.Game?.Title, gameCompatibility.PrefixPath), Loc.T("Delete prefix")))
                 return;
             try
             {
                 Directory.Delete(gameCompatibility.PrefixPath, true);
-                MainWindowViewModel.Instance.AppBarText = "Prefix deleted";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Prefix deleted");
             }
             catch (Exception ex)
             {
@@ -661,7 +662,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Failed to load image: {ex.Message}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Failed to load image: {0}", ex.Message);
             }
         }
         private void SetImage(string? tag, IImage? image)
@@ -760,7 +761,7 @@ namespace gamevault.UserControls
                     string changedGame = await WebHelper.PutAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{ViewModel.Game.ID}", JsonSerializer.Serialize(updateGame));
                     ViewModel.Game = JsonSerializer.Deserialize<Game>(changedGame);
                     success = true;
-                    MainWindowViewModel.Instance.AppBarText = "Successfully updated image";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully updated image");
                 }
                 catch (Exception ex)
                 {
@@ -834,7 +835,7 @@ namespace gamevault.UserControls
                 var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
                 if (clipboard != null)
                     await clipboard.SetDataObjectAsync(data);
-                MainWindowViewModel.Instance.AppBarText = "Image copied to Clipboard";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Image copied to Clipboard");
             }
             catch (Exception ex)
             {
@@ -928,7 +929,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Could not load metadata provider data. ({ex.Message})";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Could not load metadata provider data. ({0})", ex.Message);
                 ViewModel.RemapSearchResults = null;
             }
             this.Cursor = null;
@@ -983,7 +984,7 @@ namespace gamevault.UserControls
                 string remappedGame = await WebHelper.PutAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{gameId}", JsonSerializer.Serialize(updateGame));
                 ViewModel.Game = JsonSerializer.Deserialize<Game>(remappedGame);
                 success = true;
-                MainWindowViewModel.Instance.AppBarText = $"Successfully re-mapped {ViewModel.Game.Title}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully re-mapped {0}", ViewModel.Game.Title);
             }
             catch (Exception ex)
             {
@@ -1037,7 +1038,7 @@ namespace gamevault.UserControls
         #region Edit Game Details
         private async void ClearUserData_Click(object sender, RoutedEventArgs e)
         {
-            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to wipe all manually edited custom metadata and images?\n\nAll fields will revert to the merged provider metadata (if available).\n\nThis action cannot be undone.", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Are you sure you want to wipe all manually edited custom metadata and images?\n\nAll fields will revert to the merged provider metadata (if available).\n\nThis action cannot be undone."), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
             if (result == MessageDialogResult.Affirmative)
             {
                 int gameId = ViewModel.Game.ID;
@@ -1055,7 +1056,7 @@ namespace gamevault.UserControls
                 ViewModel.Game = JsonSerializer.Deserialize<Game>(remappedGame);
                 success = true;
                 ViewModel.UpdateGame = new UpdateGameDto() { UserMetadata = new UpdateGameUserMetadataDto() };
-                MainWindowViewModel.Instance.AppBarText = $"Successfully edited {ViewModel.Game.Title}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully edited {0}", ViewModel.Game.Title);
             }
             catch (Exception ex)
             {

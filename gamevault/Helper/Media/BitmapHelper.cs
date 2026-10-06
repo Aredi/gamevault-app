@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -72,11 +73,11 @@ namespace gamevault.Helper
         public static MemoryStream BitmapSourceToMemoryStream(IImage src)
         {
             if (src is not Bitmap bitmap)
-                throw new ArgumentException("Only bitmaps can be uploaded", nameof(src));
+                throw new ArgumentException(Loc.T("Only bitmaps can be uploaded"), nameof(src));
             using var png = new MemoryStream();
             bitmap.Save(png);
             png.Position = 0;
-            using SKBitmap image = SKBitmap.Decode(png) ?? throw new ArgumentException("The image could not be read", nameof(src));
+            using SKBitmap image = SKBitmap.Decode(png) ?? throw new ArgumentException(Loc.T("The image could not be read"), nameof(src));
             using SKData data = image.Encode(SKEncodedImageFormat.Jpeg, 90);
             var jpeg = new MemoryStream();
             data.SaveTo(jpeg);

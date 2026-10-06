@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -185,8 +186,8 @@ namespace gamevault.Helper.Platform
             {
                 "7z" => "7-Zip was not found. Install it with your package manager (e.g. 'sudo apt install 7zip').",
                 "ludusavi" => "Ludusavi was not found. Install it (e.g. 'flatpak install flathub com.github.mtkennerly.ludusavi') to use cloud saves.",
-                _ => $"{tool} was not found.",
+                _ => Loc.F("{0} was not found.", tool),
             }
-            : $"{tool} is missing from the GameVault installation directory.";
+            : Loc.F("{0} is missing from the GameVault installation directory.", tool);
     }
 }

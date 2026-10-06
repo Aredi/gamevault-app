@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using GameVault.Core.Compatibility;
 using gamevault.Helper.Platform;
@@ -213,8 +214,8 @@ namespace gamevault.ViewModels
         {
             var selected = StorageCleanupItems.Where(i => i.IsSelected).ToList();
             StorageCleanupSummary = StorageCleanupItems.Count == 0
-                ? "Nothing to clean up."
-                : $"{selected.Count} of {StorageCleanupItems.Count} selected: {GameVault.Core.Storage.StorageCleanup.FormatSize(selected.Sum(i => i.Candidate.Size))} can be freed.";
+                ? Loc.T("Nothing to clean up.")
+                : Loc.F("{0} of {1} selected: {2} can be freed.", selected.Count, StorageCleanupItems.Count, GameVault.Core.Storage.StorageCleanup.FormatSize(selected.Sum(i => i.Candidate.Size)));
         }
         #endregion
         #region Download queue
@@ -235,7 +236,19 @@ namespace gamevault.ViewModels
                 OnPropertyChanged();
             }
         }
-        public string[] MaxConcurrentDownloadsValues { get; } = { "Unlimited", "1", "2", "3", "4", "5" };
+        public string[] MaxConcurrentDownloadsValues { get; } = { Loc.T("Unlimited"), "1", "2", "3", "4", "5" };
+        public string[] LanguageNames { get; } = Loc.LanguageNames.Select(name => Loc.T(name)).ToArray();
+        /// <summary>Applies at the next start: every text of the interface is translated while it loads.</summary>
+        public int LanguageIndex
+        {
+            get => Math.Max(0, Array.IndexOf(Loc.Languages, Preferences.Get(AppConfigKey.Language, ProfileManager.ProfileConfigFile)));
+            set
+            {
+                Preferences.Set(AppConfigKey.Language, Loc.Languages[Math.Clamp(value, 0, Loc.Languages.Length - 1)], ProfileManager.ProfileConfigFile);
+                OnPropertyChanged();
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Restart GameVault to change the language");
+            }
+        }
         public int MaxConcurrentDownloadsIndex
         {
             get => maxConcurrentDownloads;
@@ -543,7 +556,7 @@ namespace gamevault.ViewModels
             }
             catch (Exception)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Access to the path {selectedPath} is denied";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Access to the path {0} is denied", selectedPath);
             }
             return selectedPath;
         }
@@ -632,7 +645,7 @@ namespace gamevault.ViewModels
                        $"wine: {Found(Helper.Platform.PlatformInfo.FindInPath("wine"))}\n" +
                        $"7-Zip: {Found(Helper.Platform.ToolLocator.SevenZip())}\n" +
                        $"Ludusavi: {Helper.Platform.ToolLocator.Ludusavi()?.FileName ?? "not found"}\n" +
-                       $"Games without a tool of their own start with: {startsWith}";
+                       Loc.F("Games without a tool of their own start with: {0}", startsWith);
             }
         }
 

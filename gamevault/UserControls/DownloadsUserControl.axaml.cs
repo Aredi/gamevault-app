@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -107,7 +108,7 @@ namespace gamevault.UserControls
                  }
                  catch (FormatException exFormat)
                  {
-                     MainWindowViewModel.Instance.AppBarText = "The offline cache is corrupted";
+                     MainWindowViewModel.Instance.AppBarText = Loc.T("The offline cache is corrupted");
                  }
                  catch (Exception ex)
                  {
@@ -181,12 +182,12 @@ namespace gamevault.UserControls
             if (existing != null && (existing.IsDownloading() || DownloadQueue.IsWaiting(existing) || existing.IsPaused()))
             {
                 existing.PlayWhenInstalled = true;
-                MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' starts as soon as it is installed";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' starts as soon as it is installed", game.Title);
                 return;
             }
             if (existing != null && existing.HasDownloadedFiles())
             {
-                MainWindowViewModel.Instance.AppBarText = $"Installing '{game.Title}'...";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Installing '{0}'...", game.Title);
                 await existing.ContinueToPlay();
                 return;
             }
@@ -201,12 +202,12 @@ namespace gamevault.UserControls
             KeyValuePair<Game, string> installed = InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key.ID == game.ID);
             if (installed.Key == null || !Directory.Exists(installed.Value))
             {
-                MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' is not installed";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is not installed", game.Title);
                 return;
             }
             if (!LoginManager.Instance.IsLoggedIn())
             {
-                MainWindowViewModel.Instance.AppBarText = "You are not logged in or offline";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("You are not logged in or offline");
                 return;
             }
             GameDownloadUserControl? existing = DownloadsViewModel.Instance.DownloadedGames.FirstOrDefault(d => d.GetGameId() == game.ID);
@@ -214,7 +215,7 @@ namespace gamevault.UserControls
             {
                 if (existing.IsBusy() || DownloadQueue.IsWaiting(existing))
                 {
-                    MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' is already being downloaded";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is already being downloaded", game.Title);
                     return;
                 }
                 // The archive of the old version is not needed anymore
@@ -228,17 +229,17 @@ namespace gamevault.UserControls
                 return;
             if (!IsEnoughDriveSpaceAvailable(Convert.ToInt64(game.Size), root))
             {
-                MainWindowViewModel.Instance.AppBarText = $"Not enough space available to update '{game.Title}'";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough space available to update '{0}'", game.Title);
                 return;
             }
             DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, root, true, installed.Value) { IsUpdate = true });
-            MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' is updated{(string.IsNullOrEmpty(game.Version) ? "" : $" to {game.Version}")}, your saves and settings are kept";
+            MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is updated{1}, your saves and settings are kept", game.Title, (string.IsNullOrEmpty(game.Version) ? "" : Loc.F(" to {0}", game.Version)));
         }
         public async Task TryStartDownload(Game game, bool playWhenInstalled = false)
         {
             if (SettingsViewModel.Instance.RootDirectories.Count == 0)
             {
-                MainWindowViewModel.Instance.AppBarText = "No Root Directory configured! Go to ⚙️Settings->Data";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("No Root Directory configured! Go to ⚙️Settings->Data");
                 return;
             }
             var installLocationPicker = new InstallLocationUserControl();
@@ -249,17 +250,17 @@ namespace gamevault.UserControls
 
             if (!Directory.Exists(selectedDirectory))
             {
-                MainWindowViewModel.Instance.AppBarText = "Selected directory does not exist";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Selected directory does not exist");
                 return;
             }
             if (LoginManager.Instance.IsLoggedIn() == false)
             {
-                MainWindowViewModel.Instance.AppBarText = "You are not logged in or offline";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("You are not logged in or offline");
                 return;
             }
             if (IsAlreadyDownloading(game.ID))
             {
-                MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' is already in the download queue";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is already in the download queue", game.Title);
                 return;
             }
             if (await IsAlreadyDownloaded(game.ID))
@@ -276,21 +277,21 @@ namespace gamevault.UserControls
                 }
                 DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, selectedDirectory, true) { PlayWhenInstalled = playWhenInstalled });
                 MainWindowViewModel.Instance.AppBarText = playWhenInstalled
-                    ? $"'{game.Title}' is downloaded, installed and started for you"
-                    : $"'{game.Title}' has been added to the download queue";
+                    ? Loc.F("'{0}' is downloaded, installed and started for you", game.Title)
+                    : Loc.F("'{0}' has been added to the download queue", game.Title);
             }
             else
             {
                 string? driveName = PlatformInfo.GetDriveForPath(selectedDirectory)?.Name ?? Path.GetPathRoot(selectedDirectory);
-                MainWindowViewModel.Instance.AppBarText = $"Not enough space available for drive {driveName}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough space available for drive {0}", driveName);
             }
         }
         private async Task<bool> IsAlreadyDownloaded(int id)
         {
             if (DownloadsViewModel.Instance.DownloadedGames.Where(gameUC => gameUC.GetGameId() == id).Count() > 0)
             {
-                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"This game was already downloaded. Do you want to overwrite this file?",
-                    "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("This game was already downloaded. Do you want to overwrite this file?"),
+                    "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                 if (result == MessageDialogResult.Affirmative)
                 {
                     return false;
@@ -317,7 +318,7 @@ namespace gamevault.UserControls
 
         private async void DeleteAllDownloads_Click(object sender, RoutedEventArgs e)
         {
-            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to delete all canceled and completed downloads?\n\nThis cannot be undone.", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Are you sure you want to delete all canceled and completed downloads?\n\nThis cannot be undone."), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
 
             if (result == MessageDialogResult.Affirmative)
             {

@@ -1,4 +1,5 @@
 <Styles xmlns="https://github.com/avaloniaui"
+        xmlns:l="clr-namespace:gamevault.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ctxt="clr-namespace:ColorTextBlock.Avalonia;assembly=ColorTextBlock.Avalonia">
 
@@ -114,7 +115,7 @@
     <!-- Former "SearchTextBox" -->
     <Style Selector="TextBox.search">
         <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
-        <Setter Property="Watermark" Value="Search..." />
+        <Setter Property="Watermark" Value="{l:T 'Search...'}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="6,4" />
         <Setter Property="VerticalContentAlignment" Value="Center" />

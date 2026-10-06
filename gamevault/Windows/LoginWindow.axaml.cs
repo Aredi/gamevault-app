@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -245,14 +246,14 @@ namespace gamevault.Windows
         private void ValidateSignInData(LoginUser loginUser, bool isLogin)
         {
             if (ViewModel.UserProfiles.Any(user => user.Name == loginUser.Username))
-                throw new ArgumentException("Profile with this name already exists");
+                throw new ArgumentException(Loc.T("Profile with this name already exists"));
 
             if (string.IsNullOrWhiteSpace(loginUser.ServerUrl))
                 throw new ArgumentException("ServerUrl is not set");
 
             if (isLogin && !ViewModel.LoginServerInfo.IsAvailable)
             {
-                throw new ArgumentException("Server could not be reached");
+                throw new ArgumentException(Loc.T("Server could not be reached"));
             }
 
             loginUser.ServerUrl = ValidateUriScheme(loginUser.ServerUrl);
@@ -260,10 +261,10 @@ namespace gamevault.Windows
             if (!ViewModel.LoginUser.IsLoggedInWithSSO)
             {
                 if (string.IsNullOrWhiteSpace(loginUser.Username))
-                    throw new ArgumentException("Username is not set");
+                    throw new ArgumentException(Loc.T("Username is not set"));
 
                 if (string.IsNullOrWhiteSpace(loginUser.Password))
-                    throw new ArgumentException("Password is not set");
+                    throw new ArgumentException(Loc.T("Password is not set"));
             }
         }
 
@@ -271,7 +272,7 @@ namespace gamevault.Windows
         {
             if (!calledByActivationLoop)
             {
-                ViewModel.StatusText = "Logging in...";
+                ViewModel.StatusText = Loc.T("Logging in...");
                 ViewModel.LoginStepIndex = (int)LoginStep.LoadingAction;
 
                 if (await CheckIfServerIsOutdated(profile.ServerUrl))
@@ -343,7 +344,7 @@ namespace gamevault.Windows
                     }
                     catch (Exception ex)
                     {
-                        ViewModel.AppBarText = ex.Message == "NOID" ? LoginManager.Instance.GetServerLoginResponseMessage() : "Can not load user profile in offline mode";
+                        ViewModel.AppBarText = ex.Message == "NOID" ? LoginManager.Instance.GetServerLoginResponseMessage() : Loc.T("Can not load user profile in offline mode");
                         ViewModel.LoginStepIndex = (int)LoginStep.ChooseProfile;
                     }
                 }
@@ -354,7 +355,7 @@ namespace gamevault.Windows
             LoginManager.Instance.SetUserProfile(profile);
             SettingsViewModel.Instance.Init();
 
-            ViewModel.StatusText = "Optimizing Cache...";
+            ViewModel.StatusText = Loc.T("Optimizing Cache...");
             await CacheHelper.OptimizeCache();
             if (ViewModel.RememberMe)
             {
@@ -390,7 +391,7 @@ namespace gamevault.Windows
                     profile = SetupUserProfile(ViewModel.SignupUser);
                     if (profile == null)
                     {
-                        ViewModel.AppBarText = "Failed to setup User Profile";
+                        ViewModel.AppBarText = Loc.T("Failed to setup User Profile");
                         return;
                     }
                     await Login(profile, true);
@@ -407,22 +408,22 @@ namespace gamevault.Windows
         {
             if (string.IsNullOrWhiteSpace(ViewModel.SignupUser.ServerUrl))
             {
-                throw new Exception("Server URL is not set");
+                throw new Exception(Loc.T("Server URL is not set"));
             }
             ViewModel.SignupUser.ServerUrl = ValidateUriScheme(ViewModel.SignupUser.ServerUrl);
             if (!ViewModel.SignupUser.IsLoggedInWithSSO)
             {
                 if (string.IsNullOrWhiteSpace(ViewModel.SignupUser.Password) || string.IsNullOrWhiteSpace(ViewModel.SignupUser.RepeatPassword))
                 {
-                    throw new Exception("Password is not set");
+                    throw new Exception(Loc.T("Password is not set"));
                 }
                 if (ViewModel.SignupUser.Password != ViewModel.SignupUser.RepeatPassword)
                 {
-                    throw new Exception("Password must be equal");
+                    throw new Exception(Loc.T("Password must be equal"));
                 }
                 if (string.IsNullOrWhiteSpace(ViewModel.SignupUser.Username))
                 {
-                    throw new Exception("Username is not set");
+                    throw new Exception(Loc.T("Username is not set"));
                 }
             }
         }
@@ -459,7 +460,7 @@ namespace gamevault.Windows
             if (sender is MenuItem menuItem)
             {
                 UserProfile profileToDelete = (UserProfile)menuItem.DataContext!;
-                MessageDialogResult result = await this.ShowMessageAsync($"Are you sure you want to delete Profile '{profileToDelete.Name}'?", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                MessageDialogResult result = await this.ShowMessageAsync(Loc.F("Are you sure you want to delete Profile '{0}'?", profileToDelete.Name), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                 if (result == MessageDialogResult.Affirmative)
                 {
                     ProfileManager.DeleteUserProfile(profileToDelete);
@@ -474,7 +475,7 @@ namespace gamevault.Windows
             {
                 UserProfile? profileToEdit = ViewModel.UserProfiles.FirstOrDefault(x => x.RootDir == ViewModel.EditUser.ID);
                 if (profileToEdit == null)
-                    throw new Exception("User Profile not found");
+                    throw new Exception(Loc.T("User Profile not found"));
                 if (profileToEdit.ServerUrl != ViewModel.EditUser.ServerUrl)
                 {
                     ProfileManager.DeleteUserProfile(profileToEdit);
@@ -521,7 +522,7 @@ namespace gamevault.Windows
             }
             catch (Exception ex)
             {
-                ViewModel.AppBarText = $"Failed to create demo user: {ex.Message}";
+                ViewModel.AppBarText = Loc.F("Failed to create demo user: {0}", ex.Message);
             }
         }
 
@@ -543,7 +544,7 @@ namespace gamevault.Windows
         {
             try
             {
-                ViewModel.StatusText = "Searching for Updates...";
+                ViewModel.StatusText = Loc.T("Searching for Updates...");
                 if (AppUpdater.IsInstalled)
                 {
                     await CheckForInstalledUpdates();
@@ -553,9 +554,9 @@ namespace gamevault.Windows
                 ReleaseInfo? release = await UpdateChecker.GetNewerReleaseAsync(SettingsViewModel.Instance.Version, OperatingSystem.IsWindows() ? "Portable.zip" : ".AppImage");
                 if (release != null)
                 {
-                    var result = await this.ShowMessageAsync("Update available",
-                        $"A new version of GameVault is now available on GitHub.\nCurrent Version '{SettingsViewModel.Instance.Version}' -> new Version '{release.Version}'\nWould you like to download it? (No automatic installation)",
-                        MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Download", NegativeButtonText = "Later" });
+                    var result = await this.ShowMessageAsync(Loc.T("Update available"),
+                        Loc.F("A new version of GameVault is now available on GitHub.\nCurrent Version '{0}' -> new Version '{1}'\nWould you like to download it? (No automatic installation)", SettingsViewModel.Instance.Version, release.Version),
+                        MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Download"), NegativeButtonText = Loc.T("Later") });
                     if (result == MessageDialogResult.Affirmative)
                     {
                         PlatformInfo.OpenUrl(release.DownloadUrl ?? release.PageUrl);
@@ -575,21 +576,21 @@ namespace gamevault.Windows
             if (update == null)
                 return;
             string newVersion = update.TargetFullRelease.Version.ToString();
-            var result = await this.ShowMessageAsync("Update available",
-                $"GameVault {newVersion} is available (installed: {AppUpdater.CurrentVersion}).\nInstall it now? GameVault restarts after the download.",
-                MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Update", NegativeButtonText = "Later" });
+            var result = await this.ShowMessageAsync(Loc.T("Update available"),
+                Loc.F("GameVault {0} is available (installed: {1}).\nInstall it now? GameVault restarts after the download.", newVersion, AppUpdater.CurrentVersion),
+                MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Update"), NegativeButtonText = Loc.T("Later") });
             if (result != MessageDialogResult.Affirmative)
                 return;
             try
             {
-                ViewModel.StatusText = $"Downloading GameVault {newVersion}...";
+                ViewModel.StatusText = Loc.F("Downloading GameVault {0}...", newVersion);
                 await AppUpdater.DownloadAndRestartAsync(update, percent =>
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => ViewModel.StatusText = $"Downloading GameVault {newVersion}... {percent}%"));
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => ViewModel.StatusText = Loc.F("Downloading GameVault {0}... {1}%", newVersion, percent)));
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Update failed");
-                await this.ShowMessageAsync("Update failed", ex.Message);
+                await this.ShowMessageAsync(Loc.T("Update failed"), ex.Message);
             }
         }
 
@@ -612,12 +613,12 @@ namespace gamevault.Windows
             {
                 try
                 {
-                    MessageDialogResult result = await this.ShowMessageAsync("CLIENT-SERVER-INCOMPABILITY DETECTED",
-                          $"Your GameVault Client is not compatible with the GameVault Server you are using (<15.0.0). This server is too old for your client.\r\n\r\nYou have the following options:\r\n",
+                    MessageDialogResult result = await this.ShowMessageAsync(Loc.T("CLIENT-SERVER-INCOMPABILITY DETECTED"),
+                          Loc.T("Your GameVault Client is not compatible with the GameVault Server you are using (<15.0.0). This server is too old for your client.\r\n\r\nYou have the following options:\r\n"),
                           MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings()
                           {
-                              AffirmativeButtonText = "Get older client version from GitHub",
-                              NegativeButtonText = "Update the server",
+                              AffirmativeButtonText = Loc.T("Get older client version from GitHub"),
+                              NegativeButtonText = Loc.T("Update the server"),
                               DialogMessageFontSize = 20,
                               DialogTitleFontSize = 25
                           });
@@ -664,7 +665,7 @@ namespace gamevault.Windows
                 Preferences.Set(AppConfigKey.AdditionalRequestHeaders, ViewModel.AdditionalRequestHeaders.Where(rh => !string.IsNullOrWhiteSpace(rh.Name) && !string.IsNullOrWhiteSpace(rh.Value)), ProfileManager.ProfileConfigFile);
                 WebHelper.SetAdditionalDefaultRequestHeaders(ViewModel.AdditionalRequestHeaders?.ToList());
                 ViewModel.LoginStepIndex = (int)LoginStep.ChooseProfile;
-                ViewModel.AppBarText = "Successfully saved additional request headers";
+                ViewModel.AppBarText = Loc.T("Successfully saved additional request headers");
             }
             catch (Exception ex) { ViewModel.AppBarText = ex.Message; }
         }

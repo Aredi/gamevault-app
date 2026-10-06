@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using gamevault.Helper.Platform;
 using gamevault.Models;
@@ -32,13 +33,13 @@ namespace gamevault.Helper
                 string shortcutPath = ShortcutPath(game);
                 if (File.Exists(shortcutPath))
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Desktop shortcut already exists";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Desktop shortcut already exists");
                     return;
                 }
                 if (ask)
                 {
-                    MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Do you want to create a desktop shortcut for {game.Title}?", "",
-                    MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                    MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Do you want to create a desktop shortcut for {0}?", game.Title), "",
+                    MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
 
                     if (result != MessageDialogResult.Affirmative)
                         return;
@@ -60,7 +61,7 @@ namespace gamevault.Helper
                     File.WriteAllText(shortcutPath, DesktopEntry.Create(
                         name: game.Title,
                         exec: $"{DesktopEntry.Quote(PlatformInfo.ExecutablePath)} start --gameid={game.ID}",
-                        comment: $"Play {game.Title} with GameVault",
+                        comment: Loc.F("Play {0} with GameVault", game.Title),
                         icon: icon,
                         extra: "Categories=Game;\n"));
                     PlatformInfo.MakeExecutable(shortcutPath);

@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Data.Converters;
 using gamevault.Models;
 using System;
@@ -13,7 +14,7 @@ namespace gamevault.Converter
             {
                 if (value == null)
                 {
-                    throw new ArgumentException("Invalid input value");
+                    throw new ArgumentException(Loc.T("Invalid input value"));
                 }
 
                 double size = double.Parse(value.ToString());

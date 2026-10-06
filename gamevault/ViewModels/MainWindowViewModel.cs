@@ -1,6 +1,7 @@
 using gamevault.Helper;
 using gamevault.Models;
 using gamevault.UserControls;
+using gamevault.Localization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -70,7 +71,8 @@ namespace gamevault.ViewModels
         public string AppBarText
         {
             get { return m_AppBarText; }
-            set { m_AppBarText = value; OnPropertyChanged(); IsAppBarOpen = true; Avalonia.Threading.Dispatcher.UIThread.Post(RestartAppBarTimer); }
+            // Fixed texts and statuses passed around are translated here; texts with values use Loc.F
+            set { m_AppBarText = value == null ? value : Loc.T(value); OnPropertyChanged(); IsAppBarOpen = true; Avalonia.Threading.Dispatcher.UIThread.Post(RestartAppBarTimer); }
         }
         private Avalonia.Threading.DispatcherTimer? appBarTimer;
         private void RestartAppBarTimer()

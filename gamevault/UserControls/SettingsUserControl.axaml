@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
@@ -39,22 +40,27 @@
     </UserControl.Styles>
     <Grid RowDefinitions="50,*">
         <Border Background="{DynamicResource Brush.Background2}" Grid.Row="0">
-            <TextBlock Text="Settings" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
+            <TextBlock Text="{l:T 'Settings'}" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
         </Border>
         <TextBlock Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Bottom" Text="{Binding Version, StringFormat='V {0}'}" Margin="20,0,0,5" ZIndex="1" PointerPressed="DevMode_Click" />
         <TabControl Grid.Row="1" x:Name="uiTabControl" TabStripPlacement="Left" Margin="10" SelectionChanged="TabControl_SelectionChanged">
             <!-- 0: Application -->
-            <TabItem Header="Application">
+            <TabItem Header="{l:T 'Application'}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="30,0,20,20">
-                        <TextBlock Classes="h1" Text="Startup" />
-                        <ToggleSwitch x:Name="uiAutostartToggle" Content="Launch GameVault on Computer Startup" />
-                        <ToggleSwitch Content="Minimize GameVault to System Tray on Startup" IsChecked="{Binding BackgroundStart}" />
-                        <ToggleSwitch Content="Auto-Load Library from Server on Startup" IsChecked="{Binding LibStartup}" />
-                        <ToggleSwitch Content="Notify me when new games are added to the server" IsChecked="{Binding NotifyNewGames}" />
+                        <TextBlock Classes="h1" Text="{l:T 'Language'}" />
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+                            <ComboBox ItemsSource="{Binding LanguageNames}" SelectedIndex="{Binding LanguageIndex}" Width="180" />
+                            <TextBlock Text="{l:T 'Applies at the next start'}" VerticalAlignment="Center" Opacity="0.7" />
+                        </StackPanel>
+                        <TextBlock Classes="h1" Text="{l:T 'Startup'}" />
+                        <ToggleSwitch x:Name="uiAutostartToggle" Content="{l:T 'Launch GameVault on Computer Startup'}" />
+                        <ToggleSwitch Content="{l:T 'Minimize GameVault to System Tray on Startup'}" IsChecked="{Binding BackgroundStart}" />
+                        <ToggleSwitch Content="{l:T 'Auto-Load Library from Server on Startup'}" IsChecked="{Binding LibStartup}" />
+                        <ToggleSwitch Content="{l:T 'Notify me when new games are added to the server'}" IsChecked="{Binding NotifyNewGames}" />
                         <StackPanel Classes="section">
-                            <TextBlock Classes="h1" Text="Theme" />
-                            <TextBlock Text="Installed Themes" Margin="10,5,0,0" FontSize="14" />
+                            <TextBlock Classes="h1" Text="{l:T 'Theme'}" />
+                            <TextBlock Text="{l:T 'Installed Themes'}" Margin="10,5,0,0" FontSize="14" />
                             <WrapPanel Orientation="Horizontal" Margin="10,10,0,0">
                                 <ComboBox x:Name="uiCbTheme" ItemsSource="{Binding Themes}" Width="520" SelectionChanged="Themes_SelectionChanged">
                                     <ComboBox.ItemTemplate>
@@ -62,20 +68,20 @@
                                             <StackPanel Width="470" ToolTip.Tip="{Binding Description}">
                                                 <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" />
                                                 <TextBlock Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding Author, StringFormat='Author: {0}'}" FontSize="10" />
+                                                <TextBlock Text="{Binding Author, StringFormat={l:T 'Author: {0}'}}" FontSize="10" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <Button Classes="wrapper" Height="25" Width="25" Margin="20,0,10,0" ToolTip.Tip="Reload Theme List" Click="ReloadThemeList_Click">
+                                <Button Classes="wrapper" Height="25" Width="25" Margin="20,0,10,0" ToolTip.Tip="{l:T 'Reload Theme List'}" Click="ReloadThemeList_Click">
                                     <Grid Classes="hover" Background="Transparent">
                                         <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.51)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Grid>
                                 </Button>
-                                <local:IconButton Text="Uninstall Theme" Kind="Danger" IsEnabled="{Binding IsCommunityThemeSelected}" FontSize="15" Icon="{StaticResource IconTrash}" IconMargin="0,0,5,2" Width="175" Height="40" Margin="10,0,0,0" Click="UninstallTheme_Click" />
-                                <local:IconButton Text="Open Theme Folder" FontSize="15" Icon="{StaticResource IconGameSettingsFolder}" IconMargin="0,0,5,2" Width="175" Height="40" Margin="10,0,0,0" Click="OpenThemeFolder_Click" />
+                                <local:IconButton Text="{l:T 'Uninstall Theme'}" Kind="Danger" IsEnabled="{Binding IsCommunityThemeSelected}" FontSize="15" Icon="{StaticResource IconTrash}" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="10,0,0,0" Click="UninstallTheme_Click" />
+                                <local:IconButton Text="{l:T 'Open Theme Folder'}" FontSize="15" Icon="{StaticResource IconGameSettingsFolder}" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="10,0,0,0" Click="OpenThemeFolder_Click" />
                             </WrapPanel>
-                            <TextBlock Text="Community Themes" Margin="10,10,0,0" FontSize="14" />
+                            <TextBlock Text="{l:T 'Community Themes'}" Margin="10,10,0,0" FontSize="14" />
                             <WrapPanel Orientation="Horizontal" Margin="10,5,0,0">
                                 <Grid>
                                     <ComboBox x:Name="uiCBCommunityThemes" ItemsSource="{Binding CommunityThemes}" Width="520" DropDownOpened="CommunityThemes_DropDownOpened">
@@ -84,114 +90,114 @@
                                                 <StackPanel Width="470" ToolTip.Tip="{Binding Description}">
                                                     <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" />
                                                     <TextBlock Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding Author, StringFormat='Author: {0}'}" FontSize="10" />
+                                                    <TextBlock Text="{Binding Author, StringFormat={l:T 'Author: {0}'}}" FontSize="10" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
-                                    <TextBlock IsHitTestVisible="False" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" Text="Click to Load"
+                                    <TextBlock IsHitTestVisible="False" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{l:T 'Click to Load'}"
                                                IsVisible="{Binding CommunityThemes, Converter={x:Static ObjectConverters.IsNull}}" />
                                 </Grid>
-                                <Button Classes="wrapper" Height="25" Width="25" Margin="20,0,10,0" ToolTip.Tip="Reload Theme List" Click="ReloadCommunityThemeList_Click">
+                                <Button Classes="wrapper" Height="25" Width="25" Margin="20,0,10,0" ToolTip.Tip="{l:T 'Reload Theme List'}" Click="ReloadCommunityThemeList_Click">
                                     <Grid Classes="hover" Background="Transparent">
                                         <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.51)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Grid>
                                 </Button>
-                                <local:IconButton Text="Install Theme" Height="40" FontSize="15" Icon="{StaticResource IconGameSettingsInstallation}" IconMargin="0,0,10,0" Width="175" Margin="10,0,0,0" Click="InstallCommunityTheme_Click" />
-                                <local:IconButton Text="Open Repository" Height="40" FontSize="15" Icon="{StaticResource IconGameSettingsGithub}" IconMargin="0,0,10,0" Width="175" Margin="10,0,0,0" Click="OpenCommunityThemeRepository_Click" />
+                                <local:IconButton Text="{l:T 'Install Theme'}" Height="40" FontSize="15" Icon="{StaticResource IconGameSettingsInstallation}" IconMargin="0,0,10,0" MinWidth="175" Margin="10,0,0,0" Click="InstallCommunityTheme_Click" />
+                                <local:IconButton Text="{l:T 'Open Repository'}" Height="40" FontSize="15" Icon="{StaticResource IconGameSettingsGithub}" IconMargin="0,0,10,0" MinWidth="175" Margin="10,0,0,0" Click="OpenCommunityThemeRepository_Click" />
                             </WrapPanel>
                         </StackPanel>
                         <StackPanel Classes="section">
-                            <TextBlock Classes="h1" Text="Library" />
-                            <ToggleSwitch Content="Retain Sorting and Filter preferences after restart" IsChecked="{Binding RetainLibarySortByAndOrderBy}" />
+                            <TextBlock Classes="h1" Text="{l:T 'Library'}" />
+                            <ToggleSwitch Content="{l:T 'Retain Sorting and Filter preferences after restart'}" IsChecked="{Binding RetainLibarySortByAndOrderBy}" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
             <!-- 1: Installation -->
-            <TabItem Header="Installation">
+            <TabItem Header="{l:T 'Installation'}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="30,0,20,20">
-                        <TextBlock Classes="h1" Text="Download" />
+                        <TextBlock Classes="h1" Text="{l:T 'Downloads'}" />
                         <Border Classes="group" Width="510">
                             <StackPanel>
-                                <TextBlock Text="Download Bandwidth Limit (KB/s, 0 = unlimited)" FontWeight="Bold" />
+                                <TextBlock Text="{l:T 'Download Bandwidth Limit (KB/s, 0 = unlimited)'}" FontWeight="Bold" />
                                 <TextBox x:Name="uiDownloadLimit" Text="{Binding DownloadLimitUIValue}" Margin="0,10,0,5" MaxLength="8" UseFloatingWatermark="True"
                                          Watermark="{Binding DownloadLimitUIValue, Converter={StaticResource downloadLimitConv}}" TextChanged="DownloadLimit_InputValidation" KeyDown="DownloadLimit_KeyDown" />
-                                <local:IconButton Text="Save" FontSize="15" Icon="{StaticResource IconGameSettingsSave}" IconMargin="0,0,5,2" Width="80" Height="30" HorizontalAlignment="Left" Click="DownloadLimit_Save" />
+                                <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{StaticResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="80" Height="30" HorizontalAlignment="Left" Click="DownloadLimit_Save" />
                             </StackPanel>
                         </Border>
                         <Border Classes="group" Width="510">
                             <StackPanel Spacing="6">
-                                <TextBlock Text="Download queue" FontWeight="Bold" />
+                                <TextBlock Text="{l:T 'Download queue'}" FontWeight="Bold" />
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Text="Simultaneous downloads" VerticalAlignment="Center" Width="200" />
+                                    <TextBlock Text="{l:T 'Simultaneous downloads'}" VerticalAlignment="Center" MinWidth="200" />
                                     <ComboBox ItemsSource="{Binding MaxConcurrentDownloadsValues}" SelectedIndex="{Binding MaxConcurrentDownloadsIndex}" Width="130" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Text="Connections per download" VerticalAlignment="Center" Width="200" />
+                                    <TextBlock Text="{l:T 'Connections per download'}" VerticalAlignment="Center" MinWidth="200" />
                                     <ComboBox ItemsSource="{Binding DownloadConnectionsValues}" SelectedIndex="{Binding DownloadConnectionsIndex}" Width="130"
-                                              ToolTip.Tip="Big archives (from 64 MB) are downloaded in several parts at once. Faster over the internet; 1 is enough on a local network." />
+                                              ToolTip.Tip="{l:T 'Big archives (from 64 MB) are downloaded in several parts at once. Faster over the internet; 1 is enough on a local network.'}" />
                                 </StackPanel>
-                                <ToggleSwitch Content="Only download during these hours" IsChecked="{Binding DownloadScheduleEnabled}" />
+                                <ToggleSwitch Content="{l:T 'Only download during these hours'}" IsChecked="{Binding DownloadScheduleEnabled}" />
                                 <StackPanel Orientation="Horizontal" Spacing="10" IsEnabled="{Binding DownloadScheduleEnabled}">
-                                    <TextBlock Text="From" VerticalAlignment="Center" />
+                                    <TextBlock Text="{l:T 'From'}" VerticalAlignment="Center" />
                                     <TextBox Text="{Binding DownloadScheduleStart}" Width="80" Watermark="01:00" />
-                                    <TextBlock Text="to" VerticalAlignment="Center" />
+                                    <TextBlock Text="{l:T 'to'}" VerticalAlignment="Center" />
                                     <TextBox Text="{Binding DownloadScheduleEnd}" Width="80" Watermark="07:00" />
                                 </StackPanel>
-                                <TextBlock Text="Further downloads wait in the queue. Outside of the hours, running downloads are paused and continue automatically (e.g. 22:00 to 06:00 for night downloads). &quot;Start now&quot; or resuming by hand ignores the queue." TextWrapping="Wrap" FontSize="12" Opacity="0.8" />
+                                <TextBlock Text="{l:T 'Further downloads wait in the queue. Outside of the hours, running downloads are paused and continue automatically (e.g. 22:00 to 06:00 for night downloads). &quot;Start now&quot; or resuming by hand ignores the queue.'}" TextWrapping="Wrap" FontSize="12" Opacity="0.8" />
                             </StackPanel>
                         </Border>
                         <StackPanel Classes="section">
-                            <TextBlock Classes="h1" Text="Extraction" />
-                            <ToggleSwitch Content="Auto-Extract Downloaded Games" IsChecked="{Binding AutoExtract}" />
+                            <TextBlock Classes="h1" Text="{l:T 'Extraction'}" />
+                            <ToggleSwitch Content="{l:T 'Auto-Extract Downloaded Games'}" IsChecked="{Binding AutoExtract}" />
                             <Border Classes="group" Width="510">
                                 <StackPanel>
-                                    <TextBlock Text="Default extraction password" FontWeight="Bold" />
-                                    <TextBlock Text="Set a password that will automatically be tried when extracting games." TextWrapping="Wrap" FontSize="14" />
-                                    <TextBox x:Name="uiPwExtraction" PasswordChar="●" Classes="revealPasswordButton" Watermark="Optional Password" Margin="0,5,0,0" />
-                                    <local:IconButton Text="Save" FontSize="15" Icon="{StaticResource IconGameSettingsSave}" IconMargin="0,0,5,2" Width="80" Height="30" Margin="0,5,0,0" HorizontalAlignment="Left" Click="ExtractionPasswordSave_Click" />
+                                    <TextBlock Text="{l:T 'Default extraction password'}" FontWeight="Bold" />
+                                    <TextBlock Text="{l:T 'Set a password that will automatically be tried when extracting games.'}" TextWrapping="Wrap" FontSize="14" />
+                                    <TextBox x:Name="uiPwExtraction" PasswordChar="●" Classes="revealPasswordButton" Watermark="{l:T 'Optional Password'}" Margin="0,5,0,0" />
+                                    <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{StaticResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="80" Height="30" Margin="0,5,0,0" HorizontalAlignment="Left" Click="ExtractionPasswordSave_Click" />
                                 </StackPanel>
                             </Border>
-                            <ToggleSwitch Content="Mount ISO instead of extracting (Must be unmounted manually)" IsChecked="{Binding MountIso}" />
+                            <ToggleSwitch Content="{l:T 'Mount ISO instead of extracting (Must be unmounted manually)'}" IsChecked="{Binding MountIso}" />
                         </StackPanel>
                         <StackPanel Classes="section">
-                            <TextBlock Classes="h1" Text="Installation" />
-                            <ToggleSwitch Content="Auto-Install Portable Games" IsChecked="{Binding AutoInstallPortable}" />
-                            <ToggleSwitch Content="Auto-Delete Install files of Portable Games on successful installation" IsChecked="{Binding AutoDeletePortableGameFiles}" />
+                            <TextBlock Classes="h1" Text="{l:T 'Installation'}" />
+                            <ToggleSwitch Content="{l:T 'Auto-Install Portable Games'}" IsChecked="{Binding AutoInstallPortable}" />
+                            <ToggleSwitch Content="{l:T 'Auto-Delete Install files of Portable Games on successful installation'}" IsChecked="{Binding AutoDeletePortableGameFiles}" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
             <!-- 2: User -->
-            <TabItem Header="User">
+            <TabItem Header="{l:T 'User'}">
                 <StackPanel Margin="30,0,0,0">
-                    <TextBlock Classes="h1" Text="User" />
-                    <local:IconButton Text="Edit User" Icon="{StaticResource IconEditUser}" IconMargin="0,0,7,2" IconScale="0.9" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" Width="215" FontSize="15" Click="EditUser_Click" />
-                    <TextBlock Classes="h1" Text="Profile" Margin="0,10,0,0" />
-                    <local:IconButton Text="Change Profile" Icon="{StaticResource IconChangeProfile}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" Width="215" FontSize="15" Click="ChangeUserProfile_Click" />
-                    <local:IconButton Kind="Danger" Text="Logout from this Device" Icon="{StaticResource IconLogout}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" Width="215" FontSize="15" Click="Logout_Click" />
-                    <local:IconButton Kind="Danger" Text="Logout from all Devices" Icon="{StaticResource IconLogout}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" Width="215" FontSize="15" Click="LogoutFromAllDevices_Click" />
+                    <TextBlock Classes="h1" Text="{l:T 'User'}" />
+                    <local:IconButton Text="{l:T 'Edit User'}" Icon="{StaticResource IconEditUser}" IconMargin="0,0,7,2" IconScale="0.9" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" MinWidth="215" FontSize="15" Click="EditUser_Click" />
+                    <TextBlock Classes="h1" Text="{l:T 'Profile'}" Margin="0,10,0,0" />
+                    <local:IconButton Text="{l:T 'Change Profile'}" Icon="{StaticResource IconChangeProfile}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" MinWidth="215" FontSize="15" Click="ChangeUserProfile_Click" />
+                    <local:IconButton Kind="Danger" Text="{l:T 'Logout from this Device'}" Icon="{StaticResource IconLogout}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" MinWidth="215" FontSize="15" Click="Logout_Click" />
+                    <local:IconButton Kind="Danger" Text="{l:T 'Logout from all Devices'}" Icon="{StaticResource IconLogout}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" MinWidth="215" FontSize="15" Click="LogoutFromAllDevices_Click" />
                 </StackPanel>
             </TabItem>
 
             <!-- 3: Data -->
-            <TabItem Header="Data">
+            <TabItem Header="{l:T 'Data'}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="30,0,20,20">
-                        <TextBlock Classes="h1" Text="File System" />
+                        <TextBlock Classes="h1" Text="{l:T 'File System'}" />
                         <StackPanel Margin="10,10,0,0">
-                            <TextBlock Text="Root Directories (A 'GameVault' subfolder will be created)" Margin="0,2,0,2" FontSize="15" />
+                            <TextBlock Text="{l:T 'Root Directories (A \&#x27;GameVault\&#x27; subfolder will be created)'}" Margin="0,2,0,2" FontSize="15" />
                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Width="560" HorizontalAlignment="Left">
                                 <ItemsControl ItemsSource="{Binding RootDirectories}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
                                                 <TextBox IsReadOnly="True" Text="{Binding Uri}" Width="510" />
-                                                <Button Classes="wrapper" Height="30" Width="30" Click="RemoveRootDirectory_Click" ToolTip.Tip="Remove">
+                                                <Button Classes="wrapper" Height="30" Width="30" Click="RemoveRootDirectory_Click" ToolTip.Tip="{l:T 'Remove'}">
                                                     <Grid Classes="hover" Background="Transparent">
                                                         <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="IndianRed" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     </Grid>
@@ -201,27 +207,27 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
-                            <local:IconButton Icon="{StaticResource IconAddTag}" Text="Add" FontSize="15" IconMargin="0,0,5,2" HorizontalAlignment="Left" Width="100" Height="30" Margin="0,5,10,0" Click="AddRootDirectory_Click" />
+                            <local:IconButton Icon="{StaticResource IconAddTag}" Text="{l:T 'Add'}" FontSize="15" IconMargin="0,0,5,2" HorizontalAlignment="Left" MinWidth="100" Height="30" Margin="0,5,10,0" Click="AddRootDirectory_Click" />
                         </StackPanel>
                         <StackPanel Classes="section">
-                            <TextBlock Classes="h1" Text="Cache Management" />
+                            <TextBlock Classes="h1" Text="{l:T 'Cache Management'}" />
                             <StackPanel Margin="10,10,0,0" Orientation="Horizontal">
-                                <local:IconButton Text="Clear image cache" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" Width="185" Height="30" ToolTip.Tip="Clears the entire image cache" Click="ClearImageCache_Clicked" />
+                                <local:IconButton Text="{l:T 'Clear image cache'}" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" MinWidth="185" Height="30" ToolTip.Tip="{l:T 'Clears the entire image cache'}" Click="ClearImageCache_Clicked" />
                                 <TextBlock Text="{Binding ImageCacheSize, Converter={StaticResource sizeConv}, StringFormat='({0})'}" FontSize="20" Margin="10,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="10,10,0,0">
-                                <local:IconButton Text="Clear offline cache" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" Width="185" Height="30" Click="ClearOfflineCache_Clicked" ToolTip.Tip="Clears the entire offline cache" />
+                                <local:IconButton Text="{l:T 'Clear offline cache'}" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" MinWidth="185" Height="30" Click="ClearOfflineCache_Clicked" ToolTip.Tip="{l:T 'Clears the entire offline cache'}" />
                                 <TextBlock Text="{Binding OfflineCacheSize, Converter={StaticResource sizeConv}, StringFormat='({0})'}" FontSize="20" Margin="10,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                             <Border Classes="group" HorizontalAlignment="Stretch">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <StackPanel>
-                                        <TextBlock Text="Ignored Executables" FontWeight="Bold" />
-                                        <TextBox Text="{Binding IgnoreList, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="Edit ignorelist (separate entries by comma)" Margin="0,5,10,0" TextWrapping="Wrap" />
+                                        <TextBlock Text="{l:T 'Ignored Executables'}" FontWeight="Bold" />
+                                        <TextBox Text="{Binding IgnoreList, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{l:T 'Edit ignorelist (separate entries by comma)'}" Margin="0,5,10,0" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Spacing="5">
-                                        <local:IconButton Text="Reset" FontSize="15" Icon="{DynamicResource IconReload}" IconMargin="0,0,5,2" Width="115" Height="33" Click="IgnoredExecutablesReset_Click" />
-                                        <local:IconButton Text="Save" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" Width="115" Height="33" Click="IgnoredExecutablesSave_Click" />
+                                        <local:IconButton Text="{l:T 'Reset'}" FontSize="15" Icon="{DynamicResource IconReload}" IconMargin="0,0,5,2" MinWidth="115" Height="33" Click="IgnoredExecutablesReset_Click" />
+                                        <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="115" Height="33" Click="IgnoredExecutablesSave_Click" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -230,11 +236,11 @@
                         <!-- Free up disk space -->
                         <StackPanel Classes="section">
                             <Grid ColumnDefinitions="*,Auto" Width="900" HorizontalAlignment="Left">
-                                <TextBlock Classes="h1" Text="Free up disk space" />
-                                <local:IconButton Grid.Column="1" Text="Analyze" Icon="{StaticResource IconCleanup}" IconScale="0.06" IconMargin="-110,-100,-105,-100" FontSize="14" Width="120" Height="32" Click="AnalyzeStorage_Click" IsEnabled="{Binding !IsStorageCleanupRunning}" />
+                                <TextBlock Classes="h1" Text="{l:T 'Free up disk space'}" />
+                                <local:IconButton Grid.Column="1" Text="{l:T 'Analyze'}" Icon="{StaticResource IconCleanup}" IconScale="0.06" IconMargin="-110,-100,-105,-100" FontSize="14" MinWidth="120" Height="32" Click="AnalyzeStorage_Click" IsEnabled="{Binding !IsStorageCleanupRunning}" />
                             </Grid>
                             <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                       Text="Finds archives of games that are already installed, downloads that were never installed and, on Linux, Wine prefixes of uninstalled games and Proton/Wine versions no game uses. Nothing is deleted without your confirmation." />
+                                       Text="{l:T 'Finds archives of games that are already installed, downloads that were never installed and, on Linux, Wine prefixes of uninstalled games and Proton/Wine versions no game uses. Nothing is deleted without your confirmation.'}" />
                             <Border Classes="group" Width="900" HorizontalAlignment="Left" IsVisible="{Binding StorageCleanupSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <StackPanel Spacing="4">
                                     <ItemsControl ItemsSource="{Binding StorageCleanupItems}">
@@ -256,7 +262,7 @@
                                     </ItemsControl>
                                     <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                                         <TextBlock Text="{Binding StorageCleanupSummary}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                                        <local:IconButton Grid.Column="1" Kind="Danger" Text="Delete selected" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" FontSize="14" Width="160" Height="32" Click="CleanStorage_Click"
+                                        <local:IconButton Grid.Column="1" Kind="Danger" Text="{l:T 'Delete selected'}" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" FontSize="14" MinWidth="160" Height="32" Click="CleanStorage_Click"
                                                           IsEnabled="{Binding !IsStorageCleanupRunning}" />
                                     </Grid>
                                 </StackPanel>
@@ -267,10 +273,10 @@
             </TabItem>
 
             <!-- 4: Integrations -->
-            <TabItem Header="Integrations">
+            <TabItem Header="{l:T 'Integrations'}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="30,0,20,20" Spacing="20">
-                        <TextBlock Classes="h1" Text="Integrations" />
+                        <TextBlock Classes="h1" Text="{l:T 'Integrations'}" />
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
                             <Rectangle Classes="integrationBar" />
                             <StackPanel Margin="10,0,0,0">
@@ -280,9 +286,9 @@
                                         <TextBlock Text="Steam" FontSize="20" FontWeight="Bold" />
                                     </Button>
                                 </StackPanel>
-                                <TextBlock Text="GameVault offers seamless integration with Steam through the Steam Sync Integration. When enabled, all your installed games are automatically synced to your Steam Library and appear as Non-Steam Games. Launching these games via Steam will route them through GameVault, ensuring all your custom launch options are preserved." FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
-                                <ToggleSwitch x:Name="uiSteamSync" Content="Sync (You have to restart the steam client to see the changes)" Margin="0,10,0,0" IsChecked="{Binding SyncSteamShortcuts}" />
-                                <local:IconButton Text="Restore Backup" Kind="Danger" FontSize="15" Icon="{DynamicResource IconReload}" IconMargin="0,0,5,2" Width="150" Height="30" HorizontalAlignment="Left" Margin="0,10,0,0" Click="RestoreSteamShortcutBackup_Click" />
+                                <TextBlock Text="{l:T 'GameVault offers seamless integration with Steam through the Steam Sync Integration. When enabled, all your installed games are automatically synced to your Steam Library and appear as Non-Steam Games. Launching these games via Steam will route them through GameVault, ensuring all your custom launch options are preserved.'}" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
+                                <ToggleSwitch x:Name="uiSteamSync" Content="{l:T 'Sync (You have to restart the steam client to see the changes)'}" Margin="0,10,0,0" IsChecked="{Binding SyncSteamShortcuts}" />
+                                <local:IconButton Text="{l:T 'Restore Backup'}" Kind="Danger" FontSize="15" Icon="{DynamicResource IconReload}" IconMargin="0,0,5,2" MinWidth="150" Height="30" HorizontalAlignment="Left" Margin="0,10,0,0" Click="RestoreSteamShortcutBackup_Click" />
                             </StackPanel>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
@@ -294,8 +300,8 @@
                                         <TextBlock Text="Discord" FontSize="20" FontWeight="Bold" />
                                     </Button>
                                 </StackPanel>
-                                <TextBlock Text="When enabled, your currently played game will be synced with the Discord Presence. This means that all your discord friends can see what you are currently playing" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
-                                <ToggleSwitch Content="Sync" Margin="0,10,0,0" IsChecked="{Binding SyncDiscordPresence}" />
+                                <TextBlock Text="{l:T 'When enabled, your currently played game will be synced with the Discord Presence. This means that all your discord friends can see what you are currently playing'}" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
+                                <ToggleSwitch Content="{l:T 'Sync'}" Margin="0,10,0,0" IsChecked="{Binding SyncDiscordPresence}" />
                             </StackPanel>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
@@ -304,22 +310,22 @@
                                 <StackPanel Orientation="Horizontal">
                                     <Path Data="{StaticResource IconCloudSave}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" RenderTransform="scale(0.9)" />
                                     <Button Classes="link" Margin="5,0,0,0" Tag="https://gamevau.lt/docs/gamevault-plus/cloud-saves" Click="Hyperlink_RequestNavigate">
-                                        <TextBlock Text="Cloud Saves" FontSize="20" FontWeight="Bold" />
+                                        <TextBlock Text="{l:T 'Cloud Saves'}" FontSize="20" FontWeight="Bold" />
                                     </Button>
                                 </StackPanel>
-                                <TextBlock Text="Automatically backs up and restores your latest savefiles via your GameVault Server, ensuring seamless transitions between installations and devices." FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
-                                <TextBlock Text="Requires GameVault Server with savefiles feature enabled." FontSize="12" FontStyle="Italic" />
+                                <TextBlock Text="{l:T 'Automatically backs up and restores your latest savefiles via your GameVault Server, ensuring seamless transitions between installations and devices.'}" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
+                                <TextBlock Text="{l:T 'Requires GameVault Server with savefiles feature enabled.'}" FontSize="12" FontStyle="Italic" />
                                 <ToggleSwitch Margin="0,5,0,0" IsChecked="{Binding CloudSaves}" />
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Custom Ludusavi Manifests" Margin="0,2,0,2" FontSize="15" VerticalAlignment="Center" />
-                                    <CheckBox Content="Use Primary Manifest" IsChecked="{Binding UsePrimaryCloudSaveManifest}" Margin="15,0,0,0" ToolTip.Tip="Disable primary Ludusavi manifest to only use the custom ones" />
+                                    <TextBlock Text="{l:T 'Custom Ludusavi Manifests'}" Margin="0,2,0,2" FontSize="15" VerticalAlignment="Center" />
+                                    <CheckBox Content="{l:T 'Use Primary Manifest'}" IsChecked="{Binding UsePrimaryCloudSaveManifest}" Margin="15,0,0,0" ToolTip.Tip="{l:T 'Disable primary Ludusavi manifest to only use the custom ones'}" />
                                 </StackPanel>
                                 <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Width="560" HorizontalAlignment="Left">
                                     <ItemsControl ItemsSource="{Binding CustomCloudSaveManifests}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                                                    <TextBox Text="{Binding Uri}" Watermark="File path or URL" Width="510" />
+                                                    <TextBox Text="{Binding Uri}" Watermark="{l:T 'File path or URL'}" Width="510" />
                                                     <Button Classes="wrapper" Height="30" Width="30" Click="RemoveCustomCloudSaveManifest_Click">
                                                         <Grid Classes="hover" Background="Transparent">
                                                             <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="IndianRed" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -331,8 +337,8 @@
                                     </ItemsControl>
                                 </ScrollViewer>
                                 <StackPanel Orientation="Horizontal" Margin="0,5,0,0" Spacing="10">
-                                    <local:IconButton Icon="{StaticResource IconAddTag}" Text="Add" FontSize="15" IconMargin="0,0,5,2" Width="100" Height="30" Click="AddCustomCloudSaveManifest_Click" />
-                                    <local:IconButton Icon="{StaticResource IconGameSettingsSave}" Text="Save" FontSize="15" IconMargin="0,0,5,2" Width="100" Height="30" Click="SaveCustomCloudSaveManifests_Click" />
+                                    <local:IconButton Icon="{StaticResource IconAddTag}" Text="{l:T 'Add'}" FontSize="15" IconMargin="0,0,5,2" MinWidth="100" Height="30" Click="AddCustomCloudSaveManifest_Click" />
+                                    <local:IconButton Icon="{StaticResource IconGameSettingsSave}" Text="{l:T 'Save'}" FontSize="15" IconMargin="0,0,5,2" MinWidth="100" Height="30" Click="SaveCustomCloudSaveManifests_Click" />
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>
@@ -341,14 +347,14 @@
                             <StackPanel Margin="10,0,0,0">
                                 <StackPanel Orientation="Horizontal">
                                     <Path Data="{StaticResource IconGameSettingsPlaynite}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
-                                    <TextBlock Text="Playnite" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
+                                    <TextBlock Text="{l:T 'Playnite'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                                 </StackPanel>
-                                <TextBlock Text="GameVault integrates seamlessly with Playnite (Windows) using our Playnite Library Extension" FontSize="15" />
+                                <TextBlock Text="{l:T 'GameVault integrates seamlessly with Playnite (Windows) using our Playnite Library Extension'}" FontSize="15" />
                                 <Button Classes="link" Tag="https://playnite.link/addons.html#GameVault_fab8be77-18ab-4e6c-ad3d-89097b492d74" Click="Hyperlink_RequestNavigate">
-                                    <TextBlock Text="Download Playnite Extension" FontSize="15" TextDecorations="Underline" />
+                                    <TextBlock Text="{l:T 'Download Playnite Extension'}" FontSize="15" TextDecorations="Underline" />
                                 </Button>
                                 <Button Classes="link" Tag="https://gamevau.lt/docs/gamevault-plus/integrations/playnite/" Click="Hyperlink_RequestNavigate">
-                                    <TextBlock Text="Setup Guide" FontSize="15" TextDecorations="Underline" />
+                                    <TextBlock Text="{l:T 'Setup Guide'}" FontSize="15" TextDecorations="Underline" />
                                 </Button>
                             </StackPanel>
                         </StackPanel>
@@ -357,14 +363,14 @@
             </TabItem>
 
             <!-- 5: Linux compatibility layer -->
-            <TabItem Header="Linux" IsVisible="{Binding IsLinux}">
+            <TabItem Header="{l:T 'Linux'}" IsVisible="{Binding IsLinux}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="30,0,20,20" Spacing="10">
-                        <TextBlock Classes="h1" Text="Running Windows games" />
+                        <TextBlock Classes="h1" Text="{l:T 'Running Windows games'}" />
                         <TextBlock FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left"
-                                   Text="Windows games, installers and uninstallers are started through a compatibility layer. Native Linux games (Linux Portable) are started directly." />
+                                   Text="{l:T 'Windows games, installers and uninstallers are started through a compatibility layer. Native Linux games (Linux Portable) are started directly.'}" />
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0">
-                            <TextBlock Text="Default tool" FontSize="15" VerticalAlignment="Center" Width="200" />
+                            <TextBlock Text="{l:T 'Default tool'}" FontSize="15" VerticalAlignment="Center" MinWidth="200" />
                             <ComboBox x:Name="uiDefaultCompatibilityTool" ItemsSource="{Binding CompatibilityTools}" SelectedItem="{Binding DefaultCompatibilityTool}" Width="500">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
@@ -377,30 +383,30 @@
                             </ComboBox>
                         </StackPanel>
                         <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                   Text="Used by every game without a tool of its own. Like on the Steam Deck, each game can use another Proton or Wine version (Game Settings → Launch Options). Proton builds start through umu-run when it is installed, otherwise directly. Custom: your own command, with {exe} (the program) and {args} (the launch parameters)." />
+                                   Text="{l:T 'Used by every game without a tool of its own. Like on the Steam Deck, each game can use another Proton or Wine version (Game Settings → Launch Options). Proton builds start through umu-run when it is installed, otherwise directly. Custom: your own command, with {exe} (the program) and {args} (the launch parameters).'}" />
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0" IsVisible="{Binding IsCustomRunner}">
-                            <TextBlock Text="Custom command" FontSize="15" VerticalAlignment="Center" Width="200" />
-                            <TextBox Text="{Binding CustomRunnerCommand}" Watermark="gamemoderun wine {exe} {args}" Width="500" />
+                            <TextBlock Text="{l:T 'Custom command'}" FontSize="15" VerticalAlignment="Center" MinWidth="200" />
+                            <TextBox Text="{Binding CustomRunnerCommand}" Watermark="{l:T 'gamemoderun wine {exe} {args}'}" Width="500" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0">
-                            <TextBlock Text="Shared Wine prefix" FontSize="15" VerticalAlignment="Center" Width="200" />
+                            <TextBlock Text="{l:T 'Shared Wine prefix'}" FontSize="15" VerticalAlignment="Center" MinWidth="200" />
                             <TextBox Text="{Binding WinePrefix}" Watermark="{Binding EffectiveWinePrefix}" Width="500" />
-                            <local:IconButton Text="Browse" FontSize="14" Width="90" Height="32" Click="BrowseWinePrefix_Click" />
+                            <local:IconButton Text="{l:T 'Browse'}" FontSize="14" MinWidth="90" Height="32" Click="BrowseWinePrefix_Click" />
                         </StackPanel>
 
                         <!-- Compatibility tool manager -->
                         <Grid ColumnDefinitions="*,Auto" Margin="0,15,0,0" MaxWidth="900" HorizontalAlignment="Left" Width="900">
-                            <TextBlock Classes="h1" Text="Compatibility tools" />
+                            <TextBlock Classes="h1" Text="{l:T 'Compatibility tools'}" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                                <local:IconButton Text="Open folder" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,0" FontSize="14" Height="32" Padding="10,0" Click="OpenManagedToolsFolder_Click" />
-                                <local:IconButton Text="Refresh" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" FontSize="14" Height="32" Padding="10,0" Click="RefreshCompatibilityTools_Click" />
+                                <local:IconButton Text="{l:T 'Open folder'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,0" FontSize="14" Height="32" Padding="10,0" Click="OpenManagedToolsFolder_Click" />
+                                <local:IconButton Text="{l:T 'Refresh'}" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" FontSize="14" Height="32" Padding="10,0" Click="RefreshCompatibilityTools_Click" />
                             </StackPanel>
                         </Grid>
                         <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                   Text="Proton and Wine builds found on this computer: downloaded by GameVault, installed for Steam (compatibilitytools.d, ProtonUp-Qt) or for Lutris." />
+                                   Text="{l:T 'Proton and Wine builds found on this computer: downloaded by GameVault, installed for Steam (compatibilitytools.d, ProtonUp-Qt) or for Lutris.'}" />
                         <Border Classes="group" Width="900" HorizontalAlignment="Left" Margin="10,0,0,0">
                             <Panel>
-                                <TextBlock Text="No Proton or Wine build found yet. Download one below." Opacity="0.7" IsVisible="{Binding !InstalledCompatibilityBuilds.Count}" />
+                                <TextBlock Text="{l:T 'No Proton or Wine build found yet. Download one below.'}" Opacity="0.7" IsVisible="{Binding !InstalledCompatibilityBuilds.Count}" />
                                 <ItemsControl x:Name="uiInstalledTools" ItemsSource="{Binding InstalledCompatibilityBuilds}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -416,8 +422,8 @@
                                                     <TextBlock Text="{Binding Path}" FontSize="11" Opacity="0.6" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                    <local:IconButton Text="Open" Kind="Skeleton" FontSize="13" Height="28" Width="70" Tag="{Binding}" Click="OpenToolFolder_Click" />
-                                                    <local:IconButton Text="Delete" Kind="Danger" FontSize="13" Height="28" Width="80" Tag="{Binding}" Click="DeleteTool_Click" IsVisible="{Binding IsManaged}" />
+                                                    <local:IconButton Text="{l:T 'Open'}" Kind="Skeleton" FontSize="13" Height="28" MinWidth="70" Tag="{Binding}" Click="OpenToolFolder_Click" />
+                                                    <local:IconButton Text="{l:T 'Delete'}" Kind="Danger" FontSize="13" Height="28" MinWidth="80" Tag="{Binding}" Click="DeleteTool_Click" IsVisible="{Binding IsManaged}" />
                                                 </StackPanel>
                                             </Grid>
                                         </DataTemplate>
@@ -425,7 +431,7 @@
                                 </ItemsControl>
                             </Panel>
                         </Border>
-                        <TextBlock Text="Download a version" FontSize="15" FontWeight="Bold" Margin="10,10,0,0" />
+                        <TextBlock Text="{l:T 'Download a version'}" FontSize="15" FontWeight="Bold" Margin="10,10,0,0" />
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,0,0,0" IsEnabled="{Binding !IsToolDownloadRunning}">
                             <ComboBox ItemsSource="{Binding ToolFlavors}" SelectedItem="{Binding SelectedToolFlavor}" Width="170">
                                 <ComboBox.ItemTemplate>
@@ -434,9 +440,9 @@
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <local:IconButton Text="Load versions" FontSize="14" Height="32" Width="130" Click="LoadToolVersions_Click" />
-                            <ComboBox ItemsSource="{Binding AvailableToolDownloads}" SelectedItem="{Binding SelectedToolDownload}" Width="300" PlaceholderText="Load the versions first" />
-                            <local:IconButton Text="Install" Icon="{DynamicResource IconDownload}" IconMargin="0,0,5,0" IconScale="0.8" FontSize="14" Height="32" Width="110" Click="InstallTool_Click"
+                            <local:IconButton Text="{l:T 'Load versions'}" FontSize="14" Height="32" MinWidth="130" Click="LoadToolVersions_Click" />
+                            <ComboBox ItemsSource="{Binding AvailableToolDownloads}" SelectedItem="{Binding SelectedToolDownload}" Width="300" PlaceholderText="{l:T 'Load the versions first'}" />
+                            <local:IconButton Text="{l:T 'Install'}" Icon="{DynamicResource IconDownload}" IconMargin="0,0,5,0" IconScale="0.8" FontSize="14" Height="32" MinWidth="110" Click="InstallTool_Click"
                                               IsEnabled="{Binding SelectedToolDownload, Converter={x:Static ObjectConverters.IsNotNull}}" />
                         </StackPanel>
                         <StackPanel Margin="10,0,0,0" Spacing="4" IsVisible="{Binding ToolDownloadStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Width="900" HorizontalAlignment="Left">
@@ -444,63 +450,63 @@
                             <TextBlock Text="{Binding ToolDownloadStatus}" FontSize="13" TextWrapping="Wrap" />
                         </StackPanel>
                         <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                   Text="GE-Proton comes from GloriousEggroll/proton-ge-custom, Wine and Wine Staging from Kron4ek/Wine-Builds (WoW64 builds, they also run 32-bit games). Downloads are checked against their published checksums." />
-                        <TextBlock Classes="h1" Text="Detected tools" Margin="0,15,0,0" />
+                                   Text="{l:T 'GE-Proton comes from GloriousEggroll/proton-ge-custom, Wine and Wine Staging from Kron4ek/Wine-Builds (WoW64 builds, they also run 32-bit games). Downloads are checked against their published checksums.'}" />
+                        <TextBlock Classes="h1" Text="{l:T 'Detected tools'}" Margin="0,15,0,0" />
                         <Border Classes="group" Width="760">
                             <SelectableTextBlock x:Name="uiDetectedTools" Text="{Binding DetectedCompatibilityTools}" FontFamily="monospace" FontSize="13" TextWrapping="Wrap" />
                         </Border>
                         <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                   Text="Saves of Windows games running in the prefix are included in cloud saves automatically. Steam shortcuts start the games through GameVault." />
+                                   Text="{l:T 'Saves of Windows games running in the prefix are included in cloud saves automatically. Steam shortcuts start the games through GameVault.'}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
             <!-- 6: About -->
-            <TabItem Header="About">
+            <TabItem Header="{l:T 'About'}">
                 <StackPanel Margin="30,0,0,0" HorizontalAlignment="Left" Spacing="20">
-                    <TextBlock Classes="h1" Text="About" />
+                    <TextBlock Classes="h1" Text="{l:T 'About'}" />
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Application Version" FontSize="15" Width="200" />
+                        <TextBlock Text="{l:T 'Application Version'}" FontSize="15" MinWidth="200" />
                         <TextBlock Text="{Binding Version}" FontSize="15" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="This build" FontSize="15" Width="200" />
+                        <TextBlock Text="{l:T 'This build'}" FontSize="15" MinWidth="200" />
                         <Button Classes="link" x:Name="uiForkLink" Click="Hyperlink_RequestNavigate">
                             <TextBlock x:Name="uiForkLinkText" FontSize="15" />
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Developed by Phalcode" FontSize="15" Width="200" />
+                        <TextBlock Text="{l:T 'Developed by Phalcode'}" FontSize="15" MinWidth="200" />
                         <Button Classes="link" Tag="https://phalco.de" Click="Hyperlink_RequestNavigate">
                             <TextBlock Text="https://phalco.de" FontSize="15" />
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="License" FontSize="15" Width="200" />
+                        <TextBlock Text="{l:T 'License'}" FontSize="15" MinWidth="200" />
                         <Button Classes="link" Tag="https://gamevau.lt/license" Click="Hyperlink_RequestNavigate">
-                            <TextBlock Text="CC BY-NC-SA 4.0 (https://gamevau.lt/license)" FontSize="15" />
+                            <TextBlock Text="{l:T 'CC BY-NC-SA 4.0 (https://gamevau.lt/license)'}" FontSize="15" />
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Legal Notice" FontSize="15" Width="200" />
+                        <TextBlock Text="{l:T 'Legal Notice'}" FontSize="15" MinWidth="200" />
                         <Button Classes="link" Tag="https://phalco.de/legal" Click="Hyperlink_RequestNavigate">
                             <TextBlock Text="https://phalco.de/legal" FontSize="15" />
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Privacy Policy" FontSize="15" Width="200" />
+                        <TextBlock Text="{l:T 'Privacy Policy'}" FontSize="15" MinWidth="200" />
                         <Button Classes="link" Tag="https://phalco.de/privacy" Click="Hyperlink_RequestNavigate">
                             <TextBlock Text="https://phalco.de/privacy" FontSize="15" />
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Terms of Service" FontSize="15" Width="200" />
+                        <TextBlock Text="{l:T 'Terms of Service'}" FontSize="15" MinWidth="200" />
                         <Button Classes="link" Tag="https://phalco.de/tos" Click="Hyperlink_RequestNavigate">
                             <TextBlock Text="https://phalco.de/tos" FontSize="15" />
                         </Button>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Metadata Providers:" FontSize="15" Width="200" />
+                        <TextBlock Text="{l:T 'Metadata Providers:'}" FontSize="15" MinWidth="200" />
                         <TextBlock Text="IGDB" FontSize="15" />
                         <Button Classes="link" Margin="10,0,0,0" Tag="https://www.igdb.com" Click="Hyperlink_RequestNavigate">
                             <TextBlock Text="https://www.igdb.com" FontSize="15" />
@@ -510,12 +516,12 @@
             </TabItem>
 
             <!-- 7: Developer -->
-            <TabItem Header="Developer" IsVisible="{Binding DevModeEnabled}">
+            <TabItem Header="{l:T 'Developer'}" IsVisible="{Binding DevModeEnabled}">
                 <StackPanel Margin="30,0,0,0">
-                    <TextBlock Classes="h1" Text="Developer Settings" />
-                    <TextBlock Text="You may need to restart the client for the changes to take effect" Margin="0,5,0,0" />
-                    <local:IconButton Text="Open User Cache Folder" Height="30" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,5" Width="220" Margin="0,20,0,0" HorizontalAlignment="Left" Click="OpenUserCacheFolder_Click" />
-                    <local:IconButton Text="Open Log File" Height="30" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,5" Width="220" Margin="0,10,0,0" HorizontalAlignment="Left" Click="OpenLogFolder_Click" />
+                    <TextBlock Classes="h1" Text="{l:T 'Developer Settings'}" />
+                    <TextBlock Text="{l:T 'You may need to restart the client for the changes to take effect'}" Margin="0,5,0,0" />
+                    <local:IconButton Text="{l:T 'Open User Cache Folder'}" Height="30" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,5" MinWidth="220" Margin="0,20,0,0" HorizontalAlignment="Left" Click="OpenUserCacheFolder_Click" />
+                    <local:IconButton Text="{l:T 'Open Log File'}" Height="30" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,5" MinWidth="220" Margin="0,10,0,0" HorizontalAlignment="Left" Click="OpenLogFolder_Click" />
                 </StackPanel>
             </TabItem>
         </TabControl>

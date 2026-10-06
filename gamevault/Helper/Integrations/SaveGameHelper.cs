@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using Avalonia;
 using Avalonia.Controls;
@@ -129,7 +130,7 @@ namespace gamevault.Helper.Integrations
                             var mappingFile = Directory.GetFiles(tempFolder, "mapping.yaml", SearchOption.AllDirectories);
                             string extractFolder = "";
                             if (mappingFile.Length < 1)
-                                throw new Exception("no savegame extracted");
+                                throw new Exception(Loc.T("no savegame extracted"));
 
                             extractFolder = Path.GetDirectoryName(Path.GetDirectoryName(mappingFile[0]));
                             PrepareConfigFile(installationDir, Path.Combine(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "config.yaml"));
@@ -252,9 +253,9 @@ namespace gamevault.Helper.Integrations
         private static async Task<string> AskConflict(int gameId, ServerSave server, DateTime localChange)
         {
             MessageDialogResult result = await Ask(
-                $"The saves of '{GameTitle(gameId)}' differ.\n\nCloud save (from another computer): {server.UploadedAt.ToLocalTime():g}\nSave on this computer: {localChange.ToLocalTime():g}\n\nThe save that is replaced is kept in the save history.",
-                "Cloud save conflict", MessageDialogStyle.AffirmativeAndNegativeAndSingleAuxiliary,
-                new MetroDialogSettings { AffirmativeButtonText = "Use the cloud save", FirstAuxiliaryButtonText = "Keep this computer's save", NegativeButtonText = "Don't start" });
+                Loc.F("The saves of '{0}' differ.\n\nCloud save (from another computer): {1:g}\nSave on this computer: {2:g}\n\nThe save that is replaced is kept in the save history.", GameTitle(gameId), server.UploadedAt.ToLocalTime(), localChange.ToLocalTime()),
+                Loc.T("Cloud save conflict"), MessageDialogStyle.AffirmativeAndNegativeAndSingleAuxiliary,
+                new MetroDialogSettings { AffirmativeButtonText = Loc.T("Use the cloud save"), FirstAuxiliaryButtonText = Loc.T("Keep this computer's save"), NegativeButtonText = Loc.T("Don't start") });
             return result switch
             {
                 MessageDialogResult.Affirmative => CloudSaveStatus.RestoreSuccess,
@@ -270,9 +271,9 @@ namespace gamevault.Helper.Integrations
             if (!SaveSync.ServerChangedMeanwhile(server, GetGameInstallationId(installationDir), ReadLastSync(installationDir)))
                 return true;
             MessageDialogResult result = await Ask(
-                $"Another computer uploaded a save of '{GameTitle(gameId)}' on {server!.UploadedAt.ToLocalTime():g}, after this computer last synchronized.\n\nReplace it with the save of this computer?",
-                "Cloud save conflict", MessageDialogStyle.AffirmativeAndNegative,
-                new MetroDialogSettings { AffirmativeButtonText = "Upload this computer's save", NegativeButtonText = "Keep the cloud save" });
+                Loc.F("Another computer uploaded a save of '{0}' on {1:g}, after this computer last synchronized.\n\nReplace it with the save of this computer?", GameTitle(gameId), server!.UploadedAt.ToLocalTime()),
+                Loc.T("Cloud save conflict"), MessageDialogStyle.AffirmativeAndNegative,
+                new MetroDialogSettings { AffirmativeButtonText = Loc.T("Upload this computer's save"), NegativeButtonText = Loc.T("Keep the cloud save") });
             return result == MessageDialogResult.Affirmative;
         }
 
@@ -316,12 +317,12 @@ namespace gamevault.Helper.Integrations
                 {
                     // Uploaded when the server is back (UploadPendingSaveGamesAsync)
                     AddPendingBackup(removedId);
-                    MainWindowViewModel.Instance.AppBarText = $"{CloudSaveStatus.Offline} The savegame is uploaded when you are back online.";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("{0} The savegame is uploaded when you are back online.", CloudSaveStatus.Offline);
                     continue;
                 }
                 try
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Uploading Savegame to the Server...";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Uploading Savegame to the Server...");
                     string status = await BackupSaveGame(removedId);
                     MainWindowViewModel.Instance.AppBarText = status;
                 }
@@ -361,7 +362,7 @@ namespace gamevault.Helper.Integrations
                     continue;// still running: backed up when it closes
                 try
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Uploading savegames made offline...";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Uploading savegames made offline...");
                     string status = await BackupSaveGame(gameId);
                     Log.Info($"Offline savegame of game {gameId}: {status}");
                     MainWindowViewModel.Instance.AppBarText = status;
@@ -589,7 +590,7 @@ namespace gamevault.Helper.Integrations
         private async Task<MemoryStream> FileToMemoryStreamAsync(string filePath)
         {
             if (!File.Exists(filePath))
-                throw new FileNotFoundException("File not found", filePath);
+                throw new FileNotFoundException(Loc.T("File not found"), filePath);
 
             MemoryStream memoryStream = new MemoryStream();
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))

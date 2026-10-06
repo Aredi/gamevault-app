@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
@@ -72,45 +73,45 @@
     <Border Padding="5" CornerRadius="5" ClipToBounds="True" BoxShadow="0 0 7 0 #80000000">
         <Grid ColumnDefinitions="101*,299*">
             <Grid Grid.Column="0" Background="{DynamicResource Brush.Background2}">
-                <TextBlock Text="Game Settings" FontSize="30" Margin="10" />
+                <TextBlock Text="{l:T 'Game Settings'}" FontSize="30" Margin="10" />
                 <StackPanel VerticalAlignment="Top" Margin="40,70,0,0">
                     <StackPanel IsVisible="{Binding Game, Converter={StaticResource tabVisConv}, ConverterParameter=local}">
-                        <TextBlock Text="Your Computer" FontSize="30" />
+                        <TextBlock Text="{l:T 'Your Computer'}" FontSize="30" />
                         <ListBox x:Name="uiSettingsHeadersLocal" Classes="settingsNav" SelectionChanged="SettingsTabControl_SelectionChanged">
                             <ListBoxItem>
-                                <StackPanel Orientation="Horizontal">
+                                <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconGameSettingsFolder}" />
-                                    <TextBlock Text="Installation" />
-                                </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Installation'}" TextWrapping="Wrap" />
+                                </Grid>
                             </ListBoxItem>
                             <ListBoxItem>
-                                <StackPanel Orientation="Horizontal">
+                                <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconGameSettingsLaunchOptions}" />
-                                    <TextBlock Text="Launch Options" />
-                                </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Launch Options'}" TextWrapping="Wrap" />
+                                </Grid>
                             </ListBoxItem>
                         </ListBox>
                     </StackPanel>
                     <StackPanel IsVisible="{Binding Game, Converter={StaticResource tabVisConv}, ConverterParameter=server}">
-                        <TextBlock Text="Server" FontSize="30" Margin="0,30,0,0" />
+                        <TextBlock Text="{l:T 'Server'}" FontSize="30" Margin="0,30,0,0" />
                         <ListBox x:Name="uiSettingsHeadersRemote" Classes="settingsNav" SelectionChanged="SettingsTabControl_SelectionChanged">
                             <ListBoxItem>
-                                <StackPanel Orientation="Horizontal">
+                                <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconGameSettingsEditImages}" />
-                                    <TextBlock Text="Edit Images" />
-                                </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Edit Images'}" TextWrapping="Wrap" />
+                                </Grid>
                             </ListBoxItem>
                             <ListBoxItem>
-                                <StackPanel Orientation="Horizontal">
+                                <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconDatabase}" />
-                                    <TextBlock Text="Metadata" />
-                                </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Metadata'}" TextWrapping="Wrap" />
+                                </Grid>
                             </ListBoxItem>
                             <ListBoxItem>
-                                <StackPanel Orientation="Horizontal">
+                                <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconGameSettingsEditDetails}" />
-                                    <TextBlock Text="Custom Metadata" />
-                                </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Custom Metadata'}" TextWrapping="Wrap" />
+                                </Grid>
                             </ListBoxItem>
                         </ListBox>
                     </StackPanel>
@@ -125,9 +126,9 @@
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
-                <TextBlock Text="{Binding Game.ID, StringFormat='ID {0}'}" FontSize="16" />
-                <TextBlock Text="{Binding Game.Version, StringFormat='Version {0}', TargetNullValue='Version N/A'}" FontSize="16" />
-                <TextBlock Text="{Binding InstalledGameVersion, StringFormat='Installed Version {0}', TargetNullValue='Installed Version N/A'}" FontSize="16" />
+                <TextBlock Text="{Binding Game.ID, StringFormat={l:T 'ID {0}'}}" FontSize="16" />
+                <TextBlock Text="{Binding Game.Version, StringFormat={l:T 'Version {0}'}, TargetNullValue={l:T 'Version N/A'}}" FontSize="16" />
+                <TextBlock Text="{Binding InstalledGameVersion, StringFormat={l:T 'Installed Version {0}'}, TargetNullValue={l:T 'Installed Version N/A'}}" FontSize="16" />
             </StackPanel>
 
             <Grid Grid.Column="1" Background="{DynamicResource Brush.Background}" ClipToBounds="True">
@@ -136,19 +137,19 @@
                     <StackPanel Margin="20,20,20,0">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{DynamicResource IconGameSettingsFolder}" Fill="{DynamicResource Brush.Foreground}" Margin="0,2,0,0" />
-                            <TextBlock Text="Installation" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
+                            <TextBlock Text="{l:T 'Installation'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <TextBlock Classes="text" Text="Here you can manage your Game Installation" />
-                        <TextBlock Classes="section" Text="Installation" Margin="0,20,0,0" />
-                        <TextBlock Text="This Game was installed to:" FontSize="15" FontWeight="Bold" Margin="0,10,0,0" />
+                        <TextBlock Classes="text" Text="{l:T 'Here you can manage your Game Installation'}" />
+                        <TextBlock Classes="section" Text="{l:T 'Installation'}" Margin="0,20,0,0" />
+                        <TextBlock Text="{l:T 'This Game was installed to:'}" FontSize="15" FontWeight="Bold" Margin="0,10,0,0" />
                         <Border CornerRadius="5" Background="{DynamicResource Brush.Background2}" Margin="0,5,0,10" Padding="10">
                             <SelectableTextBlock Text="{Binding Directory}" FontSize="15" TextWrapping="Wrap" />
                         </Border>
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <local:IconButton Kind="Danger" Text="Uninstall Game" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" Width="150" Height="33" FontSize="15" Click="Uninstall_Click" />
-                            <local:IconButton Text="Open Directory" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" Width="150" Height="33" FontSize="15" Click="OpenDirectory_Click" />
+                            <local:IconButton Kind="Danger" Text="{l:T 'Uninstall Game'}" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" MinWidth="150" Height="33" FontSize="15" Click="Uninstall_Click" />
+                            <local:IconButton Text="{l:T 'Open Directory'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" MinWidth="150" Height="33" FontSize="15" Click="OpenDirectory_Click" />
                         </StackPanel>
-                        <TextBlock Classes="section" Text="Disk Usage:" Margin="0,20,0,0" />
+                        <TextBlock Classes="section" Text="{l:T 'Disk Usage:'}" Margin="0,20,0,0" />
                         <TextBlock Text="{Binding DiskSize}" FontSize="15" FontWeight="Bold" Margin="0,5,0,0" />
                         <local:PieChart x:Name="uiDiscUsagePieChart" Width="600" Height="400" HorizontalAlignment="Left" Foreground="{DynamicResource Brush.Foreground}" />
                     </StackPanel>
@@ -158,11 +159,11 @@
                     <StackPanel Margin="20,20,20,20">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{DynamicResource IconGameSettingsLaunchOptions}" Fill="{DynamicResource Brush.Foreground}" Margin="0,1,0,0" />
-                            <TextBlock Text="Launch Options" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
+                            <TextBlock Text="{l:T 'Launch Options'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <TextBlock Classes="text" Text="Here, you can customize your game launch settings, such as adding launch parameter or creating a desktop icon." />
-                        <TextBlock Classes="section" Text="Launch Executable" Margin="0,20,0,0" />
-                        <TextBlock Classes="text" Text="Select which executable should be started when you press the play button." />
+                        <TextBlock Classes="text" Text="{l:T 'Here, you can customize your game launch settings, such as adding launch parameter or creating a desktop icon.'}" />
+                        <TextBlock Classes="section" Text="{l:T 'Launch Executable'}" Margin="0,20,0,0" />
+                        <TextBlock Classes="text" Text="{l:T 'Select which executable should be started when you press the play button.'}" />
                         <ComboBox x:Name="uiCbExecutables" ItemsSource="{Binding Executables}" HorizontalAlignment="Stretch" Margin="0,10,0,0" SelectionChanged="Executable_SelectionChanged" DropDownOpened="ExecutableSelection_Opened">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
@@ -170,13 +171,13 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                        <TextBlock Classes="section" Text="Launch Parameter" Margin="0,20,0,0" />
-                        <TextBlock Classes="text" Text="Advanced Users can modify the launch parameters of the executable above here." />
-                        <TextBox x:Name="uiLaunchParameter" Text="{Binding LaunchParameter}" Watermark="e.g. -fullscreen" UseFloatingWatermark="False" FontSize="17" Margin="0,10,0,0" />
+                        <TextBlock Classes="section" Text="{l:T 'Launch Parameter'}" Margin="0,20,0,0" />
+                        <TextBlock Classes="text" Text="{l:T 'Advanced Users can modify the launch parameters of the executable above here.'}" />
+                        <TextBox x:Name="uiLaunchParameter" Text="{Binding LaunchParameter}" Watermark="{l:T 'e.g. -fullscreen'}" UseFloatingWatermark="False" FontSize="17" Margin="0,10,0,0" />
                         <!-- Linux: compatibility tool and prefix of this game -->
                         <StackPanel IsVisible="{Binding IsLinux}">
-                            <TextBlock Classes="section" Text="Compatibility Tool" Margin="0,20,0,0" />
-                            <TextBlock Classes="text" Text="Run this Windows game with a specific Proton or Wine version, like &quot;Force a specific compatibility tool&quot; on the Steam Deck. More versions can be downloaded in Settings → Linux." />
+                            <TextBlock Classes="section" Text="{l:T 'Compatibility Tool'}" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="{l:T 'Run this Windows game with a specific Proton or Wine version, like &quot;Force a specific compatibility tool&quot; on the Steam Deck. More versions can be downloaded in Settings → Linux.'}" />
                             <ComboBox x:Name="uiGameCompatibilityTool" ItemsSource="{Binding GameCompatibilityTools}" SelectedItem="{Binding SelectedGameCompatibilityTool}" HorizontalAlignment="Stretch" Margin="0,10,0,0"
                                       SelectionChanged="GameCompatibilityTool_SelectionChanged">
                                 <ComboBox.ItemTemplate>
@@ -188,43 +189,43 @@
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <TextBlock Classes="section" Text="Wine Prefix" Margin="0,20,0,0" />
-                            <TextBlock Classes="text" Text="A separate prefix keeps the game's Windows settings, registry and saves apart from other games (Steam does this for every game). Switching does not move existing saves." />
+                            <TextBlock Classes="section" Text="{l:T 'Wine Prefix'}" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="{l:T 'A separate prefix keeps the game\&#x27;s Windows settings, registry and saves apart from other games (Steam does this for every game). Switching does not move existing saves.'}" />
                             <ComboBox x:Name="uiGameWinePrefixMode" SelectedIndex="{Binding WinePrefixModeIndex}" HorizontalAlignment="Stretch" Margin="0,10,0,0" SelectionChanged="GameWinePrefixMode_SelectionChanged">
-                                <ComboBoxItem Content="Shared prefix (Settings → Linux)" />
-                                <ComboBoxItem Content="Separate prefix for this game" />
+                                <ComboBoxItem Content="{l:T 'Shared prefix (Settings → Linux)'}" />
+                                <ComboBoxItem Content="{l:T 'Separate prefix for this game'}" />
                             </ComboBox>
                             <Border CornerRadius="5" Background="{DynamicResource Brush.Background2}" Margin="0,5,0,0" Padding="8">
                                 <SelectableTextBlock Text="{Binding GamePrefixPath}" FontSize="13" TextWrapping="Wrap" />
                             </Border>
                             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
-                                <local:IconButton Text="Open Prefix" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" FontSize="15" Width="140" Height="33" Click="OpenGamePrefix_Click" />
-                                <local:IconButton Text="Wine Configuration" FontSize="15" Width="170" Height="33" Click="GameWinecfg_Click" ToolTip.Tip="Starts winecfg with this game's tool and prefix" />
-                                <local:IconButton Text="Delete Prefix" Kind="Danger" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" FontSize="15" Width="150" Height="33" Click="DeleteGamePrefix_Click"
-                                                  IsVisible="{Binding IsSeparatePrefix}" ToolTip.Tip="Deletes the separate prefix of this game (it is created again on the next start)" />
+                                <local:IconButton Text="{l:T 'Open Prefix'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" FontSize="15" MinWidth="140" Height="33" Click="OpenGamePrefix_Click" />
+                                <local:IconButton Text="{l:T 'Wine Configuration'}" FontSize="15" MinWidth="170" Height="33" Click="GameWinecfg_Click" ToolTip.Tip="{l:T 'Starts winecfg with this game\&#x27;s tool and prefix'}" />
+                                <local:IconButton Text="{l:T 'Delete Prefix'}" Kind="Danger" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" FontSize="15" MinWidth="150" Height="33" Click="DeleteGamePrefix_Click"
+                                                  IsVisible="{Binding IsSeparatePrefix}" ToolTip.Tip="{l:T 'Deletes the separate prefix of this game (it is created again on the next start)'}" />
                             </StackPanel>
-                            <TextBlock Classes="section" Text="Game Fixes" Margin="0,20,0,0" />
-                            <TextBlock Classes="text" Text="With Proton, fixes known for the game (umu-protonfixes: missing runtimes, DLL overrides, ...) are applied automatically, like Steam does for its games. The game is found in the umu database by its title." />
+                            <TextBlock Classes="section" Text="{l:T 'Game Fixes'}" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="{l:T 'With Proton, fixes known for the game (umu-protonfixes: missing runtimes, DLL overrides, ...) are applied automatically, like Steam does for its games. The game is found in the umu database by its title.'}" />
                             <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
                                 <ComboBox SelectedIndex="{Binding UmuModeIndex}" HorizontalAlignment="Stretch" SelectionChanged="UmuMode_SelectionChanged">
-                                    <ComboBoxItem Content="Automatic (umu database)" />
-                                    <ComboBoxItem Content="Custom umu id" />
-                                    <ComboBoxItem Content="No fixes" />
+                                    <ComboBoxItem Content="{l:T 'Automatic (umu database)'}" />
+                                    <ComboBoxItem Content="{l:T 'Custom umu id'}" />
+                                    <ComboBoxItem Content="{l:T 'No fixes'}" />
                                 </ComboBox>
-                                <local:IconButton Grid.Column="1" Text="Look up again" FontSize="14" Width="130" Height="32" Margin="10,0,0,0" Click="UmuLookup_Click" />
+                                <local:IconButton Grid.Column="1" Text="{l:T 'Look up again'}" FontSize="14" MinWidth="130" Height="32" Margin="10,0,0,0" Click="UmuLookup_Click" />
                             </Grid>
-                            <TextBox Text="{Binding CustomUmuId}" Watermark="umu-271590" Margin="0,5,0,0" IsVisible="{Binding IsCustomUmuId}" LostFocus="CustomUmuId_LostFocus" />
+                            <TextBox Text="{Binding CustomUmuId}" Watermark="{l:T 'umu-271590'}" Margin="0,5,0,0" IsVisible="{Binding IsCustomUmuId}" LostFocus="CustomUmuId_LostFocus" />
                             <TextBlock Text="{Binding UmuStatus}" FontSize="13" Opacity="0.8" Margin="0,5,0,0" TextWrapping="Wrap" />
-                            <TextBlock Classes="text" Text="Winetricks components installed once into the prefix before the next start (e.g. vcrun2019 d3dx9 xact)." Margin="0,10,0,0" />
+                            <TextBlock Classes="text" Text="{l:T 'Winetricks components installed once into the prefix before the next start (e.g. vcrun2019 d3dx9 xact).'}" Margin="0,10,0,0" />
                             <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
-                                <TextBox Text="{Binding WinetricksVerbs}" Watermark="vcrun2019 d3dx9" LostFocus="WinetricksVerbs_LostFocus" />
-                                <local:IconButton Grid.Column="1" Text="Install now" FontSize="14" Width="130" Height="32" Margin="10,0,0,0" Click="WinetricksInstall_Click" />
+                                <TextBox Text="{Binding WinetricksVerbs}" Watermark="{l:T 'vcrun2019 d3dx9'}" LostFocus="WinetricksVerbs_LostFocus" />
+                                <local:IconButton Grid.Column="1" Text="{l:T 'Install now'}" FontSize="14" MinWidth="130" Height="32" Margin="10,0,0,0" Click="WinetricksInstall_Click" />
                             </Grid>
                             <TextBlock Text="{Binding WinetricksStatus}" FontSize="13" Opacity="0.8" Margin="0,5,0,0" TextWrapping="Wrap" />
                         </StackPanel>
-                        <TextBlock Classes="section" Text="Desktop Icon" Margin="0,20,0,0" />
-                        <TextBlock Classes="text" Text="You can press this button to create a desktop shortcut that starts the game via GameVault. Changed executable or parameters are updated immediately." />
-                        <local:IconButton Text="Create Desktop Icon" FontSize="15" Icon="{DynamicResource IconGameSettingsLink}" IconMargin="0,0,5,2" Width="190" Height="33" Margin="0,10,0,0" HorizontalAlignment="Left" Click="CreateDesktopShortcut_Click" />
+                        <TextBlock Classes="section" Text="{l:T 'Desktop Icon'}" Margin="0,20,0,0" />
+                        <TextBlock Classes="text" Text="{l:T 'You can press this button to create a desktop shortcut that starts the game via GameVault. Changed executable or parameters are updated immediately.'}" />
+                        <local:IconButton Text="{l:T 'Create Desktop Icon'}" FontSize="15" Icon="{DynamicResource IconGameSettingsLink}" IconMargin="0,0,5,2" MinWidth="190" Height="33" Margin="0,10,0,0" HorizontalAlignment="Left" Click="CreateDesktopShortcut_Click" />
                     </StackPanel>
                     </ScrollViewer>
 
@@ -232,13 +233,13 @@
                     <Grid Margin="0,20,0,0">
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Top">
                             <Path Data="{DynamicResource IconGameSettingsEditImages}" Fill="{DynamicResource Brush.Foreground}" Margin="0,1,0,0" />
-                            <TextBlock Text="Edit Images" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
+                            <TextBlock Text="{l:T 'Edit Images'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <TextBlock Text="Here, you can update the background and box images of your game." VerticalAlignment="Top" FontSize="15" Margin="10,35,0,0" />
+                        <TextBlock Text="{l:T 'Here, you can update the background and box images of your game.'}" VerticalAlignment="Top" FontSize="15" Margin="10,35,0,0" />
                         <Grid ColumnDefinitions="*,*" Margin="10,70,10,40">
                             <Border Grid.Column="0" CornerRadius="5" Margin="0,0,5,0" Background="{DynamicResource Brush.Background2}">
                                 <StackPanel>
-                                    <TextBlock Text="Background" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
+                                    <TextBlock Text="{l:T 'Background'}" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
                                     <Border Classes="dropZone" x:Name="uiBackgroundDropZone" CornerRadius="5" BorderThickness="2" Margin="10" Height="380" Background="{DynamicResource Brush.Background}" Cursor="Hand"
                                             DragDrop.AllowDrop="True" PointerReleased="ChooseImage" Focusable="True">
                                         <StackPanel>
@@ -250,30 +251,30 @@
                                                 </Border>
                                             </Grid>
                                             <StackPanel HorizontalAlignment="Center" Margin="0,65,0,0">
-                                                <TextBlock Text="Click to Upload, Paste or Drag and Drop" FontWeight="Bold" />
-                                                <TextBlock Text="JPG, PNG, GIF, TIF, ICO or BMP" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                                <TextBlock Text="For optimal display, use an image that is 1920px wide and 1080px high." FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                                                <TextBlock Text="{l:T 'Click to Upload, Paste or Drag and Drop'}" FontWeight="Bold" />
+                                                <TextBlock Text="{l:T 'JPG, PNG, GIF, TIF, ICO or BMP'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                                                <TextBlock Text="{l:T 'For optimal display, use an image that is 1920px wide and 1080px high.'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                         <StackPanel Margin="10,0,10,0">
-                                            <TextBlock Text="OR" HorizontalAlignment="Center" />
-                                            <TextBlock Text="Upload via URL" FontWeight="Bold" />
+                                            <TextBlock Text="{l:T 'OR'}" HorizontalAlignment="Center" />
+                                            <TextBlock Text="{l:T 'Upload via URL'}" FontWeight="Bold" />
                                         </StackPanel>
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <TextBox Margin="10" Watermark="https://example.com/example.png" UseFloatingWatermark="False" TextChanged="BackgoundImageUrl_TextChanged" />
                                     <Grid Margin="10,20,10,10">
-                                        <local:IconButton Text="Save" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding BackgroundImageChanged}" Width="115" Height="33" HorizontalAlignment="Right" Click="BackgroundImage_Save" />
-                                        <local:IconButton Text="Find Images" FontSize="15" Icon="{DynamicResource IconGameSettingsGoogle}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="33" Width="125" Tag="Game Background Art" Click="FindImages_Click" />
+                                        <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding BackgroundImageChanged}" MinWidth="115" Height="33" HorizontalAlignment="Right" Click="BackgroundImage_Save" />
+                                        <local:IconButton Text="{l:T 'Find Images'}" FontSize="15" Icon="{DynamicResource IconGameSettingsGoogle}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="33" MinWidth="125" Tag="Game Background Art" Click="FindImages_Click" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="1" CornerRadius="5" Margin="5,0,0,0" Background="{DynamicResource Brush.Background2}">
                                 <StackPanel>
-                                    <TextBlock Text="Box Art" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
+                                    <TextBlock Text="{l:T 'Box Art'}" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
                                     <Border Classes="dropZone" x:Name="uiBoxDropZone" CornerRadius="5" BorderThickness="2" Margin="10" Height="380" Background="{DynamicResource Brush.Background}" Cursor="Hand"
                                             DragDrop.AllowDrop="True" PointerReleased="ChooseImage" Focusable="True" Tag="box">
                                         <StackPanel>
@@ -285,24 +286,24 @@
                                                 </Border>
                                             </Grid>
                                             <StackPanel HorizontalAlignment="Center" Margin="0,50,0,0">
-                                                <TextBlock Text="Click to Upload, Paste or Drag and Drop" FontWeight="Bold" />
-                                                <TextBlock Text="JPG, PNG, GIF, TIF, ICO or BMP" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                                <TextBlock Text="For optimal display, use an image that is 600px wide and 900px high." FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                                                <TextBlock Text="{l:T 'Click to Upload, Paste or Drag and Drop'}" FontWeight="Bold" />
+                                                <TextBlock Text="{l:T 'JPG, PNG, GIF, TIF, ICO or BMP'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                                                <TextBlock Text="{l:T 'For optimal display, use an image that is 600px wide and 900px high.'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                         <StackPanel Margin="10,0,10,0">
-                                            <TextBlock Text="OR" HorizontalAlignment="Center" />
-                                            <TextBlock Text="Upload via URL" FontWeight="Bold" />
+                                            <TextBlock Text="{l:T 'OR'}" HorizontalAlignment="Center" />
+                                            <TextBlock Text="{l:T 'Upload via URL'}" FontWeight="Bold" />
                                         </StackPanel>
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <TextBox Margin="10" Watermark="https://example.com/example.png" UseFloatingWatermark="False" TextChanged="BoxImageUrl_TextChanged" />
                                     <Grid Margin="10,20,10,10">
-                                        <local:IconButton Text="Save" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding GameCoverImageChanged}" Width="115" Height="33" HorizontalAlignment="Right" Click="BoxImage_Save" />
-                                        <local:IconButton Text="Find Images" FontSize="15" Icon="{DynamicResource IconGameSettingsGoogle}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="33" Width="125" Tag="Game Box Art" Click="FindImages_Click" />
+                                        <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding GameCoverImageChanged}" MinWidth="115" Height="33" HorizontalAlignment="Right" Click="BoxImage_Save" />
+                                        <local:IconButton Text="{l:T 'Find Images'}" FontSize="15" Icon="{DynamicResource IconGameSettingsGoogle}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="33" MinWidth="125" Tag="Game Box Art" Click="FindImages_Click" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -313,10 +314,10 @@
                     <StackPanel Margin="20,20,20,0" IsEnabled="{Binding MetadataProvidersLoaded}">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{DynamicResource IconDatabase}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
-                            <TextBlock Text="Metadata" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
+                            <TextBlock Text="{l:T 'Metadata'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <TextBlock Classes="text" Text="Here, you can remap your games to other games of metadata providers on this server or refresh their information" />
-                        <TextBlock Classes="section" Text="Metadata Providers" />
+                        <TextBlock Classes="text" Text="{l:T 'Here, you can remap your games to other games of metadata providers on this server or refresh their information'}" />
+                        <TextBlock Classes="section" Text="{l:T 'Metadata Providers'}" />
                         <ListBox ItemsSource="{Binding MetadataProviders}" SelectedIndex="{Binding SelectedMetadataProviderIndex}" HorizontalAlignment="Left" Background="Transparent">
                             <ListBox.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -356,41 +357,41 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                                         <Grid Classes="copyHost">
                                             <local:CacheImage x:Name="uiImgCurrentMergedGame" ImageCacheType="GameCover" Data="{Binding Game}" Height="120" Width="90" CornerRadius="5" />
-                                            <Button Classes="wrapper copy" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="1" Opacity="0.7" Margin="0,0,4,5" ToolTip.Tip="Copy Image to Clipboard" Click="CopyImageToClipboard_Click">
+                                            <Button Classes="wrapper copy" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="1" Opacity="0.7" Margin="0,0,4,5" ToolTip.Tip="{l:T 'Copy Image to Clipboard'}" Click="CopyImageToClipboard_Click">
                                                 <Grid Classes="hover" Background="#02000000">
                                                     <Path Data="{StaticResource IconCopy}" Fill="White" />
                                                 </Grid>
                                             </Button>
                                         </Grid>
                                         <StackPanel Margin="5,0,0,0">
-                                            <TextBlock Text="File" FontSize="15" FontWeight="Bold" />
+                                            <TextBlock Text="{l:T 'File'}" FontSize="15" FontWeight="Bold" />
                                             <TextBlock Text="{Binding Game.Path}" FontSize="15" Width="250" ToolTip.Tip="{Binding Game.Path}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="Release Date" FontSize="15" FontWeight="Bold" />
-                                            <TextBlock Text="{Binding Game.ReleaseDate, StringFormat='{}{0:dd/MM/yyyy}'}" FontSize="15" />
-                                            <TextBlock Text="Added" FontSize="15" FontWeight="Bold" />
-                                            <TextBlock Text="{Binding Game.CreatedAt, StringFormat='{}{0:dd/MM/yyyy}'}" FontSize="15" />
+                                            <TextBlock Text="{l:T 'Release Date'}" FontSize="15" FontWeight="Bold" />
+                                            <TextBlock Text="{Binding Game.ReleaseDate, StringFormat={l:T '{}{0:dd/MM/yyyy}'}}" FontSize="15" />
+                                            <TextBlock Text="{l:T 'Added'}" FontSize="15" FontWeight="Bold" />
+                                            <TextBlock Text="{Binding Game.CreatedAt, StringFormat={l:T '{}{0:dd/MM/yyyy}'}}" FontSize="15" />
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                                 <StackPanel Margin="60,0,0,0">
-                                    <TextBlock Classes="section" Text="Mapped Game" Margin="0" />
+                                    <TextBlock Classes="section" Text="{l:T 'Mapped Game'}" Margin="0" />
                                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                                         <Grid Classes="copyHost">
                                             <local:CacheImage x:Name="uiImgCurrentShownMappedGame" DoNotCache="True" ImageCacheType="GameCover" Data="{Binding CurrentShownMappedGame}" Height="120" Width="90" CornerRadius="5" />
-                                            <Button Classes="wrapper copy" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="1" Opacity="0.7" Margin="0,0,4,5" ToolTip.Tip="Copy Image to Clipboard" Click="CopyImageToClipboard_Click" Tag="CurrentShownMappedGame">
+                                            <Button Classes="wrapper copy" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="1" Opacity="0.7" Margin="0,0,4,5" ToolTip.Tip="{l:T 'Copy Image to Clipboard'}" Click="CopyImageToClipboard_Click" Tag="CurrentShownMappedGame">
                                                 <Grid Classes="hover" Background="#02000000">
                                                     <Path Data="{StaticResource IconCopy}" Fill="White" />
                                                 </Grid>
                                             </Button>
                                         </Grid>
                                         <StackPanel Margin="5,0,0,0">
-                                            <TextBlock Text="Title" FontSize="15" FontWeight="Bold" />
+                                            <TextBlock Text="{l:T 'Title'}" FontSize="15" FontWeight="Bold" />
                                             <TextBlock FontSize="15" Width="200" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" ToolTip.Tip="{Binding CurrentShownMappedGame.Title}"
                                                        Text="{Binding CurrentShownMappedGame.Title, TargetNullValue='N/A', FallbackValue='N/A'}" />
-                                            <TextBlock Text="Release Date" FontSize="15" FontWeight="Bold" />
-                                            <TextBlock FontSize="15" Text="{Binding CurrentShownMappedGame.ReleaseDate, StringFormat='{}{0:dd/MM/yyyy}', TargetNullValue='N/A', FallbackValue='N/A'}" />
-                                            <TextBlock Text="Last Cached" FontSize="15" FontWeight="Bold" />
-                                            <TextBlock FontSize="15" Text="{Binding CurrentShownMappedGame.UpdatedAt, StringFormat='{}{0:dd/MM/yyyy}', TargetNullValue='N/A', FallbackValue='N/A'}" />
+                                            <TextBlock Text="{l:T 'Release Date'}" FontSize="15" FontWeight="Bold" />
+                                            <TextBlock FontSize="15" Text="{Binding CurrentShownMappedGame.ReleaseDate, StringFormat={l:T '{}{0:dd/MM/yyyy}'}, TargetNullValue='N/A', FallbackValue='N/A'}" />
+                                            <TextBlock Text="{l:T 'Last Cached'}" FontSize="15" FontWeight="Bold" />
+                                            <TextBlock FontSize="15" Text="{Binding CurrentShownMappedGame.UpdatedAt, StringFormat={l:T '{}{0:dd/MM/yyyy}'}, TargetNullValue='N/A', FallbackValue='N/A'}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -404,14 +405,14 @@
                                 </StackPanel.IsEnabled>
                                 <StackPanel Spacing="2">
                                     <NumericUpDown x:Name="uiProviderPriority" Value="1" Increment="1" FormatString="0" TextAlignment="Center" Width="140" />
-                                    <local:IconButton Text="Save Priority" FontSize="12" Icon="{DynamicResource IconGameSettingsSave}" IconScale="0.7" IconMargin="0,0,1,0" Height="23" Width="140" Click="SavePriority_Click" />
+                                    <local:IconButton Text="{l:T 'Save Priority'}" FontSize="12" Icon="{DynamicResource IconGameSettingsSave}" IconScale="0.7" IconMargin="0,0,1,0" Height="23" MinWidth="140" Click="SavePriority_Click" />
                                 </StackPanel>
-                                <local:IconButton Text="Unmap" FontSize="15" Icon="{DynamicResource IconGameSettingsUnlinked}" IconMargin="0,0,5,2" Width="140" Height="33" Click="Unmap_Click" />
-                                <local:IconButton Text="Recache Game" FontSize="15" Icon="{DynamicResource IconReload}" IconMargin="0,0,5,2" Width="140" Height="33" Click="Recache_Click" />
+                                <local:IconButton Text="{l:T 'Unmap'}" FontSize="15" Icon="{DynamicResource IconGameSettingsUnlinked}" IconMargin="0,0,5,2" MinWidth="140" Height="33" Click="Unmap_Click" />
+                                <local:IconButton Text="{l:T 'Recache Game'}" FontSize="15" Icon="{DynamicResource IconReload}" IconMargin="0,0,5,2" MinWidth="140" Height="33" Click="Recache_Click" />
                             </StackPanel>
                         </Grid>
-                        <TextBlock Classes="section" Text="Remap Game" />
-                        <TextBlock Classes="text" Text="Is the mapped game incorrect or missing? Manually search the provider and remap it here." />
+                        <TextBlock Classes="section" Text="{l:T 'Remap Game'}" />
+                        <TextBlock Classes="text" Text="{l:T 'Is the mapped game incorrect or missing? Manually search the provider and remap it here.'}" />
                         <TextBox Classes="search" Height="27" Margin="0,10,0,0" TextChanged="ProviderGameSearch_TextChanged" />
                         <ScrollViewer Height="370" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding RemapSearchResults}">
@@ -422,10 +423,10 @@
                                                 <local:CacheImage Grid.Column="0" UseUriSource="True" Data="{Binding CoverUrl}" ImageCacheType="GameCover" CornerRadius="5" Stretch="UniformToFill" />
                                                 <Grid Grid.Column="1" Margin="8,0,0,0">
                                                     <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" Margin="0,0,80,0" />
-                                                    <TextBlock Text="{Binding ReleaseDate, StringFormat='{}{0:MM/dd/yyyy}'}" FontSize="13" VerticalAlignment="Top" Margin="0,20,0,0" />
+                                                    <TextBlock Text="{Binding ReleaseDate, StringFormat={l:T '{}{0:MM/dd/yyyy}'}}" FontSize="13" VerticalAlignment="Top" Margin="0,20,0,0" />
                                                     <TextBlock Text="{Binding Description}" Height="60" FontSize="10" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" Margin="0,40,65,0" />
-                                                    <TextBlock Text="{Binding ProviderDataId, StringFormat='ID: {0}'}" FontSize="13" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,0,5,0" />
-                                                    <local:IconButton Text="Remap" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="60" Height="25" FontSize="12" Margin="0,0,0,2" Click="GameRemap_Click" />
+                                                    <TextBlock Text="{Binding ProviderDataId, StringFormat={l:T 'ID: {0}'}}" FontSize="13" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,0,5,0" />
+                                                    <local:IconButton Text="{l:T 'Remap'}" VerticalAlignment="Bottom" HorizontalAlignment="Right" MinWidth="60" Height="25" FontSize="12" Margin="0,0,0,2" Click="GameRemap_Click" />
                                                 </Grid>
                                             </Grid>
                                         </Border>
@@ -439,21 +440,21 @@
                     <StackPanel Margin="20,20,20,0">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{DynamicResource IconGameSettingsEditDetails}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
-                            <TextBlock Text="Custom Metadata" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
+                            <TextBlock Text="{l:T 'Custom Metadata'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
                         <Grid>
-                            <TextBlock Classes="text" Text="Overwrite any existing metadata with custom values. Fields left blank will remain the same." Margin="0,5,220,0" />
-                            <local:IconButton Kind="Danger" Text="Wipe Custom Metadata" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" Width="210" Height="30" HorizontalAlignment="Right" Click="ClearUserData_Click" />
+                            <TextBlock Classes="text" Text="{l:T 'Overwrite any existing metadata with custom values. Fields left blank will remain the same.'}" Margin="0,5,220,0" />
+                            <local:IconButton Kind="Danger" Text="{l:T 'Wipe Custom Metadata'}" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" MinWidth="210" Height="30" HorizontalAlignment="Right" Click="ClearUserData_Click" />
                         </Grid>
                         <ScrollViewer Background="Transparent" Height="640" Margin="0,5,0,0">
                             <StackPanel Margin="0,0,15,0">
-                                <TextBlock Classes="section" Text="Title" />
+                                <TextBlock Classes="section" Text="{l:T 'Title'}" />
                                 <TextBox TextWrapping="Wrap" Watermark="{Binding Game.Metadata.Title}" Text="{Binding UpdateGame.UserMetadata.Title, TargetNullValue='', FallbackValue={x:Null}}" />
-                                <TextBlock Classes="section" Text="Sorting Title" />
+                                <TextBlock Classes="section" Text="{l:T 'Sorting Title'}" />
                                 <TextBox TextWrapping="Wrap" Watermark="{Binding Game.SortTitle}" Text="{Binding UpdateGame.UserMetadata.SortTitle, TargetNullValue='', FallbackValue={x:Null}}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Description" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Description" Click="KeepData_Click" Tag="description">
+                                    <TextBlock Classes="section" Text="{l:T 'Description'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Description'}" Click="KeepData_Click" Tag="description">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -461,8 +462,8 @@
                                 </Grid>
                                 <TextBox TextWrapping="Wrap" AcceptsReturn="True" MinHeight="80" MaxHeight="300" Watermark="{Binding Game.Metadata.Description}" Text="{Binding UpdateGame.UserMetadata.Description, TargetNullValue='', FallbackValue={x:Null}}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Notes" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Notes" Click="KeepData_Click" Tag="notes">
+                                    <TextBlock Classes="section" Text="{l:T 'Notes'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Notes'}" Click="KeepData_Click" Tag="notes">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -471,45 +472,45 @@
                                 <TextBox TextWrapping="Wrap" AcceptsReturn="True" MinHeight="60" MaxHeight="300" Watermark="{Binding Game.Metadata.Notes}" Text="{Binding UpdateGame.UserMetadata.Notes, TargetNullValue='', FallbackValue={x:Null}}" />
                                 <Grid ColumnDefinitions="*,*,*,*,*" Margin="0,5,0,0">
                                     <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                        <TextBlock Classes="section" Text="Avg. Playtime Minutes" />
+                                        <TextBlock Classes="section" Text="{l:T 'Avg. Playtime Minutes'}" />
                                         <TextBox Watermark="{Binding Game.Metadata.AveragePlaytime}" Text="{Binding UpdateGame.UserMetadata.AveragePlaytime, TargetNullValue='', FallbackValue={x:Null}}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                                        <TextBlock Classes="section" Text="Age Rating" />
+                                        <TextBlock Classes="section" Text="{l:T 'Age Rating'}" />
                                         <TextBox Watermark="{Binding Game.Metadata.AgeRating}" Text="{Binding UpdateGame.UserMetadata.AgeRating, TargetNullValue='', FallbackValue={x:Null}}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Margin="0,0,10,0">
-                                        <TextBlock Classes="section" Text="Release Date" />
-                                        <CalendarDatePicker SelectedDate="{Binding UpdateGame.UserMetadata.ReleaseDate}" Watermark="{Binding Game.Metadata.ReleaseDate, StringFormat='{}{0:dd/MM/yyyy}'}" HorizontalAlignment="Stretch" />
+                                        <TextBlock Classes="section" Text="{l:T 'Release Date'}" />
+                                        <CalendarDatePicker SelectedDate="{Binding UpdateGame.UserMetadata.ReleaseDate}" Watermark="{Binding Game.Metadata.ReleaseDate, StringFormat={l:T '{}{0:dd/MM/yyyy}'}}" HorizontalAlignment="Stretch" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="3" Margin="0,0,10,0">
-                                        <TextBlock Classes="section" Text="Rating" />
+                                        <TextBlock Classes="section" Text="{l:T 'Rating'}" />
                                         <TextBox Watermark="{Binding Game.Metadata.Rating}" Text="{Binding UpdateGame.UserMetadata.Rating, TargetNullValue='', FallbackValue={x:Null}}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="4">
-                                        <TextBlock Classes="section" Text="Early Access" />
+                                        <TextBlock Classes="section" Text="{l:T 'Early Access'}" />
                                         <CheckBox IsThreeState="True" IsChecked="{Binding UpdateGame.UserMetadata.EarlyAccess}"
-                                                  ToolTip.Tip="Undetermined keeps the provider value"
-                                                  Content="{Binding Game.Metadata.EarlyAccess, StringFormat='Provider: {0}', FallbackValue=''}" />
+                                                  ToolTip.Tip="{l:T 'Undetermined keeps the provider value'}"
+                                                  Content="{Binding Game.Metadata.EarlyAccess, StringFormat={l:T 'Provider: {0}'}, FallbackValue=''}" />
                                     </StackPanel>
                                 </Grid>
-                                <TextBlock Classes="section" Text="Default Launch Executable" />
+                                <TextBlock Classes="section" Text="{l:T 'Default Launch Executable'}" />
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.LaunchExecutable}" Watermark="{Binding Game.Metadata.LaunchExecutable}" />
-                                <TextBlock Classes="section" Text="Default Launch Parameters" />
+                                <TextBlock Classes="section" Text="{l:T 'Default Launch Parameters'}" />
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.LaunchParameters}" Watermark="{Binding Game.Metadata.LaunchParameters}" />
-                                <TextBlock Classes="section" Text="Default Installer Executable" />
+                                <TextBlock Classes="section" Text="{l:T 'Default Installer Executable'}" />
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.InstallerExecutable}" Watermark="{Binding Game.Metadata.InstallerExecutable}" />
-                                <TextBlock Classes="section" Text="Default Installer Parameters" />
+                                <TextBlock Classes="section" Text="{l:T 'Default Installer Parameters'}" />
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.InstallerParameters}" Watermark="{Binding Game.Metadata.InstallerParameters}" />
-                                <TextBlock Classes="section" Text="Default Uninstaller Executable" />
+                                <TextBlock Classes="section" Text="{l:T 'Default Uninstaller Executable'}" />
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.UninstallerExecutable}" Watermark="{Binding Game.Metadata.UninstallerExecutable}" />
-                                <TextBlock Classes="section" Text="Default Uninstaller Parameters" />
+                                <TextBlock Classes="section" Text="{l:T 'Default Uninstaller Parameters'}" />
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.UninstallerParameters}" Watermark="{Binding Game.Metadata.UninstallerParameters}" />
-                                <TextBlock Classes="section" Text="Website URLs" />
+                                <TextBlock Classes="section" Text="{l:T 'Website URLs'}" />
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.UrlWebsites, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.WebsiteNames}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Genres" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Genres" Click="KeepData_Click" Tag="genre">
+                                    <TextBlock Classes="section" Text="{l:T 'Genres'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Genres'}" Click="KeepData_Click" Tag="genre">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -517,8 +518,8 @@
                                 </Grid>
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.Genres, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.GenreNames}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Tags" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Tags" Click="KeepData_Click" Tag="tag">
+                                    <TextBlock Classes="section" Text="{l:T 'Tags'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Tags'}" Click="KeepData_Click" Tag="tag">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -526,8 +527,8 @@
                                 </Grid>
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.Tags, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.TagNames}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Publishers" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Publishers" Click="KeepData_Click" Tag="publisher">
+                                    <TextBlock Classes="section" Text="{l:T 'Publishers'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Publishers'}" Click="KeepData_Click" Tag="publisher">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -535,8 +536,8 @@
                                 </Grid>
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.Publishers, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.PublisherNames}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Developers" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Developers" Click="KeepData_Click" Tag="developer">
+                                    <TextBlock Classes="section" Text="{l:T 'Developers'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Developers'}" Click="KeepData_Click" Tag="developer">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -544,8 +545,8 @@
                                 </Grid>
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.Developers, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.DeveloperNames}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Trailer URLs" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Trailer URLs" Click="KeepData_Click" Tag="trailer">
+                                    <TextBlock Classes="section" Text="{l:T 'Trailer URLs'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Trailer URLs'}" Click="KeepData_Click" Tag="trailer">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -553,8 +554,8 @@
                                 </Grid>
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.UrlTrailers, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.TrailerNames}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Gameplay URLs" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Gameplay URLs" Click="KeepData_Click" Tag="gameplays">
+                                    <TextBlock Classes="section" Text="{l:T 'Gameplay URLs'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Gameplay URLs'}" Click="KeepData_Click" Tag="gameplays">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -562,8 +563,8 @@
                                 </Grid>
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.UrlGameplays, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.GameplayNames}" />
                                 <Grid>
-                                    <TextBlock Classes="section" Text="Screenshot URLs" />
-                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="Paste Current Screenshot URLs" Click="KeepData_Click" Tag="screenshots">
+                                    <TextBlock Classes="section" Text="{l:T 'Screenshot URLs'}" />
+                                    <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,5,0" ToolTip.Tip="{l:T 'Paste Current Screenshot URLs'}" Click="KeepData_Click" Tag="screenshots">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
                                         </Grid>
@@ -572,14 +573,14 @@
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.UrlScreenshots, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.ScreenshotNames}" Margin="0,0,0,10" />
                             </StackPanel>
                         </ScrollViewer>
-                        <local:IconButton Text="Save" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" Width="115" Height="33" Margin="0,10,0,0" HorizontalAlignment="Right" Click="SaveGameDetails_Click" />
+                        <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="115" Height="33" Margin="0,10,0,0" HorizontalAlignment="Right" Click="SaveGameDetails_Click" />
                     </StackPanel>
                 </Carousel>
             </Grid>
-            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,10,10,0" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="Close (Esc)">
+            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,10,10,0" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
                 <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" RenderTransform="scale(1.2)" />
             </Grid>
-            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,50,0" Cursor="Hand" PointerReleased="Help_Click" ToolTip.Tip="Documentation">
+            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,50,0" Cursor="Hand" PointerReleased="Help_Click" ToolTip.Tip="{l:T 'Documentation'}">
                 <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameSettingsHelp}" />
             </Grid>
         </Grid>

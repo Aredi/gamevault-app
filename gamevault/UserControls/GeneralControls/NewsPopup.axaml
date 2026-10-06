@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
              x:Class="gamevault.UserControls.NewsPopup"
@@ -11,10 +12,10 @@
                 </Grid>
             </Button>
             <TabControl Background="Transparent" ClipToBounds="True">
-                <TabItem Header="GameVault News">
+                <TabItem Header="{l:T 'GameVault News'}">
                     <md:MarkdownScrollViewer x:Name="uiGameVaultNews" />
                 </TabItem>
-                <TabItem Header="Server News">
+                <TabItem Header="{l:T 'Server News'}">
                     <md:MarkdownScrollViewer x:Name="uiServerNews" />
                 </TabItem>
             </TabControl>

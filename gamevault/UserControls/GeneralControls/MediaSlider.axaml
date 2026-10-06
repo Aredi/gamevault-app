@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:uc="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.MediaSlider"
@@ -29,7 +30,7 @@
                 <Path Data="{StaticResource IconArrowBordered}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="rotate(90deg)" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Grid>
         </Button>
-        <Slider x:Name="uiVolumeSlider" Minimum="0" Maximum="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,35" Orientation="Vertical" Height="80" Width="30" ToolTip.Tip="Volume" />
+        <Slider x:Name="uiVolumeSlider" Minimum="0" Maximum="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,0,35" Orientation="Vertical" Height="80" Width="30" ToolTip.Tip="{l:T 'Volume'}" />
         <Button Classes="wrapper" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,3,2" Click="MediaSliderFullscreen_Click">
             <Grid Classes="hover" Background="#02000000">
                 <Path Data="{StaticResource IconGameViewMaximize}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.5)" HorizontalAlignment="Center" VerticalAlignment="Center" />

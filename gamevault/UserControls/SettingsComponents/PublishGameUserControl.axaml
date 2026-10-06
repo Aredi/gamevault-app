@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.SettingsComponents.PublishGameUserControl"
@@ -16,66 +17,66 @@
         </Style>
     </UserControl.Styles>
     <Grid>
-        <Grid Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,10,0" ZIndex="1" Height="20" Width="20" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="Close (Esc)">
+        <Grid Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,10,0" ZIndex="1" Height="20" Width="20" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
             <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" />
         </Grid>
         <Border Background="{DynamicResource Brush.Background}" Padding="20" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" CornerRadius="10">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <StackPanel Width="820">
                 <StackPanel Spacing="2" IsEnabled="{Binding IsIdle}">
-                    <TextBlock Text="Publish a Game" FontSize="26" FontWeight="Bold" />
-                    <TextBlock Classes="hint" Text="Turns a game folder, an installer or an archive into a ready-to-play entry of the server: correct file name, main executable and silent installation are set for all users." />
+                    <TextBlock Text="{l:T 'Publish a Game'}" FontSize="26" FontWeight="Bold" />
+                    <TextBlock Classes="hint" Text="{l:T 'Turns a game folder, an installer or an archive into a ready-to-play entry of the server: correct file name, main executable and silent installation are set for all users.'}" />
 
-                    <TextBlock Classes="label" Text="1. Game files" />
+                    <TextBlock Classes="label" Text="{l:T '1. Game files'}" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                        <controls:IconButton Text="Game folder" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,0" Width="140" Height="32" FontSize="14" Click="PickFolder_Click" />
-                        <controls:IconButton Text="Installer or archive" Width="170" Height="32" FontSize="14" Click="PickFile_Click" />
+                        <controls:IconButton Text="{l:T 'Game folder'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,0" MinWidth="140" Height="32" FontSize="14" Click="PickFolder_Click" />
+                        <controls:IconButton Text="{l:T 'Installer or archive'}" MinWidth="170" Height="32" FontSize="14" Click="PickFile_Click" />
                         <TextBlock Text="{Binding SourcePath}" VerticalAlignment="Center" Width="480" TextTrimming="CharacterEllipsis" FontSize="13" />
                     </StackPanel>
-                    <TextBlock Classes="hint" Text="Folder: an installed game (best: portable) or an extracted installer. Installer: its folder is published with it. Archive or ISO (.zip, .7z, .rar, .iso, ...): copied as it is." />
+                    <TextBlock Classes="hint" Text="{l:T 'Folder: an installed game (best: portable) or an extracted installer. Installer: its folder is published with it. Archive or ISO (.zip, .7z, .rar, .iso, ...): copied as it is.'}" />
 
                     <StackPanel IsVisible="{Binding HasSource}">
-                        <TextBlock Classes="label" Text="2. Game" />
+                        <TextBlock Classes="label" Text="{l:T '2. Game'}" />
                         <Grid ColumnDefinitions="*,140,100" ColumnSpacing="10">
-                            <TextBox Text="{Binding Title}" Watermark="Title" />
-                            <TextBox Grid.Column="1" Text="{Binding Version}" Watermark="Version (1.0)" />
-                            <TextBox Grid.Column="2" Text="{Binding Year}" Watermark="Year" />
+                            <TextBox Text="{Binding Title}" Watermark="{l:T 'Title'}" />
+                            <TextBox Grid.Column="1" Text="{Binding Version}" Watermark="{l:T 'Version (1.0)'}" />
+                            <TextBox Grid.Column="2" Text="{Binding Year}" Watermark="{l:T 'Year'}" />
                         </Grid>
                         <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,8,0,0">
                             <ComboBox SelectedIndex="{Binding TypeIndex}" Width="260">
-                                <ComboBoxItem Content="Windows game, portable" />
-                                <ComboBoxItem Content="Windows game, installer" />
-                                <ComboBoxItem Content="Linux game, portable" />
+                                <ComboBoxItem Content="{l:T 'Windows game, portable'}" />
+                                <ComboBoxItem Content="{l:T 'Windows game, installer'}" />
+                                <ComboBoxItem Content="{l:T 'Linux game, portable'}" />
                             </ComboBox>
-                            <CheckBox Content="Early access" IsChecked="{Binding EarlyAccess}" />
+                            <CheckBox Content="{l:T 'Early access'}" IsChecked="{Binding EarlyAccess}" />
                         </StackPanel>
 
                         <!-- Portable: main executable -->
                         <StackPanel IsVisible="{Binding IsPortable}">
-                            <TextBlock Classes="label" Text="3. Executable started by Play" />
-                            <ComboBox ItemsSource="{Binding Executables}" SelectedItem="{Binding SelectedExecutable}" HorizontalAlignment="Stretch" PlaceholderText="Found automatically (archives: chosen on first start)" />
-                            <TextBox Text="{Binding LaunchParameters}" Watermark="Launch parameters (optional), e.g. -windowed" Margin="0,6,0,0" />
+                            <TextBlock Classes="label" Text="{l:T '3. Executable started by Play'}" />
+                            <ComboBox ItemsSource="{Binding Executables}" SelectedItem="{Binding SelectedExecutable}" HorizontalAlignment="Stretch" PlaceholderText="{l:T 'Found automatically (archives: chosen on first start)'}" />
+                            <TextBox Text="{Binding LaunchParameters}" Watermark="{l:T 'Launch parameters (optional), e.g. -windowed'}" Margin="0,6,0,0" />
                         </StackPanel>
                         <!-- Installer -->
                         <StackPanel IsVisible="{Binding IsSetup}">
-                            <TextBlock Classes="label" Text="3. Installer" />
-                            <ComboBox ItemsSource="{Binding Installers}" SelectedItem="{Binding SelectedInstaller}" HorizontalAlignment="Stretch" PlaceholderText="Installer (setup.exe)" SelectionChanged="Installer_SelectionChanged" />
-                            <TextBox Text="{Binding InstallerParameters}" Watermark="Installer parameters, %INSTALLDIR% = installation folder" Margin="0,6,0,0" />
+                            <TextBlock Classes="label" Text="{l:T '3. Installer'}" />
+                            <ComboBox ItemsSource="{Binding Installers}" SelectedItem="{Binding SelectedInstaller}" HorizontalAlignment="Stretch" PlaceholderText="{l:T 'Installer (setup.exe)'}" SelectionChanged="Installer_SelectionChanged" />
+                            <TextBox Text="{Binding InstallerParameters}" Watermark="{l:T 'Installer parameters, %INSTALLDIR% = installation folder'}" Margin="0,6,0,0" />
                             <TextBlock Classes="hint" Text="{Binding InstallerHint}" Margin="0,4,0,0" />
                         </StackPanel>
 
-                        <TextBlock Classes="label" Text="4. Server games folder" />
+                        <TextBlock Classes="label" Text="{l:T '4. Server games folder'}" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                            <TextBox Text="{Binding TargetDirectory}" Watermark="Folder mounted as /files in the GameVault server" />
-                            <controls:IconButton Grid.Column="1" Text="Browse" Width="90" Height="32" FontSize="14" Click="PickTarget_Click" />
+                            <TextBox Text="{Binding TargetDirectory}" Watermark="{l:T 'Folder mounted as /files in the GameVault server'}" />
+                            <controls:IconButton Grid.Column="1" Text="{l:T 'Browse'}" MinWidth="90" Height="32" FontSize="14" Click="PickTarget_Click" />
                         </Grid>
-                        <CheckBox Content="Compress the archive (smaller, much slower to create; games are usually compressed already)" IsChecked="{Binding Compress}" Margin="0,6,0,0" IsVisible="{Binding !IsArchiveSource}" />
+                        <CheckBox Content="{l:T 'Compress the archive (smaller, much slower to create; games are usually compressed already)'}" IsChecked="{Binding Compress}" Margin="0,6,0,0" IsVisible="{Binding !IsArchiveSource}" />
 
-                        <TextBlock Classes="label" Text="File on the server" />
+                        <TextBlock Classes="label" Text="{l:T 'File on the server'}" />
                         <SelectableTextBlock Text="{Binding FileName}" FontSize="14" />
 
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,15,0,0">
-                            <controls:IconButton Text="Publish" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" Width="140" Height="36" FontSize="15" Click="Publish_Click" />
+                            <controls:IconButton Text="{l:T 'Publish'}" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="140" Height="36" FontSize="15" Click="Publish_Click" />
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
@@ -83,11 +84,11 @@
                 <Border Margin="0,15,0,0" Padding="10" CornerRadius="6" Background="{DynamicResource Brush.Background2}"
                         IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                     <StackPanel Spacing="6">
-                        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" FontSize="14" />
+                        <TextBlock Text="{Binding Status, Converter={x:Static l:LocConverter.Instance}}" TextWrapping="Wrap" FontSize="14" />
                         <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="6" IsVisible="{Binding IsBusy}" />
                         <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding PublishedGame, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <controls:IconButton Text="Open game page" Width="160" Height="32" FontSize="14" Click="OpenGame_Click" />
-                            <controls:IconButton Text="Publish another" Kind="Skeleton" Width="160" Height="32" FontSize="14" Click="Reset_Click" />
+                            <controls:IconButton Text="{l:T 'Open game page'}" MinWidth="160" Height="32" FontSize="14" Click="OpenGame_Click" />
+                            <controls:IconButton Text="{l:T 'Publish another'}" Kind="Skeleton" MinWidth="160" Height="32" FontSize="14" Click="Reset_Click" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

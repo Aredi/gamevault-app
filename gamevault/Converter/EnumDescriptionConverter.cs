@@ -1,5 +1,6 @@
 using Avalonia.Data.Converters;
 using gamevault.Models;
+using gamevault.Localization;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,12 +18,12 @@ namespace gamevault.Converter
             if (value is GameType && (GameType)value != GameType.UNDETECTABLE)
             {
                 string result = ((DescriptionAttribute[])typeof(GameType).GetField(((GameType)value).ToString()).GetCustomAttributes(typeof(DescriptionAttribute), false))[0].Description.ToString();
-                return result;
+                return Loc.T(result);
             }
             else if (value is State)
             {
                 string result = ((DescriptionAttribute[])typeof(State).GetField(((State)value).ToString()).GetCustomAttributes(typeof(DescriptionAttribute), false))[0].Description.ToString();
-                return result;
+                return Loc.T(result);
             }
             return string.Empty;
         }

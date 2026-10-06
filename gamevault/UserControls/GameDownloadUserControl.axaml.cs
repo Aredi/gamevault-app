@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -187,12 +188,12 @@ namespace gamevault.UserControls
             LoadSetupExecutables();
             if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.InstallerParameters) && uiCbSetupExecutable.SelectedItem != null)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Installing {ViewModel.Game?.Title}...";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Installing {0}...", ViewModel.Game?.Title);
                 await Install();
                 return;
             }
             uiInstallOptions.IsVisible = true;
-            MainWindowViewModel.Instance.AppBarText = $"Choose the installer of {ViewModel.Game?.Title}: the game starts after the installation.";
+            MainWindowViewModel.Instance.AppBarText = Loc.F("Choose the installer of {0}: the game starts after the installation.", ViewModel.Game?.Title);
         }
 
         private async Task StartGameIfRequested()
@@ -345,7 +346,7 @@ namespace gamevault.UserControls
                 if (downloadRetryTimer.Data != "error")
                 {
                     if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
-                        ToastMessageHelper.CreateToastMessage("Download Failed", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata.Cover?.ID}"));
+                        ToastMessageHelper.CreateToastMessage(Loc.T("Download Failed"), ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata.Cover?.ID}"));
                 }
                 StartRetryTimer();
                 DownloadQueue.Advance();
@@ -438,10 +439,9 @@ namespace gamevault.UserControls
                 else
                 {
                     downloadSpeedCalc.UpdateSpeed(currentBytesDownloaded);
-                    ViewModel.DownloadInfo = $"{$"{FormatBytesHumanReadable(downloadSpeedCalc.GetCurrentSpeed(), 1, 1000)}/s"}" +
-               $" - {FormatBytesHumanReadable(totalBytesDownloaded)}" +
-               $" of {FormatBytesHumanReadable((double)totalFileSize)}" +
-               $" | Time left: {CalculateTimeLeft(denumirator, numerator, (DateTime.Now - startTime).TotalMilliseconds)}";
+                    ViewModel.DownloadInfo = Loc.F("{0} - {1} of {2} | Time left: {3}", $"{FormatBytesHumanReadable(downloadSpeedCalc.GetCurrentSpeed(), 1, 1000)}/s",
+                        FormatBytesHumanReadable(totalBytesDownloaded), FormatBytesHumanReadable((double)totalFileSize),
+                        CalculateTimeLeft(denumirator, numerator, (DateTime.Now - startTime).TotalMilliseconds));
                 }
 
                 if (ViewModel.GameDownloadProgress == (int)progressPercentage)
@@ -482,7 +482,7 @@ namespace gamevault.UserControls
             MainWindowViewModel.Instance.Library.GetGameInstalls().AddSystemFileWatcher(ViewModel.InstallPath);
 
             if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
-                ToastMessageHelper.CreateToastMessage("Download Complete", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata?.Cover?.ID}"));
+                ToastMessageHelper.CreateToastMessage(Loc.T("Download Complete"), ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata?.Cover?.ID}"));
 
             if (SettingsViewModel.Instance.AutoExtract || PlayWhenInstalled || IsUpdate)
             {
@@ -538,7 +538,7 @@ namespace gamevault.UserControls
         {
             if (IsDownloadActive)
             {
-                MainWindowViewModel.Instance.AppBarText = "Can not delete during the download, extraction, installing process";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Can not delete during the download, extraction, installing process");
                 return;
             }
 
@@ -546,7 +546,7 @@ namespace gamevault.UserControls
 
             if (confirm)
             {
-                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to delete '{(ViewModel.Game == null ? "this Game" : ViewModel.Game.Title)}' ?", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Are you sure you want to delete '{0}' ?", (ViewModel.Game == null ? Loc.T("this Game") : ViewModel.Game.Title)), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
 
                 doDelete = result == MessageDialogResult.Affirmative;
             }
@@ -570,7 +570,7 @@ namespace gamevault.UserControls
                 }
                 catch
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Can not delete during the download, extraction, installing process";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Can not delete during the download, extraction, installing process");
                 }
             }
         }
@@ -592,7 +592,7 @@ namespace gamevault.UserControls
                 ViewModel.GameExtractionProgress = e.PercentageDone;
                 long totalBytesDownloaded = (Convert.ToInt64(ViewModel.Game.Size) / 100) * e.PercentageDone;
                 downloadSpeedCalc.UpdateSpeed(totalBytesDownloaded);
-                ViewModel.ExtractionInfo = $"{$"{FormatBytesHumanReadable(totalBytesDownloaded, (DateTime.Now - startTime).TotalSeconds, 1000)}/s"} - {FormatBytesHumanReadable(totalBytesDownloaded)} of {FormatBytesHumanReadable(Convert.ToInt64(ViewModel.Game.Size))} | Time left: {CalculateTimeLeft(Convert.ToInt64(ViewModel.Game.Size), totalBytesDownloaded, (DateTime.Now - startTime).TotalMilliseconds)}";
+                ViewModel.ExtractionInfo = Loc.F("{0} - {1} of {2} | Time left: {3}", $"{FormatBytesHumanReadable(totalBytesDownloaded, (DateTime.Now - startTime).TotalSeconds, 1000)}/s", FormatBytesHumanReadable(totalBytesDownloaded), FormatBytesHumanReadable(Convert.ToInt64(ViewModel.Game.Size)), CalculateTimeLeft(Convert.ToInt64(ViewModel.Game.Size), totalBytesDownloaded, (DateTime.Now - startTime).TotalMilliseconds));
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
@@ -719,7 +719,7 @@ namespace gamevault.UserControls
             if (!Directory.Exists(m_DownloadPath))
             {
                 ViewModel.State = "Download path not found";
-                MainWindowViewModel.Instance.AppBarText = "Please report this issue on our Discord server or create a GitHub issue.";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Please report this issue on our Discord server or create a GitHub issue.");
                 return;
             }
             DirectoryInfo dirInf = new DirectoryInfo(m_DownloadPath);
@@ -738,7 +738,7 @@ namespace gamevault.UserControls
                 mountedDrive = await MountISO(Path.Combine(m_DownloadPath, files[0].Name));
                 if (Directory.Exists(mountedDrive))
                 {
-                    ViewModel.State = $"ISO mounted at {mountedDrive}";
+                    ViewModel.State = Loc.F("ISO mounted at {0}", mountedDrive);
                     ViewModel.InstallationStepperProgress = 1;
                     uiBtnExtract.IsEnabled = true;
                     uiBtnInstall.IsEnabled = true;
@@ -763,7 +763,7 @@ namespace gamevault.UserControls
             bool isEncrypted = !useTar && await sevenZipHelper.IsArchiveEncrypted(Path.Combine(m_DownloadPath, files[0].Name));
             if (useTar)
             {
-                ViewModel.ExtractionInfo = "Extracting archive...";
+                ViewModel.ExtractionInfo = Loc.T("Extracting archive...");
                 (result, extractionError) = await ExtractTar(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"));
                 ViewModel.GameExtractionProgress = 100;
             }
@@ -772,7 +772,7 @@ namespace gamevault.UserControls
                 string extractionPassword = Preferences.Get(AppConfigKey.ExtractionPassword, LoginManager.Instance.GetUserProfile().UserConfigFile, true);
                 if (string.IsNullOrEmpty(extractionPassword))
                 {
-                    extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", "This archive requires a password to extract");
+                    extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", Loc.T("This archive requires a password to extract"));
                     result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
                 }
                 else
@@ -780,7 +780,7 @@ namespace gamevault.UserControls
                     result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
                     if (result == 69)//Error code for wrong password
                     {
-                        extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", "This archive requires a password to extract");
+                        extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", Loc.T("This archive requires a password to extract"));
                         result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
                     }
                 }
@@ -803,7 +803,7 @@ namespace gamevault.UserControls
                 ViewModel.ExtractionUIVisibility = false;
 
                 if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
-                    ToastMessageHelper.CreateToastMessage("Extraction Complete", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game?.ID}.{ViewModel.Game?.Metadata?.Cover?.ID}"));
+                    ToastMessageHelper.CreateToastMessage(Loc.T("Extraction Complete"), ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game?.ID}.{ViewModel.Game?.Metadata?.Cover?.ID}"));
 
                 bool portable = ViewModel.Game?.Type == GameType.WINDOWS_PORTABLE || ViewModel.Game?.Type == GameType.LINUX_PORTABLE;
                 if (IsUpdate)
@@ -853,7 +853,7 @@ namespace gamevault.UserControls
                     downloadedAgainAfterDamage = true;
                     Log.Info($"The archive of {ViewModel.Game?.Title} is damaged, downloading it again: {(useTar ? extractionError : sevenZipHelper.LastError).Trim()}");
                     ViewModel.ExtractionUIVisibility = false;
-                    MainWindowViewModel.Instance.AppBarText = $"The archive of '{ViewModel.Game?.Title}' is damaged, it is downloaded again";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("The archive of '{0}' is damaged, it is downloaded again", ViewModel.Game?.Title);
                     try
                     {
                         foreach (FileInfo damaged in files)
@@ -868,7 +868,7 @@ namespace gamevault.UserControls
                 {
                     ViewModel.State = "Something went wrong during extraction";
                     if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
-                        ToastMessageHelper.CreateToastMessage("Extraction Failed", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game?.ID}.{ViewModel.Game?.Metadata?.Cover?.ID}"));
+                        ToastMessageHelper.CreateToastMessage(Loc.T("Extraction Failed"), ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game?.ID}.{ViewModel.Game?.Metadata?.Cover?.ID}"));
                 }
                 ViewModel.ExtractionUIVisibility = false;
             }
@@ -951,9 +951,9 @@ namespace gamevault.UserControls
         {
             if (!IsUpdate && InstallViewModel.Instance.InstalledGames.Any(game => game.Key.ID == ViewModel.Game.ID))
             {
-                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"The Game {ViewModel.Game.Title} is already installed at \n'{InstallViewModel.Instance.InstalledGames.First(game => game.Key.ID == ViewModel.Game.ID).Value}'" +
-                       $"\nWarning: Overwriting an existing installation with a new one may cause data corruption.", "",
-                       MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Continue", NegativeButtonText = "Cancel" });
+                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("The Game {0} is already installed at \n'{1}'", ViewModel.Game.Title, InstallViewModel.Instance.InstalledGames.First(game => game.Key.ID == ViewModel.Game.ID).Value) +
+                       Loc.T("\nWarning: Overwriting an existing installation with a new one may cause data corruption."), "",
+                       MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Continue"), NegativeButtonText = Loc.T("Cancel") });
 
                 if (result == MessageDialogResult.Negative)
                     return;
@@ -1009,11 +1009,11 @@ namespace gamevault.UserControls
                 uiBtnExtract.Text = "Extract";
                 if (error)
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Something wen't wrong during installation";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Something wen't wrong during installation");
                 }
                 else
                 {
-                    MainWindowViewModel.Instance.AppBarText = $"Successfully installed '{ViewModel.Game.Title}'";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully installed '{0}'", ViewModel.Game.Title);
                     ViewModel.InstallationStepperProgress = 2;
                     ViewModel.State = "Installed";
                     // The files of this version: an update replaces them and keeps everything else (saves)
@@ -1061,7 +1061,7 @@ namespace gamevault.UserControls
                         }
                         catch
                         {
-                            MainWindowViewModel.Instance.AppBarText = $"Can not execute '{setupEexecutable}'";
+                            MainWindowViewModel.Instance.AppBarText = Loc.F("Can not execute '{0}'", setupEexecutable);
                         }
                     }
                     if (setupProcess != null)
@@ -1070,7 +1070,7 @@ namespace gamevault.UserControls
                         if (IsUpdate && setupProcess.ExitCode != 0)
                         {
                             // The previous version stays installed and recorded
-                            MainWindowViewModel.Instance.AppBarText = $"The installer of '{ViewModel.Game?.Title}' failed (exit code {setupProcess.ExitCode}), the game was not updated";
+                            MainWindowViewModel.Instance.AppBarText = Loc.F("The installer of '{0}' failed (exit code {1}), the game was not updated", ViewModel.Game?.Title, setupProcess.ExitCode);
                             uiBtnInstallPortable.IsEnabled = true;
                             uiBtnInstallSetup.IsEnabled = true;
                             uiProgressRingInstall.IsActive = false;
@@ -1081,7 +1081,7 @@ namespace gamevault.UserControls
                         {
                             // Cancelled, failed, or installed somewhere else: an empty folder must not count as installed
                             PlayWhenInstalled = false;
-                            MainWindowViewModel.Instance.AppBarText = $"The installer of '{ViewModel.Game?.Title}' finished without installing anything into '{ViewModel.InstallerInstallPath}'";
+                            MainWindowViewModel.Instance.AppBarText = Loc.F("The installer of '{0}' finished without installing anything into '{1}'", ViewModel.Game?.Title, ViewModel.InstallerInstallPath);
                             uiBtnInstallPortable.IsEnabled = true;
                             uiBtnInstallSetup.IsEnabled = true;
                             uiProgressRingInstall.IsActive = false;
@@ -1098,7 +1098,7 @@ namespace gamevault.UserControls
                 }
                 else
                 {
-                    MainWindowViewModel.Instance.AppBarText = $"Could not find executable '{setupEexecutable}'";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Could not find executable '{0}'", setupEexecutable);
                 }
                 uiBtnInstallPortable.IsEnabled = true;
                 uiBtnInstallSetup.IsEnabled = true;
@@ -1150,7 +1150,7 @@ namespace gamevault.UserControls
                 {
                     if (!GameSettingsUserControl.TryPrepareLaunchExecutable(game.Value))
                     {
-                        MainWindowViewModel.Instance.AppBarText = $"Can not create shortcut. No valid Executable found";
+                        MainWindowViewModel.Instance.AppBarText = Loc.T("Can not create shortcut. No valid Executable found");
                         return;
                     }
                 }
@@ -1192,13 +1192,13 @@ namespace gamevault.UserControls
                 LoadSetupExecutables();
                 if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.InstallerParameters) && uiCbSetupExecutable.SelectedItem != null)
                 {
-                    MainWindowViewModel.Instance.AppBarText = $"Updating {ViewModel.Game?.Title}...";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Updating {0}...", ViewModel.Game?.Title);
                     await Install();
                 }
                 else
                 {
                     uiInstallOptions.IsVisible = true;
-                    MainWindowViewModel.Instance.AppBarText = $"Choose the installer of {ViewModel.Game?.Title} to update it. Install it into the same folder.";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Choose the installer of {0} to update it. Install it into the same folder.", ViewModel.Game?.Title);
                 }
                 return;
             }
@@ -1224,7 +1224,7 @@ namespace gamevault.UserControls
                 IsUpdate = false;
                 ViewModel.State = "Updated";
                 ViewModel.InstallationStepperProgress = 2;
-                MainWindowViewModel.Instance.AppBarText = $"'{ViewModel.Game?.Title}' is up to date{(string.IsNullOrEmpty(ViewModel.Game?.Version) ? "" : $" ({ViewModel.Game.Version})")}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is up to date{1}", ViewModel.Game?.Title, (string.IsNullOrEmpty(ViewModel.Game?.Version) ? "" : $" ({ViewModel.Game.Version})"));
                 InstallViewModel.Instance.ReplaceInstalledGame(ViewModel.Game!);
                 if (SettingsViewModel.Instance.AutoDeletePortableGameFiles)
                     await DeleteFile(false);
@@ -1233,7 +1233,7 @@ namespace gamevault.UserControls
             {
                 Log.Error(ex, $"Updating {ViewModel.Game?.Title} failed");
                 ViewModel.State = "Update failed";
-                MainWindowViewModel.Instance.AppBarText = $"Updating '{ViewModel.Game?.Title}' failed: {ex.Message}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Updating '{0}' failed: {1}", ViewModel.Game?.Title, ex.Message);
             }
             finally
             {
@@ -1273,7 +1273,7 @@ namespace gamevault.UserControls
             {
                 bool setup = ViewModel.Game?.Type == GameType.WINDOWS_SETUP;
                 ClipboardHelper.SetText(setup ? ViewModel.InstallerInstallPath : ViewModel.InstallPath);
-                MainWindowViewModel.Instance.AppBarText = "Copied Installation Directory to Clipboard";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Copied Installation Directory to Clipboard");
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
@@ -1290,7 +1290,7 @@ namespace gamevault.UserControls
             }
             else
             {
-                MainWindowViewModel.Instance.AppBarText = "No gametype selected for overwriting";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("No gametype selected for overwriting");
             }
         }
 

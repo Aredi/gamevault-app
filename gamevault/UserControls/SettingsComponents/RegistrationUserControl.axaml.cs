@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using GameVault.Core;
@@ -98,7 +99,7 @@ namespace gamevault.UserControls.SettingsComponents
                     {
                         await MainWindowViewModel.Instance.AdminConsole.InitUserList();
                     }
-                    MainWindowViewModel.Instance.AppBarText = "Successfully registrated User";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully registrated User");
                     return;
                 }
                 MainWindowViewModel.Instance.AppBarText = LoginManager.Instance.GetServerLoginResponseMessage();
@@ -112,20 +113,20 @@ namespace gamevault.UserControls.SettingsComponents
         {
             if (string.IsNullOrWhiteSpace(ViewModel.SignupUser.ServerUrl))
             {
-                throw new Exception("Server URL is not set");
+                throw new Exception(Loc.T("Server URL is not set"));
             }
             ViewModel.SignupUser.ServerUrl = ValidateUriScheme(ViewModel.SignupUser.ServerUrl);
             if (string.IsNullOrWhiteSpace(ViewModel.SignupUser.Password) || string.IsNullOrWhiteSpace(ViewModel.SignupUser.RepeatPassword))
             {
-                throw new Exception("Password is not set");
+                throw new Exception(Loc.T("Password is not set"));
             }
             if (ViewModel.SignupUser.Password != ViewModel.SignupUser.RepeatPassword)
             {
-                throw new Exception("Password must be equal");
+                throw new Exception(Loc.T("Password must be equal"));
             }
             if (string.IsNullOrWhiteSpace(ViewModel.SignupUser.Username))
             {
-                throw new Exception("Username is not set");
+                throw new Exception(Loc.T("Username is not set"));
             }
 
         }

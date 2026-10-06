@@ -54,6 +54,11 @@
 		<InternalsVisibleTo Include="GameVault.UiTests" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- Translations keyed by the English text -->
+		<EmbeddedResource Include="Localization\*.json" />
+	</ItemGroup>
+
 	<!-- Windows builds ship the bundled 7-Zip and Ludusavi binaries; on Linux the system packages are used
 	     (the Linux release adds the Linux Ludusavi itself). Builds without a runtime (development) keep them. -->
 	<ItemGroup Condition="'$(RuntimeIdentifier)' == '' Or $(RuntimeIdentifier.StartsWith('win'))">

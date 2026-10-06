@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -25,10 +26,10 @@ namespace gamevault.UserControls
             void Fill()
             {
                 panel.Children.Clear();
-                panel.Children.Add(new TextBlock { Text = $"Collections of {gameTitle}", FontWeight = FontWeight.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
+                panel.Children.Add(new TextBlock { Text = Loc.F("Collections of {0}", gameTitle), FontWeight = FontWeight.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
                 var collections = LibraryData.Collections.Load().OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
                 if (collections.Count == 0)
-                    panel.Children.Add(new TextBlock { Text = "No collection yet.", Opacity = 0.7 });
+                    panel.Children.Add(new TextBlock { Text = Loc.T("No collection yet."), Opacity = 0.7 });
                 foreach (var collection in collections)
                 {
                     var box = new CheckBox { Content = collection.Name, IsChecked = collection.GameIds.Contains(gameId) };
@@ -58,7 +59,7 @@ namespace gamevault.UserControls
             {
                 panel.Children.Clear();
                 panel.Children.Add(new TextBlock { Text = "Collections", FontWeight = FontWeight.Bold });
-                panel.Children.Add(new TextBlock { Text = "Add games from their page (collection button next to the bookmark). Edit a name and press Enter to rename.", FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap });
+                panel.Children.Add(new TextBlock { Text = Loc.T("Add games from their page (collection button next to the bookmark). Edit a name and press Enter to rename."), FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap });
                 var collections = LibraryData.Collections.Load().OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
                 foreach (var collection in collections)
                 {
@@ -71,11 +72,11 @@ namespace gamevault.UserControls
                     }
                     name.KeyDown += (_, e) => { if (e.Key == Key.Enter) { Rename(); Fill(); } };
                     name.LostFocus += (_, _) => Rename();
-                    var count = new TextBlock { Text = $"{collection.GameIds.Count} game(s)", VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Opacity = 0.7 };
+                    var count = new TextBlock { Text = Loc.F("{0} game(s)", collection.GameIds.Count), VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Opacity = 0.7 };
                     var delete = new IconButton { Text = "Delete", Kind = ButtonKind.Danger, Height = 28, Width = 70, FontSize = 12 };
                     delete.Click += async (_, _) =>
                     {
-                        if (await DialogService.ConfirmAsync($"Delete the collection '{collection.Name}'? The games stay in the library.", "Collections"))
+                        if (await DialogService.ConfirmAsync(Loc.F("Delete the collection '{0}'? The games stay in the library.", collection.Name), "Collections"))
                         {
                             Run(() => LibraryData.Collections.Delete(collection.Name));
                             Fill();

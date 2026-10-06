@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
@@ -58,18 +59,18 @@
     <Border Padding="5" CornerRadius="5" ClipToBounds="True" BoxShadow="0 0 7 0 #80000000">
         <Grid ColumnDefinitions="101*,299*">
             <Grid Grid.Column="0" Background="{DynamicResource Brush.Background}">
-                <TextBlock Text="User Settings" FontSize="30" Margin="10" />
+                <TextBlock Text="{l:T 'User Settings'}" FontSize="30" Margin="10" />
                 <ListBox x:Name="uiSettingsHeaders" Classes="settingsNav" VerticalAlignment="Top" Margin="60,70,0,0" SelectedIndex="0">
                     <ListBoxItem>
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{DynamicResource IconGameSettingsEditImages}" />
-                            <TextBlock Text="Edit Images" />
+                            <TextBlock Text="{l:T 'Edit Images'}" />
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem>
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{DynamicResource IconGameSettingsEditDetails}" />
-                            <TextBlock Text="Edit Details" />
+                            <TextBlock Text="{l:T 'Edit Details'}" />
                         </StackPanel>
                     </ListBoxItem>
                 </ListBox>
@@ -84,9 +85,9 @@
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
-                <TextBlock Text="{Binding OriginUser.ID, StringFormat='ID {0}'}" FontSize="16" />
-                <TextBlock Text="{Binding OriginUser.CreatedAt, Converter={StaticResource utcToLocalTimeConv}, StringFormat='Created {0:dd.MM.yyyy}', TargetNullValue='Created N/A'}" FontSize="16"
-                           ToolTip.Tip="{Binding OriginUser.CreatedAt, Converter={StaticResource utcToLocalTimeConv}, StringFormat='{}{0:HH:mm:ss dd.MM.yyyy}'}" />
+                <TextBlock Text="{Binding OriginUser.ID, StringFormat={l:T 'ID {0}'}}" FontSize="16" />
+                <TextBlock Text="{Binding OriginUser.CreatedAt, Converter={StaticResource utcToLocalTimeConv}, StringFormat={l:T 'Created {0:dd.MM.yyyy}'}, TargetNullValue={l:T 'Created N/A'}}" FontSize="16"
+                           ToolTip.Tip="{Binding OriginUser.CreatedAt, Converter={StaticResource utcToLocalTimeConv}, StringFormat={l:T '{}{0:HH:mm:ss dd.MM.yyyy}'}}" />
             </StackPanel>
 
             <Grid Grid.Column="1" Background="{DynamicResource Brush.Background2}" ClipToBounds="True">
@@ -95,13 +96,13 @@
                     <Grid Margin="0,20,0,0">
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Top">
                             <Path Data="{DynamicResource IconGameSettingsEditImages}" Fill="{DynamicResource Brush.Foreground}" Margin="0,1,0,0" />
-                            <TextBlock Text="Edit Images" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
+                            <TextBlock Text="{l:T 'Edit Images'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <TextBlock Text="Here, you can update the images of the user profile." VerticalAlignment="Top" FontSize="15" Margin="10,35,0,0" />
+                        <TextBlock Text="{l:T 'Here, you can update the images of the user profile.'}" VerticalAlignment="Top" FontSize="15" Margin="10,35,0,0" />
                         <Grid ColumnDefinitions="*,*" Margin="10,70,10,40">
                             <Border Grid.Column="0" CornerRadius="5" Margin="0,0,5,0" Background="{DynamicResource Brush.Background}">
                                 <StackPanel>
-                                    <TextBlock Text="Background" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
+                                    <TextBlock Text="{l:T 'Background'}" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
                                     <Border Classes="dropZone" x:Name="uiBackgroundDropZone" CornerRadius="5" BorderThickness="2" Margin="10" Height="380" Background="{DynamicResource Brush.Background2}" Cursor="Hand"
                                             DragDrop.AllowDrop="True" PointerReleased="ChooseImage" Focusable="True">
                                         <StackPanel>
@@ -113,29 +114,29 @@
                                                 </Border>
                                             </Grid>
                                             <StackPanel HorizontalAlignment="Center" Margin="0,65,0,0">
-                                                <TextBlock Text="Click to Upload, Paste or Drag and Drop" FontWeight="Bold" />
-                                                <TextBlock Text="JPG, PNG, GIF, TIF, ICO or BMP" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                                <TextBlock Text="For optimal display, use an image that is 1920px wide and 1080px high." FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                                                <TextBlock Text="{l:T 'Click to Upload, Paste or Drag and Drop'}" FontWeight="Bold" />
+                                                <TextBlock Text="{l:T 'JPG, PNG, GIF, TIF, ICO or BMP'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                                                <TextBlock Text="{l:T 'For optimal display, use an image that is 1920px wide and 1080px high.'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                         <StackPanel Margin="10,0,10,0">
-                                            <TextBlock Text="OR" HorizontalAlignment="Center" />
-                                            <TextBlock Text="Upload via URL" FontWeight="Bold" />
+                                            <TextBlock Text="{l:T 'OR'}" HorizontalAlignment="Center" />
+                                            <TextBlock Text="{l:T 'Upload via URL'}" FontWeight="Bold" />
                                         </StackPanel>
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <TextBox Margin="10" Watermark="https://example.com/example.png" TextChanged="BackgoundImageUrl_TextChanged" />
                                     <Grid Margin="10,20,10,10">
-                                        <local:IconButton Text="Save" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding BackgroundImageChanged}" Width="115" Height="33" HorizontalAlignment="Right" Click="BackgroundImage_Save" />
+                                        <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding BackgroundImageChanged}" MinWidth="115" Height="33" HorizontalAlignment="Right" Click="BackgroundImage_Save" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="1" CornerRadius="5" Margin="5,0,0,0" Background="{DynamicResource Brush.Background}">
                                 <StackPanel>
-                                    <TextBlock Text="Avatar" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
+                                    <TextBlock Text="{l:T 'Avatar'}" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
                                     <Border Classes="dropZone" x:Name="uiAvatarDropZone" CornerRadius="5" BorderThickness="2" Margin="10" Height="380" Background="{DynamicResource Brush.Background2}" Cursor="Hand"
                                             DragDrop.AllowDrop="True" PointerReleased="ChooseImage" Focusable="True" Tag="avatar">
                                         <StackPanel>
@@ -146,23 +147,23 @@
                                                                   IsVisible="{Binding AvatarImageUrl, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                             </Grid>
                                             <StackPanel HorizontalAlignment="Center" Margin="0,65,0,0">
-                                                <TextBlock Text="Click to Upload, Paste or Drag and Drop" FontWeight="Bold" />
-                                                <TextBlock Text="JPG, PNG, GIF, TIF, ICO or BMP" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                                <TextBlock Text="For optimal display, use an image that is 264px wide and 264px high." FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                                                <TextBlock Text="{l:T 'Click to Upload, Paste or Drag and Drop'}" FontWeight="Bold" />
+                                                <TextBlock Text="{l:T 'JPG, PNG, GIF, TIF, ICO or BMP'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                                                <TextBlock Text="{l:T 'For optimal display, use an image that is 264px wide and 264px high.'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                         <StackPanel Margin="10,0,10,0">
-                                            <TextBlock Text="OR" HorizontalAlignment="Center" />
-                                            <TextBlock Text="Upload via URL" FontWeight="Bold" />
+                                            <TextBlock Text="{l:T 'OR'}" HorizontalAlignment="Center" />
+                                            <TextBlock Text="{l:T 'Upload via URL'}" FontWeight="Bold" />
                                         </StackPanel>
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <TextBox Margin="10" Watermark="https://example.com/example.png" TextChanged="AvatarImageUrl_TextChanged" />
                                     <Grid Margin="10,20,10,10">
-                                        <local:IconButton Text="Save" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding AvatarImageChanged}" Width="115" Height="33" HorizontalAlignment="Right" Click="AvatarImage_Save" />
+                                        <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding AvatarImageChanged}" MinWidth="115" Height="33" HorizontalAlignment="Right" Click="AvatarImage_Save" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
@@ -173,47 +174,47 @@
                     <Grid Margin="0,20,0,0">
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Top">
                             <Path Data="{DynamicResource IconGameSettingsEditDetails}" Fill="{DynamicResource Brush.Foreground}" Margin="0,1,0,0" />
-                            <TextBlock Text="Edit Details" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
+                            <TextBlock Text="{l:T 'Edit Details'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <TextBlock Text="Here, you can update the details of the user profile." VerticalAlignment="Top" FontSize="15" Margin="10,35,0,0" />
+                        <TextBlock Text="{l:T 'Here, you can update the details of the user profile.'}" VerticalAlignment="Top" FontSize="15" Margin="10,35,0,0" />
                         <Grid Classes="details" ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto" Margin="10,80,10,0" VerticalAlignment="Top">
                             <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,40,20">
-                                <TextBlock Classes="section" Text="Username" />
+                                <TextBlock Classes="section" Text="{l:T 'Username'}" />
                                 <TextBox Text="{Binding UpdateUser.Username}" TextChanged="UserDetails_TextChanged" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,40,20">
-                                <TextBlock Classes="section" Text="First Name" />
+                                <TextBlock Classes="section" Text="{l:T 'First Name'}" />
                                 <TextBox Text="{Binding UpdateUser.FirstName}" TextChanged="UserDetails_TextChanged" />
                             </StackPanel>
                             <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,40,20">
-                                <TextBlock Classes="section" Text="Password" />
+                                <TextBlock Classes="section" Text="{l:T 'Password'}" />
                                 <TextBox x:Name="uiUserPassword" PasswordChar="•" RevealPassword="False" Classes="revealPasswordButton" TextChanged="UserDetails_TextChanged" />
                             </StackPanel>
                             <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,20">
-                                <TextBlock Classes="section" Text="E-Mail Address" />
+                                <TextBlock Classes="section" Text="{l:T 'E-Mail Address'}" />
                                 <TextBox Text="{Binding UpdateUser.EMail}" TextChanged="UserDetails_TextChanged" />
                             </StackPanel>
                             <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,20">
-                                <TextBlock Classes="section" Text="Last Name" />
+                                <TextBlock Classes="section" Text="{l:T 'Last Name'}" />
                                 <TextBox Text="{Binding UpdateUser.LastName}" TextChanged="UserDetails_TextChanged" />
                             </StackPanel>
                             <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,20">
-                                <TextBlock Classes="section" Text="Birth Date" />
+                                <TextBlock Classes="section" Text="{l:T 'Birth Date'}" />
                                 <CalendarDatePicker x:Name="uiBirthDate" SelectedDate="{Binding UpdateUser.BirthDate}" SelectedDateChanged="UserDetails_DateChanged" />
                             </StackPanel>
                         </Grid>
                         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,40">
-                            <local:IconButton Text="Copy API Key" Kind="Skeleton" FontSize="15" BorderThickness="1" Icon="{DynamicResource IconCopy}" IconMargin="0,0,5,2" IconScale="0.9" Width="130" Height="33"
+                            <local:IconButton Text="{l:T 'Copy API Key'}" Kind="Skeleton" FontSize="15" BorderThickness="1" Icon="{DynamicResource IconCopy}" IconMargin="0,0,5,2" IconScale="0.9" MinWidth="130" Height="33"
                                               IsVisible="{Binding OriginUser.ApiKey, Converter={x:Static ObjectConverters.IsNotNull}}" Click="CopyUserApiKey_Click" />
-                            <local:IconButton Text="Save" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding UserDetailsChanged}" Width="115" Height="33" Click="SaveUserDetails_Click" />
+                            <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding UserDetailsChanged}" MinWidth="115" Height="33" Click="SaveUserDetails_Click" />
                         </StackPanel>
                     </Grid>
                 </Carousel>
             </Grid>
-            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,10,10,0" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="Close (Esc)">
+            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,10,10,0" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
                 <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" RenderTransform="scale(1.2)" />
             </Grid>
-            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,50,0" Cursor="Hand" PointerReleased="Help_Click" ToolTip.Tip="Documentation">
+            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,50,0" Cursor="Hand" PointerReleased="Help_Click" ToolTip.Tip="{l:T 'Documentation'}">
                 <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameSettingsHelp}" />
             </Grid>
         </Grid>

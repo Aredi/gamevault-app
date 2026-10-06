@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using gamevault.UserControls;
+using gamevault.Localization;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -85,6 +86,21 @@ namespace gamevault.Helper
 
         private static async Task<DialogOutcome> Run(Window? window, string title, string message, MessageDialogStyle style, MetroDialogSettings settings, bool input)
         {
+            // Texts of every dialog are translated here (formatted ones arrive translated through Loc.F)
+            title = Loc.T(title ?? "");
+            message = Loc.T(message ?? "");
+            settings = new MetroDialogSettings
+            {
+                AffirmativeButtonText = Loc.T(settings.AffirmativeButtonText),
+                NegativeButtonText = Loc.T(settings.NegativeButtonText),
+                FirstAuxiliaryButtonText = Loc.T(settings.FirstAuxiliaryButtonText),
+                SecondAuxiliaryButtonText = Loc.T(settings.SecondAuxiliaryButtonText),
+                DefaultText = settings.DefaultText,
+                AnimateHide = settings.AnimateHide,
+                AnimateShow = settings.AnimateShow,
+                DialogMessageFontSize = settings.DialogMessageFontSize,
+                DialogTitleFontSize = settings.DialogTitleFontSize,
+            };
             if (Dispatcher.UIThread.CheckAccess())
                 return await ShowCore(window, title, message, style, settings, input);
             return await await Dispatcher.UIThread.InvokeAsync<Task<DialogOutcome>>(() => ShowCore(window, title, message, style, settings, input));

@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -56,7 +57,7 @@ namespace gamevault.UserControls
                 }
                 catch
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Can not access community tab while offline";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Can not access community tab while offline");
                 }
             }
         }
@@ -225,7 +226,7 @@ namespace gamevault.UserControls
         {
             if (((Progress)((Control)sender).DataContext).Game == null)
             {
-                MainWindowViewModel.Instance.AppBarText = "Cannot open game";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Cannot open game");
                 return;
             }
             MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(((Progress)((Control)sender).DataContext).Game));
@@ -236,7 +237,7 @@ namespace gamevault.UserControls
                 return;
             if (!LoginManager.Instance.IsLoggedIn())
             {
-                MainWindowViewModel.Instance.AppBarText = "You are not logged in or offline";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("You are not logged in or offline");
                 return;
             }
             if (uiBtnReloadUser.IsEnabled == false || (e is KeyEventArgs keyArgs && keyArgs.Key != Key.F5))
@@ -272,8 +273,8 @@ namespace gamevault.UserControls
             try
             {
                 Progress dataContext = (Progress)((Control)sender).DataContext;
-                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to delete the progress of '{dataContext.Game.Title}' ?",
-                    "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Are you sure you want to delete the progress of '{0}' ?", dataContext.Game.Title),
+                    "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                 if (result == MessageDialogResult.Affirmative)
                 {
                     await WebHelper.DeleteAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/progresses/user/{ViewModel?.CurrentShownUser?.ID}/game/{dataContext?.Game.ID}");
@@ -283,12 +284,12 @@ namespace gamevault.UserControls
                     ViewModel.UserProgresses = null;
                     ViewModel.UserProgresses = copy;
 
-                    MainWindowViewModel.Instance.AppBarText = $"Successfully deleted progress";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully deleted progress");
                 }
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Could not delete. {WebExceptionHelper.TryGetServerMessage(ex)}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Could not delete. {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
         }
     }

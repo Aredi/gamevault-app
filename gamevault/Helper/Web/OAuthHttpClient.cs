@@ -1,4 +1,5 @@
 ﻿using GameVault.Core;
+using gamevault.Localization;
 using gamevault.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -74,7 +75,7 @@ namespace gamevault.Helper
             }
 
             if (IsTokenExpired() && !await RefreshTokenAsync())
-                throw new InvalidOperationException("Failed to refresh token.");
+                throw new InvalidOperationException(Loc.T("Failed to refresh token."));
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
             if (additionalHeaders != null)

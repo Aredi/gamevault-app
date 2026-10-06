@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -264,8 +265,8 @@ namespace gamevault.UserControls
                 if (fresh.Length == 0)
                     return;
                 string titles = string.Join(", ", fresh.Select(game => string.IsNullOrEmpty(game.Version) ? game.Title : $"{game.Title} {game.Version}"));
-                MainWindowViewModel.Instance.AppBarText = $"Update available: {titles}";
-                ToastMessageHelper.CreateToastMessage(fresh.Length == 1 ? "Update available" : $"{fresh.Length} updates available", titles);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Update available: {0}", titles);
+                ToastMessageHelper.CreateToastMessage(fresh.Length == 1 ? Loc.T("Update available") : Loc.F("{0} updates available", fresh.Length), titles);
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
@@ -383,7 +384,7 @@ namespace gamevault.UserControls
         {
             if (((KeyValuePair<Game, string>)((Control)sender).DataContext).Key == null)
             {
-                MainWindowViewModel.Instance.AppBarText = "Cannot open game";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Cannot open game");
                 return;
             }
             MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(((KeyValuePair<Game, string>)((Control)sender).DataContext).Key, LoginManager.Instance.IsLoggedIn()));
@@ -423,12 +424,12 @@ namespace gamevault.UserControls
             }
             if (!Directory.Exists(path))
             {
-                MainWindowViewModel.Instance.AppBarText = $"Can not find part of '{path}'";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Can not find part of '{0}'", path);
                 return;
             }
             if (SettingsViewModel.Instance.CloudSaves)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Syncing cloud save...";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Syncing cloud save...");
                 string status = await SaveGameHelper.Instance.RestoreBackup(gameId, path);
                 if (status == CloudSaveStatus.Cancelled)
                 {
@@ -446,7 +447,7 @@ namespace gamevault.UserControls
                 }
                 else
                 {
-                    MainWindowViewModel.Instance.AppBarText = $"No valid Executable found";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("No valid Executable found");
                     return;
                 }
             }
@@ -477,14 +478,14 @@ namespace gamevault.UserControls
                     }
                     catch
                     {
-                        MainWindowViewModel.Instance.AppBarText = $"Can not execute '{savedExecutable}'";
+                        MainWindowViewModel.Instance.AppBarText = Loc.F("Can not execute '{0}'", savedExecutable);
                     }
                 }
                 MainWindowViewModel.Instance.Library.GetGameInstalls().SetLastPlayedGame(result.Key.ID);
             }
             else
             {
-                MainWindowViewModel.Instance.AppBarText = $"Could not find Executable '{savedExecutable}'";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Could not find Executable '{0}'", savedExecutable);
             }
         }
         private async void Settings_Click(object sender, RoutedEventArgs e)

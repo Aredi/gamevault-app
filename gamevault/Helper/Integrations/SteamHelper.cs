@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using gamevault.Models;
 using gamevault.ViewModels;
@@ -82,7 +83,7 @@ namespace gamevault.Helper
                     (byte)VdfMapItemType.Map => NextMap(reader),
                     (byte)VdfMapItemType.String => ReadString(reader),
                     (byte)VdfMapItemType.Number => reader.ReadUInt32(),
-                    _ => throw new Exception($"Unexpected VdfMapItemType: {typeByte}")
+                    _ => throw new Exception(Loc.F("Unexpected VdfMapItemType: {0}", typeByte))
                 };
 
                 return new VdfMapItem { Type = (VdfMapItemType)typeByte, Name = name, Value = value };
@@ -142,7 +143,7 @@ namespace gamevault.Helper
                     else
                     {
                         string type = keyValuePair.Value.GetType().ToString();
-                        throw new Exception($"Unsupported VDF value type for key '{keyValuePair.Key}'.");
+                        throw new Exception(Loc.F("Unsupported VDF value type for key '{0}'.", keyValuePair.Key));
                     }
                 }
 
@@ -153,7 +154,7 @@ namespace gamevault.Helper
             {
                 if (value.Contains('\0'))
                 {
-                    throw new Exception("Strings in VDF files cannot have null characters ('\\0').");
+                    throw new Exception(Loc.T("Strings in VDF files cannot have null characters ('\\0')."));
                 }
 
                 writer.Write(Encoding.UTF8.GetBytes(value));
@@ -536,7 +537,7 @@ namespace gamevault.Helper
 
             if (!File.Exists(steamConfigFile))
             {
-                throw new Exception("Couldn't find logged in user");
+                throw new Exception(Loc.T("Couldn't find logged in user"));
             }
 
             var lines = File.ReadAllLines(steamConfigFile);
@@ -566,7 +567,7 @@ namespace gamevault.Helper
 
             if (steamid == null)
             {
-                throw new Exception("Couldn't find logged in user");
+                throw new Exception(Loc.T("Couldn't find logged in user"));
             }
 
             return steamid;

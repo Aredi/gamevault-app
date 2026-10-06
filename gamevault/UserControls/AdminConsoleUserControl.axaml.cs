@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -80,8 +81,8 @@ namespace gamevault.UserControls
                 }
                 if (LoginManager.Instance.IsLoggedIn() && selectedUser.ID == LoginManager.Instance.GetCurrentUser().ID)
                 {
-                    MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to change your own role?\nYou may lose privileges.",
-                    "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                    MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Are you sure you want to change your own role?\nYou may lose privileges."),
+                    "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                     if (result != MessageDialogResult.Affirmative)
                     {
                         ((ComboBox)sender).SelectionChanged -= PermissionRole_SelectionChanged;
@@ -91,7 +92,7 @@ namespace gamevault.UserControls
                     }
                 }
                 await WebHelper.PutAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users/{selectedUser.ID}", JsonSerializer.Serialize(new UpdateUserDto() { Role = selectedUser.Role }));
-                MainWindowViewModel.Instance.AppBarText = $"Successfully updated permission role of user '{selectedUser.Username}' to '{selectedUser.Role}'";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully updated permission role of user '{0}' to '{1}'", selectedUser.Username, selectedUser.Role);
             }
             catch (Exception ex)
             {
@@ -107,7 +108,7 @@ namespace gamevault.UserControls
                 User selectedUser = (User)((Control)sender).DataContext;
                 await WebHelper.PutAsync($@"{SettingsViewModel.Instance.ServerUrl}/api/users/{selectedUser.ID}", JsonSerializer.Serialize(new User() { Activated = selectedUser.Activated }));
                 string state = selectedUser.Activated == true ? "activated" : "deactivated";
-                MainWindowViewModel.Instance.AppBarText = $"Successfully {state} user '{selectedUser.Username}'";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully {0} user '{1}'", state, selectedUser.Username);
             }
             catch (Exception ex)
             {
@@ -125,8 +126,8 @@ namespace gamevault.UserControls
 
             if (selectedUser.DeletedAt == null)
             {
-                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to delete User '{selectedUser.Username}' ?",
-                    "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Are you sure you want to delete User '{0}' ?", selectedUser.Username),
+                    "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                 if (result != MessageDialogResult.Affirmative)
                     return;
             }
@@ -137,13 +138,13 @@ namespace gamevault.UserControls
                 if (selectedUser.DeletedAt == null)
                 {
                     await WebHelper.DeleteAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users/{selectedUser.ID}");
-                    MainWindowViewModel.Instance.AppBarText = $"Successfully deleted user '{selectedUser.Username}'";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully deleted user '{0}'", selectedUser.Username);
                     await InitUserList();
                 }
                 else
                 {
                     await WebHelper.PostAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users/{selectedUser.ID}/recover", "");
-                    MainWindowViewModel.Instance.AppBarText = $"Successfully recovered deleted user '{selectedUser.Username}'";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully recovered deleted user '{0}'", selectedUser.Username);
                     await InitUserList();
                 }
             }
@@ -179,7 +180,7 @@ namespace gamevault.UserControls
             try
             {
                 await WebHelper.PutAsync($@"{SettingsViewModel.Instance.ServerUrl}/api/users/{selectedUser.ID}", JsonSerializer.Serialize(selectedUser));
-                MainWindowViewModel.Instance.AppBarText = "Successfully saved user changes";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully saved user changes");
             }
             catch (Exception ex)
             {
@@ -227,7 +228,7 @@ namespace gamevault.UserControls
             try
             {
                 await WebHelper.PutAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games/reindex", string.Empty);
-                MainWindowViewModel.Instance.AppBarText = "Successfully reindexed games";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully reindexed games");
             }
             catch (Exception ex)
             {
@@ -258,9 +259,9 @@ namespace gamevault.UserControls
                 string currentServerVersion = JsonSerializer.Deserialize<ServerInfo>(serverResponse).Version;
                 if (GameVault.Core.VersionHelper.IsNewer(newestServerVersion, currentServerVersion))
                 {
-                    return new KeyValuePair<string, string>($"Server Version: {currentServerVersion}", (string)gitObj[0]["html_url"]);
+                    return new KeyValuePair<string, string>(Loc.F("Server Version: {0}", currentServerVersion), (string)gitObj[0]["html_url"]);
                 }
-                return new KeyValuePair<string, string>($"Server Version: {currentServerVersion}", "");
+                return new KeyValuePair<string, string>(Loc.F("Server Version: {0}", currentServerVersion), "");
             }
             catch
             {

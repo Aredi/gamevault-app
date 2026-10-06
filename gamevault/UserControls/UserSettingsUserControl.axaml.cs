@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Platform.Storage;
 using Avalonia;
 using Avalonia.Controls;
@@ -101,7 +102,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Failed to load image: {ex.Message}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Failed to load image: {0}", ex.Message);
             }
         }
         /// <summary>
@@ -314,7 +315,7 @@ namespace gamevault.UserControls
                     string updatedUser = await WebHelper.PutAsync(url, JsonSerializer.Serialize(updateObject));
                     ViewModel.OriginUser = JsonSerializer.Deserialize<User>(updatedUser);
                     success = true;
-                    MainWindowViewModel.Instance.AppBarText = "Successfully updated image";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully updated image");
                 }
                 catch (Exception ex)
                 {
@@ -379,7 +380,7 @@ namespace gamevault.UserControls
                 {
                     WebHelper.OverrideCredentials(selectedUser.Username, selectedUser.Password);
                 }
-                MainWindowViewModel.Instance.AppBarText = "Successfully saved user changes";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully saved user changes");
             }
             catch (Exception ex)
             {
@@ -429,7 +430,7 @@ namespace gamevault.UserControls
             try
             {
                 ClipboardHelper.SetText(ViewModel.OriginUser.ApiKey);
-                MainWindowViewModel.Instance.AppBarText = "Copied API Key to Clipboard";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Copied API Key to Clipboard");
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }

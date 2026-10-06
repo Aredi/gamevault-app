@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using gamevault.Helper;
 using gamevault.Models;
@@ -434,7 +435,7 @@ namespace gamevault
                     return await HandleQuery(options);
                 default:
                     // You should really implement new actions that you add
-                    throw new NotImplementedException($"Action {options.Action} not implemented");
+                    throw new NotImplementedException(Loc.F("Action {0} not implemented", options.Action));
             }
             if (IsAppStartup)
             {
@@ -597,7 +598,7 @@ namespace gamevault
 
                 if (game == null)
                 {
-                    await DialogService.ShowInfoAsync($"Game with ID {id} not found", "Error");
+                    await DialogService.ShowInfoAsync(Loc.F("Game with ID {0} not found", id), "Error");
                     return;
                 }
 
@@ -633,7 +634,7 @@ namespace gamevault
             }
             else
             {
-                await DialogService.ShowInfoAsync($"Game with ID {id} not found", "Error");
+                await DialogService.ShowInfoAsync(Loc.F("Game with ID {0} not found", id), "Error");
             }
         }
         private async Task ExecuteJumpListCommand(int id)
@@ -803,7 +804,7 @@ namespace gamevault
                     return LoginManager.Instance.IsLoggedIn().ToString();
                 default:
                     // You should really implement new Action Queries
-                    throw new NotImplementedException($"Query {query} not implemented");
+                    throw new NotImplementedException(Loc.F("Query {0} not implemented", query));
             }
         }
 

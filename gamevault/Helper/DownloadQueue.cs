@@ -1,4 +1,5 @@
 using Avalonia.Threading;
+using gamevault.Localization;
 using GameVault.Core;
 using gamevault.UserControls;
 using gamevault.ViewModels;
@@ -90,8 +91,8 @@ namespace gamevault.Helper
             for (int i = 0; i < waiting.Count; i++)
             {
                 waiting[i].SetQueuedState(open
-                    ? $"Queued ({i + 1})"
-                    : $"Scheduled, starts at {schedule.NextStart(DateTime.Now):HH:mm}");
+                    ? Loc.F("Queued ({0})", i + 1)
+                    : Loc.F("Scheduled, starts at {0:HH:mm}", schedule.NextStart(DateTime.Now)));
             }
         }
     }

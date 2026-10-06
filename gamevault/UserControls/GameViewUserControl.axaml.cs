@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -480,7 +481,7 @@ namespace gamevault.UserControls
             {
                 string shareLink = $"gamevault://show?gameid={ViewModel?.Game?.ID}";
                 ClipboardHelper.SetText(shareLink);
-                MainWindowViewModel.Instance.AppBarText = "Sharelink copied to clipboard";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Sharelink copied to clipboard");
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
@@ -493,7 +494,7 @@ namespace gamevault.UserControls
                     MainWindowViewModel.Instance.AppBarText = CloudSaveStatus.Offline;
                     return;
                 }
-                MainWindowViewModel.Instance.AppBarText = "Uploading Savegame to the Server...";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Uploading Savegame to the Server...");
                 ((Control)sender).IsEnabled = false;
                 string status = await SaveGameHelper.Instance.BackupSaveGame(ViewModel!.Game!.ID, force: true);
                 MainWindowViewModel.Instance.AppBarText = status;
@@ -508,7 +509,7 @@ namespace gamevault.UserControls
         {
             try
             {
-                MainWindowViewModel.Instance.AppBarText = $"Syncing cloud save...";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Syncing cloud save...");
                 ((Control)sender).IsEnabled = false;
                 string installationDir = InstallViewModel.Instance.InstalledGames.First(g => g.Key.ID == ViewModel!.Game!.ID).Value;
                 string status = await SaveGameHelper.Instance.RestoreBackup(ViewModel!.Game!.ID, installationDir, force: true);

@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using gamevault.Helper.Integrations;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -125,7 +126,7 @@ namespace gamevault.Windows
             }
             else if (LoginState.Unauthorized == state || LoginState.Forbidden == state)
             {
-                MainWindowViewModel.Instance.AppBarText = "You are not logged in";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("You are not logged in");
             }
             else if (LoginState.Error == state)
             {
@@ -157,7 +158,7 @@ namespace gamevault.Windows
             if (Preferences.Get(AppConfigKey.RunningInTrayMessage, LoginManager.Instance.GetUserProfile().UserConfigFile) != "1")
             {
                 Preferences.Set(AppConfigKey.RunningInTrayMessage, "1", LoginManager.Instance.GetUserProfile().UserConfigFile);
-                ToastMessageHelper.CreateToastMessage("Information", "GameVault is still running in the background");
+                ToastMessageHelper.CreateToastMessage(Loc.T("Information"), Loc.T("GameVault is still running in the background"));
             }
         }
 

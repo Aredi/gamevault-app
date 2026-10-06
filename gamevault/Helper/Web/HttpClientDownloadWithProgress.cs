@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using GameVault.Core.Downloads;
 using gamevault.Models;
@@ -178,7 +179,7 @@ namespace gamevault.Helper
                 try { await Task.WhenAll(running); } catch { }
                 SaveCheckpoint(parts, totalSize);
                 throw (running.Select(t => t.Exception?.InnerException).FirstOrDefault(e => e != null && e is not OperationCanceledException)
-                    ?? new IOException("The download was interrupted"));
+                    ?? new IOException(Loc.T("The download was interrupted")));
             }
 
             if (Cancelled)
@@ -201,7 +202,7 @@ namespace gamevault.Helper
             if (parts.Any(p => !p.IsComplete))
             {
                 SaveCheckpoint(parts, totalSize);
-                throw new IOException("The connection was closed before the download finished");
+                throw new IOException(Loc.T("The connection was closed before the download finished"));
             }
             Preferences.DeleteKey(AppConfigKey.DownloadParts, MetadataFile);
             TriggerProgressChanged(totalSize, sessionBytes, totalSize, completed: true);
@@ -237,7 +238,7 @@ namespace gamevault.Helper
                     int wanted = (int)Math.Min(buffer.Length, part.End - part.Position + 1);
                     int read = await content.ReadAsync(buffer.AsMemory(0, wanted), stop);
                     if (read == 0)
-                        throw new IOException($"The connection was closed before the range {part.Start}-{part.End} finished");
+                        throw new IOException(Loc.F("The connection was closed before the range {0}-{1} finished", part.Start, part.End));
                     await output.WriteAsync(buffer.AsMemory(0, read), stop);
                     part.Position += read;
                     Interlocked.Add(ref sessionBytes, read);
@@ -306,7 +307,7 @@ namespace gamevault.Helper
                 FileName = Path.GetFileName(response.Content.Headers.ContentDisposition.FileName.Replace("\"", ""));
                 if (string.IsNullOrEmpty(FileName))
                 {
-                    throw new Exception("Missing response header (Content-Disposition)");
+                    throw new Exception(Loc.T("Missing response header (Content-Disposition)"));
                 }
             }
             catch
@@ -335,7 +336,7 @@ namespace gamevault.Helper
                 }
                 else
                 {
-                    throw new Exception("Missing response header (Content-Length/X-Download-Size)");
+                    throw new Exception(Loc.T("Missing response header (Content-Length/X-Download-Size)"));
                 }
             }
 
@@ -389,7 +390,7 @@ namespace gamevault.Helper
                             if (ExactSize && position < expected)
                             {
                                 // The connection ended early: keep the checkpoint so the retry resumes here
-                                throw new IOException($"The connection was closed before the download finished ({position} of {expected} bytes)");
+                                throw new IOException(Loc.F("The connection was closed before the download finished ({0} of {1} bytes)", position, expected));
                             }
                             // Closed before the completion is reported, so the extraction finds the file ready
                             fileStream.Close();

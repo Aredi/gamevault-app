@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using gamevault.Helper.Platform;
 using GameVault.Core.Compatibility;
@@ -58,7 +59,7 @@ namespace gamevault.Helper
                 ? CreateCompatibilityStartInfo(fileName, parameter, GameCompatibility.ForInstallation(installationDirectory))
                 : CreateNativeStartInfo(fileName, parameter);
             Log.Info($"Starting {info.FileName} {string.Join(' ', info.ArgumentList)}");
-            return Process.Start(info) ?? throw new InvalidOperationException($"Could not start {fileName}");
+            return Process.Start(info) ?? throw new InvalidOperationException(Loc.F("Could not start {0}", fileName));
         }
 
         internal static bool IsWindowsProgram(string fileName)
@@ -113,7 +114,7 @@ namespace gamevault.Helper
             ProcessStartInfo info = CreateCompatibilityStartInfo(tool, "", compatibility, isBuiltin: true);
             info.WorkingDirectory = compatibility.PrefixPath;
             Log.Info($"Starting {info.FileName} {string.Join(' ', info.ArgumentList)}");
-            return Process.Start(info) ?? throw new InvalidOperationException($"Could not start {tool}");
+            return Process.Start(info) ?? throw new InvalidOperationException(Loc.F("Could not start {0}", tool));
         }
 
         private static ProcessStartInfo CreateCompatibilityStartInfo(string fileName, string parameter, GameCompatibility compatibility, bool isBuiltin = false)
@@ -157,7 +158,7 @@ namespace gamevault.Helper
                         // {exe} is replaced by the program, {args} by the launch parameters.
                         var parts = SplitArguments(CompatibilitySettings.CustomCommand.Trim()).ToList();
                         if (parts.Count == 0)
-                            throw new InvalidOperationException("The custom compatibility command is empty (Settings → Linux).");
+                            throw new InvalidOperationException(Loc.T("The custom compatibility command is empty (Settings → Linux)."));
                         info.FileName = parts[0];
                         bool usedExe = false;
                         foreach (string part in parts.Skip(1))
@@ -213,7 +214,7 @@ namespace gamevault.Helper
                         }
                         else
                         {
-                            throw new InvalidOperationException("umu-run was not found. Install umu-launcher or choose another compatibility tool.");
+                            throw new InvalidOperationException(Loc.T("umu-run was not found. Install umu-launcher or choose another compatibility tool."));
                         }
                         break;
                     }

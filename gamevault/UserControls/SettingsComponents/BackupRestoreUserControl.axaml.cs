@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -63,22 +64,22 @@ namespace gamevault.UserControls.SettingsComponents
                     uiBackupDirectory.Text, $"DB_Backup_{DateTime.Now:yyyyMMdd_HHmmss}.db", additionalRequestHeaders);
 
                 await httpClientDownloadWithProgress.StartDownload();
-                MainWindowViewModel.Instance.AppBarText = "Successfully performed database backup.";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully performed database backup.");
             }
             catch (HttpRequestException httpEx)
             {
                 if (httpEx.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Unauthorized. Either the database password is wrong or you are not logged in.";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Unauthorized. Either the database password is wrong or you are not logged in.");
                 }
                 else
                 {
-                    MainWindowViewModel.Instance.AppBarText = $"Http Error: {httpEx.Message}";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Http Error: {0}", httpEx.Message);
                 }
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Error: {ex.Message}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Error: {0}", ex.Message);
             }
             uiBtnStartBackup.IsEnabled = true;
             this.IsEnabled = true;
@@ -114,22 +115,22 @@ namespace gamevault.UserControls.SettingsComponents
             try
             {
                 await WebHelper.UploadFileAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/admin/database/restore", File.OpenRead(uiRestoreFile.Tag.ToString()), uiRestoreFile.Text, new List<RequestHeader> { new RequestHeader() { Name = "X-Database-Password", Value = uiRestoreDatabasePassword.Text } });
-                MainWindowViewModel.Instance.AppBarText = "Successfully uploaded database file";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully uploaded database file");
             }
             catch (HttpRequestException httpEx)
             {
                 if (httpEx.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Unauthorized. Either the database password is wrong or you are not logged in.";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Unauthorized. Either the database password is wrong or you are not logged in.");
                 }
                 else
                 {
-                    MainWindowViewModel.Instance.AppBarText = $"Http Error: {httpEx.Message}";
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Http Error: {0}", httpEx.Message);
                 }
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Error: {ex.Message}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Error: {0}", ex.Message);
             }
             uiBtnStartRestore.IsEnabled = true;
             this.IsEnabled = true;

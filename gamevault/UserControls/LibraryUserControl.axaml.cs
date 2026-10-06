@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -122,7 +123,7 @@ namespace gamevault.UserControls
 
             if (!LoginManager.Instance.IsLoggedIn())
             {
-                MainWindowViewModel.Instance.AppBarText = "You are offline";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("You are offline");
                 return;
             }
             if (!uiExpanderGameCards.IsExpanded)
@@ -317,7 +318,7 @@ namespace gamevault.UserControls
                     ViewModel.NextPage = gameResult?.Links.Next;
                     if (gameResult == null || gameResult.Data == null)
                     {
-                        MainWindowViewModel.Instance.AppBarText = "Failed to load next Page";
+                        MainWindowViewModel.Instance.AppBarText = Loc.T("Failed to load next Page");
                         return;
                     }
                     await ProcessGamesData(gameResult);

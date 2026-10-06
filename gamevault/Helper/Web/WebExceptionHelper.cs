@@ -1,4 +1,5 @@
 ﻿using GameVault.Core;
+using gamevault.Localization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,7 +35,7 @@ namespace gamevault.Helper
             if (ex is WebException webEx)
             {
                 string msg = GetServerMessage(webEx);
-                return string.IsNullOrEmpty(msg) ? ex.Message : $"Server responded: {msg}";
+                return string.IsNullOrEmpty(msg) ? ex.Message : Loc.F("Server responded: {0}", msg);
             }
             return ex.Message;
         }
@@ -67,7 +68,7 @@ namespace gamevault.Helper
                 }
                 else
                 {
-                    serverMessage = $"Server responded: {serverMessage}";
+                    serverMessage = Loc.F("Server responded: {0}", serverMessage);
                 }
                 throw new HttpRequestException(serverMessage, null, msg.StatusCode);
             }

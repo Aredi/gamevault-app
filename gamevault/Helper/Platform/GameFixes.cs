@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using GameVault.Core.Compatibility;
 using System;
@@ -74,7 +75,7 @@ namespace gamevault.Helper.Platform
             else
             {
                 info.FileName = PlatformInfo.FindInPath("winetricks")
-                    ?? throw new InvalidOperationException("winetricks was not found. Install it (e.g. 'sudo apt install winetricks') to add components to the prefix.");
+                    ?? throw new InvalidOperationException(Loc.T("winetricks was not found. Install it (e.g. 'sudo apt install winetricks') to add components to the prefix."));
                 string? wine = tool.Kind switch
                 {
                     CompatibilityToolKind.Proton => Path.Combine(tool.Path!, "files", "bin", "wine"),
@@ -93,10 +94,10 @@ namespace gamevault.Helper.Platform
                 info.ArgumentList.Add(verb);
 
             Log.Info($"Starting {info.FileName} {string.Join(' ', info.ArgumentList)}");
-            using var process = Process.Start(info) ?? throw new InvalidOperationException("winetricks could not be started");
+            using var process = Process.Start(info) ?? throw new InvalidOperationException(Loc.T("winetricks could not be started"));
             await process.WaitForExitAsync();
             if (process.ExitCode != 0)
-                throw new InvalidOperationException($"winetricks failed (exit code {process.ExitCode}) for: {string.Join(", ", verbs)}");
+                throw new InvalidOperationException(Loc.F("winetricks failed (exit code {0}) for: {1}", process.ExitCode, string.Join(", ", verbs)));
             compatibility.MarkWinetricksApplied(verbs);
         }
     }

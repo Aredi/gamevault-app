@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using System.Text;
 using Avalonia;
 using Avalonia.Controls;
@@ -43,7 +44,7 @@ namespace gamevault.UserControls
             ViewModel = SettingsViewModel.Instance;
             this.DataContext = ViewModel;
             uiForkLink.Tag = AppRepository.ReleasesPage.Replace("/releases", "");
-            uiForkLinkText.Text = $"{AppRepository.Owner}/{AppRepository.Name} (unofficial fork)";
+            uiForkLinkText.Text = Loc.F("{0}/{1} (unofficial fork)", AppRepository.Owner, AppRepository.Name);
             Loaded += UserControl_Loaded;
             uiSteamSync.IsCheckedChanged += SyncSteamShortcuts_Toggled;
         }
@@ -59,17 +60,17 @@ namespace gamevault.UserControls
                 Directory.Delete(LoginManager.Instance.GetUserProfile().ImageCacheDir, true);
                 Directory.CreateDirectory(LoginManager.Instance.GetUserProfile().ImageCacheDir);
                 ViewModel.ImageCacheSize = 0;
-                MainWindowViewModel.Instance.AppBarText = "Image cache cleared";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Image cache cleared");
             }
             catch
             {
-                MainWindowViewModel.Instance.AppBarText = "Something went wrong while the image cache was cleared";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Something went wrong while the image cache was cleared");
             }
 
         }
         private async void ClearOfflineCache_Clicked(object sender, RoutedEventArgs e)
         {
-            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want delete the offline cache? \nThis can lead to games not being displayed correctly when you are offline.", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Are you sure you want delete the offline cache? \nThis can lead to games not being displayed correctly when you are offline."), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
             if (result == MessageDialogResult.Affirmative)
             {
                 try
@@ -83,11 +84,11 @@ namespace gamevault.UserControls
                         File.Delete(LoginManager.Instance.GetUserProfile().OfflineCache);
                     }
                     ViewModel.OfflineCacheSize = 0;
-                    MainWindowViewModel.Instance.AppBarText = "Offline cache cleared";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Offline cache cleared");
                 }
                 catch
                 {
-                    MainWindowViewModel.Instance.AppBarText = "Something went wrong while the offline cache was cleared";
+                    MainWindowViewModel.Instance.AppBarText = Loc.T("Something went wrong while the offline cache was cleared");
                 }
             }
         }
@@ -113,7 +114,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = $"Unable to change autostart: {ex.Message}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Unable to change autostart: {0}", ex.Message);
             }
         }
 
@@ -173,7 +174,7 @@ namespace gamevault.UserControls
         private async void Logout_Click(object sender, RoutedEventArgs e)
         {
             ((Control)sender).IsEnabled = false;
-            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to log out?", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Are you sure you want to log out?"), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
             if (result == MessageDialogResult.Affirmative)
             {
                 try
@@ -198,7 +199,7 @@ namespace gamevault.UserControls
         private async void LogoutFromAllDevices_Click(object sender, RoutedEventArgs e)
         {
             ((Control)sender).IsEnabled = false;
-            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to log out from all devices?", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Are you sure you want to log out from all devices?"), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
             if (result == MessageDialogResult.Affirmative)
             {
                 try
@@ -241,7 +242,7 @@ namespace gamevault.UserControls
         {
             ViewModel.DownloadLimit = ViewModel.DownloadLimitUIValue;
             Preferences.Set(AppConfigKey.DownloadLimit, ViewModel.DownloadLimit, LoginManager.Instance.GetUserProfile().UserConfigFile);
-            MainWindowViewModel.Instance.AppBarText = "Successfully saved download limit";
+            MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully saved download limit");
         }
 
         private void EditUser_Click(object sender, RoutedEventArgs e)
@@ -250,7 +251,7 @@ namespace gamevault.UserControls
             {
                 MainWindowViewModel.Instance.OpenPopup(new UserSettingsUserControl(LoginManager.Instance.GetCurrentUser()) { Width = 1200, Height = 800, Margin = new Thickness(50) });
             }
-            else { MainWindowViewModel.Instance.AppBarText = "You are not logged in or offline"; }
+            else { MainWindowViewModel.Instance.AppBarText = Loc.T("You are not logged in or offline"); }
         }
         #region THEMES
         private bool loadingThemes;
@@ -401,7 +402,7 @@ namespace gamevault.UserControls
         {
             if (uiCBCommunityThemes.SelectedItem == null)
             {
-                MainWindowViewModel.Instance.AppBarText = "No Theme selected";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("No Theme selected");
                 return;
             }
             ((Control)sender).IsEnabled = false;
@@ -420,7 +421,7 @@ namespace gamevault.UserControls
                     uiCbTheme.SelectedIndex = installedThemeIndex;
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
-                MainWindowViewModel.Instance.AppBarText = $"Successfully installed {theme.DisplayName}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully installed {0}", theme.DisplayName);
             }
             catch (Exception ex)
             {
@@ -456,7 +457,7 @@ namespace gamevault.UserControls
         private void ExtractionPasswordSave_Click(object sender, RoutedEventArgs e)
         {
             Preferences.Set(AppConfigKey.ExtractionPassword, uiPwExtraction.Text ?? "", LoginManager.Instance.GetUserProfile().UserConfigFile, true);
-            MainWindowViewModel.Instance.AppBarText = "Successfully saved extraction password";
+            MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully saved extraction password");
         }
         private async void IgnoredExecutablesReset_Click(object sender, RoutedEventArgs e)
         {
@@ -495,7 +496,7 @@ namespace gamevault.UserControls
 
         private async void RestoreSteamShortcutBackup_Click(object sender, RoutedEventArgs e)
         {
-            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to restore the backup? Your current shortcuts will be reset to the state when the backup was created. This can lead to some shortcuts being lost.", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Are you sure you want to restore the backup? Your current shortcuts will be reset to the state when the backup was created. This can lead to some shortcuts being lost."), "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
             if (result == MessageDialogResult.Affirmative)
             {
                 SteamHelper.RestoreBackup();
@@ -532,7 +533,7 @@ namespace gamevault.UserControls
                 Preferences.Set(AppConfigKey.CustomCloudSaveManifests, result, LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
-            MainWindowViewModel.Instance.AppBarText = "Successfully saved custom Ludusavi Manifests";
+            MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully saved custom Ludusavi Manifests");
         }
         private async void AddRootDirectory_Click(object sender, RoutedEventArgs e)
         {
@@ -568,9 +569,9 @@ namespace gamevault.UserControls
                 if (string.IsNullOrEmpty(matchingGame?.Key?.Title))
                     continue;
 
-                duplicateMessage += $"\n\n'{matchingGame?.Key?.Title}' is already installed at:\n{duplicate.Value}";
+                duplicateMessage += Loc.F("\n\n'{0}' is already installed at:\n{1}", matchingGame?.Key?.Title, duplicate.Value);
             }
-            await App.Instance.MainWindow.ShowMessageAsync("Duplicate game installation detected", duplicateMessage, MessageDialogStyle.Affirmative, new MetroDialogSettings() { AffirmativeButtonText = "Ok", DialogTitleFontSize = 20 });
+            await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Duplicate game installation detected"), duplicateMessage, MessageDialogStyle.Affirmative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Ok"), DialogTitleFontSize = 20 });
         }
         private async void RemoveRootDirectory_Click(object sender, RoutedEventArgs e)
         {
@@ -655,7 +656,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                ViewModel.StorageCleanupSummary = $"Analysis failed: {ex.Message}";
+                ViewModel.StorageCleanupSummary = Loc.F("Analysis failed: {0}", ex.Message);
             }
             ViewModel.IsStorageCleanupRunning = false;
         }
@@ -666,7 +667,7 @@ namespace gamevault.UserControls
             if (selected.Count == 0)
                 return;
             long total = selected.Sum(i => i.Candidate.Size);
-            if (!await DialogService.ConfirmAsync($"Delete {selected.Count} item(s) and free {GameVault.Core.Storage.StorageCleanup.FormatSize(total)}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", "Free up disk space"))
+            if (!await DialogService.ConfirmAsync(Loc.F("Delete {0} item(s) and free {1}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", selected.Count, GameVault.Core.Storage.StorageCleanup.FormatSize(total)), Loc.T("Free up disk space")))
                 return;
             ViewModel.IsStorageCleanupRunning = true;
             var failed = new List<string>();
@@ -686,8 +687,8 @@ namespace gamevault.UserControls
             if (OperatingSystem.IsLinux())
                 ViewModel.RefreshCompatibilityTools();
             MainWindowViewModel.Instance.AppBarText = failed.Count == 0
-                ? $"Freed {GameVault.Core.Storage.StorageCleanup.FormatSize(total)}"
-                : $"Could not delete: {string.Join(", ", failed)}";
+                ? Loc.F("Freed {0}", GameVault.Core.Storage.StorageCleanup.FormatSize(total))
+                : Loc.F("Could not delete: {0}", string.Join(", ", failed));
             ViewModel.IsStorageCleanupRunning = false;
             AnalyzeStorage_Click(sender, e);
         }
@@ -713,10 +714,10 @@ namespace gamevault.UserControls
                 return;
             int users = InstallViewModel.Instance.InstalledGames
                 .Count(g => GameCompatibility.ForInstallation(g.Value).ToolId == tool.Id);
-            string warning = users > 0 ? $"\n\n{users} installed game(s) use it and will fall back to the default tool." : "";
+            string warning = users > 0 ? Loc.F("\n\n{0} installed game(s) use it and will fall back to the default tool.", users) : "";
             if (CompatibilitySettings.DefaultToolId == tool.Id)
                 warning += "\n\nIt is the default tool, the default goes back to \"Automatic\".";
-            if (!await DialogService.ConfirmAsync($"Delete {tool.Name}?{warning}", "Delete compatibility tool"))
+            if (!await DialogService.ConfirmAsync(Loc.F("Delete {0}?{1}", tool.Name, warning), Loc.T("Delete compatibility tool")))
                 return;
             try
             {
@@ -729,7 +730,7 @@ namespace gamevault.UserControls
                 }
                 if (CompatibilitySettings.DefaultToolId == tool.Id)
                     ViewModel.DefaultCompatibilityTool = CompatibilityManager.GetTools().First(t => t.Id == CompatibilityToolId.Auto);
-                MainWindowViewModel.Instance.AppBarText = $"Deleted {tool.Name}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Deleted {0}", tool.Name);
             }
             catch (Exception ex)
             {
@@ -741,17 +742,17 @@ namespace gamevault.UserControls
         {
             try
             {
-                ViewModel.ToolDownloadStatus = $"Loading {ToolCatalog.DisplayName(ViewModel.SelectedToolFlavor)} versions...";
+                ViewModel.ToolDownloadStatus = Loc.F("Loading {0} versions...", ToolCatalog.DisplayName(ViewModel.SelectedToolFlavor));
                 var versions = await ToolCatalog.GetAvailableAsync(ViewModel.SelectedToolFlavor);
                 var installed = ViewModel.InstalledCompatibilityBuilds.Where(t => t.Path != null).Select(t => Path.GetFileName(t.Path!)).ToHashSet();
                 ViewModel.AvailableToolDownloads = versions;
                 ViewModel.ToolDownloadStatus = versions.Count == 0
-                    ? "No version found."
-                    : $"{versions.Count} versions available, {versions.Count(v => installed.Contains(v.FolderName))} already installed.";
+                    ? Loc.T("No version found.")
+                    : Loc.F("{0} versions available, {1} already installed.", versions.Count, versions.Count(v => installed.Contains(v.FolderName)));
             }
             catch (Exception ex)
             {
-                ViewModel.ToolDownloadStatus = $"Could not load the versions: {ex.Message}";
+                ViewModel.ToolDownloadStatus = Loc.F("Could not load the versions: {0}", ex.Message);
             }
         }
         private async void InstallTool_Click(object sender, RoutedEventArgs e)
@@ -760,7 +761,7 @@ namespace gamevault.UserControls
             if (tool == null)
                 return;
             if (Directory.Exists(Path.Combine(CompatibilityManager.ManagedToolsDirectory, tool.FolderName))
-                && !await DialogService.ConfirmAsync($"{tool.Version} is already installed. Install it again?", "Compatibility tools"))
+                && !await DialogService.ConfirmAsync(Loc.F("{0} is already installed. Install it again?", tool.Version), Loc.T("Compatibility tools")))
                 return;
             ViewModel.IsToolDownloadRunning = true;
             ViewModel.ToolDownloadProgress = 0;
@@ -774,13 +775,13 @@ namespace gamevault.UserControls
                         return;
                     ViewModel.ToolDownloadProgress = value;
                     if (value >= 0.9)
-                        ViewModel.ToolDownloadStatus = $"Verifying and extracting {tool.Version}...";
+                        ViewModel.ToolDownloadStatus = Loc.F("Verifying and extracting {0}...", tool.Version);
                 });
                 string installed = await ToolCatalog.InstallAsync(tool, CompatibilityManager.ManagedToolsDirectory, progress);
                 ViewModel.IsToolDownloadRunning = false;
                 ViewModel.RefreshCompatibilityTools();
-                ViewModel.ToolDownloadStatus = $"{tool.Version} installed in {installed}";
-                MainWindowViewModel.Instance.AppBarText = $"{ToolCatalog.DisplayName(tool.Flavor)} {tool.Version} installed";
+                ViewModel.ToolDownloadStatus = Loc.F("{0} installed in {1}", tool.Version, installed);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("{0} {1} installed", ToolCatalog.DisplayName(tool.Flavor), tool.Version);
             }
             catch (Exception ex)
             {

@@ -1,5 +1,6 @@
 using DesktopNotifications;
 using GameVault.Core;
+using gamevault.Localization;
 using System;
 using System.IO;
 using System.Threading;
@@ -53,6 +54,8 @@ namespace gamevault.Helper
 
         public static void CreateToastMessage(string title, string message, string imageUri = "")
         {
+            title = Loc.T(title);
+            message = Loc.T(message);
             _ = Task.Run(async () =>
             {
                 try

@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:vm="clr-namespace:gamevault.ViewModels"
@@ -36,7 +37,7 @@
     </UserControl.Styles>
     <Grid RowDefinitions="50,*">
         <Border Background="{DynamicResource Brush.Background2}" Grid.Row="0">
-            <TextBlock Text="Library" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
+            <TextBlock Text="{l:T 'Library'}" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
         </Border>
         <ScrollViewer x:Name="uiMainScrollBar" Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel>
@@ -48,11 +49,11 @@
                         <Expander.Header>
                             <Grid Height="35" Width="1920">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
-                                    <TextBlock Text="Server Games" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource Brush.Foreground2}" />
+                                    <TextBlock Text="{l:T 'Server Games'}" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource Brush.Foreground2}" />
                                     <TextBlock FontWeight="Bold" FontSize="20" Foreground="{DynamicResource Brush.Foreground2}"
                                                IsVisible="{Binding TotalGamesCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
                                         <TextBlock.Text>
-                                            <MultiBinding StringFormat="({0} of {1})">
+                                            <MultiBinding StringFormat="{l:T '({0} of {1})'}">
                                                 <Binding Path="GameCards.Count" />
                                                 <Binding Path="TotalGamesCount" />
                                             </MultiBinding>
@@ -61,24 +62,24 @@
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="15">
                                     <TextBox Classes="search" Width="378" Margin="0,4,0,4" TextChanged="Search_TextChanged" />
-                                    <Button Classes="wrapper" x:Name="uiBtnReloadLibrary" Height="25" Width="25" ToolTip.Tip="Reload Library (F5)">
+                                    <Button Classes="wrapper" x:Name="uiBtnReloadLibrary" Height="25" Width="25" ToolTip.Tip="{l:T 'Reload Library (F5)'}">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground2}" RenderTransform="scale(1.51)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Grid>
                                     </Button>
-                                    <Button Classes="wrapper" Height="30" Width="33" ToolTip.Tip="I'm Feeling Lucky" Click="RandomGame_Click">
+                                    <Button Classes="wrapper" Height="30" Width="33" ToolTip.Tip="{l:T 'I\&#x27;m Feeling Lucky'}" Click="RandomGame_Click">
                                         <Grid Classes="hover" Background="Transparent">
                                             <Path Data="{StaticResource IconLibraryDices}" Fill="{DynamicResource Brush.Foreground2}" Stretch="Uniform" Width="28" Height="28" />
                                         </Grid>
                                     </Button>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="10">
-                                    <Grid Classes="hover" Height="30" Width="30" Cursor="Hand" ToolTip.Tip="Clear all Filters" Background="Transparent" PointerPressed="ClearAllFilters_Click"
+                                    <Grid Classes="hover" Height="30" Width="30" Cursor="Hand" ToolTip.Tip="{l:T 'Clear all Filters'}" Background="Transparent" PointerPressed="ClearAllFilters_Click"
                                           IsVisible="{Binding FilterCounter, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                         <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="IndianRed" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Grid>
                                     <local:Badged Badge="{Binding FilterCounter}" BadgeBackground="IndianRed">
-                                        <Grid Classes="hover" Height="30" Width="30" Cursor="Hand" ToolTip.Tip="Toggle Filters &amp; Sorting" Background="Transparent" PointerPressed="Filter_Click">
+                                        <Grid Classes="hover" Height="30" Width="30" Cursor="Hand" ToolTip.Tip="{l:T 'Toggle Filters &amp; Sorting'}" Background="Transparent" PointerPressed="Filter_Click">
                                             <Path Data="{StaticResource IconOpenFilter}" Fill="{DynamicResource Brush.Foreground2}" RenderTransform="scale(1.5)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Grid>
                                     </local:Badged>
@@ -96,35 +97,41 @@
                                         <local:PillSelector x:Name="uiFilterPublisherSelector" SelectionType="Publishers" Margin="0,0,24,0" Width="175" />
                                         <local:PillSelector x:Name="uiFilterGameStateSelector" SelectionType="GameState" IsMultiSelection="False" Margin="0,0,23,0" Width="175" />
                                         <StackPanel Margin="0,0,60,0">
-                                            <TextBlock Text="Release Year" FontSize="15" />
+                                            <TextBlock Text="{l:T 'Release Year'}" FontSize="15" />
                                             <local:DateRangeSelector x:Name="uiFilterReleaseDateRangeSelector" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,60,0">
-                                            <TextBlock Text="Early Access" FontSize="15" />
+                                            <TextBlock Text="{l:T 'Early Access'}" FontSize="15" />
                                             <ToggleButton x:Name="uiFilterEarlyAccess" Classes="icon earlyAccess" Width="30" Height="30" Margin="3,3,0,0" HorizontalAlignment="Left" />
                                         </StackPanel>
                                         <StackPanel>
-                                            <TextBlock Text="Bookmarks" FontSize="15" />
+                                            <TextBlock Text="{l:T 'Bookmarks'}" FontSize="15" />
                                             <ToggleButton x:Name="uiFilterBookmarks" Classes="icon bookmark" Width="30" Height="30" Margin="0,3,0,0" HorizontalAlignment="Left" />
                                         </StackPanel>
                                     </StackPanel>
                                     <!-- Second row: filters resolved by GameVault (play data, collections) -->
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="12,10,0,5">
                                         <StackPanel Margin="0,0,40,0">
-                                            <TextBlock Text="Played" FontSize="15" />
+                                            <TextBlock Text="{l:T 'Played'}" FontSize="15" />
                                             <ComboBox x:Name="uiFilterPlayStatus" Width="150" Margin="0,3,0,0" ItemsSource="{Binding PlayStatusValues}" SelectedItem="{Binding SelectedPlayStatus}">
                                                 <ComboBox.ItemTemplate>
                                                     <DataTemplate>
-                                                        <TextBlock Text="{Binding Key}" />
+                                                        <TextBlock Text="{Binding Key, Converter={x:Static l:LocConverter.Instance}}" />
                                                     </DataTemplate>
                                                 </ComboBox.ItemTemplate>
                                             </ComboBox>
                                         </StackPanel>
                                         <StackPanel>
-                                            <TextBlock Text="Collection" FontSize="15" />
+                                            <TextBlock Text="{l:T 'Collection'}" FontSize="15" />
                                             <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,3,0,0">
-                                                <ComboBox x:Name="uiFilterCollection" Width="170" ItemsSource="{Binding CollectionNames}" SelectedItem="{Binding SelectedCollection}" />
-                                                <Button Classes="wrapper" Width="30" Height="30" ToolTip.Tip="Manage collections" Click="ManageCollections_Click">
+                                                <ComboBox x:Name="uiFilterCollection" Width="170" ItemsSource="{Binding CollectionNames}" SelectedItem="{Binding SelectedCollection}">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding Converter={x:Static l:LocConverter.Instance}}" />
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <Button Classes="wrapper" Width="30" Height="30" ToolTip.Tip="{l:T 'Manage collections'}" Click="ManageCollections_Click">
                                                     <Grid Classes="hover" Background="Transparent">
                                                         <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     </Grid>
@@ -134,11 +141,11 @@
                                     </StackPanel>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                    <ToggleButton x:Name="uiFilterOrderBy" Classes="icon orderBy" Width="35" Height="35" Margin="0,10,0,0" ToolTip.Tip="Sort order" />
+                                    <ToggleButton x:Name="uiFilterOrderBy" Classes="icon orderBy" Width="35" Height="35" Margin="0,10,0,0" ToolTip.Tip="{l:T 'Sort order'}" />
                                     <ComboBox x:Name="uiFilterSortBy" Width="175" Margin="25,10,10,0" ItemsSource="{Binding GameFilterSortByValues}" SelectedItem="{Binding SelectedGameFilterSortBy}">
                                         <ComboBox.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding Key}" />
+                                                <TextBlock Text="{Binding Key, Converter={x:Static l:LocConverter.Instance}}" />
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
@@ -149,22 +156,22 @@
                                     <!-- No Games Found -->
                                     <StackPanel ZIndex="1" HorizontalAlignment="Center" IsVisible="{Binding ShowNoGamesFound}">
                                         <Image Source="/Resources/Images/library_NoGameFound.png" Height="190" />
-                                        <TextBlock Text="No Games found" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0" />
+                                        <TextBlock Text="{l:T 'No Games found'}" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0" />
                                         <Button Classes="link" HorizontalAlignment="Center" FontSize="10" Margin="0,5,0,10" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#games-not-appearing-in-the-installations--servers-list" Click="Hyperlink_RequestNavigate">
-                                            <TextBlock Text="Troubleshooting" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
+                                            <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
                                         </Button>
                                     </StackPanel>
                                     <!-- Server Error -->
                                     <StackPanel ZIndex="1" HorizontalAlignment="Center" IsVisible="{Binding !CanLoadServerGames}">
                                         <Image Source="/Resources/Images/install_NoGameFound.png" Height="190" />
-                                        <TextBlock Text="Failed to load Library" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0"
+                                        <TextBlock Text="{l:T 'Failed to load Library'}" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0"
                                                    IsVisible="{Binding !$parent[Window].DataContext.IsOffline}" />
-                                        <TextBlock Text="You are offline" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0"
+                                        <TextBlock Text="{l:T 'You are offline'}" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0"
                                                    IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
-                                        <TextBlock Text="Installed games can still be played: play time and cloud saves are sent when the server is back." FontSize="12" HorizontalAlignment="Center" Opacity="0.8" Margin="0,5,0,0"
+                                        <TextBlock Text="{l:T 'Installed games can still be played: play time and cloud saves are sent when the server is back.'}" FontSize="12" HorizontalAlignment="Center" Opacity="0.8" Margin="0,5,0,0"
                                                    IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
                                         <Button Classes="link" HorizontalAlignment="Center" FontSize="10" Margin="0,5,0,10" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#unable-to-connect-to-server--500-internal-server-error" Click="Hyperlink_RequestNavigate">
-                                            <TextBlock Text="Troubleshooting" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
+                                            <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
                                         </Button>
                                     </StackPanel>
                                     <!-- Games found -->
@@ -200,7 +207,7 @@
                                                                             </TextBlock.Text>
                                                                         </TextBlock>
                                                                         <Button Classes="wrapper" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,30" Click="Download_Click">
-                                                                            <Grid Classes="hover" Background="Transparent" Height="61" Width="65" ToolTip.Tip="{Binding DownloadCount, StringFormat='Downloaded {0} times'}">
+                                                                            <Grid Classes="hover" Background="Transparent" Height="61" Width="65" ToolTip.Tip="{Binding DownloadCount, StringFormat={l:T 'Downloaded {0} times'}}">
                                                                                 <Path Fill="{DynamicResource Brush.Foreground}" Data="{StaticResource IconReDownload}" RenderTransform="scale(3)" RenderTransformOrigin="0%,0%" Margin="10,5,0,0"
                                                                                       IsVisible="{Binding ID, Converter={StaticResource isGameDownloadedConv}}" />
                                                                                 <Path Fill="{DynamicResource Brush.Foreground}" Data="{StaticResource IconDownload}" RenderTransform="scale(3)" RenderTransformOrigin="0%,0%" Margin="10,5,0,0"

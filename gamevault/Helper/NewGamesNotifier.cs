@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using gamevault.Models;
 using gamevault.ViewModels;
@@ -48,12 +49,12 @@ namespace gamevault.Helper
                     return;
                 Preferences.Set(AppConfigKey.LastSeenGameId, maxId.ToString(), configFile);
 
-                string title = added.Count == 1 ? "New game on GameVault" : $"{added.Count} new games on GameVault";
+                string title = added.Count == 1 ? Loc.T("New game on GameVault") : Loc.F("{0} new games on GameVault", added.Count);
                 string names = string.Join(", ", added.Take(5).Select(g => g.Title));
                 if (added.Count > 5)
                     names += ", ...";
                 ToastMessageHelper.CreateToastMessage(title, names);
-                MainWindowViewModel.Instance.AppBarText = $"{title}: {names}";
+                MainWindowViewModel.Instance.AppBarText = Loc.F("{0}: {1}", title, names);
                 Log.Info($"{title}: {names}");
             }
             catch (Exception ex) { Log.Ignored(ex); }

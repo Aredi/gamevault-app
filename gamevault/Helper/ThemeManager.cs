@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
@@ -79,7 +80,7 @@ namespace gamevault.Helper
         {
             string name = "Themes/" + Path.GetFileName(new Uri(path).AbsolutePath);
             return typeof(ThemeManager).Assembly.GetManifestResourceStream(name)
-                ?? throw new FileNotFoundException($"Built-in theme '{name}' not found");
+                ?? throw new FileNotFoundException(Loc.F("Built-in theme '{0}' not found", name));
         }
 
         public static ThemeDefinition Parse(Stream stream)

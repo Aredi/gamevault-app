@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -51,6 +52,9 @@ namespace gamevault
 
         public override void Initialize()
         {
+            // Before any window: the XAML texts are translated while they load
+            try { Localization.Loc.Initialize(Preferences.Get(AppConfigKey.Language, ProfileManager.ProfileConfigFile)); }
+            catch (Exception ex) { Log.Ignored(ex); }
             AvaloniaXamlLoader.Load(this);
         }
 
@@ -209,8 +213,8 @@ namespace gamevault
             if (DownloadsViewModel.Instance.DownloadedGames.Any(g => g.IsDownloading()))
             {
                 ShowMainWindow();
-                MessageDialogResult result = await MainWindow.ShowMessageAsync("Downloads are still running in the background, are you sure you want to exit the app anyway?\nThey are paused and can be resumed at the next start.", "",
-                    MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
+                MessageDialogResult result = await MainWindow.ShowMessageAsync(Loc.T("Downloads are still running in the background, are you sure you want to exit the app anyway?\nThey are paused and can be resumed at the next start."), "",
+                    MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
                 if (result == MessageDialogResult.Affirmative)
                 {
                     MainWindowViewModel.Instance.Downloads.PauseAllDownloads();

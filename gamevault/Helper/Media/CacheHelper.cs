@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Media.Imaging;
 using gamevault.UserControls;
 using gamevault.Helper;
@@ -37,7 +38,7 @@ namespace gamevault.Helper
             {
                 if (imageId == -1)
                 {
-                    throw new Exception("image id does not exist");
+                    throw new Exception(Loc.T("image id does not exist"));
                 }
                 if (File.Exists(cacheFile))
                 {

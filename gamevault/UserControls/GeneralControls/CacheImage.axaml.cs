@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -270,7 +271,7 @@ namespace gamevault.UserControls
             {
                 try
                 {
-                    if (imageId == -1) { throw new Exception("image id does not exist"); }
+                    if (imageId == -1) { throw new Exception(Loc.T("image id does not exist")); }
                     SetImage(await WebHelper.DownloadImageFromUrlAsync($"{SettingsViewModel.Instance.ServerUrl}/api/media/{imageId}"));
                 }
                 catch (Exception ex)

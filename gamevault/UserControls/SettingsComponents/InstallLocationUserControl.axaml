@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.InstallLocationUserControl"
@@ -10,13 +11,13 @@
                     <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" />
                 </Grid>
             </Button>
-            <Button Classes="wrapper" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,35,0" ZIndex="1" Click="DirectorySettings_Click" ToolTip.Tip="Manage root directories">
+            <Button Classes="wrapper" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,35,0" ZIndex="1" Click="DirectorySettings_Click" ToolTip.Tip="{l:T 'Manage root directories'}">
                 <Grid Classes="hover" Background="Transparent" Height="25" Width="23">
                     <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconInstalledGamesSettings}" />
                 </Grid>
             </Button>
             <StackPanel>
-                <TextBlock Text="Choose your download location" FontWeight="Bold" FontSize="20" Margin="10" />
+                <TextBlock Text="{l:T 'Choose your download location'}" FontWeight="Bold" FontSize="20" Margin="10" />
                 <ScrollViewer Height="200" VerticalScrollBarVisibility="Auto" Background="Transparent">
                     <ItemsControl ItemsSource="{Binding RootDirectories}">
                         <ItemsControl.ItemTemplate>
@@ -34,8 +35,8 @@
                 </ScrollViewer>
             </StackPanel>
             <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,10" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-                <local:IconButton Text="Proceed" Height="25" Width="100" Click="Install_Click" />
-                <local:IconButton Text="Cancel" Kind="Skeleton" BorderThickness="1" Height="25" Width="100" Click="Close_Click" />
+                <local:IconButton Text="{l:T 'Proceed'}" Height="25" MinWidth="100" Click="Install_Click" />
+                <local:IconButton Text="{l:T 'Cancel'}" Kind="Skeleton" BorderThickness="1" Height="25" MinWidth="100" Click="Close_Click" />
             </StackPanel>
         </Grid>
     </Border>

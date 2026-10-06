@@ -86,6 +86,8 @@ namespace gamevault.Models
         LastSeenGameId,
         //Download queue
         MaxConcurrentDownloads,
+        //Interface language (profileconfig): "", "en", "fr"
+        Language,
         DownloadConnections,
         //Progress of each range of a parallel download (gamevault-metadata of the download)
         DownloadParts,

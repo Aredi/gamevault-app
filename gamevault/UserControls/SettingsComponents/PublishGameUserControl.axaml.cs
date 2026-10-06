@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -93,11 +94,11 @@ namespace gamevault.UserControls.SettingsComponents
             {
                 // The content is only known after extraction on the user's computer
                 ViewModel.TypeIndex = 0;
-                ViewModel.Status = "Archives are published as they are. Choose whether the archive contains a portable game or an installer.";
+                ViewModel.Status = Loc.T("Archives are published as they are. Choose whether the archive contains a portable game or an installer.");
                 return;
             }
 
-            ViewModel.Status = "Analyzing the game files...";
+            ViewModel.Status = Loc.T("Analyzing the game files...");
             string folder = ViewModel.SourceFolder;
             string title = ViewModel.Title;
             string[] ignored = SettingsViewModel.Instance.IgnoreList ?? Array.Empty<string>();
@@ -128,8 +129,8 @@ namespace gamevault.UserControls.SettingsComponents
             ViewModel.SelectedExecutable = ViewModel.Executables.FirstOrDefault();
             DetectInstaller();
             ViewModel.Status = isSetup
-                ? "Installer found. Check the installer parameters, then publish."
-                : ViewModel.SelectedExecutable == null ? "No executable found." : $"Main executable: {ViewModel.SelectedExecutable}. Check it, then publish.";
+                ? Loc.T("Installer found. Check the installer parameters, then publish.")
+                : ViewModel.SelectedExecutable == null ? Loc.T("No executable found.") : Loc.F("Main executable: {0}. Check it, then publish.", ViewModel.SelectedExecutable);
         }
 
         private void Installer_SelectionChanged(object? sender, SelectionChangedEventArgs e) => DetectInstaller();
@@ -138,7 +139,7 @@ namespace gamevault.UserControls.SettingsComponents
         {
             if (ViewModel.SelectedInstaller == null)
             {
-                ViewModel.InstallerHint = ViewModel.IsSetup ? "No installer found in the folder." : "";
+                ViewModel.InstallerHint = ViewModel.IsSetup ? Loc.T("No installer found in the folder.") : "";
                 return;
             }
             var info = InstallerDetector.Detect(Path.Combine(ViewModel.SourceFolder, ViewModel.SelectedInstaller));
@@ -153,21 +154,21 @@ namespace gamevault.UserControls.SettingsComponents
             string target = ViewModel.TargetDirectory?.Trim() ?? "";
             if (!ViewModel.HasSource || string.IsNullOrWhiteSpace(ViewModel.FileName))
             {
-                ViewModel.Status = "Choose the game files and a title first.";
+                ViewModel.Status = Loc.T("Choose the game files and a title first.");
                 return;
             }
             if (!Directory.Exists(target))
             {
-                ViewModel.Status = "The server games folder does not exist.";
+                ViewModel.Status = Loc.T("The server games folder does not exist.");
                 return;
             }
             string destination = Path.Combine(target, ViewModel.FileName);
             if (Path.GetFullPath(ViewModel.SourcePath).StartsWith(Path.GetFullPath(target).TrimEnd('/', '\\') + Path.DirectorySeparatorChar) && Directory.Exists(ViewModel.SourcePath))
             {
-                ViewModel.Status = "The game folder is inside the server games folder: the server would index its files one by one. Move it elsewhere first.";
+                ViewModel.Status = Loc.T("The game folder is inside the server games folder: the server would index its files one by one. Move it elsewhere first.");
                 return;
             }
-            if (File.Exists(destination) && !await DialogService.ConfirmAsync($"{ViewModel.FileName} already exists on the server. Replace it?", "Publish a Game"))
+            if (File.Exists(destination) && !await DialogService.ConfirmAsync(Loc.F("{0} already exists on the server. Replace it?", ViewModel.FileName), Loc.T("Publish a Game")))
                 return;
             Preferences.Set(AppConfigKey.PublishTargetDirectory, target, LoginManager.Instance.GetUserProfile().UserConfigFile);
 
@@ -179,33 +180,33 @@ namespace gamevault.UserControls.SettingsComponents
                 var progress = new Progress<double>(p => ViewModel.Progress = p);
                 if (ViewModel.IsArchiveSource)
                 {
-                    ViewModel.Status = $"Copying {Path.GetFileName(ViewModel.SourcePath)} to the server...";
+                    ViewModel.Status = Loc.F("Copying {0} to the server...", Path.GetFileName(ViewModel.SourcePath));
                     await GamePackager.CopyFileAsync(ViewModel.SourcePath, destination, progress);
                 }
                 else
                 {
-                    ViewModel.Status = $"Creating {ViewModel.FileName}... (large games take a while)";
+                    ViewModel.Status = Loc.F("Creating {0}... (large games take a while)", ViewModel.FileName);
                     await GamePackager.CreateArchiveAsync(ViewModel.SourceFolder, destination, ViewModel.Compress, progress);
                 }
 
-                ViewModel.Status = "Waiting for the server to index the game...";
+                ViewModel.Status = Loc.T("Waiting for the server to index the game...");
                 Game? game = await WaitForIndexedGameAsync(ViewModel.FileName, ViewModel.Title);
                 if (game == null)
                 {
-                    ViewModel.Status = $"{ViewModel.FileName} was created, but the server has not indexed it yet. Check that this folder is the one mounted as /files, then reindex from the admin console.";
+                    ViewModel.Status = Loc.F("{0} was created, but the server has not indexed it yet. Check that this folder is the one mounted as /files, then reindex from the admin console.", ViewModel.FileName);
                     return;
                 }
 
-                ViewModel.Status = "Saving launch and installation settings...";
+                ViewModel.Status = Loc.T("Saving launch and installation settings...");
                 await SaveMetadataAsync(game);
                 await MainWindowViewModel.Instance.Library.LoadLibrary();
                 ViewModel.PublishedGame = game;
-                ViewModel.Status = $"'{game.Title}' is published. Users can install and start it with \"Install & Play\".";
+                ViewModel.Status = Loc.F("'{0}' is published. Users can install and start it with \"Install & Play\".", game.Title);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Publishing failed");
-                ViewModel.Status = $"Publishing failed: {WebExceptionHelper.TryGetServerMessage(ex)}";
+                ViewModel.Status = Loc.F("Publishing failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
             finally
             {

@@ -1,4 +1,5 @@
 using gamevault.Models;
+using gamevault.Localization;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -46,7 +47,7 @@ namespace gamevault.ViewModels
         }
 
         private static string GetEnumDescription(State value) =>
-            (Attribute.GetCustomAttribute(value.GetType().GetField(value.ToString()), typeof(DescriptionAttribute)) is DescriptionAttribute attribute) ? attribute.Description : value.ToString();
+            (Attribute.GetCustomAttribute(value.GetType().GetField(value.ToString()), typeof(DescriptionAttribute)) is DescriptionAttribute attribute) ? Loc.T(attribute.Description) : value.ToString();
         public bool IsInstalled
         {
             get { return isInstalled; }

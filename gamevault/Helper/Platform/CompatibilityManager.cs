@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using GameVault.Core.Compatibility;
 using gamevault.Models;
@@ -34,19 +35,19 @@ namespace gamevault.Helper.Platform
             var tools = new List<CompatibilityTool>();
             string? umu = PlatformInfo.FindInPath("umu-run");
             string? wine = PlatformInfo.FindInPath("wine");
-            tools.Add(new CompatibilityTool(CompatibilityToolId.Auto, "Automatic", umu != null ? CompatibilityToolKind.UmuLatest : CompatibilityToolKind.Wine, null,
-                umu != null ? "latest GE-Proton through umu-run" : "system Wine", false));
+            tools.Add(new CompatibilityTool(CompatibilityToolId.Auto, Loc.T("Automatic"), umu != null ? CompatibilityToolKind.UmuLatest : CompatibilityToolKind.Wine, null,
+                umu != null ? Loc.T("latest GE-Proton through umu-run") : Loc.T("system Wine"), false));
             if (umu != null)
-                tools.Add(new CompatibilityTool(CompatibilityToolId.UmuLatest, "Latest GE-Proton (umu)", CompatibilityToolKind.UmuLatest, null, "downloaded and updated by umu-run", false));
+                tools.Add(new CompatibilityTool(CompatibilityToolId.UmuLatest, Loc.T("Latest GE-Proton (umu)"), CompatibilityToolKind.UmuLatest, null, Loc.T("downloaded and updated by umu-run"), false));
             if (wine != null)
-                tools.Add(new CompatibilityTool(CompatibilityToolId.SystemWine, $"System Wine{(SystemWineVersion(wine) is string v ? $" ({v})" : "")}", CompatibilityToolKind.Wine, wine, "System", false));
+                tools.Add(new CompatibilityTool(CompatibilityToolId.SystemWine, Loc.T("System Wine") + (SystemWineVersion(wine) is string v ? $" ({v})" : ""), CompatibilityToolKind.Wine, wine, Loc.T("System"), false));
             try
             {
                 string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 tools.AddRange(CompatibilityToolScanner.Scan(ToolSearchLocations.ForUser(home, ManagedToolsDirectory)));
             }
             catch (Exception ex) { Log.Error(ex, "Scanning compatibility tools failed"); }
-            tools.Add(new CompatibilityTool(CompatibilityToolId.Custom, "Custom command", CompatibilityToolKind.Custom, null, "Settings → Linux", false));
+            tools.Add(new CompatibilityTool(CompatibilityToolId.Custom, Loc.T("Custom command"), CompatibilityToolKind.Custom, null, Loc.T("Settings → Linux"), false));
             cachedTools = tools;
             return tools;
         }
@@ -69,27 +70,27 @@ namespace gamevault.Helper.Platform
             if (tool != null)
                 return tool;
             if (CompatibilityToolId.IsProton(id, out string protonDir) || CompatibilityToolId.IsWineBuild(id, out protonDir))
-                throw new InvalidOperationException($"The compatibility tool '{protonDir}' was not found. Choose another one in the game settings or in Settings → Linux.");
+                throw new InvalidOperationException(Loc.F("The compatibility tool '{0}' was not found. Choose another one in the game settings or in Settings → Linux.", protonDir));
             if (id == CompatibilityToolId.UmuLatest)
-                throw new InvalidOperationException("umu-run was not found. Install umu-launcher or choose another compatibility tool in Settings → Linux.");
-            throw new InvalidOperationException("Wine was not found. Install Wine (e.g. 'sudo apt install wine') or download a Wine/Proton build in Settings → Linux.");
+                throw new InvalidOperationException(Loc.T("umu-run was not found. Install umu-launcher or choose another compatibility tool in Settings → Linux."));
+            throw new InvalidOperationException(Loc.T("Wine was not found. Install Wine (e.g. 'sudo apt install wine') or download a Wine/Proton build in Settings → Linux."));
         }
 
         public static string DisplayName(string id)
         {
             if (string.IsNullOrEmpty(id))
-                return "Default";
+                return Loc.T("Default");
             if (Find(id) is CompatibilityTool tool)
                 return tool.Name;
             return CompatibilityToolId.IsProton(id, out string dir) || CompatibilityToolId.IsWineBuild(id, out dir)
-                ? $"{Path.GetFileName(dir)} (missing)"
+                ? Loc.F("{0} (missing)", Path.GetFileName(dir))
                 : id;
         }
 
         public static void Delete(CompatibilityTool tool)
         {
             if (!tool.IsManaged || tool.Path == null)
-                throw new InvalidOperationException($"{tool.Name} was not installed by GameVault and is left untouched.");
+                throw new InvalidOperationException(Loc.F("{0} was not installed by GameVault and is left untouched.", tool.Name));
             Directory.Delete(tool.Path, true);
             GetTools(refresh: true);
         }

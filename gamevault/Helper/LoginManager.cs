@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using gamevault.Models;
 using gamevault.ViewModels;
 using gamevault.Windows;
@@ -250,7 +251,7 @@ namespace gamevault.Helper
             if (!IsLoggedIn())
             {
                 SwitchToOfflineMode();
-                MainWindowViewModel.Instance.AppBarText = "No connection to the server. You are now in offline mode.";
+                MainWindowViewModel.Instance.AppBarText = Loc.T("No connection to the server. You are now in offline mode.");
             }
         }
         public void StopOnlineTimer()
@@ -285,7 +286,7 @@ namespace gamevault.Helper
                     if (IsLoggedIn())
                     {
                         MainWindowViewModel.Instance.IsOffline = false;
-                        MainWindowViewModel.Instance.AppBarText = "Connected to the server. You’re back online.";
+                        MainWindowViewModel.Instance.AppBarText = Loc.T("Connected to the server. You’re back online.");
                         BackOnline?.Invoke(this, EventArgs.Empty);
                     }
                 }

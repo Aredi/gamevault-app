@@ -1,4 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:gamevault.ViewModels"
              xmlns:conv="clr-namespace:gamevault.Converter"
@@ -32,10 +33,10 @@
         <Expander x:Name="uiInstalledGames" Classes="gv" Margin="10">
             <Expander.Header>
                 <Grid Height="35" Width="1920">
-                    <TextBlock Text="{Binding InstalledGames.Count, StringFormat='Installed Games ({0})'}" Foreground="{DynamicResource Brush.Foreground2}" FontWeight="Bold" HorizontalAlignment="Left" FontSize="20" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding InstalledGames.Count, StringFormat={l:T 'Installed Games ({0})'}}" Foreground="{DynamicResource Brush.Foreground2}" FontWeight="Bold" HorizontalAlignment="Left" FontSize="20" VerticalAlignment="Center" />
                     <TextBox HorizontalAlignment="Center" Width="376" Margin="0,4,44,4" Classes="search" TextChanged="Search_TextChanged" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
-                        <TextBlock Text="Rows" Foreground="{DynamicResource Brush.Foreground2}" VerticalAlignment="Center" FontSize="15" Margin="0,0,10,0" />
+                        <TextBlock Text="{l:T 'Rows'}" Foreground="{DynamicResource Brush.Foreground2}" VerticalAlignment="Center" FontSize="15" Margin="0,0,10,0" />
                         <NumericUpDown x:Name="uiRowsUpDown" Minimum="1" Increment="1" FormatString="0" Width="110" ValueChanged="Rows_ValueChanged" />
                     </StackPanel>
                 </Grid>
@@ -44,9 +45,9 @@
                 <Grid>
                     <StackPanel ZIndex="1" HorizontalAlignment="Center" IsVisible="{Binding InstalledGamesFilter.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}, FallbackValue=True}">
                         <Image Source="/Resources/Images/library_NoGameFound.png" Height="190" />
-                        <TextBlock Text="No Games found" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0" />
+                        <TextBlock Text="{l:T 'No Games found'}" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0" />
                         <Button Classes="link" HorizontalAlignment="Center" FontSize="10" Margin="0,5,0,10" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#games-not-appearing-in-the-installations--servers-list" Click="Hyperlink_RequestNavigate">
-                            <TextBlock Text="Troubleshooting" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
+                            <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
                         </Button>
                     </StackPanel>
                     <ScrollViewer x:Name="uiInstalledGamesScroll" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto">
@@ -65,7 +66,7 @@
                                                     <Grid>
                                                         <local:CacheImage Stretch="Fill" ImageCacheType="GameCover" Data="{Binding Key}" CornerRadius="8" />
                                                         <Border Background="IndianRed" CornerRadius="5" VerticalAlignment="Bottom" IsVisible="{Binding Key, Converter={StaticResource gameUpdateAvailableConv}}">
-                                                            <TextBlock Text="Update available!" FontWeight="DemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,3,0,3" />
+                                                            <TextBlock Text="{l:T 'Update available!'}" FontWeight="DemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,3,0,3" />
                                                         </Border>
                                                     </Grid>
                                                 </Border>
@@ -84,7 +85,7 @@
                                                                 </MultiBinding>
                                                             </TextBlock.Text>
                                                         </TextBlock>
-                                                        <Button Classes="wrapper" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,40" Click="Play_Click" ToolTip.Tip="Play">
+                                                        <Button Classes="wrapper" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,40" Click="Play_Click" ToolTip.Tip="{l:T 'Play'}">
                                                             <Grid Classes="hover" Background="Transparent" Height="40" Width="40">
                                                                 <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="34" Height="34" />
                                                             </Grid>
