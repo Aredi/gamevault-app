@@ -52,6 +52,13 @@ namespace gamevault.ViewModels
             get { return isInstalled; }
             set { isInstalled = value; OnPropertyChanged(); }
         }
+        private bool isUpdateAvailable;
+        /// <summary>Installed, and the server has another build (a new version or a replaced file).</summary>
+        public bool IsUpdateAvailable
+        {
+            get { return isUpdateAvailable; }
+            set { isUpdateAvailable = value; OnPropertyChanged(); }
+        }
         public bool? IsDownloaded
         {
             get { return isDownloaded; }

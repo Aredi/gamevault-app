@@ -1,5 +1,6 @@
 using Avalonia.Data.Converters;
 using GameVault.Core;
+using gamevault.Helper;
 using gamevault.Models;
 using gamevault.ViewModels;
 using System;
@@ -18,18 +19,10 @@ namespace gamevault.Converter
         {
             try
             {
-                Game game = (Game)value;
-                KeyValuePair<Game, string> result = InstallViewModel.Instance.InstalledGames.Where(g => g.Key.ID == game.ID).FirstOrDefault();
-                string execFile = Path.Combine(result.Value, "gamevault-exec");
-                string installedVersion = Preferences.Get(AppConfigKey.InstalledGameVersion, execFile);
-                if(string.IsNullOrWhiteSpace(installedVersion))
-                {
-                    Preferences.Set(AppConfigKey.InstalledGameVersion, game.Version, execFile);                    
-                }
-                else if (installedVersion != game.Version)
-                {
-                    return true;
-                }
+                if (value is not Game game)
+                    return false;
+                KeyValuePair<Game, string> installed = InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key.ID == game.ID);
+                return installed.Value != null && InstalledGameState.HasUpdate(game, installed.Value);
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
             return false;

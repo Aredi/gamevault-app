@@ -247,6 +247,27 @@ namespace gamevault.UserControls
             }
             if (!fromCLI)
                 gamesRestored = true;
+            if (games != null && LoginManager.Instance.IsLoggedIn())
+                AnnounceUpdates();
+        }
+        /// <summary>Tells about new builds of installed games, once per build.</summary>
+        private static void AnnounceUpdates()
+        {
+            try
+            {
+                Game[] updates = InstalledGameState.GamesWithUpdates();
+                string configFile = LoginManager.Instance.GetUserProfile().UserConfigFile;
+                var announced = Preferences.Get(AppConfigKey.UpdatesNotified, configFile).Split(';', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+                var current = updates.Select(game => $"{game.ID}:{game.Path}").ToList();
+                Game[] fresh = updates.Where(game => !announced.Contains($"{game.ID}:{game.Path}")).ToArray();
+                Preferences.Set(AppConfigKey.UpdatesNotified, string.Join(";", current), configFile);
+                if (fresh.Length == 0)
+                    return;
+                string titles = string.Join(", ", fresh.Select(game => string.IsNullOrEmpty(game.Version) ? game.Title : $"{game.Title} {game.Version}"));
+                MainWindowViewModel.Instance.AppBarText = $"Update available: {titles}";
+                ToastMessageHelper.CreateToastMessage(fresh.Length == 1 ? "Update available" : $"{fresh.Length} updates available", titles);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
         private async Task<ObservableCollection<KeyValuePair<Game, string>>> SortInstalledGamesByLastPlayed(ObservableCollection<KeyValuePair<Game, string>> collection)
         {

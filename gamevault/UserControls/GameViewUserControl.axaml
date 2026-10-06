@@ -95,6 +95,15 @@
                                             </StackPanel>
                                         </Border>
                                     </Button>
+                                    <!-- A newer build is on the server: replaces the installed files, keeps saves and settings -->
+                                    <Button x:Name="uiBtnUpdate" Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Left" Height="35" Margin="0,0,15,0" Click="UpdateGame_Click" IsVisible="{Binding IsUpdateAvailable}" ToolTip.Tip="Download and install the newest version. Saves and settings are kept.">
+                                        <Border Classes="hover" Background="IndianRed" CornerRadius="5" Padding="10,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="White" Stretch="Uniform" Width="16" Height="16" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding Game.Version, StringFormat='Update to {0}', TargetNullValue='Update', FallbackValue='Update'}" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Button>
                                     <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Left" Width="35" Height="35" Margin="0,0,15,0" Click="GamePlay_Click" IsVisible="{Binding IsInstalled}" ToolTip.Tip="Play">
                                         <Grid Classes="hover" Background="#02000000">
                                             <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="30" Height="30" />

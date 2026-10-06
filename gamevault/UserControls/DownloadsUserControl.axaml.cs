@@ -192,6 +192,48 @@ namespace gamevault.UserControls
             }
             await TryStartDownload(game, playWhenInstalled: true);
         }
+        /// <summary>
+        /// Downloads the server's current build of an installed game and installs it over the installation
+        /// (saves, settings and the Wine prefix stay).
+        /// </summary>
+        public async Task UpdateGame(Game game)
+        {
+            KeyValuePair<Game, string> installed = InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key.ID == game.ID);
+            if (installed.Key == null || !Directory.Exists(installed.Value))
+            {
+                MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' is not installed";
+                return;
+            }
+            if (!LoginManager.Instance.IsLoggedIn())
+            {
+                MainWindowViewModel.Instance.AppBarText = "You are not logged in or offline";
+                return;
+            }
+            GameDownloadUserControl? existing = DownloadsViewModel.Instance.DownloadedGames.FirstOrDefault(d => d.GetGameId() == game.ID);
+            if (existing != null)
+            {
+                if (existing.IsBusy() || DownloadQueue.IsWaiting(existing))
+                {
+                    MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' is already being downloaded";
+                    return;
+                }
+                // The archive of the old version is not needed anymore
+                DownloadQueue.Remove(existing);
+                await existing.DeleteFile(confirm: false);
+                DownloadsViewModel.Instance.DownloadedGames.Remove(existing);
+            }
+            // <root>/GameVault/Installations/(id)Title
+            string? root = Directory.GetParent(installed.Value)?.Parent?.Parent?.FullName;
+            if (root == null)
+                return;
+            if (!IsEnoughDriveSpaceAvailable(Convert.ToInt64(game.Size), root))
+            {
+                MainWindowViewModel.Instance.AppBarText = $"Not enough space available to update '{game.Title}'";
+                return;
+            }
+            DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, root, true, installed.Value) { IsUpdate = true });
+            MainWindowViewModel.Instance.AppBarText = $"'{game.Title}' is updated{(string.IsNullOrEmpty(game.Version) ? "" : $" to {game.Version}")}, your saves and settings are kept";
+        }
         public async Task TryStartDownload(Game game, bool playWhenInstalled = false)
         {
             if (SettingsViewModel.Instance.RootDirectories.Count == 0)

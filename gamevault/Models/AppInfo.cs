@@ -60,6 +60,11 @@ namespace gamevault.Models
         LastImageOptimization,
         SessionToken,
         InstalledGameVersion,
+        //Server file of the installed build (gamevault-exec), detects updates
+        InstalledGameFile,
+        InstalledGameSize,
+        //Updates already announced ("id:file;...")
+        UpdatesNotified,
         AdditionalRequestHeaders,
         //Linux compatibility layer
         LinuxRunner,//Legacy, replaced by LinuxCompatibilityTool

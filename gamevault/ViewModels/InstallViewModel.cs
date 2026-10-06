@@ -50,6 +50,16 @@ namespace gamevault.ViewModels
             }
             set { m_InstalledGames = value; OnPropertyChanged(); }
         }
+        /// <summary>Puts the server's current game object in the list (after an update), so cards and badges refresh.</summary>
+        public void ReplaceInstalledGame(Game game)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                int index = InstalledGames.ToList().FindIndex(g => g.Key.ID == game.ID);
+                if (index >= 0)
+                    InstalledGames[index] = new KeyValuePair<Game, string>(game, InstalledGames[index].Value);
+            });
+        }
         public Dictionary<int,string> InstalledGamesDuplicates= new Dictionary<int, string>();
         public FilteredCollectionView<KeyValuePair<Game, string>>? InstalledGamesFilter
         {

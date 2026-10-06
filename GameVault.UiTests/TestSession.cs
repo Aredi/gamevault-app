@@ -112,6 +112,25 @@ namespace GameVault.UiTests
             }
         }
 
+        /// <summary>A Linux game as a .tar.gz with the given files; ".sh" files are executable.</summary>
+        public static byte[] GameArchive(params (string Path, string Content)[] files)
+        {
+            using var output = new MemoryStream();
+            using (var gzip = new GZipStream(output, CompressionLevel.Fastest, leaveOpen: true))
+            using (var tar = new TarWriter(gzip, TarEntryFormat.Pax))
+            {
+                foreach (var (path, content) in files)
+                {
+                    var entry = new PaxTarEntry(TarEntryType.RegularFile, path) { DataStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content)) };
+                    entry.Mode = path.EndsWith(".sh")
+                        ? UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.OtherRead
+                        : UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead;
+                    tar.WriteEntry(entry);
+                }
+            }
+            return output.ToArray();
+        }
+
         /// <summary>
         /// A Linux game as a .tar.gz: its start script writes "started" next to itself, so a test can see that
         /// the game was really launched. <paramref name="padding"/> bytes of data make the download take a while.

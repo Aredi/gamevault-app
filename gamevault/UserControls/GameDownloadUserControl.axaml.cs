@@ -42,7 +42,8 @@ namespace gamevault.UserControls
         private double downloadRetryTimerTickValue = 10;
         private string mountedDrive = "";
 
-        public GameDownloadUserControl(Game game, string rootDirectory, bool download)
+        /// <param name="installPath">The existing installation an update goes to (its folder keeps its name if the title changed).</param>
+        public GameDownloadUserControl(Game game, string rootDirectory, bool download, string? installPath = null)
         {
             InitializeComponent();
             ViewModel = new GameDownloadViewModel();
@@ -54,7 +55,7 @@ namespace gamevault.UserControls
 
             string folderName = GameFolderName(ViewModel.Game);
             m_DownloadPath = Path.Combine(rootDirectory, "GameVault", "Downloads", folderName);
-            ViewModel.InstallPath = Path.Combine(rootDirectory, "GameVault", "Installations", folderName);
+            ViewModel.InstallPath = installPath ?? Path.Combine(rootDirectory, "GameVault", "Installations", folderName);
             sevenZipHelper = new SevenZipHelper();
             gameSizeConverter = new GameSizeConverter();
             InitRetryTimer();
@@ -481,7 +482,7 @@ namespace gamevault.UserControls
             if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
                 ToastMessageHelper.CreateToastMessage("Download Complete", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata?.Cover?.ID}"));
 
-            if (SettingsViewModel.Instance.AutoExtract || PlayWhenInstalled)
+            if (SettingsViewModel.Instance.AutoExtract || PlayWhenInstalled || IsUpdate)
             {
                 Dispatcher.UIThread.Invoke((Action)async delegate
                 {
@@ -802,7 +803,12 @@ namespace gamevault.UserControls
                     ToastMessageHelper.CreateToastMessage("Extraction Complete", ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game?.ID}.{ViewModel.Game?.Metadata?.Cover?.ID}"));
 
                 bool portable = ViewModel.Game?.Type == GameType.WINDOWS_PORTABLE || ViewModel.Game?.Type == GameType.LINUX_PORTABLE;
-                if (portable && (SettingsViewModel.Instance.AutoInstallPortable || PlayWhenInstalled))
+                if (IsUpdate)
+                {
+                    await Task.Delay(1000);//the extraction stream is closed
+                    await ApplyUpdate();
+                }
+                else if (portable && (SettingsViewModel.Instance.AutoInstallPortable || PlayWhenInstalled))
                 {
                     await Task.Delay(1000);//Just to be sure the extraction stream is closed and the files are ready to copy
                     await Install();
@@ -923,7 +929,7 @@ namespace gamevault.UserControls
         }
         private async Task Install()
         {
-            if (InstallViewModel.Instance.InstalledGames.Any(game => game.Key.ID == ViewModel.Game.ID))
+            if (!IsUpdate && InstallViewModel.Instance.InstalledGames.Any(game => game.Key.ID == ViewModel.Game.ID))
             {
                 MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"The Game {ViewModel.Game.Title} is already installed at \n'{InstallViewModel.Instance.InstalledGames.First(game => game.Key.ID == ViewModel.Game.ID).Value}'" +
                        $"\nWarning: Overwriting an existing installation with a new one may cause data corruption.", "",
@@ -990,6 +996,9 @@ namespace gamevault.UserControls
                     MainWindowViewModel.Instance.AppBarText = $"Successfully installed '{ViewModel.Game.Title}'";
                     ViewModel.InstallationStepperProgress = 2;
                     ViewModel.State = "Installed";
+                    // The files of this version: an update replaces them and keeps everything else (saves)
+                    try { GameVault.Core.Library.InstallManifest.Write(ViewModel.InstallPath, GameVault.Core.Library.InstallManifest.List(Path.Combine(ViewModel.InstallPath, "Files"))); }
+                    catch (Exception ex) { Log.Ignored(ex); }
 
                     //Auto delete files of portable games after successful installation
                     if (SettingsViewModel.Instance.AutoDeletePortableGameFiles)
@@ -1038,6 +1047,16 @@ namespace gamevault.UserControls
                     if (setupProcess != null)
                     {
                         await setupProcess.WaitForExitAsync();
+                        if (IsUpdate && setupProcess.ExitCode != 0)
+                        {
+                            // The previous version stays installed and recorded
+                            MainWindowViewModel.Instance.AppBarText = $"The installer of '{ViewModel.Game?.Title}' failed (exit code {setupProcess.ExitCode}), the game was not updated";
+                            uiBtnInstallPortable.IsEnabled = true;
+                            uiBtnInstallSetup.IsEnabled = true;
+                            uiProgressRingInstall.IsActive = false;
+                            uiBtnExtract.IsEnabled = true;
+                            return;
+                        }
                         if (await RemoveEmptyInstallationAsync())
                         {
                             // Cancelled, failed, or installed somewhere else: an empty folder must not count as installed
@@ -1069,7 +1088,14 @@ namespace gamevault.UserControls
             uiBtnExtract.IsEnabled = true;
             try
             {
-                Preferences.Set(AppConfigKey.InstalledGameVersion, ViewModel?.Game?.Version, Path.Combine(ViewModel.InstallPath, "gamevault-exec"));
+                if (Directory.Exists(ViewModel.InstallPath))
+                    InstalledGameState.Record(ViewModel.InstallPath, ViewModel.Game);
+                if (IsUpdate && Directory.Exists(ViewModel.InstallPath))
+                {
+                    // A setup update installed over the existing installation
+                    IsUpdate = false;
+                    InstallViewModel.Instance.ReplaceInstalledGame(ViewModel.Game);
+                }
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
             //Save forced install type for uninstallation
@@ -1090,24 +1116,7 @@ namespace gamevault.UserControls
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
             }
-            //Set default launch executable if available
-            if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.LaunchExecutable) && Directory.Exists(ViewModel.InstallPath))
-            {
-                try
-                {
-                    string extension = Path.GetExtension(ViewModel.Game?.Metadata?.LaunchExecutable);
-                    var files = Directory.GetFiles(ViewModel.InstallPath, $"*{extension}", new EnumerationOptions { RecurseSubdirectories = true, MatchCasing = MatchCasing.CaseInsensitive });
-                    string wantedExecutable = ViewModel.Game?.Metadata?.LaunchExecutable.Replace('\\', '/').TrimStart('/') ?? "";
-                    // "Game.exe" must not pick "MyGame.exe": a whole path end wins over a partial match
-                    var targetFile = files.FirstOrDefault(file => file.Replace('\\', '/').EndsWith("/" + wantedExecutable, StringComparison.OrdinalIgnoreCase))
-                        ?? files.FirstOrDefault(file => file.Replace('\\', '/').Contains(wantedExecutable, StringComparison.OrdinalIgnoreCase));
-                    if (targetFile != null)
-                    {
-                        Preferences.Set(AppConfigKey.Executable, targetFile, Path.Combine(ViewModel.InstallPath, "gamevault-exec"));
-                    }
-                }
-                catch (Exception ignored) { Log.Ignored(ignored); }
-            }
+            ApplyLaunchExecutableFromMetadata();
 
             await StartGameIfRequested();
             if (ViewModel.CreateShortcut == true)
@@ -1128,6 +1137,92 @@ namespace gamevault.UserControls
                 await DesktopHelper.CreateShortcut(game.Key, Preferences.Get(AppConfigKey.Executable, Path.Combine(game.Value, "gamevault-exec")), false);
             }
         }
+        /// <summary>The executable named in the game's metadata becomes the one Play starts.</summary>
+        private void ApplyLaunchExecutableFromMetadata()
+        {
+            if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.LaunchExecutable) && Directory.Exists(ViewModel.InstallPath))
+            {
+                try
+                {
+                    string extension = Path.GetExtension(ViewModel.Game?.Metadata?.LaunchExecutable);
+                    var files = Directory.GetFiles(ViewModel.InstallPath, $"*{extension}", new EnumerationOptions { RecurseSubdirectories = true, MatchCasing = MatchCasing.CaseInsensitive });
+                    string wantedExecutable = ViewModel.Game?.Metadata?.LaunchExecutable.Replace('\\', '/').TrimStart('/') ?? "";
+                    // "Game.exe" must not pick "MyGame.exe": a whole path end wins over a partial match
+                    var targetFile = files.FirstOrDefault(file => file.Replace('\\', '/').EndsWith("/" + wantedExecutable, StringComparison.OrdinalIgnoreCase))
+                        ?? files.FirstOrDefault(file => file.Replace('\\', '/').Contains(wantedExecutable, StringComparison.OrdinalIgnoreCase));
+                    if (targetFile != null)
+                    {
+                        Preferences.Set(AppConfigKey.Executable, targetFile, Path.Combine(ViewModel.InstallPath, "gamevault-exec"));
+                    }
+                }
+                catch (Exception ignored) { Log.Ignored(ignored); }
+            }
+        }
+
+        #region Update
+        /// <summary>Downloads the newer build of an installed game and replaces the installed one with it.</summary>
+        public bool IsUpdate { get; set; }
+
+        private async Task ApplyUpdate()
+        {
+            bool portable = ViewModel.Game?.Type == GameType.WINDOWS_PORTABLE || ViewModel.Game?.Type == GameType.LINUX_PORTABLE;
+            if (!portable)
+            {
+                // Setups install over the existing installation
+                LoadSetupExecutables();
+                if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.InstallerParameters) && uiCbSetupExecutable.SelectedItem != null)
+                {
+                    MainWindowViewModel.Instance.AppBarText = $"Updating {ViewModel.Game?.Title}...";
+                    await Install();
+                }
+                else
+                {
+                    uiInstallOptions.IsVisible = true;
+                    MainWindowViewModel.Instance.AppBarText = $"Choose the installer of {ViewModel.Game?.Title} to update it. Install it into the same folder.";
+                }
+                return;
+            }
+            string extracted = Path.Combine(m_DownloadPath, "Extract");
+            string files = Path.Combine(ViewModel.InstallPath, "Files");
+            uiProgressRingInstall.IsActive = true;
+            uiBtnExtract.IsEnabled = false;
+            try
+            {
+                var oldFiles = GameVault.Core.Library.InstallManifest.Read(ViewModel.InstallPath);
+                var newFiles = await Task.Run(() => GameVault.Core.Library.InstallManifest.ApplyUpdate(extracted, files, oldFiles));
+                GameVault.Core.Library.InstallManifest.Write(ViewModel.InstallPath, newFiles);
+                try { Directory.Delete(extracted, true); }
+                catch (Exception ex) { Log.Ignored(ex); }
+                InstalledGameState.Record(ViewModel.InstallPath, ViewModel.Game);
+
+                // The executable may have been renamed or moved by the new version
+                string settings = Path.Combine(ViewModel.InstallPath, "gamevault-exec");
+                if (!File.Exists(Preferences.Get(AppConfigKey.Executable, settings)))
+                    Preferences.DeleteKey(AppConfigKey.Executable, settings);
+                ApplyLaunchExecutableFromMetadata();
+
+                IsUpdate = false;
+                ViewModel.State = "Updated";
+                ViewModel.InstallationStepperProgress = 2;
+                MainWindowViewModel.Instance.AppBarText = $"'{ViewModel.Game?.Title}' is up to date{(string.IsNullOrEmpty(ViewModel.Game?.Version) ? "" : $" ({ViewModel.Game.Version})")}";
+                InstallViewModel.Instance.ReplaceInstalledGame(ViewModel.Game!);
+                if (SettingsViewModel.Instance.AutoDeletePortableGameFiles)
+                    await DeleteFile(false);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Updating {ViewModel.Game?.Title} failed");
+                ViewModel.State = "Update failed";
+                MainWindowViewModel.Instance.AppBarText = $"Updating '{ViewModel.Game?.Title}' failed: {ex.Message}";
+            }
+            finally
+            {
+                uiProgressRingInstall.IsActive = false;
+                uiBtnExtract.IsEnabled = true;
+            }
+        }
+        #endregion
+
         public void MoveFromRootPath(string sourceDir, string destinationDir)
         {
             // Create the destination directory if it doesn't exist.

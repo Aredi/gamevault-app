@@ -176,6 +176,7 @@ namespace gamevault.UserControls
                 }
                 ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
                 ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
+                ViewModel.IsUpdateAvailable = HasUpdate(ViewModel.Game);
                 PrepareMarkdownElements();
                 _ = Task.Run(async () =>
                 {
@@ -226,6 +227,7 @@ namespace gamevault.UserControls
             catch (Exception ex) { Log.Ignored(ex); }
             ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
             ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
+            ViewModel.IsUpdateAvailable = HasUpdate(ViewModel.Game);
             PrepareMarkdownElements();
             this.IsEnabled = true;
         }
@@ -265,7 +267,24 @@ namespace gamevault.UserControls
                 return;
             ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
             ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
+            ViewModel.IsUpdateAvailable = HasUpdate(ViewModel.Game);
         });
+        private static bool HasUpdate(Game? game)
+        {
+            if (game == null)
+                return false;
+            var installed = InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key.ID == game.ID);
+            return installed.Value != null && InstalledGameState.HasUpdate(game, installed.Value);
+        }
+        private async void UpdateGame_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game == null)
+                return;
+            ((Control)sender).IsEnabled = false;
+            await MainWindowViewModel.Instance.Downloads.UpdateGame(ViewModel.Game);
+            ViewModel.IsUpdateAvailable = false;
+            ((Control)sender).IsEnabled = true;
+        }
         #endregion
 
         private bool IsGameInstalled(Game? game)
