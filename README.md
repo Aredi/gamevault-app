@@ -12,6 +12,11 @@
 > - Linux: Proton / Wine version per game (like on the Steam Deck), automatic protonfixes (umu database) and winetricks components.
 > - Download queue with a schedule, full offline mode, collections, played / never played filters, disk cleanup, notifications for new games.
 > - "Install & Play" (download, extract, install silently and start in one click) and a "Publish a Game" assistant in the admin console.
+> - Game updates: a new version published on the server is announced and installed in one click; saves and settings stay.
+> - Faster, safer downloads: big archives come in several parts at once, interrupted downloads resume, damaged archives are downloaded again.
+> - Cloud save conflicts between computers are detected and resolved by the user instead of overwriting saves; replaced saves are kept in a history.
+> - French translation (Settings → Application → Language).
+> - .NET 10, smaller packages, end-to-end UI tests in CI.
 >
 > If you enjoy GameVault, please consider supporting the original developers (see below).
 
