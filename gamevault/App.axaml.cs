@@ -36,13 +36,16 @@ namespace gamevault
         /// </summary>
         public Window? MainWindow
         {
-            get => Desktop?.MainWindow;
+            get => Desktop?.MainWindow ?? mainWindow;
             set
             {
+                // Also kept without a desktop lifetime (headless tests), dialogs are shown on it
+                mainWindow = value;
                 if (Desktop != null)
                     Desktop.MainWindow = value;
             }
         }
+        private Window? mainWindow;
 
         public Window? ActiveWindow => Desktop?.Windows.FirstOrDefault(w => w.IsActive) ?? Desktop?.Windows.FirstOrDefault(w => w.IsVisible);
 

@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GameVault.Core;
 using gamevault.Helper;
+using gamevault.Helper.Platform;
 using gamevault.Helper.Integrations;
 using gamevault.Models;
 using gamevault.ViewModels;
@@ -54,14 +55,10 @@ namespace gamevault.UserControls
         }
         private void PrepareInstallLocationSelection()
         {
-            // On Linux every path starts with "/", so take the most specific mount point containing the directory.
-            var drives = DriveInfo.GetDrives().Where(d => { try { return d.IsReady; } catch { return false; } }).ToList();
             foreach (DirectoryEntry rootDir in SettingsViewModel.Instance.RootDirectories)
             {
-                DriveInfo? drive = drives
-                    .Where(d => rootDir.Uri.StartsWith(d.RootDirectory.FullName, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                    .OrderByDescending(d => d.RootDirectory.FullName.Length)
-                    .FirstOrDefault();
+                // The most specific mount point containing the directory (on Linux every path starts with "/")
+                DriveInfo? drive = PlatformInfo.GetDriveForPath(rootDir.Uri);
                 if (drive != null && !RootDirectories.ContainsKey(rootDir))
                 {
                     long freeSpace = 0;

@@ -1,0 +1,188 @@
+using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using gamevault.Models;
+
+namespace GameVault.UiTests
+{
+    /// <summary>
+    /// The parts of the GameVault server API the client needs: login, users/me, games, downloads (with Range),
+    /// progresses. Games and their files are added by the tests; every request is recorded.
+    /// </summary>
+    public sealed class FakeGameVaultServer : IDisposable
+    {
+        private readonly HttpListener listener = new();
+        private readonly CancellationTokenSource stop = new();
+        private readonly ConcurrentDictionary<int, (Game Game, byte[] File)> games = new();
+
+        public string Url { get; }
+        public ConcurrentQueue<string> Requests { get; } = new();
+        public ConcurrentQueue<string> RangeHeaders { get; } = new();
+
+        /// <summary>The next download of this game ends after this many bytes (the connection closes early).</summary>
+        public ConcurrentDictionary<int, long> CutNextDownloadAfter { get; } = new();
+        /// <summary>Downloads ignore the Range header and always send the whole file with 200.</summary>
+        public bool IgnoreRange { get; set; }
+        /// <summary>Delay between two chunks of a download, to keep downloads running for a while.</summary>
+        public TimeSpan ChunkDelay { get; set; } = TimeSpan.Zero;
+
+        public FakeGameVaultServer()
+        {
+            int port = FreePort();
+            Url = $"http://127.0.0.1:{port}";
+            listener.Prefixes.Add(Url + "/");
+            listener.Start();
+            _ = Task.Run(Loop);
+        }
+
+        public Game AddGame(int id, string title, GameType type, byte[] file, string fileName, string? version = null)
+        {
+            var game = new Game
+            {
+                ID = id,
+                Title = title,
+                SortTitle = title.ToLowerInvariant(),
+                Type = type,
+                Path = $"/files/{fileName}",
+                Size = file.Length.ToString(),
+                Version = version,
+                EntityVersion = 1,
+                Metadata = new gamevault.Models.GameMetadata { Title = title },
+                Progresses = new List<Progress>(),
+            };
+            games[id] = (game, file);
+            return game;
+        }
+
+        public static User Admin => new() { ID = 1, Username = "admin", Role = PERMISSION_ROLE.ADMIN, Activated = true };
+
+        private static int FreePort()
+        {
+            var socket = new TcpListener(IPAddress.Loopback, 0);
+            socket.Start();
+            int port = ((IPEndPoint)socket.LocalEndpoint).Port;
+            socket.Stop();
+            return port;
+        }
+
+        private async Task Loop()
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                HttpListenerContext context;
+                try { context = await listener.GetContextAsync(); }
+                catch { return; }
+                _ = Task.Run(() => Handle(context));
+            }
+        }
+
+        private async Task Handle(HttpListenerContext context)
+        {
+            var request = context.Request;
+            var response = context.Response;
+            string path = request.Url!.AbsolutePath;
+            Requests.Enqueue($"{request.HttpMethod} {request.Url.PathAndQuery}");
+            try
+            {
+                Match match;
+                if (path == "/api/auth/basic/login")
+                    await Json(response, new { id = "1", access_token = "access", refresh_token = "refresh" });
+                else if (path == "/api/auth/refresh")
+                    await Json(response, new { id = "1", access_token = "access", refresh_token = "refresh" });
+                else if (path == "/api/users/me")
+                    await Json(response, Admin);
+                else if (path == "/api/status")
+                    await Json(response, new { status = "HEALTHY" });
+                else if ((match = Regex.Match(path, @"^/api/games/(\d+)/download$")).Success)
+                    await Download(context, int.Parse(match.Groups[1].Value));
+                else if ((match = Regex.Match(path, @"^/api/games/(\d+)$")).Success && games.TryGetValue(int.Parse(match.Groups[1].Value), out var entry))
+                    await Json(response, entry.Game);
+                else if (path == "/api/games")
+                    await Json(response, new PaginatedData<Game>
+                    {
+                        Data = games.Values.Select(g => g.Game).OrderBy(g => g.ID).ToArray(),
+                        Meta = new MetaData { TotalItems = games.Count },
+                        Links = new Links(),
+                    });
+                else if (path.StartsWith("/api/progresses"))
+                    await Json(response, new { });
+                else if (path.StartsWith("/api/"))
+                    await Json(response, new { data = Array.Empty<object>(), meta = new { totalItems = 0 }, links = new { } });
+                else
+                    response.StatusCode = 404;
+            }
+            catch (Exception ex) when (ex is HttpListenerException or IOException or ObjectDisposedException)
+            {
+                // The client closed the connection (pause, cancel)
+            }
+            finally
+            {
+                try { response.Close(); } catch { }
+            }
+        }
+
+        private async Task Download(HttpListenerContext context, int id)
+        {
+            var response = context.Response;
+            if (!games.TryGetValue(id, out var entry))
+            {
+                response.StatusCode = 404;
+                return;
+            }
+            byte[] file = entry.File;
+            long start = 0;
+            string? range = context.Request.Headers["Range"];
+            if (range != null)
+                RangeHeaders.Enqueue(range);
+            if (range != null && !IgnoreRange)
+            {
+                Match match = Regex.Match(range, @"bytes=(\d+)-");
+                if (match.Success)
+                    start = long.Parse(match.Groups[1].Value);
+                response.StatusCode = 206;
+                response.Headers["Content-Range"] = $"bytes {start}-{file.Length - 1}/{file.Length}";
+            }
+            response.Headers["Content-Disposition"] = $"attachment; filename=\"{Path.GetFileName(entry.Game.Path)}\"";
+            response.ContentType = "application/octet-stream";
+            long length = file.Length - start;
+            response.ContentLength64 = length;
+
+            long end = file.Length;
+            bool cut = CutNextDownloadAfter.TryRemove(id, out long cutAfter);
+            if (cut)
+                end = Math.Min(file.Length, start + cutAfter);
+            var output = response.OutputStream;
+            for (long position = start; position < end;)
+            {
+                int count = (int)Math.Min(64 * 1024, end - position);
+                await output.WriteAsync(file.AsMemory((int)position, count));
+                await output.FlushAsync();
+                position += count;
+                if (ChunkDelay > TimeSpan.Zero)
+                    await Task.Delay(ChunkDelay);
+            }
+            if (cut)
+            {
+                // Ends the connection although Content-Length promised more
+                response.Abort();
+            }
+        }
+
+        private static async Task Json(HttpListenerResponse response, object value)
+        {
+            byte[] body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value, value.GetType()));
+            response.ContentType = "application/json";
+            response.ContentLength64 = body.Length;
+            await response.OutputStream.WriteAsync(body);
+        }
+
+        public void Dispose()
+        {
+            stop.Cancel();
+            try { listener.Stop(); listener.Close(); } catch { }
+        }
+    }
+}

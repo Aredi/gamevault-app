@@ -53,7 +53,8 @@ namespace gamevault.Windows
                     await GameTimeTracker.Start();
                 }
             });
-            PipeServiceHandler.Instance.IsReadyForCommands = true;
+            if (PipeServiceHandler.Instance != null)// not started without a desktop session (tests)
+                PipeServiceHandler.Instance.IsReadyForCommands = true;
             NewGamesNotifier.Start();
             // Savegames of games closed offline in a previous session
             Task.Run(async () =>
@@ -259,7 +260,8 @@ namespace gamevault.Windows
             App.HideToSystemTray = false;
             App.Instance.ResetToDefaultTheme();
             LoginManager.Instance.StopOnlineTimer();
-            PipeServiceHandler.Instance.IsReadyForCommands = false;
+            if (PipeServiceHandler.Instance != null)
+                PipeServiceHandler.Instance.IsReadyForCommands = false;
             MainWindowViewModel.Instance.UserAvatar = null;
             this.Close();
         }

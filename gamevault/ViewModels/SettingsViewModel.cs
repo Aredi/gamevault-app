@@ -420,7 +420,8 @@ namespace gamevault.ViewModels
                 }
                 return ignoreList;
             }
-            set { ignoreList = value; OnPropertyChanged(); }
+            // An empty entry would match every file: "a,b," typed in the settings, or an empty text box
+            set { ignoreList = value?.Select(entry => entry?.Trim() ?? "").Where(entry => entry.Length > 0).ToArray(); OnPropertyChanged(); }
         }
         public bool ShowMappedTitle
         {

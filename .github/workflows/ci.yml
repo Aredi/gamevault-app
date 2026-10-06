@@ -16,6 +16,8 @@ jobs:
           dotnet-version: '10.x'
       - name: Run tests
         run: dotnet test GameVault.Core.Tests/GameVault.Core.Tests.csproj --configuration Release
+      - name: Run end-to-end UI tests (headless app against a fake server)
+        run: dotnet test GameVault.UiTests/GameVault.UiTests.csproj --configuration Release
 
   build:
     strategy:
