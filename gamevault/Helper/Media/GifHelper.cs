@@ -19,7 +19,8 @@ namespace gamevault.Helper
                 using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
                 {
                     byte[] buffer = new byte[3];
-                    fs.Read(buffer, 0, 3);
+                    if (fs.ReadAtLeast(buffer, 3, throwOnEndOfStream: false) < 3)
+                        return false;
                     return buffer[0] == gifSignature[0] && buffer[1] == gifSignature[1] && (buffer[2] == gifSignature[2] || buffer[2] == '8' || buffer[2] == '7');
                 }
             }
@@ -34,7 +35,8 @@ namespace gamevault.Helper
             try
             {
                 byte[] buffer = new byte[3];
-                ms.Read(buffer, 0, 3);
+                if (ms.ReadAtLeast(buffer, 3, throwOnEndOfStream: false) < 3)
+                    return false;
                 return buffer[0] == gifSignature[0] && buffer[1] == gifSignature[1] && (buffer[2] == gifSignature[2] || buffer[2] == '8' || buffer[2] == '7');
             }
             catch (Exception)

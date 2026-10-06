@@ -294,12 +294,6 @@ display:none;
         style.appendChild(document.createTextNode(cssRules));
         (document.head || document.documentElement).appendChild(style); // WebKitGTK media documents have no <head>
     ";
-        private string getVolumeScript = @"
-(function() {
-    var audio = document.getElementById('externalAudio'); // Get the audio element by ID
-    return audio.volume; // Return current volume
-})();";
-
 
         string resizescript = @"
  var video = document.querySelector('video[name=""media""]');

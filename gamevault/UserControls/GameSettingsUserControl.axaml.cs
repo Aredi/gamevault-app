@@ -459,7 +459,7 @@ namespace gamevault.UserControls
                     if (e.RemovedItems.Count > 0 && DesktopHelper.ShortcutExists(ViewModel.Game))
                     {
                         DesktopHelper.RemoveShotcut(ViewModel.Game);
-                        DesktopHelper.CreateShortcut(ViewModel.Game, SavedExecutable, false);
+                        _ = DesktopHelper.CreateShortcut(ViewModel.Game, SavedExecutable, false);
                     }
                 }
             }

@@ -13,7 +13,7 @@ namespace gamevault.Converter
 {
     internal class IsGameDownloadedConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             //Debug.WriteLine("IsDownloaded");
             if (value == null)
@@ -22,7 +22,7 @@ namespace gamevault.Converter
             return parameter?.ToString() == "invert" ? !downloaded : downloaded;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             return false;
         }

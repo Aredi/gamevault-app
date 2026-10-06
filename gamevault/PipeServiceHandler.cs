@@ -507,7 +507,7 @@ namespace gamevault
                     string compressedStringObject = Preferences.Get(id.ToString(), LoginManager.Instance.GetUserProfile().OfflineCache);
                     if (!string.IsNullOrEmpty(compressedStringObject))
                     {
-                        string decompressedObject = StringCompressor.DecompressString(compressedStringObject);
+                        string decompressedObject = GameVault.Core.StringCompressor.Decompress(compressedStringObject);
                         Game? deserializedObject = JsonSerializer.Deserialize<Game>(decompressedObject);
                         game = deserializedObject;
                     }

@@ -413,6 +413,7 @@ namespace gamevault.Helper
                 }
                 catch (Exception ex)//On exception try to save the download progress and forward the exception
                 {
+                    GameVault.Core.Log.Ignored(ex);
                     if (currentBytesRead > 0 && fileStream.CanSeek)
                     {
                         fileStream.Flush();

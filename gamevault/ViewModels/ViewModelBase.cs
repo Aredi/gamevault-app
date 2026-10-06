@@ -6,7 +6,7 @@ namespace gamevault.ViewModels
 {
     abstract class ViewModelBase : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         /// <summary>
         /// WPF tolerated PropertyChanged from background threads (timers, Task.Run); Avalonia bindings must be

@@ -10,7 +10,7 @@ namespace gamevault.Converter
 {
     internal class GameSettingsEarlyAccessContentConverter : IMultiValueConverter
     {
-        public object Convert(IList<object?> values, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
         {
             if (values[1]!=null)
             {

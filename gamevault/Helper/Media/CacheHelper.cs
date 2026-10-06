@@ -25,7 +25,7 @@ namespace gamevault.Helper
             try
             {
                 string serializedObject = JsonSerializer.Serialize(game);
-                string compressedObject = StringCompressor.CompressString(serializedObject);
+                string compressedObject = GameVault.Core.StringCompressor.Compress(serializedObject);
                 Preferences.Set(game.ID.ToString(), compressedObject, LoginManager.Instance.GetUserProfile().OfflineCache);
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
@@ -86,6 +86,7 @@ namespace gamevault.Helper
             }
             catch (Exception ex)
             {
+                GameVault.Core.Log.Ignored(ex);
                 try
                 {
                     if (TaskQueue.Instance.IsAlreadyInProcess(imageId))

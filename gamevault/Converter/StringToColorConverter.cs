@@ -7,7 +7,7 @@ namespace gamevault.Converter
 {
     internal class StringToColorConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value is string stringValue)
             {
@@ -51,7 +51,7 @@ namespace gamevault.Converter
             return Color.FromRgb(red, green, blue);
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             return Colors.White;
         }

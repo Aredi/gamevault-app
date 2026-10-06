@@ -12,7 +12,7 @@ namespace gamevault.Converter
 {
     internal class IsGameMappedConverter : IMultiValueConverter
     {
-        public object Convert(IList<object?> values, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
         {
             object result = ConvertCore(values);
             if (parameter?.ToString() == "opacity")

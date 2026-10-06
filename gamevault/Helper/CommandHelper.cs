@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,19 +9,19 @@ namespace gamevault.Helper
 {
     internal class CommandHelper : ICommand
     {
-        public event EventHandler<object> Executed;
+        public event EventHandler<object?>? Executed;
 
-        public bool CanExecute(object parameter)
+        public bool CanExecute(object? parameter)
         {
             return true;
         }
 
-        public void Execute(object parameter)
+        public void Execute(object? parameter)
         {
-            if (Executed != null)
-                Executed(this, parameter);
+            Executed?.Invoke(this, parameter);
         }
 
-        public event EventHandler CanExecuteChanged;
+        // Always executable: nothing ever changes
+        public event EventHandler? CanExecuteChanged { add { } remove { } }
     }
 }

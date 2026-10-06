@@ -157,7 +157,8 @@ namespace gamevault.UserControls
                     Selection.Tags => $"{SettingsViewModel.Instance.ServerUrl}/api/tags?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25",
                     Selection.Genres => $"{SettingsViewModel.Instance.ServerUrl}/api/genres?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25",
                     Selection.Developers => $"{SettingsViewModel.Instance.ServerUrl}/api/developers?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25",
-                    Selection.Publishers => $"{SettingsViewModel.Instance.ServerUrl}/api/publishers?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25"
+                    Selection.Publishers => $"{SettingsViewModel.Instance.ServerUrl}/api/publishers?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25",
+                    _ => throw new InvalidOperationException($"No server list for {SelectionType}"),
                 };
 
                 Selection selection = SelectionType;
@@ -169,7 +170,8 @@ namespace gamevault.UserControls
                         Selection.Tags => JsonSerializer.Deserialize<PaginatedData<Pill>>(result).Data,
                         Selection.Genres => JsonSerializer.Deserialize<PaginatedData<Pill>>(result).Data,
                         Selection.Developers => JsonSerializer.Deserialize<PaginatedData<Pill>>(result).Data,
-                        Selection.Publishers => JsonSerializer.Deserialize<PaginatedData<Pill>>(result).Data
+                        Selection.Publishers => JsonSerializer.Deserialize<PaginatedData<Pill>>(result).Data,
+                        _ => Array.Empty<Pill>(),
                     };
                 }
                 catch (Exception ex)

@@ -12,7 +12,7 @@ namespace gamevault.Converter
 {
     public class ShowMappedTitleConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
 
             bool showMappedTitle = Preferences.Get(AppConfigKey.ShowMappedTitle,LoginManager.Instance.GetUserProfile().UserConfigFile) == "1";
@@ -24,7 +24,7 @@ namespace gamevault.Converter
 
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }

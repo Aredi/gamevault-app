@@ -8,7 +8,7 @@ namespace gamevault.Converter
 {
     internal class GameSizeConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             try
             {
@@ -41,12 +41,13 @@ namespace gamevault.Converter
             }
             catch (Exception ex)
             {
+                GameVault.Core.Log.Ignored(ex);
                 return "ERR";
             }
         }
 
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             return "";
         }

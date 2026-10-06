@@ -220,6 +220,7 @@ namespace gamevault.UserControls
                     }
                     catch (Exception ex)
                     {
+                        GameVault.Core.Log.Ignored(ex);
                         SetReplacement();
                     }
                 }
@@ -276,6 +277,7 @@ namespace gamevault.UserControls
                 }
                 catch (Exception ex)
                 {
+                    GameVault.Core.Log.Ignored(ex);
                     SetReplacement();
                 }
             }

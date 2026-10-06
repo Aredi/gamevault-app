@@ -13,7 +13,7 @@ namespace gamevault.Converter
 {
     internal class EnumDescriptionConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value is GameType && (GameType)value != GameType.UNDETECTABLE)
             {
@@ -28,7 +28,7 @@ namespace gamevault.Converter
             return string.Empty;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             return string.Empty;
         }

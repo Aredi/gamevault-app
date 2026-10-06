@@ -95,7 +95,7 @@ namespace gamevault.UserControls
                 forceShowId = userToShow.ID;
                 if (MainWindowViewModel.Instance.ActiveControl == MainWindowViewModel.Instance.Community)
                 {
-                    InitUserList();
+                    _ = InitUserList();
                 }
                 else
                 {

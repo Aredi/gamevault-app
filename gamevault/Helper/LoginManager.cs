@@ -96,7 +96,7 @@ namespace gamevault.Helper
                 }
                 sessionTokenReuseFailed = true;
             }
-            catch (Exception ex) { sessionTokenReuseFailed = true; }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); sessionTokenReuseFailed = true; }
             if (sessionTokenReuseFailed)
             {
                 try
@@ -134,7 +134,7 @@ namespace gamevault.Helper
                 }
                 sessionTokenReuseFailed = true;
             }
-            catch (Exception ex) { sessionTokenReuseFailed = true; }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); sessionTokenReuseFailed = true; }
 
 
             if (sessionTokenReuseFailed && !interactive)

@@ -13,7 +13,7 @@ namespace gamevault.Converter
 {
     internal class GameSettingsTabVisibilityConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (((Game)value) == null)
                 return false;
@@ -34,7 +34,7 @@ namespace gamevault.Converter
             return false;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             return false;
         }

@@ -12,7 +12,7 @@ namespace gamevault.Converter
 {
     internal class UrlImageConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             // Only local files / avares assets can be loaded synchronously; remote images go through CacheImage.
             try
@@ -28,7 +28,7 @@ namespace gamevault.Converter
             }
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             return null;
         }

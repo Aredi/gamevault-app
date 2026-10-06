@@ -14,7 +14,10 @@
 		<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
 		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 		<!-- The code base predates nullable annotations; keep the build output readable. -->
-		<NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8618;CS8619;CS8620;CS8622;CS8625;CS8629;CS8632;CS0168;CS0169;CS0414;CS0649;CS1998;CS4014;CA1416</NoWarn>
+		<!-- Nullable warnings of the code inherited from the WPF client are still to be fixed (about 560) -->
+		<NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8618;CS8619;CS8620;CS8622;CS8625;CS8629;CS8632;CA1416</NoWarn>
+		<!-- Fixed everywhere: they must not come back (swallowed exceptions, unawaited tasks, partial reads, ...) -->
+		<WarningsAsErrors>$(WarningsAsErrors);CS0067;CS0168;CS0169;CS0414;CS0649;CS1998;CS4014;CS8509;CS8612;CS8767;CA2022</WarningsAsErrors>
 	</PropertyGroup>
 
 	<ItemGroup>

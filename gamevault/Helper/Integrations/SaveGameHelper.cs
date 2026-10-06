@@ -328,6 +328,7 @@ namespace gamevault.Helper.Integrations
                 }
                 catch (Exception ex)
                 {
+                    GameVault.Core.Log.Ignored(ex);
                     MainWindowViewModel.Instance.AppBarText = CloudSaveStatus.BackupFailed;
                 }
             }

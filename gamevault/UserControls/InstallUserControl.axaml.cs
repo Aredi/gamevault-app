@@ -100,7 +100,7 @@ namespace gamevault.UserControls
                 {
                     try
                     {
-                        string decompressedObject = StringCompressor.DecompressString(objectFromFile);
+                        string decompressedObject = GameVault.Core.StringCompressor.Decompress(objectFromFile);
                         Game? deserializedObject = JsonSerializer.Deserialize<Game>(decompressedObject);
                         if (deserializedObject != null)
                         {
@@ -227,7 +227,7 @@ namespace gamevault.UserControls
                                 else
                                 {
                                     string offlineCacheGameString = Preferences.Get(game.ID.ToString(), LoginManager.Instance.GetUserProfile().OfflineCache);
-                                    offlineCacheGameString = StringCompressor.DecompressString(offlineCacheGameString);
+                                    offlineCacheGameString = GameVault.Core.StringCompressor.Decompress(offlineCacheGameString);
                                     Game offlineCacheGame = JsonSerializer.Deserialize<Game>(offlineCacheGameString);
                                     if (game.EntityVersion != offlineCacheGame?.EntityVersion)
                                     {
@@ -341,7 +341,7 @@ namespace gamevault.UserControls
                     string compressedStringObject = Preferences.Get(id.ToString(), LoginManager.Instance.GetUserProfile().OfflineCache);
                     if (compressedStringObject != string.Empty)
                     {
-                        string decompressedObject = StringCompressor.DecompressString(compressedStringObject);
+                        string decompressedObject = GameVault.Core.StringCompressor.Decompress(compressedStringObject);
                         Game? deserializedObject = JsonSerializer.Deserialize<Game>(decompressedObject);
                         game = deserializedObject;
                     }

@@ -94,7 +94,7 @@ namespace gamevault.UserControls
                          if (objectFromFile == string.Empty)
                              continue;
 
-                         string decompressedObject = StringCompressor.DecompressString(objectFromFile);
+                         string decompressedObject = GameVault.Core.StringCompressor.Decompress(objectFromFile);
                          Game? deserializedObject = JsonSerializer.Deserialize<Game>(decompressedObject);
                          if (deserializedObject != null)
                          {
@@ -108,6 +108,7 @@ namespace gamevault.UserControls
                  }
                  catch (FormatException exFormat)
                  {
+                     GameVault.Core.Log.Ignored(exFormat);
                      MainWindowViewModel.Instance.AppBarText = Loc.T("The offline cache is corrupted");
                  }
                  catch (Exception ex)

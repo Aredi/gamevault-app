@@ -8,7 +8,7 @@ namespace gamevault.Converter
 {
     class GameStateColorConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             try
             {
@@ -34,11 +34,12 @@ namespace gamevault.Converter
             }
             catch (Exception ex)
             {
+                GameVault.Core.Log.Ignored(ex);
                 return null;
             }
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             return null;
         }
