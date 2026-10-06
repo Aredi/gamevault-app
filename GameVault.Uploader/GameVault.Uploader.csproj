@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<!--
+	  Receives game archives from the client's "Publish a Game" assistant and writes them into the folder the
+	  GameVault server reads its games from (/files). Runs as a container next to the GameVault server; only
+	  administrators of that server can upload.
+	-->
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<InvariantGlobalization>true</InvariantGlobalization>
+		<Version>1.0.0</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="GameVault.Uploader.Tests" />
+	</ItemGroup>
+
+</Project>

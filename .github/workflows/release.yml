@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 env:
   VPK_VERSION: 1.2.161
@@ -79,6 +80,19 @@ jobs:
         with:
           name: windows
           path: upload/*
+
+  uploader-image:
+    # ghcr.io/<owner>/gamevault-uploader:<version> and :latest, for the server next to GameVault
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push the GameVault Uploader image
+        run: |
+          image=ghcr.io/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/gamevault-uploader
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -f GameVault.Uploader/Dockerfile -t "$image:${{ github.ref_name }}" -t "$image:latest" .
+          docker push "$image:${{ github.ref_name }}"
+          docker push "$image:latest"
 
   release:
     needs: [linux, windows]

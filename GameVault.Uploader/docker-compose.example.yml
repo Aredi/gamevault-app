@@ -1,0 +1,19 @@
+# GameVault Uploader next to an existing GameVault server.
+# "Publish a Game" in the client (Admin Console) then sends games to it from any computer.
+services:
+  gamevault-uploader:
+    # Published with every release of the client; or build it: docker build -f GameVault.Uploader/Dockerfile .
+    image: ghcr.io/aredi/gamevault-uploader:latest
+    restart: unless-stopped
+    # Owner of the games folder, so the uploaded archives can be written (id -u / id -g of that user)
+    user: "1000:1000"
+    environment:
+      # The GameVault server as seen from this container (it checks that the user is an administrator)
+      GAMEVAULT_URL: http://gamevault-backend:8080
+    volumes:
+      # The same folder the GameVault server has as /files
+      - /path/to/your/games:/files
+    ports:
+      - "7477:8080"
+    # Behind a reverse proxy (HTTPS), turn off request buffering for this host:
+    #   proxy_request_buffering off;  client_max_body_size 80m;

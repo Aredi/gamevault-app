@@ -18,6 +18,15 @@ jobs:
         run: dotnet test GameVault.Core.Tests/GameVault.Core.Tests.csproj --configuration Release
       - name: Run end-to-end UI tests (headless app against a fake server)
         run: dotnet test GameVault.UiTests/GameVault.UiTests.csproj --configuration Release
+      - name: Run GameVault Uploader tests
+        run: dotnet test GameVault.Uploader.Tests/GameVault.Uploader.Tests.csproj --configuration Release
+
+  uploader-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the GameVault Uploader image
+        run: docker build -f GameVault.Uploader/Dockerfile -t gamevault-uploader:ci .
 
   build:
     strategy:

@@ -65,11 +65,23 @@
                             <TextBlock Classes="hint" Text="{Binding InstallerHint}" Margin="0,4,0,0" />
                         </StackPanel>
 
-                        <TextBlock Classes="label" Text="{l:T '4. Server games folder'}" />
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <TextBlock Classes="label" Text="{l:T '4. Destination on the server'}" />
+                        <ComboBox SelectedIndex="{Binding DestinationIndex}" Width="420" Margin="0,0,0,6">
+                            <ComboBoxItem Content="{l:T 'Copy into the server games folder (this computer can open it)'}" />
+                            <ComboBoxItem Content="{l:T 'Upload to the server (GameVault Uploader)'}" />
+                        </ComboBox>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" IsVisible="{Binding !IsUpload}">
                             <TextBox Text="{Binding TargetDirectory}" Watermark="{l:T 'Folder mounted as /files in the GameVault server'}" />
                             <controls:IconButton Grid.Column="1" Text="{l:T 'Browse'}" MinWidth="90" Height="32" FontSize="14" Click="PickTarget_Click" />
                         </Grid>
+                        <StackPanel IsVisible="{Binding IsUpload}" Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <TextBox Text="{Binding UploaderUrl}" Watermark="{l:T 'Address of the uploader, e.g. https://upload.example.com'}" />
+                                <controls:IconButton Grid.Column="1" Text="{l:T 'Test'}" MinWidth="90" Height="32" FontSize="14" Click="TestUploader_Click" />
+                            </Grid>
+                            <TextBlock Classes="hint" Text="{Binding UploaderStatus, Converter={x:Static l:LocConverter.Instance}}" />
+                            <TextBlock Classes="hint" Text="{l:T 'The archive is created on this computer, then sent. Interrupted uploads continue where they stopped.'}" />
+                        </StackPanel>
                         <CheckBox Content="{l:T 'Compress the archive (smaller, much slower to create; games are usually compressed already)'}" IsChecked="{Binding Compress}" Margin="0,6,0,0" IsVisible="{Binding !IsArchiveSource}" />
 
                         <TextBlock Classes="label" Text="{l:T 'File on the server'}" />

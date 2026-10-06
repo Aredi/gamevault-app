@@ -18,6 +18,8 @@ namespace gamevault.Helper
     public class SSOHttpClient
     {
         private readonly HttpClient _httpClient;
+        /// <summary>Without the 20 s limit: uploads of big chunks (each request has its own cancellation).</summary>
+        private readonly HttpClient _longHttpClient = new HttpClient { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
         private string _accessToken;
         private string _refreshToken;
 
@@ -65,6 +67,22 @@ namespace gamevault.Helper
 
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
             return true;
+        }
+
+        /// <summary>A request to another service that checks the GameVault sign-in (the uploader), without the 20 s limit.</summary>
+        public async Task<HttpResponseMessage> SendLongAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken)
+        {
+            await EnsureSignedInAsync();
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+            return await _longHttpClient.SendAsync(request, cancellationToken);
+        }
+
+        private async Task EnsureSignedInAsync()
+        {
+            if (string.IsNullOrEmpty(_accessToken))
+                await LoginBasicAuthAsync(UserName, Password);
+            if (IsTokenExpired() && !await RefreshTokenAsync())
+                throw new InvalidOperationException(Loc.T("Failed to refresh token."));
         }
 
         private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, List<RequestHeader>? additionalHeaders = null, HttpCompletionOption option = HttpCompletionOption.ResponseContentRead)

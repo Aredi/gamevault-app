@@ -128,6 +128,9 @@ namespace gamevault.Helper
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             return await response.Content.ReadAsStringAsync();
         }
+        /// <summary>A request with the GameVault sign-in to a companion service (uploader), without the usual time limit.</summary>
+        internal static Task<HttpResponseMessage> SendLongAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken) =>
+            HttpClient.SendLongAsync(request, cancellationToken);
         public static async Task DownloadImageFromUrlAsync(string imageUrl, string cacheFile)
         {
             var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);

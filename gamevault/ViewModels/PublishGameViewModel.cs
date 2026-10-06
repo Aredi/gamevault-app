@@ -108,6 +108,26 @@ namespace gamevault.ViewModels
             get => targetDirectory;
             set { targetDirectory = value; OnPropertyChanged(); }
         }
+        private int destinationIndex;
+        /// <summary>0 = copy into a folder this computer can open, 1 = upload to the GameVault Uploader.</summary>
+        public int DestinationIndex
+        {
+            get => destinationIndex;
+            set { destinationIndex = Math.Clamp(value, 0, 1); OnPropertyChanged(); OnPropertyChanged(nameof(IsUpload)); }
+        }
+        public bool IsUpload => destinationIndex == 1;
+        private string uploaderUrl = "";
+        public string UploaderUrl
+        {
+            get => uploaderUrl;
+            set { uploaderUrl = value; OnPropertyChanged(); }
+        }
+        private string uploaderStatus = "";
+        public string UploaderStatus
+        {
+            get => uploaderStatus;
+            set { uploaderStatus = value; OnPropertyChanged(); }
+        }
         private bool compress;
         public bool Compress
         {

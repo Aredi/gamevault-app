@@ -33,7 +33,10 @@ namespace gamevault.UserControls.SettingsComponents
         {
             InitializeComponent();
             DataContext = ViewModel;
-            ViewModel.TargetDirectory = Preferences.Get(AppConfigKey.PublishTargetDirectory, LoginManager.Instance.GetUserProfile().UserConfigFile);
+            string configFile = LoginManager.Instance.GetUserProfile().UserConfigFile;
+            ViewModel.TargetDirectory = Preferences.Get(AppConfigKey.PublishTargetDirectory, configFile);
+            ViewModel.UploaderUrl = Preferences.Get(AppConfigKey.PublishUploaderUrl, configFile);
+            ViewModel.DestinationIndex = Preferences.Get(AppConfigKey.PublishDestination, configFile) == "1" ? 1 : 0;
             KeyDown += (_, e) =>
             {
                 if (e.Key == Key.Escape && ViewModel.IsIdle)
@@ -149,28 +152,65 @@ namespace gamevault.UserControls.SettingsComponents
         #endregion
 
         #region Publish
+        private async void TestUploader_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.UploaderStatus = Loc.T("Connecting...");
+            ViewModel.UploaderStatus = (await GameUploader.CheckAsync(ViewModel.UploaderUrl?.Trim() ?? "")).Message;
+        }
+
         private async void Publish_Click(object sender, RoutedEventArgs e)
         {
+            string configFile = LoginManager.Instance.GetUserProfile().UserConfigFile;
             string target = ViewModel.TargetDirectory?.Trim() ?? "";
+            string uploader = ViewModel.UploaderUrl?.Trim() ?? "";
+            bool upload = ViewModel.IsUpload;
+            bool overwrite = false;
             if (!ViewModel.HasSource || string.IsNullOrWhiteSpace(ViewModel.FileName))
             {
                 ViewModel.Status = Loc.T("Choose the game files and a title first.");
                 return;
             }
-            if (!Directory.Exists(target))
+            if (upload)
             {
-                ViewModel.Status = Loc.T("The server games folder does not exist.");
-                return;
+                if (!Uri.TryCreate(uploader, UriKind.Absolute, out Uri? address) || (address.Scheme != Uri.UriSchemeHttp && address.Scheme != Uri.UriSchemeHttps))
+                {
+                    ViewModel.Status = Loc.T("Enter the address of the GameVault Uploader.");
+                    return;
+                }
+                try
+                {
+                    if ((await GameUploader.GetStateAsync(uploader, ViewModel.FileName)).Exists)
+                    {
+                        if (!await DialogService.ConfirmAsync(Loc.F("{0} already exists on the server. Replace it?", ViewModel.FileName), Loc.T("Publish a Game")))
+                            return;
+                        overwrite = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ViewModel.Status = Loc.F("Publishing failed: {0}", ex.Message);
+                    return;
+                }
+                Preferences.Set(AppConfigKey.PublishUploaderUrl, uploader, configFile);
+                Preferences.Set(AppConfigKey.PublishDestination, "1", configFile);
             }
-            string destination = Path.Combine(target, ViewModel.FileName);
-            if (Path.GetFullPath(ViewModel.SourcePath).StartsWith(Path.GetFullPath(target).TrimEnd('/', '\\') + Path.DirectorySeparatorChar) && Directory.Exists(ViewModel.SourcePath))
+            else
             {
-                ViewModel.Status = Loc.T("The game folder is inside the server games folder: the server would index its files one by one. Move it elsewhere first.");
-                return;
+                if (!Directory.Exists(target))
+                {
+                    ViewModel.Status = Loc.T("The server games folder does not exist.");
+                    return;
+                }
+                if (Path.GetFullPath(ViewModel.SourcePath).StartsWith(Path.GetFullPath(target).TrimEnd('/', '\\') + Path.DirectorySeparatorChar) && Directory.Exists(ViewModel.SourcePath))
+                {
+                    ViewModel.Status = Loc.T("The game folder is inside the server games folder: the server would index its files one by one. Move it elsewhere first.");
+                    return;
+                }
+                if (File.Exists(Path.Combine(target, ViewModel.FileName)) && !await DialogService.ConfirmAsync(Loc.F("{0} already exists on the server. Replace it?", ViewModel.FileName), Loc.T("Publish a Game")))
+                    return;
+                Preferences.Set(AppConfigKey.PublishTargetDirectory, target, configFile);
+                Preferences.Set(AppConfigKey.PublishDestination, "0", configFile);
             }
-            if (File.Exists(destination) && !await DialogService.ConfirmAsync(Loc.F("{0} already exists on the server. Replace it?", ViewModel.FileName), Loc.T("Publish a Game")))
-                return;
-            Preferences.Set(AppConfigKey.PublishTargetDirectory, target, LoginManager.Instance.GetUserProfile().UserConfigFile);
 
             ViewModel.IsBusy = true;
             ViewModel.Progress = 0;
@@ -178,15 +218,17 @@ namespace gamevault.UserControls.SettingsComponents
             try
             {
                 var progress = new Progress<double>(p => ViewModel.Progress = p);
-                if (ViewModel.IsArchiveSource)
+                if (upload)
+                    await UploadAsync(uploader, overwrite, progress);
+                else if (ViewModel.IsArchiveSource)
                 {
                     ViewModel.Status = Loc.F("Copying {0} to the server...", Path.GetFileName(ViewModel.SourcePath));
-                    await GamePackager.CopyFileAsync(ViewModel.SourcePath, destination, progress);
+                    await GamePackager.CopyFileAsync(ViewModel.SourcePath, Path.Combine(target, ViewModel.FileName), progress);
                 }
                 else
                 {
                     ViewModel.Status = Loc.F("Creating {0}... (large games take a while)", ViewModel.FileName);
-                    await GamePackager.CreateArchiveAsync(ViewModel.SourceFolder, destination, ViewModel.Compress, progress);
+                    await GamePackager.CreateArchiveAsync(ViewModel.SourceFolder, Path.Combine(target, ViewModel.FileName), ViewModel.Compress, progress);
                 }
 
                 ViewModel.Status = Loc.T("Waiting for the server to index the game...");
@@ -217,6 +259,35 @@ namespace gamevault.UserControls.SettingsComponents
         /// <summary>
         /// The server indexes new files by itself (file watcher / interval); a reindex is requested when that takes long.
         /// </summary>
+        /// <summary>Sends the archive (created in the temporary folder for a game folder) to the GameVault Uploader.</summary>
+        private async Task UploadAsync(string uploader, bool overwrite, IProgress<double> progress)
+        {
+            string archive = ViewModel.SourcePath;
+            string? temporary = null;
+            try
+            {
+                if (!ViewModel.IsArchiveSource)
+                {
+                    temporary = Path.Combine(Path.GetTempPath(), "gamevault-publish", Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(temporary);
+                    archive = Path.Combine(temporary, ViewModel.FileName);
+                    ViewModel.Status = Loc.F("Creating {0}... (large games take a while)", ViewModel.FileName);
+                    await GamePackager.CreateArchiveAsync(ViewModel.SourceFolder, archive, ViewModel.Compress, progress);
+                }
+                ViewModel.Progress = 0;
+                ViewModel.Status = Loc.F("Uploading {0} to the server...", ViewModel.FileName);
+                await GameUploader.UploadAsync(uploader, archive, ViewModel.FileName, overwrite, progress);
+            }
+            finally
+            {
+                if (temporary != null)
+                {
+                    try { Directory.Delete(temporary, true); }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
+            }
+        }
+
         private static async Task<Game?> WaitForIndexedGameAsync(string fileName, string title)
         {
             bool reindexRequested = false;

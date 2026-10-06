@@ -96,7 +96,9 @@ namespace gamevault.Models
         DownloadScheduleStart,
         DownloadScheduleEnd,
         //Admin: game publishing
-        PublishTargetDirectory
+        PublishTargetDirectory,
+        PublishUploaderUrl,
+        PublishDestination
     }
     public static class Globals
     {
