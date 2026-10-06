@@ -87,44 +87,49 @@
                         </Expander.Header>
                         <StackPanel>
                             <Grid IsVisible="{Binding FilterVisibility}">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                                    <local:PillSelector x:Name="uiFilterGameTypeSelector" SelectionType="GameType" Margin="12,0,24,0" Width="175" />
-                                    <local:PillSelector x:Name="uiFilterTagSelector" SelectionType="Tags" Margin="0,0,24,0" Width="175" />
-                                    <local:PillSelector x:Name="uiFilterGenreSelector" SelectionType="Genres" Margin="0,0,24,0" Width="175" />
-                                    <local:PillSelector x:Name="uiFilterDeveloperSelector" SelectionType="Developers" Margin="0,0,24,0" Width="175" />
-                                    <local:PillSelector x:Name="uiFilterPublisherSelector" SelectionType="Publishers" Margin="0,0,24,0" Width="175" />
-                                    <local:PillSelector x:Name="uiFilterGameStateSelector" SelectionType="GameState" IsMultiSelection="False" Margin="0,0,23,0" Width="175" />
-                                    <StackPanel Margin="0,0,60,0">
-                                        <TextBlock Text="Release Year" FontSize="15" />
-                                        <local:DateRangeSelector x:Name="uiFilterReleaseDateRangeSelector" />
+                                <StackPanel HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <local:PillSelector x:Name="uiFilterGameTypeSelector" SelectionType="GameType" Margin="12,0,24,0" Width="175" />
+                                        <local:PillSelector x:Name="uiFilterTagSelector" SelectionType="Tags" Margin="0,0,24,0" Width="175" />
+                                        <local:PillSelector x:Name="uiFilterGenreSelector" SelectionType="Genres" Margin="0,0,24,0" Width="175" />
+                                        <local:PillSelector x:Name="uiFilterDeveloperSelector" SelectionType="Developers" Margin="0,0,24,0" Width="175" />
+                                        <local:PillSelector x:Name="uiFilterPublisherSelector" SelectionType="Publishers" Margin="0,0,24,0" Width="175" />
+                                        <local:PillSelector x:Name="uiFilterGameStateSelector" SelectionType="GameState" IsMultiSelection="False" Margin="0,0,23,0" Width="175" />
+                                        <StackPanel Margin="0,0,60,0">
+                                            <TextBlock Text="Release Year" FontSize="15" />
+                                            <local:DateRangeSelector x:Name="uiFilterReleaseDateRangeSelector" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,60,0">
+                                            <TextBlock Text="Early Access" FontSize="15" />
+                                            <ToggleButton x:Name="uiFilterEarlyAccess" Classes="icon earlyAccess" Width="30" Height="30" Margin="3,3,0,0" HorizontalAlignment="Left" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Text="Bookmarks" FontSize="15" />
+                                            <ToggleButton x:Name="uiFilterBookmarks" Classes="icon bookmark" Width="30" Height="30" Margin="0,3,0,0" HorizontalAlignment="Left" />
+                                        </StackPanel>
                                     </StackPanel>
-                                    <StackPanel Margin="0,0,60,0">
-                                        <TextBlock Text="Early Access" FontSize="15" />
-                                        <ToggleButton x:Name="uiFilterEarlyAccess" Classes="icon earlyAccess" Width="30" Height="30" Margin="3,3,0,0" HorizontalAlignment="Left" />
-                                    </StackPanel>
-                                    <StackPanel Margin="0,0,40,0">
-                                        <TextBlock Text="Bookmarks" FontSize="15" />
-                                        <ToggleButton x:Name="uiFilterBookmarks" Classes="icon bookmark" Width="30" Height="30" Margin="0,3,0,0" HorizontalAlignment="Left" />
-                                    </StackPanel>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Text="Played" FontSize="15" />
-                                        <ComboBox x:Name="uiFilterPlayStatus" Width="150" Margin="0,3,0,0" ItemsSource="{Binding PlayStatusValues}" SelectedItem="{Binding SelectedPlayStatus}">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding Key}" />
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="Collection" FontSize="15" />
-                                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,3,0,0">
-                                            <ComboBox x:Name="uiFilterCollection" Width="170" ItemsSource="{Binding CollectionNames}" SelectedItem="{Binding SelectedCollection}" />
-                                            <Button Classes="wrapper" Width="30" Height="30" ToolTip.Tip="Manage collections" Click="ManageCollections_Click">
-                                                <Grid Classes="hover" Background="Transparent">
-                                                    <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                </Grid>
-                                            </Button>
+                                    <!-- Second row: filters resolved by GameVault (play data, collections) -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="12,10,0,5">
+                                        <StackPanel Margin="0,0,40,0">
+                                            <TextBlock Text="Played" FontSize="15" />
+                                            <ComboBox x:Name="uiFilterPlayStatus" Width="150" Margin="0,3,0,0" ItemsSource="{Binding PlayStatusValues}" SelectedItem="{Binding SelectedPlayStatus}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Key}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Text="Collection" FontSize="15" />
+                                            <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,3,0,0">
+                                                <ComboBox x:Name="uiFilterCollection" Width="170" ItemsSource="{Binding CollectionNames}" SelectedItem="{Binding SelectedCollection}" />
+                                                <Button Classes="wrapper" Width="30" Height="30" ToolTip.Tip="Manage collections" Click="ManageCollections_Click">
+                                                    <Grid Classes="hover" Background="Transparent">
+                                                        <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                </Button>
+                                            </StackPanel>
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
@@ -152,7 +157,12 @@
                                     <!-- Server Error -->
                                     <StackPanel ZIndex="1" HorizontalAlignment="Center" IsVisible="{Binding !CanLoadServerGames}">
                                         <Image Source="/Resources/Images/install_NoGameFound.png" Height="190" />
-                                        <TextBlock Text="Failed to load Library" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0" />
+                                        <TextBlock Text="Failed to load Library" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0"
+                                                   IsVisible="{Binding !$parent[Window].DataContext.IsOffline}" />
+                                        <TextBlock Text="You are offline" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0"
+                                                   IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
+                                        <TextBlock Text="Installed games can still be played: play time and cloud saves are sent when the server is back." FontSize="12" HorizontalAlignment="Center" Opacity="0.8" Margin="0,5,0,0"
+                                                   IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
                                         <Button Classes="link" HorizontalAlignment="Center" FontSize="10" Margin="0,5,0,10" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#unable-to-connect-to-server--500-internal-server-error" Click="Hyperlink_RequestNavigate">
                                             <TextBlock Text="Troubleshooting" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
                                         </Button>

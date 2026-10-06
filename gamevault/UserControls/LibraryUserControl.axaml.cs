@@ -61,6 +61,7 @@ namespace gamevault.UserControls
             uiFilterSortBy.SelectedIndex = sortByIndex;
             uiFilterOrderBy.IsCheckedChanged += OrderBy_Changed;
             uiFilterSortBy.SelectionChanged += SelectedGameFilterSortBy_SelectionChanged;
+            Loaded += (_, _) => Dispatcher.UIThread.Post(() => sortSelectionReady = true, DispatcherPriority.Background);
             foreach (var selector in new[] { uiFilterGameTypeSelector, uiFilterTagSelector, uiFilterGenreSelector, uiFilterDeveloperSelector, uiFilterPublisherSelector, uiFilterGameStateSelector })
                 selector.EntriesUpdated += FilterUpdated;
             uiFilterReleaseDateRangeSelector.EntriesUpdated += FilterUpdated;
@@ -380,11 +381,13 @@ namespace gamevault.UserControls
             }
             return filter;
         }
+        private bool sortSelectionReady;
         private void SelectedGameFilterSortBy_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
-            // The first change is the initial selection made in the constructor.
-            ((ComboBox)sender!).SelectionChanged -= SelectedGameFilterSortBy_SelectionChanged;
-            ((ComboBox)sender!).SelectionChanged += FilterUpdated;
+            // Selections made while the page is built (restored sort, binding) do not search;
+            // every change made by the user does.
+            if (sortSelectionReady)
+                FilterUpdated(sender, e);
         }
         private async void FilterUpdated(object? sender, EventArgs e)
         {

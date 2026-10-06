@@ -63,6 +63,8 @@ namespace gamevault.Helper
         {
             return m_LoginMessage;
         }
+        /// <summary>Raised when the server can be reached again after offline mode.</summary>
+        public event EventHandler? BackOnline;
         public void SwitchToOfflineMode()
         {
             MainWindowViewModel.Instance.IsOffline = true;
@@ -274,6 +276,7 @@ namespace gamevault.Helper
                     {
                         MainWindowViewModel.Instance.IsOffline = false;
                         MainWindowViewModel.Instance.AppBarText = "Connected to the server. You’re back online.";
+                        BackOnline?.Invoke(this, EventArgs.Empty);
                     }
                 }
                 else

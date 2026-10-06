@@ -87,6 +87,9 @@ namespace gamevault.Helper
                 else
                 {
                     SaveToOfflineProgress(gamesToCountUp);
+                    // Games closed while offline are remembered and their saves uploaded once back online
+                    try { await SaveGameHelper.Instance.BackupSaveGamesFromIds(gamesToCountUp); }
+                    catch (Exception ex) { Log.Ignored(ex); }
                 }
             });
         }
@@ -192,6 +195,19 @@ namespace gamevault.Helper
             return arg;
         }
 
+        /// <summary>Sends the play time recorded offline right away (instead of at the next minute).</summary>
+        public void SyncNow()
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    if (LoginManager.Instance.IsLoggedIn() && AnyOfflineProgressToSend())
+                        await SendOfflineProgess();
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+            });
+        }
         private bool AnyOfflineProgressToSend()
         {
             try

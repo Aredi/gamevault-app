@@ -1,3 +1,4 @@
+using gamevault.Helper.Integrations;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -54,6 +55,32 @@ namespace gamevault.Windows
             });
             PipeServiceHandler.Instance.IsReadyForCommands = true;
             NewGamesNotifier.Start();
+#if DEBUG
+            UiDump.StartIfRequested();
+#endif
+            // Savegames of games closed offline in a previous session
+            Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15));
+                try { await SaveGameHelper.Instance.UploadPendingSaveGamesAsync(); }
+                catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+            });
+            LoginManager.Instance.BackOnline += async (_, _) =>
+            {
+                // Everything that waited for the server: library, offline play time and savegames, new games
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        await MainWindowViewModel.Instance.Library.LoadLibrary();
+                        await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();
+                    }
+                    catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+                });
+                GameTimeTracker?.SyncNow();
+                await SaveGameHelper.Instance.UploadPendingSaveGamesAsync();
+                await NewGamesNotifier.CheckAsync();
+            };
         }
 
         private void Navigation_SelectionChanged(object? sender, SelectionChangedEventArgs e)

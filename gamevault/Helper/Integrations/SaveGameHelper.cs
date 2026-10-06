@@ -1,3 +1,4 @@
+using GameVault.Core;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -160,8 +161,10 @@ namespace gamevault.Helper.Integrations
                 }
                 if (!LoginManager.Instance.IsLoggedIn())
                 {
-                    MainWindowViewModel.Instance.AppBarText = CloudSaveStatus.Offline;
-                    break;
+                    // Uploaded when the server is back (UploadPendingSaveGamesAsync)
+                    AddPendingBackup(removedId);
+                    MainWindowViewModel.Instance.AppBarText = $"{CloudSaveStatus.Offline} The savegame is uploaded when you are back online.";
+                    continue;
                 }
                 try
                 {
@@ -182,6 +185,40 @@ namespace gamevault.Helper.Integrations
             // Remove IDs that are no longer in the new list
             runningGameIds = runningGameIds.Intersect(gameIds).ToList();
         }
+        #region Offline backups
+        private static string PendingBackupsFile => Path.Combine(LoginManager.Instance.GetUserProfile().CacheDir, "pendingsaves");
+
+        private static void AddPendingBackup(int gameId)
+        {
+            try { Preferences.Set(gameId.ToString(), DateTime.Now.ToString("o"), PendingBackupsFile); }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>Backs up and uploads the saves of games that were closed while offline.</summary>
+        internal async Task UploadPendingSaveGamesAsync()
+        {
+            if (!SettingsViewModel.Instance.CloudSaves || !LoginManager.Instance.IsLoggedIn() || !File.Exists(PendingBackupsFile))
+                return;
+            foreach (string line in File.ReadAllLines(PendingBackupsFile))
+            {
+                string key = line.Split('=')[0];
+                if (!int.TryParse(key, out int gameId))
+                    continue;
+                if (runningGameIds.Contains(gameId))
+                    continue;// still running: backed up when it closes
+                try
+                {
+                    MainWindowViewModel.Instance.AppBarText = "Uploading savegames made offline...";
+                    string status = await BackupSaveGame(gameId);
+                    Log.Info($"Offline savegame of game {gameId}: {status}");
+                    MainWindowViewModel.Instance.AppBarText = status;
+                    if (status != CloudSaveStatus.BackupUploadFailed)
+                        Preferences.DeleteKey(key, PendingBackupsFile);
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+        }
+        #endregion
         internal async Task<string> BackupSaveGame(int gameId)
         {
             if (!SettingsViewModel.Instance.CloudSaves)
@@ -380,8 +417,9 @@ namespace gamevault.Helper.Integrations
                     await WebHelper.UploadFileAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/savefiles/user/{LoginManager.Instance.GetCurrentUser()!.ID}/game/{gameId}", memoryStream, "x.zip", new List<RequestHeader> { new RequestHeader() { Name = "X-Installation-Id", Value = installationId } });
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Error(ex, $"Uploading the savegame of game {gameId} failed");
                 return false;
             }
             return true;
