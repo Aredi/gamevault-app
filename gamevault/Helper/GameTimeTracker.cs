@@ -32,66 +32,88 @@ namespace gamevault.Helper
         {
             m_Timer?.Stop();
         }
+        private int tracking;
         private void TimerCallback(object sender, ElapsedEventArgs e)
         {
+            // A slow server must not make two runs count the same minute twice
+            if (System.Threading.Interlocked.Exchange(ref tracking, 1) == 1)
+                return;
             Task.Run(async () =>
             {
-                //string installationPath = Path.Combine(SettingsViewModel.Instance.RootPath, "GameVault\\Installations");
+                try { await TrackRunningGamesAsync(); }
+                catch (Exception ex) { Log.Error(ex, "Play time tracking"); }
+                finally { tracking = 0; }
+            });
+        }
+        private async Task TrackRunningGamesAsync()
+        {
+            //string installationPath = Path.Combine(SettingsViewModel.Instance.RootPath, "GameVault\\Installations");
 
-                if (SettingsViewModel.Instance.RootDirectories.Count == 0)
-                    return;
+            if (SettingsViewModel.Instance.RootDirectories.Count == 0)
+                return;
 
-                List<string> allDirectoriesFromRootDirectories = new List<string>();
-                foreach (DirectoryEntry dirEntry in SettingsViewModel.Instance.RootDirectories)
+            List<string> allDirectoriesFromRootDirectories = new List<string>();
+            foreach (DirectoryEntry dirEntry in SettingsViewModel.Instance.RootDirectories)
+            {
+                if (Directory.Exists(Path.Combine(dirEntry.Uri, "GameVault", "Installations")))
+                    allDirectoriesFromRootDirectories.AddRange(Directory.GetDirectories(Path.Combine(dirEntry.Uri, "GameVault", "Installations")));
+            }
+            Dictionary<int, string> foundGames = new Dictionary<int, string>();
+
+            foreach (string dir in allDirectoriesFromRootDirectories)
+            {
+                var dirInf = new DirectoryInfo(dir);
+                if (dirInf.GetFiles().Length != 0 || dirInf.GetDirectories().Length != 0)
                 {
-                    if (Directory.Exists(Path.Combine(dirEntry.Uri, "GameVault", "Installations")))
-                        allDirectoriesFromRootDirectories.AddRange(Directory.GetDirectories(Path.Combine(dirEntry.Uri, "GameVault", "Installations")));
+                    int id = GetGameIdByDirectory(dir);
+                    if (id == -1) continue;
+                    if (foundGames.Where(x => x.Key == id).Count() > 0)
+                        continue;
+                    foundGames.Add(id, dir);
                 }
-                Dictionary<int, string> foundGames = new Dictionary<int, string>();
-
-                foreach (string dir in allDirectoriesFromRootDirectories)
+            }
+            List<int> gamesToCountUp = OperatingSystem.IsWindows()
+                ? FindRunningGamesWindows(foundGames)
+                : FindRunningGamesLinux(foundGames);
+            if (LoginManager.Instance.IsLoggedIn())
+            {
+                try
                 {
-                    var dirInf = new DirectoryInfo(dir);
-                    if (dirInf.GetFiles().Length != 0 || dirInf.GetDirectories().Length != 0)
+                    if (AnyOfflineProgressToSend())
                     {
-                        int id = GetGameIdByDirectory(dir);
-                        if (id == -1) continue;
-                        if (foundGames.Where(x => x.Key == id).Count() > 0)
-                            continue;
-                        foundGames.Add(id, dir);
+                        await SendOfflineProgess();
                     }
                 }
-                List<int> gamesToCountUp = OperatingSystem.IsWindows()
-                    ? FindRunningGamesWindows(foundGames)
-                    : FindRunningGamesLinux(foundGames);
-                if (LoginManager.Instance.IsLoggedIn())
+                catch (Exception ex) { Log.Ignored(ex); }
+                // Each minute is counted once: on the server, or offline when sending it failed
+                var notSent = new List<int>();
+                foreach (int gameid in gamesToCountUp)
                 {
                     try
                     {
-                        if (AnyOfflineProgressToSend())
-                        {
-                            await SendOfflineProgess();
-                        }
-                        foreach (int gameid in gamesToCountUp)
-                        {
-                            await WebHelper.PutAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/progresses/user/{LoginManager.Instance.GetCurrentUser().ID}/game/{gameid}/increment", string.Empty);
-                        }
-                        DiscordHelper.Instance.SyncGameWithDiscordPresence(gamesToCountUp, foundGames);
-                        await SaveGameHelper.Instance.BackupSaveGamesFromIds(gamesToCountUp);//Check which games are were closed and backup them
+                        await WebHelper.PutAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/progresses/user/{LoginManager.Instance.GetCurrentUser().ID}/game/{gameid}/increment", string.Empty);
                     }
                     catch (Exception ex)
                     {
-                        SaveToOfflineProgress(gamesToCountUp);
+                        Log.Ignored(ex);
+                        notSent.Add(gameid);
                     }
                 }
-                else
+                SaveToOfflineProgress(notSent);
+                try
                 {
-                    SaveToOfflineProgress(gamesToCountUp);
-                    // Games closed while offline are remembered and their saves uploaded once back online
-                    try { await SaveGameHelper.Instance.BackupSaveGamesFromIds(gamesToCountUp); }
-                    catch (Exception ex) { Log.Ignored(ex); }
+                    DiscordHelper.Instance.SyncGameWithDiscordPresence(gamesToCountUp, foundGames);
+                    await SaveGameHelper.Instance.BackupSaveGamesFromIds(gamesToCountUp);//Check which games are were closed and backup them
                 }
-            });
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+            else
+            {
+                SaveToOfflineProgress(gamesToCountUp);
+                // Games closed while offline are remembered and their saves uploaded once back online
+                try { await SaveGameHelper.Instance.BackupSaveGamesFromIds(gamesToCountUp); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
         }
         private List<int> FindRunningGamesWindows(Dictionary<int, string> foundGames)
         {
@@ -283,7 +305,10 @@ namespace gamevault.Helper
         }
         private bool ContainsValueFromIgnoreList(string value)
         {
-            return SettingsViewModel.Instance.IgnoreList.Any(x => x.Contains(value, StringComparison.OrdinalIgnoreCase));
+            // An empty name would match every entry
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+            return SettingsViewModel.Instance.IgnoreList?.Any(x => x.Contains(value, StringComparison.OrdinalIgnoreCase)) == true;
         }
     }
 }

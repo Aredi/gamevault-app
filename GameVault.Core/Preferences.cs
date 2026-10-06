@@ -48,6 +48,8 @@ public class Preferences
 
     public static void Set(string key, string value, string file, bool useEncryption = false)
     {
+        // One line per key: a line break would cut the value and add a bogus line
+        value = (value ?? "").Replace("\r", " ").Replace("\n", " ");
         if (useEncryption)
             value = Protect(value);
 
@@ -60,7 +62,7 @@ public class Preferences
                 lines[index] = $"{key}={value}";
             else
                 lines.Add($"{key}={value}");
-            File.WriteAllLines(file, lines);
+            WriteLines(file, lines);
         }
     }
 
@@ -73,7 +75,7 @@ public class Preferences
             PrepareFile(file, false);
             var lines = new List<string>(File.ReadAllLines(file));
             if (lines.RemoveAll(l => IsKeyLine(l, key)) > 0)
-                File.WriteAllLines(file, lines);
+                WriteLines(file, lines);
         }
     }
 
@@ -104,6 +106,19 @@ public class Preferences
         if (!OperatingSystem.IsWindows())
             return value;
         return Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(value), null, DataProtectionScope.CurrentUser));
+    }
+
+    /// <summary>
+    /// Written next to the file and renamed over it: a crash or a full disk while writing never leaves a
+    /// truncated settings file. The permissions of the old file (600 for secrets) are kept.
+    /// </summary>
+    private static void WriteLines(string file, List<string> lines)
+    {
+        string temp = file + ".tmp";
+        File.WriteAllLines(temp, lines);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(temp, File.GetUnixFileMode(file));
+        File.Move(temp, file, true);
     }
 
     private static void PrepareFile(string file, bool holdsSecrets)

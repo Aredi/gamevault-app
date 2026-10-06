@@ -77,7 +77,14 @@ namespace gamevault.Helper.Platform
             return DriveInfo.GetDrives()
                 .Where(d =>
                 {
-                    try { return d.IsReady && fullPath.StartsWith(d.RootDirectory.FullName, comparison); }
+                    try
+                    {
+                        // "/mnt/pool" must not match "/mnt/pool2/games" ("/" and "C:\" keep their separator)
+                        string root = d.RootDirectory.FullName;
+                        if (!root.EndsWith(Path.DirectorySeparatorChar))
+                            root += Path.DirectorySeparatorChar;
+                        return d.IsReady && (fullPath + Path.DirectorySeparatorChar).StartsWith(root, comparison);
+                    }
                     catch { return false; }
                 })
                 .OrderByDescending(d => d.RootDirectory.FullName.Length)

@@ -75,7 +75,7 @@ namespace gamevault.UserControls
                  {
                      if (LoginManager.Instance.IsLoggedIn())
                      {
-                         string gameList = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games?filter.id=$in:{string.Join(',', foundPathsById.Keys)}");
+                         string gameList = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games?filter.id=$in:{string.Join(',', foundPathsById.Keys)}&limit=-1");
                          Dictionary<Game, string> foundGames = new Dictionary<Game, string>();
                          foreach (Game game in JsonSerializer.Deserialize<PaginatedData<Game>>(gameList)?.Data)
                          {
@@ -157,6 +157,12 @@ namespace gamevault.UserControls
                     return;
                 }
             }
+        }
+        /// <summary>Pauses the running downloads; they keep their progress and can be resumed at the next start.</summary>
+        public void PauseAllDownloads()
+        {
+            foreach (var download in DownloadsViewModel.Instance.DownloadedGames.ToList())
+                download.PauseDownload();
         }
         public void CancelAllDownloads()
         {

@@ -52,8 +52,7 @@ namespace gamevault.UserControls
             ViewModel.ExtractionUIVisibility = false;
             ViewModel.DownloadFailedVisibility = false;
 
-            // "/" (and "\" on Windows) can't appear in a folder name
-            string folderName = $"({ViewModel.Game.ID}){ViewModel.Game.Title}".Replace('/', '_').Replace('\\', '_');
+            string folderName = GameFolderName(ViewModel.Game);
             m_DownloadPath = Path.Combine(rootDirectory, "GameVault", "Downloads", folderName);
             ViewModel.InstallPath = Path.Combine(rootDirectory, "GameVault", "Installations", folderName);
             sevenZipHelper = new SevenZipHelper();
@@ -85,6 +84,18 @@ namespace gamevault.UserControls
                     ViewModel.InstallationStepperProgress = 0;
                 }
             }
+        }
+        /// <summary>
+        /// "(42)Title" with the characters the file system refuses replaced: only "/" on Linux, also ":*?" etc. on
+        /// Windows (server titles come from file names on a Linux server, which may contain them).
+        /// </summary>
+        internal static string GameFolderName(Game game)
+        {
+            var name = new System.Text.StringBuilder($"({game.ID}){game.Title}");
+            foreach (char c in Path.GetInvalidFileNameChars().Append('/').Append('\\'))
+                name.Replace(c, '_');
+            // Windows drops trailing dots and spaces, the folder would not be found again
+            return OperatingSystem.IsWindows() ? name.ToString().TrimEnd('.', ' ') : name.ToString();
         }
         public void Refresh(Game game)
         {
@@ -131,6 +142,8 @@ namespace gamevault.UserControls
             return false;
         }
         public bool IsPaused() => ViewModel.IsDownloadPaused;
+        /// <summary>Downloading, extracting or installing: its files must not be touched.</summary>
+        public bool IsBusy() => IsDownloadActive || ViewModel.ExtractionUIVisibility || uiProgressRingInstall.IsActive;
 
         #region Install and play
         /// <summary>"Install &amp; Play": extraction, installation and the first start follow the download by themselves.</summary>
@@ -297,6 +310,9 @@ namespace gamevault.UserControls
         private async Task DownloadGame(bool tryResume = false)
         {
             IsDownloadActive = true;
+            // The completion is detected when the progress reaches 100
+            if (!tryResume)
+                ViewModel.GameDownloadProgress = 0;
             ViewModel.State = "Downloading...";
             ViewModel.DownloadUIVisibility = true;
             ViewModel.DownloadFailedVisibility = false;
@@ -735,6 +751,7 @@ namespace gamevault.UserControls
             ViewModel.State = "Extracting...";
             ViewModel.ExtractionUIVisibility = true;
             downloadSpeedCalc = new DownloadSpeedCalculator();//Reuse download speed calculator as extraction speed calculator and set new instance to reset it
+            sevenZipHelper.Process -= ExtractionProgress;// once, also after a re-extraction
             sevenZipHelper.Process += ExtractionProgress;
             startTime = DateTime.Now;
             int result;
@@ -751,7 +768,7 @@ namespace gamevault.UserControls
                 string extractionPassword = Preferences.Get(AppConfigKey.ExtractionPassword, LoginManager.Instance.GetUserProfile().UserConfigFile, true);
                 if (string.IsNullOrEmpty(extractionPassword))
                 {
-                    extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Exctraction Message", "Your Archive reqires a Password to extract");
+                    extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", "This archive requires a password to extract");
                     result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
                 }
                 else
@@ -759,7 +776,7 @@ namespace gamevault.UserControls
                     result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
                     if (result == 69)//Error code for wrong password
                     {
-                        extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Exctraction Message", "Your Archive reqires a Password to extract");
+                        extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", "This archive requires a password to extract");
                         result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
                     }
                 }
@@ -884,7 +901,9 @@ namespace gamevault.UserControls
                 if (!string.IsNullOrWhiteSpace(ViewModel.Game?.Metadata?.InstallerExecutable))
                 {
                     string wanted = ViewModel.Game?.Metadata?.InstallerExecutable.Replace('\\', '/') ?? "";
-                    var entry = allExecutables.Select((kv, index) => new { kv.Key, kv.Value, Index = index }).FirstOrDefault(kv => kv.Value.Replace('\\', '/').Contains(wanted, StringComparison.OrdinalIgnoreCase));
+                    var candidates = allExecutables.Select((kv, index) => new { kv.Key, kv.Value, Index = index }).ToList();
+                    var entry = candidates.FirstOrDefault(kv => kv.Value.Replace('\\', '/').EndsWith("/" + wanted.TrimStart('/'), StringComparison.OrdinalIgnoreCase))
+                        ?? candidates.FirstOrDefault(kv => kv.Value.Replace('\\', '/').Contains(wanted, StringComparison.OrdinalIgnoreCase));
                     if (entry != null)
                         uiCbSetupExecutable.SelectedIndex = entry.Index;
                 }
@@ -1077,9 +1096,11 @@ namespace gamevault.UserControls
                 try
                 {
                     string extension = Path.GetExtension(ViewModel.Game?.Metadata?.LaunchExecutable);
-                    var files = Directory.GetFiles(ViewModel.InstallPath, $"*{extension}", SearchOption.AllDirectories);
-                    string wantedExecutable = ViewModel.Game?.Metadata?.LaunchExecutable.Replace('\\', '/') ?? "";
-                    var targetFile = files.FirstOrDefault(file => file.Replace('\\', '/').Contains(wantedExecutable, StringComparison.OrdinalIgnoreCase));
+                    var files = Directory.GetFiles(ViewModel.InstallPath, $"*{extension}", new EnumerationOptions { RecurseSubdirectories = true, MatchCasing = MatchCasing.CaseInsensitive });
+                    string wantedExecutable = ViewModel.Game?.Metadata?.LaunchExecutable.Replace('\\', '/').TrimStart('/') ?? "";
+                    // "Game.exe" must not pick "MyGame.exe": a whole path end wins over a partial match
+                    var targetFile = files.FirstOrDefault(file => file.Replace('\\', '/').EndsWith("/" + wantedExecutable, StringComparison.OrdinalIgnoreCase))
+                        ?? files.FirstOrDefault(file => file.Replace('\\', '/').Contains(wantedExecutable, StringComparison.OrdinalIgnoreCase));
                     if (targetFile != null)
                     {
                         Preferences.Set(AppConfigKey.Executable, targetFile, Path.Combine(ViewModel.InstallPath, "gamevault-exec"));

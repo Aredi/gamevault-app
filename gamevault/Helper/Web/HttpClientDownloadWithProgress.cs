@@ -26,6 +26,8 @@ namespace gamevault.Helper
         private long ResumePosition = -1;
         private long PreResumeSize = -1;
         private DateTime LastTime;
+        /// <summary>Content-Length is exact; X-Download-Size (streamed folders) may only be an estimate.</summary>
+        private bool ExactSize;
 
 
         public delegate void ProgressChangedHandler(long totalFileSize, long currentBytesDownloaded, long totalBytesDownloaded, double? progressPercentage, long resumePosition);
@@ -81,7 +83,8 @@ namespace gamevault.Helper
         {
             try
             {
-                FileName = response.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
+                // A file name, never a path (the header comes from the server)
+                FileName = Path.GetFileName(response.Content.Headers.ContentDisposition.FileName.Replace("\"", ""));
                 if (string.IsNullOrEmpty(FileName))
                 {
                     throw new Exception("Missing response header (Content-Disposition)");
@@ -91,7 +94,15 @@ namespace gamevault.Helper
             {
                 FileName = FallbackFileName;
             }
+            if (ResumePosition != -1 && response.StatusCode != System.Net.HttpStatusCode.PartialContent)
+            {
+                // The server ignored the Range header and sends the whole file: start again instead of appending it
+                Log.Info($"Resume of {FileName} not supported by the server, downloading again");
+                ResumePosition = -1;
+                PreResumeSize = -1;
+            }
             var responseContentLength = response.Content.Headers.ContentLength;
+            ExactSize = responseContentLength is > 0;
             if (responseContentLength == null || responseContentLength == 0)
             {
                 if (response.Headers.TryGetValues("X-Download-Size", out var headerValues) && long.TryParse(headerValues.First(), out long length))
@@ -149,8 +160,16 @@ namespace gamevault.Helper
                         if (bytesRead == 0)
                         {
                             isMoreToRead = false;
-                            TriggerProgressChanged(currentDownloadSize, currentBytesRead, fileStream.Position);
+                            long position = fileStream.Position;
+                            long expected = PreResumeSize == -1 ? currentDownloadSize : PreResumeSize;
+                            if (ExactSize && position < expected)
+                            {
+                                // The connection ended early: keep the checkpoint so the retry resumes here
+                                throw new IOException($"The connection was closed before the download finished ({position} of {expected} bytes)");
+                            }
+                            // Closed before the completion is reported, so the extraction finds the file ready
                             fileStream.Close();
+                            TriggerProgressChanged(currentDownloadSize, currentBytesRead, position, completed: true);
                             continue;
                         }
 
@@ -169,8 +188,9 @@ namespace gamevault.Helper
                 }
                 catch (Exception ex)//On exception try to save the download progress and forward the exception
                 {
-                    if (currentBytesRead > 0)
+                    if (currentBytesRead > 0 && fileStream.CanSeek)
                     {
+                        fileStream.Flush();
                         Preferences.Set(AppConfigKey.DownloadProgress, $"{fileStream.Position};{(PreResumeSize == -1 ? currentDownloadSize : PreResumeSize)}", Path.Combine(DestinationFolderPath, "gamevault-metadata"));
                     }
                     throw;
@@ -178,13 +198,14 @@ namespace gamevault.Helper
             }
         }
 
-        private void TriggerProgressChanged(long totalDownloadSize, long currentBytesRead, long totalBytesRead)
+        private void TriggerProgressChanged(long totalDownloadSize, long currentBytesRead, long totalBytesRead, bool completed = false)
         {
             if (ProgressChanged == null)
                 return;
 
             totalDownloadSize = PreResumeSize == -1 ? totalDownloadSize : PreResumeSize;
-            double progressPercentage = (double)totalBytesRead / totalDownloadSize * 100;
+            // Exactly 100 marks the completion: an estimated size must neither stop it at 99 nor push it over 100
+            double progressPercentage = completed ? 100 : Math.Min(99.9, (double)totalBytesRead / totalDownloadSize * 100);
             ProgressChanged(totalDownloadSize, currentBytesRead, totalBytesRead, progressPercentage, ResumePosition);
         }
         public void Cancel()

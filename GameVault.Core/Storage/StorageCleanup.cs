@@ -43,6 +43,8 @@ namespace GameVault.Core.Storage
         public static List<CleanupCandidate> Scan(CleanupInputs inputs)
         {
             var result = new List<CleanupCandidate>();
+            var installedIds = new HashSet<int>(inputs.InstalledGameIds);
+            installedIds.UnionWith(FindInstallations(inputs.RootDirectories).Select(i => i.Id));
             foreach (string root in inputs.RootDirectories)
             {
                 string downloads = Path.Combine(root, "GameVault", "Downloads");
@@ -57,7 +59,7 @@ namespace GameVault.Core.Storage
                     long size = DirectorySize(dir);
                     if (size == 0)
                         continue;
-                    var kind = inputs.InstalledGameIds.Contains(id) ? CleanupKind.InstalledGameArchive : CleanupKind.NotInstalledDownload;
+                    var kind = installedIds.Contains(id) ? CleanupKind.InstalledGameArchive : CleanupKind.NotInstalledDownload;
                     result.Add(new CleanupCandidate(kind, match.Groups[2].Value, dir, size));
                 }
             }
@@ -65,7 +67,7 @@ namespace GameVault.Core.Storage
             {
                 foreach (string dir in SubDirectories(inputs.PrefixesDirectory))
                 {
-                    if (int.TryParse(Path.GetFileName(dir), out int id) && !inputs.InstalledGameIds.Contains(id))
+                    if (int.TryParse(Path.GetFileName(dir), out int id) && !installedIds.Contains(id))
                         result.Add(new CleanupCandidate(CleanupKind.OrphanPrefix, $"Game #{id}", dir, DirectorySize(dir)));
                 }
             }
@@ -80,6 +82,26 @@ namespace GameVault.Core.Storage
                 }
             }
             return result.OrderBy(c => c.Kind).ThenByDescending(c => c.Size).ToList();
+        }
+
+        /// <summary>Game installations on disk: non-empty "(id)Title" folders in GameVault/Installations of each root.</summary>
+        public static List<(int Id, string Directory)> FindInstallations(IEnumerable<string> rootDirectories)
+        {
+            var result = new List<(int, string)>();
+            foreach (string root in rootDirectories)
+            {
+                foreach (string dir in SubDirectories(Path.Combine(root, "GameVault", "Installations")))
+                {
+                    Match match = GameFolder.Match(Path.GetFileName(dir));
+                    try
+                    {
+                        if (match.Success && Directory.EnumerateFileSystemEntries(dir).Any())
+                            result.Add((int.Parse(match.Groups[1].Value), dir));
+                    }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
+            }
+            return result;
         }
 
         public static long DirectorySize(string directory)

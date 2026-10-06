@@ -117,7 +117,8 @@ namespace gamevault.Helper
             m_LoginState = state;
             return state;
         }
-        public async Task<LoginState> SSOLogin(UserProfile profile)
+        /// <param name="interactive">False for background reconnects: only the saved session is tried, no sign-in window opens.</param>
+        public async Task<LoginState> SSOLogin(UserProfile profile, bool interactive = true)
         {
             LoginState state = LoginState.Success;
             bool sessionTokenReuseFailed = false;
@@ -135,6 +136,11 @@ namespace gamevault.Helper
             catch (Exception ex) { sessionTokenReuseFailed = true; }
 
 
+            if (sessionTokenReuseFailed && !interactive)
+            {
+                m_LoginState = LoginState.Error;
+                return LoginState.Error;
+            }
             if (sessionTokenReuseFailed)
             {
                 AuthResponse? authResponse = await SsoAuthenticator.AuthenticateAsync(profile.ServerUrl, profile.WebConfigDir);
@@ -254,8 +260,12 @@ namespace gamevault.Helper
                 onlineTimer.Stop();
             }
         }
+        private int checkingOnlineStatus;
         private async void CheckOnlineStatus(object sender, EventArgs e)
         {
+            // A check can take longer than the 30 s interval (connection timeouts)
+            if (System.Threading.Interlocked.Exchange(ref checkingOnlineStatus, 1) == 1)
+                return;
             try
             {
                 if (!IsLoggedIn())
@@ -269,7 +279,7 @@ namespace gamevault.Helper
                     }
                     else
                     {
-                        if (await SSOLogin(GetUserProfile()) != LoginState.Success)
+                        if (await SSOLogin(GetUserProfile(), interactive: false) != LoginState.Success)
                             SwitchToOfflineMode();
                     }
                     if (IsLoggedIn())
@@ -287,7 +297,12 @@ namespace gamevault.Helper
             }
             catch (Exception ex)
             {
+                Log.Ignored(ex);
                 SwitchToOfflineMode();
+            }
+            finally
+            {
+                checkingOnlineStatus = 0;
             }
         }
     }

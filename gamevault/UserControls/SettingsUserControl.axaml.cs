@@ -619,15 +619,20 @@ namespace gamevault.UserControls
             ViewModel.StorageCleanupSummary = "Analyzing...";
             try
             {
-                var installed = InstallViewModel.Instance.InstalledGames.ToList();
-                var installedIds = installed.Select(g => g.Key.ID).ToHashSet();
+                // The installation folders on disk count, not only the list shown: it is empty when the server
+                // could not be reached at startup, and nothing of an installed game may be offered then
+                var installed = InstallViewModel.Instance.InstalledGames.Select(g => (g.Key.ID, Directory: g.Value)).ToList();
+                installed.AddRange(GameVault.Core.Storage.StorageCleanup.FindInstallations(ViewModel.RootDirectories.Select(r => r.Uri))
+                    .Where(found => installed.All(i => i.ID != found.Id))
+                    .Select(found => (found.Id, found.Directory)));
+                var installedIds = installed.Select(g => g.ID).ToHashSet();
                 var activeDownloads = DownloadsViewModel.Instance.DownloadedGames
-                    .Where(d => d.IsDownloading() || DownloadQueue.IsWaiting(d) || d.IsPaused())
+                    .Where(d => d.IsBusy() || DownloadQueue.IsWaiting(d) || d.IsPaused() || d.PlayWhenInstalled)
                     .Select(d => d.GetGameId()).ToHashSet();
                 var usedTools = new HashSet<string>();
                 if (OperatingSystem.IsLinux())
                 {
-                    foreach (string id in installed.Select(g => GameCompatibility.ForInstallation(g.Value).ToolId).Append(CompatibilitySettings.DefaultToolId))
+                    foreach (string id in installed.Select(g => GameCompatibility.ForInstallation(g.Directory).ToolId).Append(CompatibilitySettings.DefaultToolId))
                     {
                         if (CompatibilityToolId.IsProton(id, out string dir) || CompatibilityToolId.IsWineBuild(id, out dir))
                             usedTools.Add(dir);

@@ -74,9 +74,10 @@ namespace gamevault.Helper
                 WorkingDirectory = Path.GetDirectoryName(fileName),
                 UseShellExecute = false,
             };
-            if (Path.GetExtension(fileName).Equals(".sh", StringComparison.OrdinalIgnoreCase))
+            if (Path.GetExtension(fileName).Equals(".sh", StringComparison.OrdinalIgnoreCase) && !HasShebang(fileName))
             {
-                info.FileName = "/bin/sh";
+                // Without "#!" the kernel can't start it; most launch scripts of games are bash scripts
+                info.FileName = File.Exists("/bin/bash") ? "/bin/bash" : "/bin/sh";
                 info.ArgumentList.Add(fileName);
             }
             else
@@ -86,6 +87,21 @@ namespace gamevault.Helper
             foreach (string arg in SplitArguments(parameter))
                 info.ArgumentList.Add(arg);
             return info;
+        }
+
+        /// <summary>The script names its interpreter ("#!/bin/bash"): started directly, it gets the right one.</summary>
+        private static bool HasShebang(string file)
+        {
+            try
+            {
+                using var stream = File.OpenRead(file);
+                return stream.ReadByte() == '#' && stream.ReadByte() == '!';
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return false;
+            }
         }
 
         /// <summary>

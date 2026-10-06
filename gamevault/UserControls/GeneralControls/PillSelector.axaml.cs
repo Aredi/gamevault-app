@@ -91,7 +91,8 @@ namespace gamevault.UserControls
             if (SelectionType == Selection.GameState)
                 return string.Join(",", selectedEntries.Select(o => o.OriginName));
 
-            return string.Join(",", selectedEntries.Select(o => o.Name));
+            // Names are sent in the query string: "Rock & Roll" or "C#" must not break it
+            return string.Join(",", selectedEntries.Select(o => Uri.EscapeDataString(o.Name)));
         }
         public bool HasEntries()
         {
@@ -153,10 +154,10 @@ namespace gamevault.UserControls
                 string url = string.Empty;
                 url = SelectionType switch
                 {
-                    Selection.Tags => $"{SettingsViewModel.Instance.ServerUrl}/api/tags?search={debounceTimer.Data}&limit=25",
-                    Selection.Genres => $"{SettingsViewModel.Instance.ServerUrl}/api/genres?search={debounceTimer.Data}&limit=25",
-                    Selection.Developers => $"{SettingsViewModel.Instance.ServerUrl}/api/developers?search={debounceTimer.Data}&limit=25",
-                    Selection.Publishers => $"{SettingsViewModel.Instance.ServerUrl}/api/publishers?search={debounceTimer.Data}&limit=25"
+                    Selection.Tags => $"{SettingsViewModel.Instance.ServerUrl}/api/tags?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25",
+                    Selection.Genres => $"{SettingsViewModel.Instance.ServerUrl}/api/genres?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25",
+                    Selection.Developers => $"{SettingsViewModel.Instance.ServerUrl}/api/developers?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25",
+                    Selection.Publishers => $"{SettingsViewModel.Instance.ServerUrl}/api/publishers?search={Uri.EscapeDataString(debounceTimer.Data ?? "")}&limit=25"
                 };
 
                 Selection selection = SelectionType;

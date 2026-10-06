@@ -88,34 +88,42 @@ namespace gamevault.Helper.Integrations
                     {
                         string tempFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                         Directory.CreateDirectory(tempFolder);
-                        string archive = Path.Combine(tempFolder, "backup.zip");
-                        using (Stream contentStream = await response.Content.ReadAsStreamAsync(), fileStream = new FileStream(archive, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                        try
                         {
-                            await contentStream.CopyToAsync(fileStream);
+                            string archive = Path.Combine(tempFolder, "backup.zip");
+                            using (Stream contentStream = await response.Content.ReadAsStreamAsync(), fileStream = new FileStream(archive, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                            {
+                                await contentStream.CopyToAsync(fileStream);
+                            }
+
+                            await zipHelper.ExtractArchive(archive, tempFolder);
+                            var mappingFile = Directory.GetFiles(tempFolder, "mapping.yaml", SearchOption.AllDirectories);
+                            string extractFolder = "";
+                            if (mappingFile.Length < 1)
+                                throw new Exception("no savegame extracted");
+
+                            extractFolder = Path.GetDirectoryName(Path.GetDirectoryName(mappingFile[0]));
+                            PrepareConfigFile(installationDir, Path.Combine(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "config.yaml"));
+                            Process process = new Process();
+                            ProcessShepherd.Instance.AddProcess(process);
+                            process.StartInfo = CreateProcessHeader();
+                            process.StartInfo.ArgumentList.Add("--config");
+                            process.StartInfo.ArgumentList.Add(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir);
+                            process.StartInfo.ArgumentList.Add("restore");
+                            process.StartInfo.ArgumentList.Add("--force");
+                            process.StartInfo.ArgumentList.Add("--path");
+                            process.StartInfo.ArgumentList.Add(extractFolder);
+                            process.Start();
+                            // Awaited: the restore runs while the UI waits to start the game
+                            await process.WaitForExitAsync();
+                            ProcessShepherd.Instance.RemoveProcess(process);
+                            return CloudSaveStatus.RestoreSuccess;
                         }
-
-                        await zipHelper.ExtractArchive(archive, tempFolder);
-                        var mappingFile = Directory.GetFiles(tempFolder, "mapping.yaml", SearchOption.AllDirectories);
-                        string extractFolder = "";
-                        if (mappingFile.Length < 1)
-                            throw new Exception("no savegame extracted");
-
-                        extractFolder = Path.GetDirectoryName(Path.GetDirectoryName(mappingFile[0]));
-                        PrepareConfigFile(installationDir, Path.Combine(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "config.yaml"));
-                        Process process = new Process();
-                        ProcessShepherd.Instance.AddProcess(process);
-                        process.StartInfo = CreateProcessHeader();
-                        process.StartInfo.ArgumentList.Add("--config");
-                        process.StartInfo.ArgumentList.Add(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir);
-                        process.StartInfo.ArgumentList.Add("restore");
-                        process.StartInfo.ArgumentList.Add("--force");
-                        process.StartInfo.ArgumentList.Add("--path");
-                        process.StartInfo.ArgumentList.Add(extractFolder);
-                        process.Start();
-                        process.WaitForExit();
-                        ProcessShepherd.Instance.RemoveProcess(process);
-                        Directory.Delete(tempFolder, true);
-                        return CloudSaveStatus.RestoreSuccess;
+                        finally
+                        {
+                            try { Directory.Delete(tempFolder, true); }
+                            catch (Exception ex) { Log.Ignored(ex); }
+                        }
                     }
                     else
                     {
@@ -240,18 +248,22 @@ namespace gamevault.Helper.Integrations
 
                 string tempFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Directory.CreateDirectory(tempFolder);
-                await CreateBackup(title, tempFolder);
-                string archive = Path.Combine(tempFolder, "backup.zip");
-                if (Directory.GetFiles(tempFolder, "mapping.yaml", SearchOption.AllDirectories).Length == 0)
+                try
                 {
-                    Directory.Delete(tempFolder, true);
-                    return CloudSaveStatus.BackupCreationFailed;
-                }
-                await zipHelper.PackArchive(tempFolder, archive);
+                    await CreateBackup(title, tempFolder);
+                    string archive = Path.Combine(tempFolder, "backup.zip");
+                    if (Directory.GetFiles(tempFolder, "mapping.yaml", SearchOption.AllDirectories).Length == 0)
+                        return CloudSaveStatus.BackupCreationFailed;
+                    await zipHelper.PackArchive(tempFolder, archive);
 
-                bool success = await UploadSavegame(archive, gameId, installationDir);
-                Directory.Delete(tempFolder, true);
-                return success ? CloudSaveStatus.BackupSuccess : CloudSaveStatus.BackupUploadFailed;
+                    bool success = await UploadSavegame(archive, gameId, installationDir);
+                    return success ? CloudSaveStatus.BackupSuccess : CloudSaveStatus.BackupUploadFailed;
+                }
+                finally
+                {
+                    try { Directory.Delete(tempFolder, true); }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
             }
             return CloudSaveStatus.BackupFailed;
         }

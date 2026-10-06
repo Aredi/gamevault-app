@@ -39,24 +39,30 @@ namespace gamevault.Helper
             }
         }
         #endregion
-        private List<Process> childProcesses = new List<Process>();
+        // Used from the UI thread and from background tasks
+        private readonly List<Process> childProcesses = new List<Process>();
         internal void AddProcess(Process process)
         {
-            childProcesses.Add(process);
+            lock (childProcesses)
+                childProcesses.Add(process);
         }
         internal void RemoveProcess(Process process)
         {
-            childProcesses.Remove(process);
+            lock (childProcesses)
+                childProcesses.Remove(process);
         }
         internal void KillAllChildProcesses()
         {
-            for (int count = 0; count < childProcesses.Count; count++)
+            Process[] processes;
+            lock (childProcesses)
+                processes = childProcesses.ToArray();
+            foreach (Process process in processes)
             {
                 try
                 {
-                    if (!childProcesses[count].HasExited)
+                    if (!process.HasExited)
                     {
-                        childProcesses[count].Kill();
+                        process.Kill(entireProcessTree: true);
                     }
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
@@ -85,10 +91,15 @@ namespace gamevault.Helper
             Process process = new Process();
             ProcessShepherd.Instance.AddProcess(process);
             process.StartInfo = CreateProcessHeader();
-            process.StartInfo.Arguments = $"l -slt -pskibidibopmmdadap \"{archivePath}\"";
+            // A wrong password makes 7-Zip report encrypted headers instead of asking for one
+            foreach (string arg in new[] { "l", "-slt", "-pskibidibopmmdadap", archivePath })
+                process.StartInfo.ArgumentList.Add(arg);
             process.Start();
-            string output = await process.StandardOutput.ReadToEndAsync();
-            string error = await process.StandardError.ReadToEndAsync();
+            // Both streams at once: a full stderr pipe would block 7-Zip while stdout is read
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> errorTask = process.StandardError.ReadToEndAsync();
+            string output = await outputTask;
+            string error = await errorTask;
             await process.WaitForExitAsync();
             if (error.Contains("encrypted", StringComparison.OrdinalIgnoreCase) || output.Contains("Encrypted = +"))
             {
@@ -105,10 +116,12 @@ namespace gamevault.Helper
                  process = new Process();
                  ProcessShepherd.Instance.AddProcess(process);
                  process.StartInfo = CreateProcessHeader();
-                 process.StartInfo.Arguments = $"x -y -bsp1 -o\"{outputDir}\" \"{archivePath}\"";
-                 if (password != "")
+                 foreach (string arg in new[] { "x", "-y", "-bsp1", $"-o{outputDir}", archivePath })
+                     process.StartInfo.ArgumentList.Add(arg);
+                 if (!string.IsNullOrEmpty(password))
                  {
-                     process.StartInfo.Arguments += $" -p{password}";
+                     // One argument: spaces or quotes in the password stay part of it
+                     process.StartInfo.ArgumentList.Add($"-p{password}");
                  }
                  process.EnableRaisingEvents = true;
                  process.ErrorDataReceived += (sender, e) =>
@@ -166,7 +179,9 @@ namespace gamevault.Helper
                 process = new Process();
                 ProcessShepherd.Instance.AddProcess(process);
                 process.StartInfo = CreateProcessHeader();
-                process.StartInfo.Arguments = $"a \"{archiveName}\" \"{directoryToPack}\"";
+                process.StartInfo.ArgumentList.Add("a");
+                process.StartInfo.ArgumentList.Add(archiveName);
+                process.StartInfo.ArgumentList.Add(directoryToPack);
                 process.ErrorDataReceived += (sender, e) =>
                 {
                     Debug.WriteLine("ERROR" + e.Data);
@@ -184,10 +199,12 @@ namespace gamevault.Helper
         }
         internal void Cancel()
         {
-            if (process != null)
+            try
             {
-                process.Kill();
+                if (process != null && !process.HasExited)
+                    process.Kill(entireProcessTree: true);
             }
+            catch (Exception ex) { Log.Ignored(ex); }// not started yet, or already finished
         }
     }
 }

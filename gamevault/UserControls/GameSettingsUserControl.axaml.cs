@@ -203,7 +203,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
 
-            if (ViewModel.Game.Type == GameType.WINDOWS_PORTABLE)
+            if (ViewModel.Game.Type is GameType.WINDOWS_PORTABLE or GameType.LINUX_PORTABLE)
             {
                 MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync($"Are you sure you want to uninstall '{ViewModel.Game.Title}' ?", "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
                 if (result == MessageDialogResult.Affirmative)

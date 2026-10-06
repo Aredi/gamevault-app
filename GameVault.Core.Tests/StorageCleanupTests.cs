@@ -55,6 +55,29 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void Scan_NeverOffersThePrefixOfAGameInstalledOnDisk_EvenIfTheListIsEmpty()
+        {
+            // The installed list stays empty when the server cannot be reached at startup
+            MakeFile("lib/GameVault/Installations/(4)Hades/Files/Hades.exe", 10);
+            MakeFile("lib/GameVault/Installations/(5)Empty/.keep", 0);
+            File.Delete(Path.Combine(root, "lib/GameVault/Installations/(5)Empty/.keep"));
+            MakeFile("lib/GameVault/Downloads/(4)Hades/Hades.zip", 100);
+            MakeFile("prefixes/4/drive_c/save", 100);
+            MakeFile("prefixes/5/drive_c/save", 100);
+
+            var candidates = StorageCleanup.Scan(new CleanupInputs
+            {
+                RootDirectories = new[] { Path.Combine(root, "lib") },
+                PrefixesDirectory = Path.Combine(root, "prefixes"),
+            });
+
+            Assert.DoesNotContain(candidates, c => c.Path == Path.Combine(root, "prefixes", "4"));
+            Assert.Contains(candidates, c => c.Path == Path.Combine(root, "prefixes", "5"));
+            Assert.Equal(CleanupKind.InstalledGameArchive, candidates.Single(c => c.Title == "Hades").Kind);
+            Assert.Equal(new[] { 4 }, StorageCleanup.FindInstallations(new[] { Path.Combine(root, "lib") }).Select(i => i.Id));
+        }
+
+        [Fact]
         public void FormatSize_UsesBinaryUnits()
         {
             Assert.Equal("512 B", StorageCleanup.FormatSize(512));

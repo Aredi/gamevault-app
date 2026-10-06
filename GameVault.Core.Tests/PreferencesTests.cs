@@ -82,5 +82,24 @@ namespace GameVault.Core.Tests
                 Assert.DoesNotContain("secret", File.ReadAllText(file));
             }
         }
+
+        [Fact]
+        public void LineBreaksInAValue_DoNotAddLines()
+        {
+            Preferences.Set("Notes", "first\nsecond=x", file);
+            Assert.Equal("first second=x", Preferences.Get("Notes", file));
+            Assert.Single(File.ReadAllLines(file));
+        }
+
+        [Fact]
+        public void Rewrites_KeepTheRestrictedPermissions()
+        {
+            Preferences.Set("SessionToken", "secret", file, true);
+            Preferences.Set("Theme", "dark", file);
+            Preferences.DeleteKey("Theme", file);
+            Assert.False(File.Exists(file + ".tmp"));
+            if (!OperatingSystem.IsWindows())
+                Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(file));
+        }
     }
 }

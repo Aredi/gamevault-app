@@ -206,11 +206,13 @@ namespace gamevault
             if (DownloadsViewModel.Instance.DownloadedGames.Any(g => g.IsDownloading()))
             {
                 ShowMainWindow();
-                MessageDialogResult result = await MainWindow.ShowMessageAsync("Downloads are still running in the background, are you sure you want to exit the app anyway?", "",
+                MessageDialogResult result = await MainWindow.ShowMessageAsync("Downloads are still running in the background, are you sure you want to exit the app anyway?\nThey are paused and can be resumed at the next start.", "",
                     MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = "Yes", NegativeButtonText = "No" });
                 if (result == MessageDialogResult.Affirmative)
                 {
-                    MainWindowViewModel.Instance.Downloads.CancelAllDownloads();
+                    MainWindowViewModel.Instance.Downloads.PauseAllDownloads();
+                    // The download loop writes the resume position at its next read
+                    await Task.Delay(500);
                     ShutdownApp();
                 }
             }

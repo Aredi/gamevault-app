@@ -272,12 +272,9 @@ namespace gamevault.UserControls
             try
             {
                 string lastTimePlayed = Preferences.Get(AppConfigKey.LastPlayed, LoginManager.Instance.GetUserProfile().UserConfigFile);
-                if (lastTimePlayed.Contains($"{gameID}"))
-                {
-                    lastTimePlayed = lastTimePlayed.Replace($"{gameID};", "");
-                }
-                lastTimePlayed = lastTimePlayed.Insert(0, $"{gameID};");
-                Preferences.Set(AppConfigKey.LastPlayed, lastTimePlayed, LoginManager.Instance.GetUserProfile().UserConfigFile);
+                // Whole ids only: removing "1;" as text would also cut "21;" down to "2"
+                var ids = lastTimePlayed.Split(';', StringSplitOptions.RemoveEmptyEntries).Where(id => id != gameID.ToString()).Prepend(gameID.ToString());
+                Preferences.Set(AppConfigKey.LastPlayed, string.Join("", ids.Select(id => id + ";")), LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
@@ -399,12 +396,6 @@ namespace gamevault.UserControls
 
             string path = "";
             KeyValuePair<Game, string> result = InstallViewModel.Instance.InstalledGames.Where(g => g.Key.ID == gameId).FirstOrDefault();
-            if (SettingsViewModel.Instance.CloudSaves)
-            {
-                MainWindowViewModel.Instance.AppBarText = $"Syncing cloud save...";
-                await SaveGameHelper.Instance.RestoreBackup(gameId, result.Value);
-            }
-
             if (!result.Equals(default(KeyValuePair<Game, string>)))
             {
                 path = result.Value;
@@ -413,6 +404,11 @@ namespace gamevault.UserControls
             {
                 MainWindowViewModel.Instance.AppBarText = $"Can not find part of '{path}'";
                 return;
+            }
+            if (SettingsViewModel.Instance.CloudSaves)
+            {
+                MainWindowViewModel.Instance.AppBarText = $"Syncing cloud save...";
+                await SaveGameHelper.Instance.RestoreBackup(gameId, path);
             }
             string savedExecutable = Preferences.Get(AppConfigKey.Executable, Path.Combine(path, "gamevault-exec"));
             string parameter = Preferences.Get(AppConfigKey.LaunchParameter, Path.Combine(path, "gamevault-exec"));

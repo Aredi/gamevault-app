@@ -166,7 +166,7 @@ namespace gamevault.UserControls
                 idFilter = LibraryQuery.IdFilter(collectionIds, playStatus, playedIds);
             }
             string serverSort = sortByPlay ? "sort_title:ASC" : $"{gameSortByFilter}:{gameOrderByFilter}";
-            string filterUrl = @$"{SettingsViewModel.Instance.ServerUrl}/api/games?search={inputTimer.Data}&sortBy={serverSort}&limit={(sortByPlay ? -1 : 50)}";
+            string filterUrl = @$"{SettingsViewModel.Instance.ServerUrl}/api/games?search={Uri.EscapeDataString(inputTimer.Data ?? "")}&sortBy={serverSort}&limit={(sortByPlay ? -1 : 50)}";
             filterUrl = ApplyFilter(filterUrl) + idFilter;
 
             PaginatedData<Game>? gameResult = await GetGamesData(filterUrl);
@@ -373,7 +373,7 @@ namespace gamevault.UserControls
             string gameStates = uiFilterGameStateSelector.GetSelectedEntries();
             if (gameStates != string.Empty)
             {
-                filter += $"&filter.progresses.state=$eq:{gameStates}&filter.progresses.user.id=$eq:{LoginManager.Instance.GetCurrentUser()?.ID}";
+                filter += $"&filter.progresses.state=$in:{gameStates}&filter.progresses.user.id=$eq:{LoginManager.Instance.GetCurrentUser()?.ID}";
             }
             if (uiFilterBookmarks.IsChecked == true)
             {
