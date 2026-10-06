@@ -55,9 +55,6 @@ namespace gamevault.Windows
             });
             PipeServiceHandler.Instance.IsReadyForCommands = true;
             NewGamesNotifier.Start();
-#if DEBUG
-            UiDump.StartIfRequested();
-#endif
             // Savegames of games closed offline in a previous session
             Task.Run(async () =>
             {

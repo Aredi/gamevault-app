@@ -55,6 +55,9 @@ namespace gamevault
         {
             Log.Initialize(ProfileManager.ErrorLogDir);
             Log.Info($"GameVault {SettingsViewModel.Instance.Version} starting on {Environment.OSVersion}");
+#if DEBUG
+            UiDump.StartIfRequested();
+#endif
             Dispatcher.UIThread.UnhandledException += (s, e) =>
             {
                 ProcessShepherd.Instance.KillAllChildProcesses();
