@@ -495,7 +495,7 @@ namespace gamevault.UserControls
                 }
                 MainWindowViewModel.Instance.AppBarText = "Uploading Savegame to the Server...";
                 ((Control)sender).IsEnabled = false;
-                string status = await SaveGameHelper.Instance.BackupSaveGame(ViewModel!.Game!.ID);
+                string status = await SaveGameHelper.Instance.BackupSaveGame(ViewModel!.Game!.ID, force: true);
                 MainWindowViewModel.Instance.AppBarText = status;
             }
             catch
@@ -511,7 +511,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = $"Syncing cloud save...";
                 ((Control)sender).IsEnabled = false;
                 string installationDir = InstallViewModel.Instance.InstalledGames.First(g => g.Key.ID == ViewModel!.Game!.ID).Value;
-                string status = await SaveGameHelper.Instance.RestoreBackup(ViewModel!.Game!.ID, installationDir);
+                string status = await SaveGameHelper.Instance.RestoreBackup(ViewModel!.Game!.ID, installationDir, force: true);
                 MainWindowViewModel.Instance.AppBarText = status;
             }
             catch

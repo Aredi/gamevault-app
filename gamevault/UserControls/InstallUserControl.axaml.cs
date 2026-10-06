@@ -429,7 +429,12 @@ namespace gamevault.UserControls
             if (SettingsViewModel.Instance.CloudSaves)
             {
                 MainWindowViewModel.Instance.AppBarText = $"Syncing cloud save...";
-                await SaveGameHelper.Instance.RestoreBackup(gameId, path);
+                string status = await SaveGameHelper.Instance.RestoreBackup(gameId, path);
+                if (status == CloudSaveStatus.Cancelled)
+                {
+                    MainWindowViewModel.Instance.AppBarText = status;
+                    return;
+                }
             }
             string savedExecutable = Preferences.Get(AppConfigKey.Executable, Path.Combine(path, "gamevault-exec"));
             string parameter = Preferences.Get(AppConfigKey.LaunchParameter, Path.Combine(path, "gamevault-exec"));

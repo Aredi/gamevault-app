@@ -63,6 +63,8 @@ namespace gamevault.Models
         //Server file of the installed build (gamevault-exec), detects updates
         InstalledGameFile,
         InstalledGameSize,
+        //When the cloud save of the installation was last uploaded or restored (gamevault-exec)
+        LastCloudSync,
         //Updates already announced ("id:file;...")
         UpdatesNotified,
         AdditionalRequestHeaders,

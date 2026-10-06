@@ -19,6 +19,8 @@ namespace GameVault.UiTests
         private readonly ConcurrentDictionary<int, (Game Game, byte[] File)> games = new();
 
         public string Url { get; }
+        /// <summary>The newest save of each game: GameVault names it "&lt;upload ms&gt;_&lt;installation id&gt;.zip".</summary>
+        public ConcurrentDictionary<int, (string FileName, byte[] Data)> Saves { get; } = new();
         public ConcurrentQueue<string> Requests { get; } = new();
         public ConcurrentQueue<string> RangeHeaders { get; } = new();
 
@@ -114,6 +116,8 @@ namespace GameVault.UiTests
                         Meta = new MetaData { TotalItems = games.Count },
                         Links = new Links(),
                     });
+                else if ((match = Regex.Match(path, @"^/api/savefiles/user/\d+/game/(\d+)$")).Success)
+                    await Savefile(context, int.Parse(match.Groups[1].Value));
                 else if (path.StartsWith("/api/progresses"))
                     await Json(response, new { });
                 else if (path.StartsWith("/api/"))
@@ -195,6 +199,52 @@ namespace GameVault.UiTests
                 // Ends the connection although Content-Length promised more
                 response.Abort();
             }
+        }
+
+        private async Task Savefile(HttpListenerContext context, int gameId)
+        {
+            var response = context.Response;
+            if (context.Request.HttpMethod == "POST")
+            {
+                string installation = context.Request.Headers["X-Installation-Id"] ?? Guid.NewGuid().ToString();
+                using var body = new MemoryStream();
+                await context.Request.InputStream.CopyToAsync(body);
+                Saves[gameId] = ($"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{installation}.zip", MultipartFile(body.ToArray(), context.Request.ContentType ?? ""));
+                response.StatusCode = 201;
+                return;
+            }
+            if (!Saves.TryGetValue(gameId, out var save))
+            {
+                response.StatusCode = 404;
+                return;
+            }
+            response.Headers["Content-Disposition"] = $"attachment; filename=\"{save.FileName}\"";
+            response.ContentType = "application/zip";
+            response.ContentLength64 = save.Data.Length;
+            await response.OutputStream.WriteAsync(save.Data);
+        }
+
+        /// <summary>The file of a multipart/form-data upload with one part.</summary>
+        private static byte[] MultipartFile(byte[] body, string contentType)
+        {
+            string boundary = "--" + Regex.Match(contentType, "boundary=\"?([^\";]+)").Groups[1].Value;
+            byte[] separator = Encoding.ASCII.GetBytes("\r\n\r\n");
+            int headersEnd = IndexOf(body, separator, 0) + separator.Length;
+            int end = IndexOf(body, Encoding.ASCII.GetBytes("\r\n" + boundary), headersEnd);
+            return body[headersEnd..end];
+        }
+
+        private static int IndexOf(byte[] data, byte[] pattern, int start)
+        {
+            for (int i = start; i <= data.Length - pattern.Length; i++)
+            {
+                int j = 0;
+                while (j < pattern.Length && data[i + j] == pattern[j])
+                    j++;
+                if (j == pattern.Length)
+                    return i;
+            }
+            return -1;
         }
 
         private static async Task Json(HttpListenerResponse response, object value)

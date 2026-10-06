@@ -14,6 +14,8 @@ using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.ViewModels;
 using gamevault.Windows;
+using System.Globalization;
+using GameVault.Core.CloudSaves;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -64,7 +66,8 @@ namespace gamevault.Helper.Integrations
         {
             zipHelper = new SevenZipHelper();
         }
-        internal async Task<string> RestoreBackup(int gameId, string installationDir)
+        /// <param name="force">The user asked for the cloud save: no conflict check (a local copy is still kept).</param>
+        internal async Task<string> RestoreBackup(int gameId, string installationDir, bool force = false)
         {
             if (!LoginManager.Instance.IsLoggedIn())
                 return CloudSaveStatus.RestoreFailed;
@@ -76,15 +79,42 @@ namespace gamevault.Helper.Integrations
             {
 
                 string installationId = GetGameInstallationId(installationDir);
-                string[] auth = WebHelper.GetCredentials();
+                // Decided before the save is downloaded: the question may stay open for a while
+                ServerSave? serverSave = await GetServerSave(gameId);
+                string ludusaviTitle = "";
+                DateTime? localChange = null;
+                if (serverSave != null && !serverSave.InstallationId.Equals(installationId, StringComparison.OrdinalIgnoreCase))
+                {
+                    ludusaviTitle = await LudusaviTitleOf(gameId);
+                    localChange = ludusaviTitle == "" ? null : await GetLocalSaveLastChange(ludusaviTitle);
+                    if (!force && SaveSync.BeforePlaying(serverSave, installationId, ReadLastSync(installationDir), localChange) == SaveSyncAction.Conflict)
+                    {
+                        string choice = await AskConflict(gameId, serverSave, localChange!.Value);
+                        if (choice == CloudSaveStatus.Cancelled)
+                            return CloudSaveStatus.Cancelled;
+                        if (choice == CloudSaveStatus.KeptLocal)
+                        {
+                            string uploaded = await BackupSaveGame(gameId, force: true);
+                            return uploaded == CloudSaveStatus.BackupSuccess ? CloudSaveStatus.KeptLocal : uploaded;
+                        }
+                    }
+                }
 
-                string url = @$"{SettingsViewModel.Instance.ServerUrl}/api/savefiles/user/{LoginManager.Instance.GetCurrentUser()!.ID}/game/{gameId}";
                 using (HttpResponseMessage response = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/savefiles/user/{LoginManager.Instance.GetCurrentUser()!.ID}/game/{gameId}", null, HttpCompletionOption.ResponseHeadersRead))
                 {
                     response.EnsureSuccessStatusCode();
-                    string fileName = response.Content.Headers.ContentDisposition.FileName.Split('_')[1].Split('.')[0];
+                    string serverFileName = response.Content.Headers.ContentDisposition?.FileName ?? "";
+                    string fileName = ServerSave.FromFileName(serverFileName)?.InstallationId ?? serverFileName.Split('_')[1].Split('.')[0];
                     if (fileName != installationId)
                     {
+                        if (ludusaviTitle == "")
+                        {
+                            ludusaviTitle = await LudusaviTitleOf(gameId);
+                            localChange = ludusaviTitle == "" ? null : await GetLocalSaveLastChange(ludusaviTitle);
+                        }
+                        // Whatever happens, the save that is replaced can be taken back
+                        if (ludusaviTitle != "" && localChange != null)
+                            await KeepLocalCopy(gameId, ludusaviTitle);
                         string tempFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                         Directory.CreateDirectory(tempFolder);
                         try
@@ -116,6 +146,7 @@ namespace gamevault.Helper.Integrations
                             // Awaited: the restore runs while the UI waits to start the game
                             await process.WaitForExitAsync();
                             ProcessShepherd.Instance.RemoveProcess(process);
+                            WriteLastSync(installationDir);
                             return CloudSaveStatus.RestoreSuccess;
                         }
                         finally
@@ -145,6 +176,121 @@ namespace gamevault.Helper.Integrations
 
             return CloudSaveStatus.RestoreFailed;
         }
+        #region Conflicts
+        private static string SettingsFile(string installationDir) => Path.Combine(installationDir, "gamevault-exec");
+
+        private static DateTime? ReadLastSync(string installationDir) =>
+            DateTime.TryParse(Preferences.Get(AppConfigKey.LastCloudSync, SettingsFile(installationDir)), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTime time) ? time.ToUniversalTime() : null;
+
+        private static void WriteLastSync(string installationDir)
+        {
+            try { Preferences.Set(AppConfigKey.LastCloudSync, DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), SettingsFile(installationDir)); }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private async Task<string> LudusaviTitleOf(int gameId)
+        {
+            Game? game = InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key?.ID == gameId).Key;
+            string title = game?.Metadata?.Title ?? "";
+            if (title == "")
+                title = game?.Title ?? "";
+            if (title == "")
+                return "";
+            try { return await SearchForLudusaviGameTitle(title); }
+            catch (Exception ex) { Log.Ignored(ex); return ""; }
+        }
+
+        /// <summary>When the save files of the game on this computer last changed (Ludusavi knows where they are).</summary>
+        private async Task<DateTime?> GetLocalSaveLastChange(string ludusaviTitle)
+        {
+            try
+            {
+                var info = CreateProcessHeader(true);
+                foreach (string arg in new[] { "--config", LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "backup", "--preview", "--api", ludusaviTitle })
+                    info.ArgumentList.Add(arg);
+                using Process process = Process.Start(info)!;
+                Task<string> output = process.StandardOutput.ReadToEndAsync();
+                Task<string> errors = process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+                await errors;
+                return SaveSync.LastChange(SaveSync.SaveFilesFromLudusaviPreview(await output));
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return null;
+            }
+        }
+
+        /// <summary>The newest save on the server, without downloading it.</summary>
+        private static async Task<ServerSave?> GetServerSave(int gameId)
+        {
+            try
+            {
+                using HttpResponseMessage response = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/savefiles/user/{LoginManager.Instance.GetCurrentUser()!.ID}/game/{gameId}", null, HttpCompletionOption.ResponseHeadersRead);
+                return ServerSave.FromFileName(response.Content.Headers.ContentDisposition?.FileName);
+            }
+            catch (Exception ex)
+            {
+                // 404: no save on the server yet
+                Log.Ignored(ex);
+                return null;
+            }
+        }
+
+        private static async Task<MessageDialogResult> Ask(string message, string title, MessageDialogStyle style, MetroDialogSettings settings)
+        {
+            var window = App.Instance.MainWindow;
+            if (window == null)
+                return MessageDialogResult.Affirmative;
+            return await Dispatcher.UIThread.InvokeAsync(() => window.ShowMessageAsync(title, message, style, settings));
+        }
+
+        private static string GameTitle(int gameId) => InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key?.ID == gameId).Key?.Title ?? "this game";
+
+        /// <summary>Both this computer and another one changed the save: the user decides which one wins.</summary>
+        private static async Task<string> AskConflict(int gameId, ServerSave server, DateTime localChange)
+        {
+            MessageDialogResult result = await Ask(
+                $"The saves of '{GameTitle(gameId)}' differ.\n\nCloud save (from another computer): {server.UploadedAt.ToLocalTime():g}\nSave on this computer: {localChange.ToLocalTime():g}\n\nThe save that is replaced is kept in the save history.",
+                "Cloud save conflict", MessageDialogStyle.AffirmativeAndNegativeAndSingleAuxiliary,
+                new MetroDialogSettings { AffirmativeButtonText = "Use the cloud save", FirstAuxiliaryButtonText = "Keep this computer's save", NegativeButtonText = "Don't start" });
+            return result switch
+            {
+                MessageDialogResult.Affirmative => CloudSaveStatus.RestoreSuccess,
+                MessageDialogResult.FirstAuxiliary => CloudSaveStatus.KeptLocal,
+                _ => CloudSaveStatus.Cancelled,
+            };
+        }
+
+        /// <summary>Another computer uploaded while this one played: asked before its save is replaced.</summary>
+        private async Task<bool> MayReplaceServerSave(int gameId, string installationDir)
+        {
+            ServerSave? server = await GetServerSave(gameId);
+            if (!SaveSync.ServerChangedMeanwhile(server, GetGameInstallationId(installationDir), ReadLastSync(installationDir)))
+                return true;
+            MessageDialogResult result = await Ask(
+                $"Another computer uploaded a save of '{GameTitle(gameId)}' on {server!.UploadedAt.ToLocalTime():g}, after this computer last synchronized.\n\nReplace it with the save of this computer?",
+                "Cloud save conflict", MessageDialogStyle.AffirmativeAndNegative,
+                new MetroDialogSettings { AffirmativeButtonText = "Upload this computer's save", NegativeButtonText = "Keep the cloud save" });
+            return result == MessageDialogResult.Affirmative;
+        }
+
+        /// <summary>A copy of the local save before it is replaced (Save history, the last 5 per game).</summary>
+        private async Task KeepLocalCopy(int gameId, string ludusaviTitle)
+        {
+            try
+            {
+                string history = Path.Combine(LoginManager.Instance.GetUserProfile().RootDir, "SaveHistory", gameId.ToString());
+                string target = Path.Combine(history, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture));
+                Directory.CreateDirectory(target);
+                await CreateBackup(ludusaviTitle, target);
+                foreach (string old in Directory.GetDirectories(history).OrderByDescending(d => d, StringComparer.Ordinal).Skip(5))
+                    Directory.Delete(old, true);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+        #endregion
         private string GetGameInstallationId(string installationDir)
         {
             string metadataFile = Path.Combine(installationDir, "gamevault-exec");
@@ -226,7 +372,8 @@ namespace gamevault.Helper.Integrations
             }
         }
         #endregion
-        internal async Task<string> BackupSaveGame(int gameId)
+        /// <param name="force">The user asked for the upload: replaces the server's save without asking.</param>
+        internal async Task<string> BackupSaveGame(int gameId, bool force = false)
         {
             if (!SettingsViewModel.Instance.CloudSaves)
                 return CloudSaveStatus.SettingDisabled;
@@ -255,7 +402,11 @@ namespace gamevault.Helper.Integrations
                         return CloudSaveStatus.BackupCreationFailed;
                     await zipHelper.PackArchive(tempFolder, archive);
 
+                    if (!force && !await MayReplaceServerSave(gameId, installationDir))
+                        return CloudSaveStatus.KeptCloud;
                     bool success = await UploadSavegame(archive, gameId, installationDir);
+                    if (success)
+                        WriteLastSync(installationDir);
                     return success ? CloudSaveStatus.BackupSuccess : CloudSaveStatus.BackupUploadFailed;
                 }
                 finally
@@ -476,6 +627,9 @@ namespace gamevault.Helper.Integrations
         public static string SettingDisabled = "Activate Cloud Saves under Settings -> Integrations -> Cloud Saves";
         public static string ServerSettingDisabled = "Cloud Saves are not enabled on this Server";
         public static string Offline = "Can not synchronize the cloud saves, because you are offline";
+        public static string Cancelled = "The game was not started";
+        public static string KeptLocal = "This computer's save was kept and uploaded";
+        public static string KeptCloud = "The cloud save was kept, this computer's save was not uploaded";
     }
     public class DirectoryEntry
     {
