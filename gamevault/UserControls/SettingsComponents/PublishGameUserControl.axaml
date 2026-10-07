@@ -68,10 +68,10 @@
                         <TextBlock Classes="label" Text="{l:T '4. Destination on the server'}" />
                         <ComboBox SelectedIndex="{Binding DestinationIndex}" Width="420" Margin="0,0,0,6">
                             <ComboBoxItem Content="{l:T 'Copy into the server games folder (this computer can open it)'}" />
-                            <ComboBoxItem Content="{l:T 'Upload to the server (GameVault Uploader)'}" />
+                            <ComboBoxItem Content="{l:T 'Upload to the server (SanctuaryVault Uploader)'}" />
                         </ComboBox>
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" IsVisible="{Binding !IsUpload}">
-                            <TextBox Text="{Binding TargetDirectory}" Watermark="{l:T 'Folder mounted as /files in the GameVault server'}" />
+                            <TextBox Text="{Binding TargetDirectory}" Watermark="{l:T 'Folder mounted as /files in the SanctuaryVault server'}" />
                             <controls:IconButton Grid.Column="1" Text="{l:T 'Browse'}" MinWidth="90" Height="32" FontSize="14" Click="PickTarget_Click" />
                         </Grid>
                         <StackPanel IsVisible="{Binding IsUpload}" Spacing="4">

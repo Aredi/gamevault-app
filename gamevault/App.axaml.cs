@@ -156,7 +156,7 @@ namespace gamevault
 
                 trayIcon = new TrayIcon
                 {
-                    ToolTipText = "GameVault",
+                    ToolTipText = "SanctuaryVault",
                     Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://gamevault/Resources/Images/icon.ico"))),
                     Menu = menu,
                     IsVisible = true,

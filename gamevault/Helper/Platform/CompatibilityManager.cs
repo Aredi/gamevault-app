@@ -90,7 +90,7 @@ namespace gamevault.Helper.Platform
         public static void Delete(CompatibilityTool tool)
         {
             if (!tool.IsManaged || tool.Path == null)
-                throw new InvalidOperationException(Loc.F("{0} was not installed by GameVault and is left untouched.", tool.Name));
+                throw new InvalidOperationException(Loc.F("{0} was not installed by SanctuaryVault and is left untouched.", tool.Name));
             Directory.Delete(tool.Path, true);
             GetTools(refresh: true);
         }

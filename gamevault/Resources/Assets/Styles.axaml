@@ -8,6 +8,10 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
     </Style>
+    <!-- Windows, popups, menus and tooltips all use the embedded text font -->
+    <Style Selector=":is(TopLevel)">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Body}" />
+    </Style>
     <Style Selector="TextBlock">
         <Setter Property="TextWrapping" Value="NoWrap" />
     </Style>
@@ -263,6 +267,240 @@
         <Setter Property="FontSize" Value="18" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
         <Setter Property="FontWeight" Value="Light" />
+    </Style>
+
+    <!-- ==================== Library and game pages ==================== -->
+
+    <!-- Type scale -->
+    <Style Selector="TextBlock.display">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Display}" />
+        <Setter Property="FontWeight" Value="ExtraBold" />
+        <Setter Property="LetterSpacing" Value="-0.5" />
+    </Style>
+    <Style Selector="TextBlock.pageTitle">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Display}" />
+        <Setter Property="FontWeight" Value="ExtraBold" />
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="LetterSpacing" Value="-0.4" />
+    </Style>
+    <Style Selector="TextBlock.sectionTitle">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Display}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="18" />
+    </Style>
+    <Style Selector="TextBlock.eyebrow">
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="1.6" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+    </Style>
+    <Style Selector="TextBlock.cardTitle">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="MaxLines" Value="2" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.cardInfo">
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- Buttons: "action" (filled, the game color is set as Background), "ghost" (translucent), "round" (icon) -->
+    <Style Selector="Button.action, Button.ghost, Button.round">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Height" Value="42" />
+        <Setter Property="Padding" Value="18,0" />
+        <Setter Property="CornerRadius" Value="11" />
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="PART_Bg" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.action">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="{DynamicResource Brush.Glass}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+    </Style>
+    <Style Selector="Button.round">
+        <Setter Property="Width" Value="42" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Glass}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+    </Style>
+    <Style Selector="Button.action:pointerover, Button.ghost:pointerover, Button.round:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.03)" />
+    </Style>
+    <Style Selector="Button.action:pressed, Button.ghost:pressed, Button.round:pressed">
+        <Setter Property="RenderTransform" Value="scale(0.97)" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ Border#PART_Bg, Button.round:pointerover /template/ Border#PART_Bg">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+    </Style>
+    <Style Selector="Button.action:disabled, Button.ghost:disabled, Button.round:disabled">
+        <Setter Property="Opacity" Value="0.5" />
+    </Style>
+    <Style Selector="Button.small">
+        <Setter Property="Height" Value="34" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="13,0" />
+        <Setter Property="CornerRadius" Value="9" />
+    </Style>
+    <Style Selector="Button.round.small">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Button.action Path, Button.ghost Path, Button.round Path">
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Fill" Value="{Binding $parent[Button].Foreground}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Filter chips -->
+    <Style Selector="ToggleButton.chip, Button.chip">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="13,0" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="PART_Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                        CornerRadius="16" Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.chip:pointerover /template/ Border#PART_Bg, Button.chip:pointerover /template/ Border#PART_Bg">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+    </Style>
+    <Style Selector="ToggleButton.chip:checked">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Background}" />
+    </Style>
+    <Style Selector="ToggleButton.chip:checked /template/ Border#PART_Bg">
+        <Setter Property="Background" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Foreground}" />
+    </Style>
+
+    <!-- Segmented switch (gallery / shelf) -->
+    <Style Selector="ToggleButton.segment">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="PART_Bg" Background="Transparent" CornerRadius="8">
+                    <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.segment Path">
+        <Setter Property="Fill" Value="{Binding $parent[ToggleButton].Foreground}" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+    </Style>
+    <Style Selector="ToggleButton.segment:checked">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+    </Style>
+    <Style Selector="ToggleButton.segment:checked /template/ Border#PART_Bg">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+    </Style>
+
+    <!-- State badges on covers -->
+    <Style Selector="Border.badge">
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Glass}" />
+    </Style>
+    <Style Selector="Border.badge TextBlock">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="0.4" />
+    </Style>
+    <Style Selector="Border.badge.update">
+        <Setter Property="Background" Value="{DynamicResource Brush.Warning}" />
+    </Style>
+    <Style Selector="Border.badge.update TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Background}" />
+    </Style>
+
+    <!-- Game cards: the cover lifts and glows in the game color while hovered -->
+    <Style Selector="Button.gameCard">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ContentPresenter Content="{TemplateBinding Content}" Background="Transparent"
+                                  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.gameCard Panel.lift">
+        <Setter Property="RenderTransform" Value="translateY(0px)" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.gameCard:pointerover Panel.lift">
+        <Setter Property="RenderTransform" Value="translateY(-6px)" />
+    </Style>
+    <Style Selector="Button.gameCard Border.glow, Button.gameCard Border.hoverOnly, Button.gameCard Panel.hoverOnly">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.gameCard:pointerover Border.glow, Button.gameCard:pointerover Border.hoverOnly, Button.gameCard:pointerover Panel.hoverOnly">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.gameCard Border.selection">
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="13" />
+        <Setter Property="Margin" Value="-4" />
+    </Style>
+
+    <!-- Thin scroll bars on the library pages -->
+    <Style Selector="ScrollViewer.page /template/ ScrollBar">
+        <Setter Property="Margin" Value="0,2,2,2" />
     </Style>
 
 </Styles>

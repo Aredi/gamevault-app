@@ -246,7 +246,7 @@ namespace gamevault.ViewModels
             {
                 Preferences.Set(AppConfigKey.Language, Loc.Languages[Math.Clamp(value, 0, Loc.Languages.Length - 1)], ProfileManager.ProfileConfigFile);
                 OnPropertyChanged();
-                MainWindowViewModel.Instance.AppBarText = Loc.T("Restart GameVault to change the language");
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Restart SanctuaryVault to change the language");
             }
         }
         public int MaxConcurrentDownloadsIndex

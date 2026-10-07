@@ -19,6 +19,10 @@ namespace GameVault.UiTests
         private readonly ConcurrentDictionary<int, (Game Game, byte[] File)> games = new();
 
         public string Url { get; }
+        /// <summary>Images served by /api/media/{id} (covers, backgrounds, screenshots).</summary>
+        public ConcurrentDictionary<int, byte[]> Media { get; } = new();
+        /// <summary>Play data returned by /api/progresses.</summary>
+        public ConcurrentQueue<Progress> Progresses { get; } = new();
         /// <summary>The newest save of each game: GameVault names it "&lt;upload ms&gt;_&lt;installation id&gt;.zip".</summary>
         public ConcurrentDictionary<int, (string FileName, byte[] Data)> Saves { get; } = new();
         public ConcurrentQueue<string> Requests { get; } = new();
@@ -110,16 +114,17 @@ namespace GameVault.UiTests
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)$")).Success && games.TryGetValue(int.Parse(match.Groups[1].Value), out var entry))
                     await Json(response, entry.Game);
                 else if (path == "/api/games")
-                    await Json(response, new PaginatedData<Game>
-                    {
-                        Data = games.Values.Select(g => g.Game).OrderBy(g => g.ID).ToArray(),
-                        Meta = new MetaData { TotalItems = games.Count },
-                        Links = new Links(),
-                    });
+                    await Json(response, GameList(request));
+                else if ((match = Regex.Match(path, @"^/api/media/(\d+)$")).Success && Media.TryGetValue(int.Parse(match.Groups[1].Value), out byte[]? image))
+                {
+                    response.ContentType = "image/jpeg";
+                    response.ContentLength64 = image.Length;
+                    await response.OutputStream.WriteAsync(image);
+                }
                 else if ((match = Regex.Match(path, @"^/api/savefiles/user/\d+/game/(\d+)$")).Success)
                     await Savefile(context, int.Parse(match.Groups[1].Value));
                 else if (path.StartsWith("/api/progresses"))
-                    await Json(response, new { });
+                    await Json(response, new PaginatedData<Progress> { Data = Progresses.ToArray(), Meta = new MetaData { TotalItems = Progresses.Count }, Links = new Links() });
                 else if (path.StartsWith("/api/"))
                     await Json(response, new { data = Array.Empty<object>(), meta = new { totalItems = 0 }, links = new { } });
                 else
@@ -134,6 +139,25 @@ namespace GameVault.UiTests
                 try { response.Close(); } catch { }
             }
         }
+
+        /// <summary>/api/games with the parts of the query the client relies on: search, newest first, limit.</summary>
+        private PaginatedData<Game> GameList(HttpListenerRequest request)
+        {
+            IEnumerable<Game> list = games.Values.Select(g => g.Game);
+            string? search = request.QueryString["search"];
+            if (!string.IsNullOrEmpty(search))
+                list = list.Where(g => g.Title.Contains(search, StringComparison.OrdinalIgnoreCase));
+            string sort = request.QueryString["sortBy"] ?? "";
+            list = sort.StartsWith("created_at:DESC") ? list.OrderByDescending(g => g.CreatedAt).ThenBy(g => g.ID)
+                : sort.StartsWith("sort_title") ? list.OrderBy(g => g.SortTitle)
+                : list.OrderBy(g => g.ID);
+            var all = list.ToArray();
+            int limit = int.TryParse(request.QueryString["limit"], out int l) && l > 0 ? l : all.Length;
+            return new PaginatedData<Game> { Data = all.Take(limit).ToArray(), Meta = new MetaData { TotalItems = all.Length }, Links = new Links() };
+        }
+
+        /// <summary>Adds a game as it comes from the server with its metadata (the showcase uses real games).</summary>
+        public void AddGame(Game game, byte[] file) => games[game.ID] = (game, file);
 
         private async Task Download(HttpListenerContext context, int id)
         {

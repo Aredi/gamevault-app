@@ -33,7 +33,7 @@ namespace gamevault.UserControls.SettingsComponents
             try
             {
                 report = await ProblemReport.CreateAsync();
-                uiStatus.Text = Loc.F("The report is ready:\n{0}\n\nSend this file to the administrator of your GameVault server.", report);
+                uiStatus.Text = Loc.F("The report is ready:\n{0}\n\nSend this file to the administrator of your SanctuaryVault server.", report);
                 uiBtnOpenFolder.IsVisible = true;
                 uiBtnCopyPath.IsVisible = true;
             }

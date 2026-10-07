@@ -5,7 +5,7 @@
         xmlns:conv="clr-namespace:gamevault.Converter"
         xmlns:local="clr-namespace:gamevault.Windows"
         x:Class="gamevault.Windows.LoginWindow"
-        Title="GameVault" Icon="/Resources/Images/icon.ico"
+        Title="SanctuaryVault" Icon="/Resources/Images/icon.ico"
         Width="720" Height="500" CanResize="False" WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Brush.Background2}">
     <Window.Resources>

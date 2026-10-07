@@ -6,7 +6,7 @@
         WindowStartupLocation="CenterScreen" Icon="/Resources/Images/icon.ico">
     <Grid Margin="10" RowDefinitions="*,Auto">
         <TextBlock FontSize="13" TextWrapping="Wrap">
-            An unhandled error has occurred in GameVault.
+            An unhandled error has occurred in SanctuaryVault.
             <LineBreak />
             You can view technical details in the error log that has been created.
         </TextBlock>

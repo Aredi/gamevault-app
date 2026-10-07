@@ -214,7 +214,7 @@ namespace gamevault.Helper
             {
                 standalone = new Window
                 {
-                    Title = string.IsNullOrEmpty(title) ? "GameVault" : title,
+                    Title = string.IsNullOrEmpty(title) ? "SanctuaryVault" : title,
                     SizeToContent = SizeToContent.WidthAndHeight,
                     MaxWidth = 900,
                     CanResize = false,

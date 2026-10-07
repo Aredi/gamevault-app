@@ -5,6 +5,9 @@
     <!-- Brushes (Brush.*, GameVault.Brushes.*) are created at runtime by ThemeManager from the selected theme. -->
 
     <x:Int32 x:Key="Zero">0</x:Int32>
+    <!-- Typefaces: Figtree for text, Sora for titles (embedded, with the system font as fallback) -->
+    <FontFamily x:Key="Font.Body">avares://gamevault/Resources/Fonts#Figtree, $Default</FontFamily>
+    <FontFamily x:Key="Font.Display">avares://gamevault/Resources/Fonts#Sora, avares://gamevault/Resources/Fonts#Figtree, $Default</FontFamily>
     <CornerRadius x:Key="ControlCornerRadius">5</CornerRadius>
     <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
 

@@ -49,7 +49,7 @@ namespace gamevault.Helper
                     return;
                 Preferences.Set(AppConfigKey.LastSeenGameId, maxId.ToString(), configFile);
 
-                string title = added.Count == 1 ? Loc.T("New game on GameVault") : Loc.F("{0} new games on GameVault", added.Count);
+                string title = added.Count == 1 ? Loc.T("New game on SanctuaryVault") : Loc.F("{0} new games on SanctuaryVault", added.Count);
                 string names = string.Join(", ", added.Take(5).Select(g => g.Title));
                 if (added.Count > 5)
                     names += ", ...";

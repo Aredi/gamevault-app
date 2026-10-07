@@ -26,8 +26,46 @@ namespace gamevault.ViewModels
         public Game? Game
         {
             get { return game; }
-            set { game = value; OnPropertyChanged(); }
+            set
+            {
+                game = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(Subtitle));
+                OnPropertyChanged(nameof(ReleaseText));
+                OnPropertyChanged(nameof(HasScreenshots));
+                OnPropertyChanged(nameof(PosterUrl));
+            }
         }
+
+        public GameViewViewModel()
+        {
+            foreach (var brush in new[] { AccentBrush, AccentSoftBrush })
+                brush.Transitions = new Avalonia.Animation.Transitions { new Avalonia.Animation.ColorTransition { Property = Avalonia.Media.SolidColorBrush.ColorProperty, Duration = TimeSpan.FromMilliseconds(450) } };
+        }
+
+        /// <summary>The color of the game's cover: play button, glow under the artwork, genre chips.</summary>
+        public Avalonia.Media.SolidColorBrush AccentBrush { get; } = new(gamevault.Helper.CoverColors.ThemeAccent);
+        public Avalonia.Media.SolidColorBrush AccentSoftBrush { get; } = new(gamevault.Helper.CoverColors.ThemeAccent, 0.3);
+        public void SetAccent(Avalonia.Media.Color? color)
+        {
+            var accent = color ?? gamevault.Helper.CoverColors.ThemeAccent;
+            AccentBrush.Color = accent;
+            AccentSoftBrush.Color = accent;
+        }
+
+        /// <summary>"Supergiant Games · 2020 · v1.38"</summary>
+        public string Subtitle => string.Join(" · ", new[]
+        {
+            Game?.Metadata?.Developers?.FirstOrDefault()?.Name,
+            Game?.Metadata?.ReleaseDate?.Year.ToString(),
+            Game?.Version,
+        }.Where(p => !string.IsNullOrEmpty(p)));
+
+        public string ReleaseText => Game?.Metadata?.ReleaseDate is DateTime date ? date.ToString("d MMMM yyyy", System.Globalization.CultureInfo.CurrentUICulture) : "—";
+        public bool HasScreenshots => Game?.Metadata?.Screenshots?.Length > 0;
+        /// <summary>Shown in the player's place until it has loaded (and when it cannot).</summary>
+        public string? PosterUrl => Game?.Metadata?.Screenshots?.FirstOrDefault();
+        public bool HasOtherPlayers => UserProgresses?.Length > 0;
         public Progress? CurrentUserProgress
         {
             get { return currentUserProgress; }
@@ -36,7 +74,7 @@ namespace gamevault.ViewModels
         public Progress[]? UserProgresses
         {
             get { return userProgresses; }
-            set { userProgresses = value; OnPropertyChanged(); }
+            set { userProgresses = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasOtherPlayers)); }
         }
         public Dictionary<string, string>? GameStates
         {

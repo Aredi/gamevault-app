@@ -347,7 +347,7 @@ namespace gamevault.UserControls
                         percentages[i] = 5;
                     }
                 }
-                string[] names = { Loc.F("This Game ({0})", ViewModel.Game.Title), Loc.T("Other installed GameVault Games"), Loc.T("Unmanaged Data"), Loc.T("Free Space") };
+                string[] names = { Loc.F("This Game ({0})", ViewModel.Game.Title), Loc.T("Other installed SanctuaryVault Games"), Loc.T("Unmanaged Data"), Loc.T("Free Space") };
                 long[] sizes = { currentGameSize, otherGamesSize, unmanagedDiskSize, freeSpace };
                 Color[] colors = { Colors.DeepPink, Colors.LightSeaGreen, Colors.PaleVioletRed, Colors.DarkGray };
                 var slices = new List<PieSlice>();

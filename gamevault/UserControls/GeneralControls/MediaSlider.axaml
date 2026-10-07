@@ -5,7 +5,8 @@
              x:Class="gamevault.UserControls.MediaSlider"
              Focusable="True">
     <Grid x:Name="uiRoot">
-        <Border Background="Black" Margin="0,0,30,0" CornerRadius="5,0,0,5" ClipToBounds="True">
+        <!-- Transparent: the page shows the first screenshot until the player has loaded -->
+        <Border Background="Transparent" Margin="0,0,30,0" CornerRadius="5,0,0,5" ClipToBounds="True">
             <Grid>
                 <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Center" Width="35" Height="35" Margin="0,0,3,0" Click="ReloadMediaSlider_Click">
                     <Grid Classes="hover" Background="#02000000">

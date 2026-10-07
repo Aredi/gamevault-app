@@ -140,6 +140,7 @@ namespace gamevault.UserControls
             this.DataContext = ViewModel;
             Loaded += UserControl_Loaded;
             Loaded += (_, _) => ObserveInstallState(true);
+            InitLayout();
             Unloaded += (_, _) =>
             {
                 ObserveInstallState(false);
@@ -303,9 +304,41 @@ namespace gamevault.UserControls
                 return false;
             return DownloadsViewModel.Instance.DownloadedGames.Where(gameUC => gameUC.GetGameId() == game.ID).Count() > 0;
         }
-        private void Back_Click(object? sender, PointerReleasedEventArgs e)
+        private void Back_Click(object? sender, RoutedEventArgs e)
         {
             Back();
+        }
+        private async void Screenshot_Click(object? sender, RoutedEventArgs e)
+        {
+            if (((Control)sender!).DataContext is string url)
+                await uiMediaSlider.ShowUrl(url);
+        }
+        /// <summary>The page takes the color of the cover; narrow windows stack the columns.</summary>
+        private void InitLayout()
+        {
+            uiCover.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == CacheImage.AccentColorProperty)
+                    ViewModel.SetAccent(uiCover.AccentColor);
+            };
+            SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width);
+        }
+        private bool? narrowLayout;
+        private void ApplyWidth(double width)
+        {
+            bool narrow = width < 1100;
+            uiContent.Margin = narrow ? new Thickness(24, 200, 24, 40) : new Thickness(44, 250, 44, 48);
+            uiTitle.FontSize = width < 900 ? 32 : narrow ? 40 : 50;
+            uiCoverFrame.Width = narrow ? 160 : 220;
+            uiCoverFrame.Height = narrow ? 240 : 330;
+            if (narrowLayout == narrow)
+                return;
+            narrowLayout = narrow;
+            // One column: facts and players below the media and the description
+            uiBody.ColumnDefinitions = narrow ? new ColumnDefinitions("*") : new ColumnDefinitions("*,36,330");
+            Grid.SetColumn(uiSide, narrow ? 0 : 2);
+            Grid.SetRow(uiSide, narrow ? 1 : 0);
+            uiSide.Margin = narrow ? new Thickness(0, 28, 0, 0) : new Thickness(0);
         }
         private void Back()
         {

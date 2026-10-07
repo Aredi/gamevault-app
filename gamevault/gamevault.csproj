@@ -22,6 +22,8 @@
 
 	<ItemGroup>
 		<AvaloniaResource Include="Resources\Images\**" />
+		<!-- Figtree (text) and Sora (titles), SIL Open Font License: see Resources/Fonts/OFL-*.txt -->
+		<AvaloniaResource Include="Resources\Fonts\*.ttf" />
 		<!-- WPF-format theme files: read as data by ThemeManager, never compiled as XAML -->
 		<EmbeddedResource Include="Resources\Assets\Themes\*.xaml" LogicalName="Themes/%(Filename)%(Extension)" />
 	</ItemGroup>

@@ -5,236 +5,652 @@
              xmlns:vm="clr-namespace:gamevault.ViewModels"
              xmlns:local="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.LibraryUserControl"
+             x:Name="uiLibrary"
              Focusable="True">
     <UserControl.Resources>
         <conv:GameSizeConverter x:Key="sizeConv" />
         <conv:LibraryPermissionRoleToVisibilityConverter x:Key="libCardsPermVisConv" />
-        <conv:IsGameDownloadedConverter x:Key="isGameDownloadedConv" />
         <conv:ContainsCurrentUserConverter x:Key="containsCurrentUserConv" />
         <conv:MappedTitleConverter x:Key="mappedTitleConv" />
         <conv:GreaterThanConverter x:Key="greaterThanConv" />
+        <conv:AccentBrushConverter x:Key="accentBrushConv" />
+        <conv:AccentShadowConverter x:Key="accentShadowConv" />
+        <conv:IsGameInstalledConverter x:Key="installedConv" />
+        <conv:GameUpdateAvailableMultiConverter x:Key="updateConv" />
+        <conv:SameGameConverter x:Key="sameGameConv" />
+        <conv:GameCardInfoConverter x:Key="cardInfoConv" />
+        <conv:PlainTextConverter x:Key="plainTextConv" />
+        <conv:BlurWhenConverter x:Key="blurWhenConv" />
+        <conv:GameTimeConverter x:Key="timeConv" />
+        <conv:PlayInfoConverter x:Key="playInfoConv" />
+        <conv:EarlyAccessConverter x:Key="earlyAccessConv" />
     </UserControl.Resources>
     <UserControl.Styles>
-        <!-- Game cards: overlay with actions while hovered, slight shrink animation -->
-        <Style Selector="Button.card Grid.cardInner">
-            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
-            <Setter Property="RenderTransform" Value="scale(1)" />
+        <Style Selector="WrapPanel.chips > :is(Control)">
+            <Setter Property="Margin" Value="0,0,8,8" />
+        </Style>
+        <Style Selector="WrapPanel.filters > :is(Control)">
+            <Setter Property="Margin" Value="0,0,28,14" />
+        </Style>
+        <Style Selector="TextBlock.filterLabel">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+        <!-- Banner: arrows appear while hovered, dots show the position -->
+        <Style Selector="Border#uiHero Button.heroArrow">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="Border#uiHero:pointerover Button.heroArrow">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="ListBox.dots">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="ListBox.dots ListBoxItem">
+            <Setter Property="Padding" Value="3" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.dots ListBoxItem /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.dots ListBoxItem Border.dot">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Background" Value="#66FFFFFF" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                    <DoubleTransition Property="Width" Duration="0:0:0.2" />
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.card:pointerover Grid.cardInner">
-            <Setter Property="RenderTransform" Value="scale(0.95)" />
+        <Style Selector="ListBox.dots ListBoxItem:selected Border.dot">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Background" Value="White" />
         </Style>
-        <Style Selector="Button.card Border.cardOverlay">
-            <Setter Property="IsVisible" Value="False" />
-        </Style>
-        <Style Selector="Button.card:pointerover Border.cardOverlay">
-            <Setter Property="IsVisible" Value="True" />
+        <Style Selector="TextBox.librarySearch">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="Padding" Value="4,0,10,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
     </UserControl.Styles>
-    <Grid RowDefinitions="50,*">
-        <Border Background="{DynamicResource Brush.Background2}" Grid.Row="0">
-            <TextBlock Text="{l:T 'Library'}" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
+
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
+        <!-- Top of the page tinted with the color of the featured / hovered game -->
+        <Border Grid.RowSpan="2" Grid.ColumnSpan="2" Height="620" VerticalAlignment="Top" IsHitTestVisible="False" Opacity="0.32"
+                Background="{Binding AmbientBrush}">
+            <Border.OpacityMask>
+                <RadialGradientBrush Center="50%,0%" GradientOrigin="50%,0%" RadiusX="75%" RadiusY="100%">
+                    <GradientStop Color="Black" Offset="0" />
+                    <GradientStop Color="#40000000" Offset="0.55" />
+                    <GradientStop Color="Transparent" Offset="1" />
+                </RadialGradientBrush>
+            </Border.OpacityMask>
         </Border>
-        <ScrollViewer x:Name="uiMainScrollBar" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <Viewbox Stretch="Uniform" StretchDirection="Both">
-                    <local:InstallUserControl x:Name="uiGameInstalls" Width="2000" />
-                </Viewbox>
-                <Viewbox Stretch="Uniform" StretchDirection="Both">
-                    <Expander x:Name="uiExpanderGameCards" Classes="gv" Width="2000" Margin="10,0,10,10">
-                        <Expander.Header>
-                            <Grid Height="35" Width="1920">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
-                                    <TextBlock Text="{l:T 'Server Games'}" FontWeight="Bold" FontSize="20" Foreground="{DynamicResource Brush.Foreground2}" />
-                                    <TextBlock FontWeight="Bold" FontSize="20" Foreground="{DynamicResource Brush.Foreground2}"
-                                               IsVisible="{Binding TotalGamesCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{l:T '({0} of {1})'}">
-                                                <Binding Path="GameCards.Count" />
-                                                <Binding Path="TotalGamesCount" />
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="15">
-                                    <TextBox Classes="search" Width="378" Margin="0,4,0,4" TextChanged="Search_TextChanged" />
-                                    <Button Classes="wrapper" x:Name="uiBtnReloadLibrary" Height="25" Width="25" ToolTip.Tip="{l:T 'Reload Library (F5)'}">
-                                        <Grid Classes="hover" Background="Transparent">
-                                            <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground2}" RenderTransform="scale(1.51)" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Grid>
-                                    </Button>
-                                    <Button Classes="wrapper" Height="30" Width="33" ToolTip.Tip="{l:T 'I\&#x27;m Feeling Lucky'}" Click="RandomGame_Click">
-                                        <Grid Classes="hover" Background="Transparent">
-                                            <Path Data="{StaticResource IconLibraryDices}" Fill="{DynamicResource Brush.Foreground2}" Stretch="Uniform" Width="28" Height="28" />
-                                        </Grid>
-                                    </Button>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="10">
-                                    <Grid Classes="hover" Height="30" Width="30" Cursor="Hand" ToolTip.Tip="{l:T 'Clear all Filters'}" Background="Transparent" PointerPressed="ClearAllFilters_Click"
-                                          IsVisible="{Binding FilterCounter, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                        <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="IndianRed" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Grid>
-                                    <local:Badged Badge="{Binding FilterCounter}" BadgeBackground="IndianRed">
-                                        <Grid Classes="hover" Height="30" Width="30" Cursor="Hand" ToolTip.Tip="{l:T 'Toggle Filters &amp; Sorting'}" Background="Transparent" PointerPressed="Filter_Click">
-                                            <Path Data="{StaticResource IconOpenFilter}" Fill="{DynamicResource Brush.Foreground2}" RenderTransform="scale(1.5)" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Grid>
-                                    </local:Badged>
-                                </StackPanel>
-                            </Grid>
-                        </Expander.Header>
-                        <StackPanel>
-                            <Grid IsVisible="{Binding FilterVisibility}">
-                                <StackPanel HorizontalAlignment="Left">
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                                        <local:PillSelector x:Name="uiFilterGameTypeSelector" SelectionType="GameType" Margin="12,0,24,0" Width="175" />
-                                        <local:PillSelector x:Name="uiFilterTagSelector" SelectionType="Tags" Margin="0,0,24,0" Width="175" />
-                                        <local:PillSelector x:Name="uiFilterGenreSelector" SelectionType="Genres" Margin="0,0,24,0" Width="175" />
-                                        <local:PillSelector x:Name="uiFilterDeveloperSelector" SelectionType="Developers" Margin="0,0,24,0" Width="175" />
-                                        <local:PillSelector x:Name="uiFilterPublisherSelector" SelectionType="Publishers" Margin="0,0,24,0" Width="175" />
-                                        <local:PillSelector x:Name="uiFilterGameStateSelector" SelectionType="GameState" IsMultiSelection="False" Margin="0,0,23,0" Width="175" />
-                                        <StackPanel Margin="0,0,60,0">
-                                            <TextBlock Text="{l:T 'Release Year'}" FontSize="15" />
-                                            <local:DateRangeSelector x:Name="uiFilterReleaseDateRangeSelector" />
-                                        </StackPanel>
-                                        <StackPanel Margin="0,0,60,0">
-                                            <TextBlock Text="{l:T 'Early Access'}" FontSize="15" />
-                                            <ToggleButton x:Name="uiFilterEarlyAccess" Classes="icon earlyAccess" Width="30" Height="30" Margin="3,3,0,0" HorizontalAlignment="Left" />
-                                        </StackPanel>
-                                        <StackPanel>
-                                            <TextBlock Text="{l:T 'Bookmarks'}" FontSize="15" />
-                                            <ToggleButton x:Name="uiFilterBookmarks" Classes="icon bookmark" Width="30" Height="30" Margin="0,3,0,0" HorizontalAlignment="Left" />
-                                        </StackPanel>
-                                    </StackPanel>
-                                    <!-- Second row: filters resolved by GameVault (play data, collections) -->
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="12,10,0,5">
-                                        <StackPanel Margin="0,0,40,0">
-                                            <TextBlock Text="{l:T 'Played'}" FontSize="15" />
-                                            <ComboBox x:Name="uiFilterPlayStatus" Width="150" Margin="0,3,0,0" ItemsSource="{Binding PlayStatusValues}" SelectedItem="{Binding SelectedPlayStatus}">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <TextBlock Text="{Binding Key, Converter={x:Static l:LocConverter.Instance}}" />
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-                                        </StackPanel>
-                                        <StackPanel>
-                                            <TextBlock Text="{l:T 'Collection'}" FontSize="15" />
-                                            <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,3,0,0">
-                                                <ComboBox x:Name="uiFilterCollection" Width="170" ItemsSource="{Binding CollectionNames}" SelectedItem="{Binding SelectedCollection}">
-                                                    <ComboBox.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <TextBlock Text="{Binding Converter={x:Static l:LocConverter.Instance}}" />
-                                                        </DataTemplate>
-                                                    </ComboBox.ItemTemplate>
-                                                </ComboBox>
-                                                <Button Classes="wrapper" Width="30" Height="30" ToolTip.Tip="{l:T 'Manage collections'}" Click="ManageCollections_Click">
-                                                    <Grid Classes="hover" Background="Transparent">
-                                                        <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                                    </Grid>
-                                                </Button>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                    <ToggleButton x:Name="uiFilterOrderBy" Classes="icon orderBy" Width="35" Height="35" Margin="0,10,0,0" ToolTip.Tip="{l:T 'Sort order'}" />
-                                    <ComboBox x:Name="uiFilterSortBy" Width="175" Margin="25,10,10,0" ItemsSource="{Binding GameFilterSortByValues}" SelectedItem="{Binding SelectedGameFilterSortBy}">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding Key, Converter={x:Static l:LocConverter.Instance}}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
-                                </StackPanel>
-                            </Grid>
-                            <Border Background="{DynamicResource Brush.Background2}" CornerRadius="5" Margin="-6,5,-6,0" VerticalAlignment="Top">
-                                <Grid>
-                                    <!-- No Games Found -->
-                                    <StackPanel ZIndex="1" HorizontalAlignment="Center" IsVisible="{Binding ShowNoGamesFound}">
-                                        <Image Source="/Resources/Images/library_NoGameFound.png" Height="190" />
-                                        <TextBlock Text="{l:T 'No Games found'}" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0" />
-                                        <Button Classes="link" HorizontalAlignment="Center" FontSize="10" Margin="0,5,0,10" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#games-not-appearing-in-the-installations--servers-list" Click="Hyperlink_RequestNavigate">
-                                            <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
-                                        </Button>
-                                    </StackPanel>
-                                    <!-- Server Error -->
-                                    <StackPanel ZIndex="1" HorizontalAlignment="Center" IsVisible="{Binding !CanLoadServerGames}">
-                                        <Image Source="/Resources/Images/install_NoGameFound.png" Height="190" />
-                                        <TextBlock Text="{l:T 'Failed to load Library'}" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0"
-                                                   IsVisible="{Binding !$parent[Window].DataContext.IsOffline}" />
-                                        <TextBlock Text="{l:T 'You are offline'}" FontSize="20" HorizontalAlignment="Center" Margin="0,-10,0,0"
-                                                   IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
-                                        <TextBlock Text="{l:T 'Installed games can still be played: play time and cloud saves are sent when the server is back.'}" FontSize="12" HorizontalAlignment="Center" Opacity="0.8" Margin="0,5,0,0"
-                                                   IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
-                                        <Button Classes="link" HorizontalAlignment="Center" FontSize="10" Margin="0,5,0,10" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#unable-to-connect-to-server--500-internal-server-error" Click="Hyperlink_RequestNavigate">
-                                            <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
-                                        </Button>
-                                    </StackPanel>
-                                    <!-- Games found -->
-                                    <ScrollViewer x:Name="uiServerGamesScroll" MaxHeight="891" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" ScrollChanged="Library_ScrollChanged">
-                                        <ItemsRepeater x:Name="uiServerGamesItemsControl" ItemsSource="{Binding GameCards}" Margin="5,5,5,5">
-                                            <ItemsRepeater.Layout>
-                                                <UniformGridLayout MaximumRowsOrColumns="10" MinItemWidth="197" ItemsJustification="Start" />
-                                            </ItemsRepeater.Layout>
-                                            <ItemsRepeater.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Button Classes="wrapper card" Click="GameCard_Clicked" HorizontalAlignment="Center">
-                                                        <Grid Background="Transparent" Height="267" Width="178" Margin="0,10,0,10">
-                                                            <Grid Classes="cardInner">
-                                                                <Border Background="{DynamicResource Brush.Background}" CornerRadius="8">
-                                                                    <local:CacheImage Stretch="Fill" ImageCacheType="GameCover" Data="{Binding}" CornerRadius="8" />
-                                                                </Border>
-                                                                <Border Classes="cardOverlay" Background="{DynamicResource GameVault.Brushes.Blur}" CornerRadius="8">
-                                                                    <Grid>
-                                                                        <Button Classes="wrapper" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,10,0" Click="CardSettings_Click"
-                                                                                IsVisible="{Binding Title, Converter={StaticResource libCardsPermVisConv}}">
-                                                                            <Grid Classes="hover" Background="#02000000">
-                                                                                <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.3)" />
-                                                                            </Grid>
-                                                                        </Button>
-                                                                        <ToggleButton Classes="icon bookmark" Width="25" Height="25" Margin="10,12,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
-                                                                                      IsChecked="{Binding BookmarkedUsers, Converter={StaticResource containsCurrentUserConv}, Mode=OneWay}" Click="CardBookmark_Click" />
-                                                                        <TextBlock FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="5,0">
-                                                                            <TextBlock.Text>
-                                                                                <MultiBinding Converter="{StaticResource mappedTitleConv}">
-                                                                                    <Binding />
-                                                                                    <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
-                                                                                </MultiBinding>
-                                                                            </TextBlock.Text>
-                                                                        </TextBlock>
-                                                                        <Button Classes="wrapper" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,30" Click="Download_Click">
-                                                                            <Grid Classes="hover" Background="Transparent" Height="61" Width="65" ToolTip.Tip="{Binding DownloadCount, StringFormat={l:T 'Downloaded {0} times'}}">
-                                                                                <Path Fill="{DynamicResource Brush.Foreground}" Data="{StaticResource IconReDownload}" RenderTransform="scale(3)" RenderTransformOrigin="0%,0%" Margin="10,5,0,0"
-                                                                                      IsVisible="{Binding ID, Converter={StaticResource isGameDownloadedConv}}" />
-                                                                                <Path Fill="{DynamicResource Brush.Foreground}" Data="{StaticResource IconDownload}" RenderTransform="scale(3)" RenderTransformOrigin="0%,0%" Margin="10,5,0,0"
-                                                                                      IsVisible="{Binding ID, Converter={StaticResource isGameDownloadedConv}, ConverterParameter=invert}" />
-                                                                                <TextBlock FontSize="10" FontWeight="Bold" Text="{Binding Size, Converter={StaticResource sizeConv}}" Margin="0,50,0,0" HorizontalAlignment="Center" />
-                                                                            </Grid>
-                                                                        </Button>
-                                                                    </Grid>
-                                                                </Border>
-                                                            </Grid>
-                                                        </Grid>
-                                                    </Button>
-                                                </DataTemplate>
-                                            </ItemsRepeater.ItemTemplate>
-                                        </ItemsRepeater>
-                                    </ScrollViewer>
-                                    <Border Classes="hover" VerticalAlignment="Bottom" HorizontalAlignment="Right" IsVisible="{Binding ScrollToTopVisibility}" Background="{DynamicResource Brush.Accent2}"
-                                            CornerRadius="5" Cursor="Hand" Width="50" Height="50" Margin="0,0,15,15" ZIndex="2" PointerReleased="ScrollToTop_Click">
-                                        <Path Data="{StaticResource IconLibraryScrollToTop}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                </Grid>
+
+        <!-- ===== Toolbar ===== -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="28,20,28,6" Spacing="14">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Classes="pageTitle" Text="{l:T 'Library'}" VerticalAlignment="Center" />
+                    <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Margin="0,4,0,0"
+                               Text="{Binding TotalGamesCount, StringFormat={l:T '{}{0} games'}}"
+                               IsVisible="{Binding TotalGamesCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}" />
+                </StackPanel>
+                <TextBox x:Name="uiSearch" Grid.Column="1" Classes="librarySearch" MaxWidth="460" Margin="28,0" HorizontalAlignment="Stretch"
+                         Watermark="{l:T 'Search the library'}" TextChanged="Search_TextChanged">
+                    <TextBox.InnerLeftContent>
+                        <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="16" Height="16" Margin="12,0,6,0" />
+                    </TextBox.InnerLeftContent>
+                </TextBox>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsGalleryMode}" ToolTip.Tip="{l:T 'Cover size'}">
+                        <Path Data="{StaticResource IconViewGallery}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="11" Height="11" />
+                        <Slider x:Name="uiCardSize" Width="96" Minimum="{x:Static vm:LibraryViewModel.MinCardWidth}" Maximum="{x:Static vm:LibraryViewModel.MaxCardWidth}"
+                                Value="{Binding CardWidth}" VerticalAlignment="Center" />
+                        <Path Data="{StaticResource IconViewGallery}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="16" Height="16" />
+                    </StackPanel>
+                    <Border Background="{DynamicResource Brush.Surface}" CornerRadius="10" Padding="3" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <ToggleButton Classes="segment" x:Name="uiViewGallery" IsChecked="{Binding IsGalleryMode, Mode=OneWay}" Click="ViewGallery_Click" ToolTip.Tip="{l:T 'Gallery: large covers'}">
+                                <Path Data="{StaticResource IconViewGallery}" />
+                            </ToggleButton>
+                            <ToggleButton Classes="segment" x:Name="uiViewShelf" IsChecked="{Binding IsShelfMode, Mode=OneWay}" Click="ViewShelf_Click" ToolTip.Tip="{l:T 'Shelf: browse with the details beside the covers'}">
+                                <Path Data="{StaticResource IconViewShelf}" />
+                            </ToggleButton>
+                            <Border Width="1" Background="{DynamicResource Brush.Line}" Margin="3,4" />
+                            <ToggleButton Classes="segment" x:Name="uiShowcaseToggle" IsChecked="{Binding ShowcaseEnabled, Mode=OneWay}" Click="Showcase_Click" ToolTip.Tip="{l:T 'Showcase: featured game, continue playing and new games above the library'}">
+                                <Path Data="{StaticResource IconShowcase}" />
+                            </ToggleButton>
+                        </StackPanel>
+                    </Border>
+                    <Button Classes="round small" ToolTip.Tip="{l:T 'I\'m Feeling Lucky'}" Click="RandomGame_Click">
+                        <Path Data="{StaticResource IconLibraryDices}" Width="18" Height="18" />
+                    </Button>
+                    <Button Classes="round small" x:Name="uiBtnReloadLibrary" ToolTip.Tip="{l:T 'Reload Library (F5)'}">
+                        <Path Data="{StaticResource IconReload}" Width="15" Height="15" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Quick filters and sorting -->
+            <Grid ColumnDefinitions="*,Auto">
+                <WrapPanel Classes="chips" Margin="0,0,0,-8">
+                    <ToggleButton Classes="chip" x:Name="uiQuickInstalled" IsChecked="{Binding OnlyInstalled}" Content="{l:T 'Installed'}" />
+                    <ToggleButton Classes="chip" x:Name="uiQuickUpdates" IsChecked="{Binding OnlyUpdates}"
+                                  IsVisible="{Binding UpdateCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{l:T 'Updates'}" VerticalAlignment="Center" />
+                            <Border Background="{DynamicResource Brush.Warning}" CornerRadius="8" Padding="6,1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding UpdateCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Background}" />
                             </Border>
                         </StackPanel>
-                    </Expander>
-                </Viewbox>
+                    </ToggleButton>
+                    <ToggleButton Classes="chip" x:Name="uiFilterBookmarks" Content="{l:T 'Bookmarks'}" />
+                    <ToggleButton Classes="chip" x:Name="uiFilterEarlyAccess" Content="{l:T 'Early Access'}" />
+                    <Button Classes="chip" Click="Filter_Click" ToolTip.Tip="{l:T 'Toggle Filters &amp; Sorting'}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="{StaticResource IconFilterLines}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="13" Height="13" VerticalAlignment="Center" />
+                            <TextBlock Text="{l:T 'More filters'}" VerticalAlignment="Center" />
+                            <Path Data="{StaticResource IconChevronDown}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="10" Height="10" VerticalAlignment="Center"
+                                  RenderTransform="{Binding FilterVisibility, Converter={x:Static conv:LibraryStatic.FlipWhenTrue}}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="chip" Click="ClearAllFilters_Click" IsVisible="{Binding FilterCounter, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            ToolTip.Tip="{l:T 'Clear all Filters'}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Warning}" StrokeThickness="2" Stretch="Uniform" Width="9" Height="9" VerticalAlignment="Center" />
+                            <TextBlock VerticalAlignment="Center" Text="{Binding FilterCounter, StringFormat={l:T 'Clear ({0})'}}" />
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                    <TextBlock Classes="muted" Text="{l:T 'Sort by'}" FontSize="13" VerticalAlignment="Center" />
+                    <ComboBox x:Name="uiFilterSortBy" MinWidth="160" MinHeight="32" ItemsSource="{Binding GameFilterSortByValues}" SelectedItem="{Binding SelectedGameFilterSortBy}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Key, Converter={x:Static l:LocConverter.Instance}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <ToggleButton x:Name="uiFilterOrderBy" Classes="icon orderBy" Width="32" Height="32" ToolTip.Tip="{l:T 'Sort order'}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- More filters -->
+            <Border IsVisible="{Binding FilterVisibility}" Background="{DynamicResource Brush.Surface}" CornerRadius="14" Padding="18,16,18,4"
+                    BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1">
+                <WrapPanel Classes="filters">
+                    <local:PillSelector x:Name="uiFilterGameTypeSelector" SelectionType="GameType" Width="175" />
+                    <local:PillSelector x:Name="uiFilterTagSelector" SelectionType="Tags" Width="175" />
+                    <local:PillSelector x:Name="uiFilterGenreSelector" SelectionType="Genres" Width="175" />
+                    <local:PillSelector x:Name="uiFilterDeveloperSelector" SelectionType="Developers" Width="175" />
+                    <local:PillSelector x:Name="uiFilterPublisherSelector" SelectionType="Publishers" Width="175" />
+                    <local:PillSelector x:Name="uiFilterGameStateSelector" SelectionType="GameState" IsMultiSelection="False" Width="175" />
+                    <StackPanel>
+                        <TextBlock Classes="filterLabel" Text="{l:T 'Release Year'}" />
+                        <local:DateRangeSelector x:Name="uiFilterReleaseDateRangeSelector" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="filterLabel" Text="{l:T 'Played'}" />
+                        <ComboBox x:Name="uiFilterPlayStatus" Width="150" ItemsSource="{Binding PlayStatusValues}" SelectedItem="{Binding SelectedPlayStatus}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Key, Converter={x:Static l:LocConverter.Instance}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="filterLabel" Text="{l:T 'Collection'}" />
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <ComboBox x:Name="uiFilterCollection" Width="170" ItemsSource="{Binding CollectionNames}" SelectedItem="{Binding SelectedCollection}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Converter={x:Static l:LocConverter.Instance}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Classes="round small" ToolTip.Tip="{l:T 'Manage collections'}" Click="ManageCollections_Click">
+                                <Path Data="{StaticResource IconInstalledGamesSettings}" />
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </WrapPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ===== Page ===== -->
+        <ScrollViewer x:Name="uiMainScrollBar" Classes="page" Grid.Row="1" Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      ScrollChanged="Library_ScrollChanged">
+            <StackPanel Margin="0,10,0,40" Spacing="30">
+
+                <!-- Featured game -->
+                <Border x:Name="uiHero" Margin="28,0" CornerRadius="18" ClipToBounds="True" Height="{Binding HeroHeight}"
+                        Background="{DynamicResource Brush.Surface}" IsVisible="{Binding ShowHero}"
+                        PointerEntered="Hero_PointerEntered" PointerExited="Hero_PointerExited">
+                    <Panel>
+                        <local:CacheImage x:Name="uiHeroArt" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill"
+                                          Data="{Binding CurrentHero.Game}" Effect="{Binding #uiHeroArt.IsShowingFallback, Converter={StaticResource blurWhenConv}, ConverterParameter=40}" />
+                        <Border>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.Background}" Offset="0" />
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundSoft}" Offset="0.38" />
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundClear}" Offset="0.75" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <Border>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundStrong}" Offset="0" />
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundClear}" Offset="0.5" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Bottom" Margin="32,0,120,30">
+                            <Border Width="112" Height="168" CornerRadius="10" ClipToBounds="True" VerticalAlignment="Bottom" Margin="0,0,24,0"
+                                    BoxShadow="0 18 40 -12 #CC000000" IsVisible="{Binding IsWide}">
+                                <local:CacheImage x:Name="uiHeroCover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding CurrentHero.Game}" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Bottom">
+                                <TextBlock Classes="eyebrow" Text="{Binding CurrentHero.Eyebrow}" Opacity="0.85" />
+                                <TextBlock Classes="display" FontSize="{Binding HeroTitleSize}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" >
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource mappedTitleConv}">
+                                            <Binding Path="CurrentHero.Game" />
+                                            <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                                <TextBlock Text="{Binding CurrentHero.Info}" FontSize="14" Opacity="0.85" TextTrimming="CharacterEllipsis" />
+                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+                                    <Button Classes="action" Background="{Binding $parent[local:LibraryUserControl].DataContext.HeroAccentBrush}" Click="PrimaryAction_Click" DataContext="{Binding CurrentHero.Game}">
+                                        <Panel>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <StackPanel.IsVisible>
+                                                    <MultiBinding Converter="{StaticResource installedConv}">
+                                                        <Binding />
+                                                        <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                                    </MultiBinding>
+                                                </StackPanel.IsVisible>
+                                                <Path Data="{StaticResource IconPlay}" />
+                                                <TextBlock Text="{l:T 'Play'}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <StackPanel.IsVisible>
+                                                    <MultiBinding Converter="{StaticResource installedConv}" ConverterParameter="invert">
+                                                        <Binding />
+                                                        <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                                    </MultiBinding>
+                                                </StackPanel.IsVisible>
+                                                <Path Data="{StaticResource IconArrowDown}" />
+                                                <TextBlock VerticalAlignment="Center" Text="{Binding Size, Converter={StaticResource sizeConv}, StringFormat={l:T 'Install · {0}'}}" />
+                                            </StackPanel>
+                                        </Panel>
+                                    </Button>
+                                    <Button Classes="ghost" Content="{l:T 'Game page'}" Click="HeroDetails_Click" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                        <Button Classes="round small heroArrow" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0" Click="HeroPrevious_Click"
+                                IsVisible="{Binding HasSeveralHeroItems}" ToolTip.Tip="{l:T 'Previous'}">
+                            <Path Data="{StaticResource IconChevronLeft}" />
+                        </Button>
+                        <Button Classes="round small heroArrow" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" Click="HeroNext_Click"
+                                IsVisible="{Binding HasSeveralHeroItems}" ToolTip.Tip="{l:T 'Next'}">
+                            <Path Data="{StaticResource IconChevronRight}" />
+                        </Button>
+                        <ListBox Classes="dots" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,26,30" ItemsSource="{Binding HeroItems}"
+                                 SelectedIndex="{Binding HeroIndex}" IsVisible="{Binding HasSeveralHeroItems}">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="dot" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Panel>
+                </Border>
+
+                <!-- Continue playing: the installed games -->
+                <local:InstallUserControl x:Name="uiGameInstalls" IsVisible="{Binding ShowInstalledRow}" />
+
+                <!-- Recently added -->
+                <StackPanel Spacing="12" IsVisible="{Binding ShowRecent}">
+                    <Grid Margin="28,0" ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="sectionTitle" Text="{l:T 'Recently added'}" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                            <Button Classes="round small" Click="RecentPrevious_Click" ToolTip.Tip="{l:T 'Previous'}"><Path Data="{StaticResource IconChevronLeft}" /></Button>
+                            <Button Classes="round small" Click="RecentNext_Click" ToolTip.Tip="{l:T 'Next'}"><Path Data="{StaticResource IconChevronRight}" /></Button>
+                        </StackPanel>
+                    </Grid>
+                    <ScrollViewer x:Name="uiRecentScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding RecentGames}" Margin="28,8,28,4">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="16" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="gameCard" Width="150" Click="OpenGame_Click">
+                                        <StackPanel Spacing="8">
+                                            <local:AspectBox Ratio="1.5">
+                                                <Panel Classes="lift">
+                                                    <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
+                                                            BoxShadow="{Binding #recentCover.AccentColor, Converter={StaticResource accentShadowConv}, ConverterParameter='14 30 -8 0.7'}" />
+                                                    <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                        <local:CacheImage x:Name="recentCover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
+                                                    </Border>
+                                                    <Border Classes="badge" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8">
+                                                        <Border.IsVisible>
+                                                            <MultiBinding Converter="{StaticResource installedConv}">
+                                                                <Binding />
+                                                                <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                                            </MultiBinding>
+                                                        </Border.IsVisible>
+                                                        <TextBlock Text="{l:T 'INSTALLED'}" Foreground="{DynamicResource Brush.Success}" />
+                                                    </Border>
+                                                </Panel>
+                                            </local:AspectBox>
+                                            <TextBlock Classes="cardTitle">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource mappedTitleConv}">
+                                                        <Binding />
+                                                        <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- All games -->
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="28,0">
+                        <TextBlock Classes="sectionTitle" Text="{l:T 'All games'}" IsVisible="{Binding IsBrowsing}" />
+                        <TextBlock Classes="sectionTitle" Text="{l:T 'Results'}" IsVisible="{Binding !IsBrowsing}" />
+                        <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center"
+                                   IsVisible="{Binding TotalGamesCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{l:T '{}{0} of {1}'}">
+                                    <Binding Path="GameCards.Count" />
+                                    <Binding Path="TotalGamesCount" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- No Games Found -->
+                    <StackPanel HorizontalAlignment="Center" IsVisible="{Binding ShowNoGamesFound}" Spacing="6" Margin="0,10">
+                        <Image Source="/Resources/Images/library_NoGameFound.png" Height="170" />
+                        <TextBlock Classes="sectionTitle" Text="{l:T 'No Games found'}" HorizontalAlignment="Center" />
+                        <Button Classes="link" HorizontalAlignment="Center" FontSize="12" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#games-not-appearing-in-the-installations--servers-list" Click="Hyperlink_RequestNavigate">
+                            <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
+                        </Button>
+                    </StackPanel>
+                    <!-- Server Error -->
+                    <StackPanel HorizontalAlignment="Center" IsVisible="{Binding !CanLoadServerGames}" Spacing="6" Margin="0,10">
+                        <Image Source="/Resources/Images/install_NoGameFound.png" Height="170" />
+                        <TextBlock Classes="sectionTitle" Text="{l:T 'Failed to load Library'}" HorizontalAlignment="Center"
+                                   IsVisible="{Binding !$parent[Window].DataContext.IsOffline}" />
+                        <TextBlock Classes="sectionTitle" Text="{l:T 'You are offline'}" HorizontalAlignment="Center"
+                                   IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
+                        <TextBlock Classes="muted" Text="{l:T 'Installed games can still be played: play time and cloud saves are sent when the server is back.'}" FontSize="13" HorizontalAlignment="Center"
+                                   IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
+                        <Button Classes="link" HorizontalAlignment="Center" FontSize="12" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#unable-to-connect-to-server--500-internal-server-error" Click="Hyperlink_RequestNavigate">
+                            <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
+                        </Button>
+                    </StackPanel>
+
+                    <ItemsRepeater x:Name="uiServerGamesItemsControl" ItemsSource="{Binding GameCards}" Margin="20,0">
+                        <ItemsRepeater.Layout>
+                            <UniformGridLayout ItemsStretch="Uniform" MinItemWidth="194" MinItemHeight="320" MinRowSpacing="10" MinColumnSpacing="0" />
+                        </ItemsRepeater.Layout>
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate>
+                                <Button Classes="gameCard" Margin="8,8,8,0" VerticalAlignment="Top" Click="GameCard_Clicked" DoubleTapped="GameCard_DoubleTapped"
+                                        PointerEntered="GameCard_PointerEntered">
+                                    <StackPanel Spacing="8">
+                                        <local:AspectBox Ratio="1.5">
+                                            <Panel Classes="lift">
+                                                <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
+                                                        BoxShadow="{Binding #cover.AccentColor, Converter={StaticResource accentShadowConv}, ConverterParameter='16 36 -8 0.75'}" />
+                                                <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                    <local:CacheImage x:Name="cover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
+                                                </Border>
+                                                <Border Classes="selection" BorderBrush="{Binding #cover.AccentColor, Converter={StaticResource accentBrushConv}}">
+                                                    <Border.IsVisible>
+                                                        <MultiBinding Converter="{StaticResource sameGameConv}">
+                                                            <Binding />
+                                                            <Binding Path="DataContext.SelectedGame" RelativeSource="{RelativeSource AncestorType=local:LibraryUserControl}" />
+                                                        </MultiBinding>
+                                                    </Border.IsVisible>
+                                                </Border>
+
+                                                <!-- State -->
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" Spacing="4">
+                                                    <Border Classes="badge update">
+                                                        <Border.IsVisible>
+                                                            <MultiBinding Converter="{StaticResource updateConv}">
+                                                                <Binding />
+                                                                <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                                            </MultiBinding>
+                                                        </Border.IsVisible>
+                                                        <TextBlock Text="{l:T 'UPDATE'}" />
+                                                    </Border>
+                                                    <Border Classes="badge">
+                                                        <Border.IsVisible>
+                                                            <MultiBinding Converter="{StaticResource earlyAccessConv}">
+                                                                <Binding />
+                                                                <Binding Path="DataContext.IsGalleryMode" RelativeSource="{RelativeSource AncestorType=local:LibraryUserControl}" />
+                                                            </MultiBinding>
+                                                        </Border.IsVisible>
+                                                        <TextBlock Text="{l:T 'EARLY ACCESS'}" Foreground="{DynamicResource Brush.Special}" />
+                                                    </Border>
+                                                    <Border Classes="badge">
+                                                        <Border.IsVisible>
+                                                            <MultiBinding Converter="{StaticResource installedConv}">
+                                                                <Binding />
+                                                                <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                                            </MultiBinding>
+                                                        </Border.IsVisible>
+                                                        <StackPanel Orientation="Horizontal" Spacing="3">
+                                                            <Path Data="{StaticResource IconTick}" Fill="{DynamicResource Brush.Success}" Stretch="Uniform" Width="9" Height="9" VerticalAlignment="Center" />
+                                                            <TextBlock Text="{l:T 'INSTALLED'}" Foreground="{DynamicResource Brush.Success}" IsVisible="{Binding $parent[local:LibraryUserControl].DataContext.IsGalleryMode}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <!-- Actions while hovered -->
+                                                <Panel Classes="hoverOnly">
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" Spacing="4">
+                                                        <Border Classes="badge" Padding="4">
+                                                            <ToggleButton Classes="icon bookmark" Width="20" Height="20" ToolTip.Tip="{l:T 'Bookmark'}"
+                                                                          IsChecked="{Binding BookmarkedUsers, Converter={StaticResource containsCurrentUserConv}, Mode=OneWay}" Click="CardBookmark_Click" />
+                                                        </Border>
+                                                        <Button Classes="round small" Width="28" Height="28" CornerRadius="7" Click="CardSettings_Click" ToolTip.Tip="{l:T 'Game Settings'}"
+                                                                IsVisible="{Binding Title, Converter={StaticResource libCardsPermVisConv}}">
+                                                            <Path Data="{StaticResource IconInstalledGamesSettings}" Width="13" Height="13" />
+                                                        </Button>
+                                                    </StackPanel>
+                                                    <Button Classes="round" Width="46" Height="46" CornerRadius="23" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10"
+                                                            Foreground="White" Background="{Binding #cover.AccentColor, Converter={StaticResource accentBrushConv}}"
+                                                            Click="CardQuickAction_Click" IsVisible="{Binding $parent[local:LibraryUserControl].DataContext.IsGalleryMode}">
+                                                        <ToolTip.Tip>
+                                                            <TextBlock Text="{Binding Size, Converter={StaticResource sizeConv}, StringFormat={l:T 'Play, or download ({0})'}}" />
+                                                        </ToolTip.Tip>
+                                                        <Panel>
+                                                            <Path Data="{StaticResource IconPlay}" Width="20" Height="20" Margin="2,0,0,0">
+                                                                <Path.IsVisible>
+                                                                    <MultiBinding Converter="{StaticResource installedConv}">
+                                                                        <Binding />
+                                                                        <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                                                    </MultiBinding>
+                                                                </Path.IsVisible>
+                                                            </Path>
+                                                            <Path Data="{StaticResource IconArrowDown}" Width="18" Height="18">
+                                                                <Path.IsVisible>
+                                                                    <MultiBinding Converter="{StaticResource installedConv}" ConverterParameter="invert">
+                                                                        <Binding />
+                                                                        <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                                                    </MultiBinding>
+                                                                </Path.IsVisible>
+                                                            </Path>
+                                                        </Panel>
+                                                    </Button>
+                                                </Panel>
+                                            </Panel>
+                                        </local:AspectBox>
+                                        <StackPanel Spacing="2" IsVisible="{Binding $parent[local:LibraryUserControl].DataContext.IsGalleryMode}">
+                                            <TextBlock Classes="cardTitle">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource mappedTitleConv}">
+                                                        <Binding />
+                                                        <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <TextBlock Classes="cardInfo" Text="{Binding Converter={StaticResource cardInfoConv}}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
-        <NativeWebView x:Name="uiImgRandom" Grid.Row="0" Grid.RowSpan="2" ZIndex="1000" IsVisible="False" />
+
+        <Button Grid.Row="1" Grid.Column="0" Classes="round" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,24,24" ZIndex="2"
+                IsVisible="{Binding ScrollToTopVisibility}" Click="ScrollToTop_Click" ToolTip.Tip="{l:T 'Back to top'}" Background="{DynamicResource Brush.Surface3}">
+            <Path Data="{StaticResource IconLibraryScrollToTop}" Width="16" Height="16" />
+        </Button>
+
+        <!-- ===== Shelf: the selected game ===== -->
+        <Border Grid.Row="1" Grid.Column="1" Width="400" IsVisible="{Binding ShowShelfPanel}" Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1,1,0,0" CornerRadius="18,0,0,0" ClipToBounds="True" Margin="0,10,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedGame}">
+                <StackPanel>
+                    <Panel Height="210">
+                        <local:CacheImage x:Name="uiShelfArt" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" Data="{Binding}"
+                                          Effect="{Binding #uiShelfArt.IsShowingFallback, Converter={StaticResource blurWhenConv}, ConverterParameter=30}" />
+                        <Border>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.Background2}" Offset="0" />
+                                    <GradientStop Color="#00000000" Offset="0.75" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Panel>
+                    <StackPanel Margin="24,-96,24,28" Spacing="16">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="116" Height="174" CornerRadius="10" ClipToBounds="True" BoxShadow="0 16 32 -10 #B3000000">
+                                <local:CacheImage x:Name="uiShelfCover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="16,0,0,4" VerticalAlignment="Bottom" Spacing="4">
+                                <TextBlock Classes="display" FontSize="22" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource mappedTitleConv}">
+                                            <Binding />
+                                            <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                                <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{Binding Converter={StaticResource cardInfoConv}, ConverterParameter=year}" />
+                            </StackPanel>
+                        </Grid>
+                        <WrapPanel>
+                            <Button Classes="action" Margin="0,0,8,8" Click="PrimaryAction_Click"
+                                    Background="{Binding $parent[local:LibraryUserControl].DataContext.ShelfAccentBrush}">
+                                <Panel>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <StackPanel.IsVisible>
+                                            <MultiBinding Converter="{StaticResource installedConv}">
+                                                <Binding />
+                                                <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                            </MultiBinding>
+                                        </StackPanel.IsVisible>
+                                        <Path Data="{StaticResource IconPlay}" />
+                                        <TextBlock Text="{l:T 'Play'}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <StackPanel.IsVisible>
+                                            <MultiBinding Converter="{StaticResource installedConv}" ConverterParameter="invert">
+                                                <Binding />
+                                                <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                            </MultiBinding>
+                                        </StackPanel.IsVisible>
+                                        <Path Data="{StaticResource IconArrowDown}" />
+                                        <TextBlock VerticalAlignment="Center" Text="{Binding Size, Converter={StaticResource sizeConv}, StringFormat={l:T 'Install · {0}'}}" />
+                                    </StackPanel>
+                                </Panel>
+                            </Button>
+                            <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T 'Game page'}" Click="OpenGame_Click" Background="{DynamicResource Brush.Surface3}" />
+                        </WrapPanel>
+                        <Grid ColumnDefinitions="*,*,*">
+                            <StackPanel Spacing="3">
+                                <TextBlock Classes="eyebrow muted" Text="{l:T 'PLAYTIME'}" FontSize="10.5" />
+                                <TextBlock FontWeight="Bold" FontSize="16">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource playInfoConv}" ConverterParameter="time">
+                                            <Binding />
+                                            <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="PlayRecordsVersion" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="3">
+                                <TextBlock Classes="eyebrow muted" Text="{l:T 'RATING'}" FontSize="10.5" />
+                                <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding Metadata.Rating, StringFormat='{}{0:0} %', TargetNullValue='—', FallbackValue='—'}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="3">
+                                <TextBlock Classes="eyebrow muted" Text="{l:T 'SIZE'}" FontSize="10.5" />
+                                <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding Size, Converter={StaticResource sizeConv}}" />
+                            </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Metadata.Genres}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="12" Padding="10,4" Margin="0,0,6,6"
+                                            Background="{Binding $parent[local:LibraryUserControl].DataContext.ShelfAccentSoftBrush}">
+                                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding Metadata.Description, Converter={StaticResource plainTextConv}}" TextWrapping="Wrap" FontSize="13.5" LineHeight="21"
+                                   MaxLines="14" TextTrimming="CharacterEllipsis" Opacity="0.88" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <NativeWebView x:Name="uiImgRandom" Grid.Row="0" Grid.RowSpan="2" Grid.ColumnSpan="2" ZIndex="1000" IsVisible="False" />
     </Grid>
 </UserControl>

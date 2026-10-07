@@ -158,7 +158,7 @@ namespace gamevault.Windows
             if (Preferences.Get(AppConfigKey.RunningInTrayMessage, LoginManager.Instance.GetUserProfile().UserConfigFile) != "1")
             {
                 Preferences.Set(AppConfigKey.RunningInTrayMessage, "1", LoginManager.Instance.GetUserProfile().UserConfigFile);
-                ToastMessageHelper.CreateToastMessage(Loc.T("Information"), Loc.T("GameVault is still running in the background"));
+                ToastMessageHelper.CreateToastMessage(Loc.T("Information"), Loc.T("SanctuaryVault is still running in the background"));
             }
         }
 

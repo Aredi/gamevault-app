@@ -19,8 +19,10 @@ namespace GameVault.UiTests
 {
     public class TestAppBuilder
     {
-        public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<gamevault.App>()
-            .UseHeadless(new AvaloniaHeadlessPlatformOptions());
+        // The showcase renders real frames with Skia; the scenarios only need the layout
+        public static AppBuilder BuildAvaloniaApp() => ShowcaseScenarios.Enabled
+            ? AppBuilder.Configure<gamevault.App>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
+            : AppBuilder.Configure<gamevault.App>().UseHeadless(new AvaloniaHeadlessPlatformOptions());
     }
 
     internal static class IsolatedHome
@@ -78,6 +80,9 @@ namespace GameVault.UiTests
 
         private async Task StartAsync()
         {
+            // The scenarios look for the English texts, whatever the language of the computer (the showcase is in French)
+            if (!ShowcaseScenarios.Enabled)
+                gamevault.Localization.Loc.Initialize("en");
             Directory.CreateDirectory(LibraryRoot);
             UserProfile profile = ProfileManager.CreateUserProfile(WebHelper.RemoveSpecialCharactersFromUrl(Server.Url));
             profile.ServerUrl = Server.Url;

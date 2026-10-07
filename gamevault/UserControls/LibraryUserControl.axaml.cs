@@ -70,6 +70,9 @@ namespace gamevault.UserControls
             uiBtnReloadLibrary.Click += ReloadLibrary_Click;
             uiFilterEarlyAccess.Click += FilterUpdated;
             uiFilterBookmarks.Click += FilterUpdated;
+            uiQuickInstalled.Click += FilterUpdated;
+            uiQuickUpdates.Click += FilterUpdated;
+            InitShowcase();
             uiFilterPlayStatus.SelectedIndex = 0;
             ReloadCollectionNames();
             uiFilterPlayStatus.SelectionChanged += FilterUpdated;
@@ -89,19 +92,19 @@ namespace gamevault.UserControls
         public async Task LoadLibrary()
         {
             await Search();
+            // After the first search: it clears the image queue, the rows below must not lose their covers
+            await LoadShowcase();
         }
         public void ShowLibraryError()
         {
             ViewModel.CanLoadServerGames = false;
-            if (!uiExpanderGameCards.IsExpanded)
-            {
-                uiExpanderGameCards.IsExpanded = true;
-            }
         }
         private void Search_TextChanged(object? sender, TextChangedEventArgs e)
         {
             inputTimer.Stop();
             inputTimer.Data = ((TextBox)sender).Text;
+            ViewModel.SearchText = inputTimer.Data ?? "";
+            uiGameInstalls.ApplySearch(inputTimer.Data);
             inputTimer.Start();
         }
         private void InitTimer()
@@ -126,11 +129,6 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = Loc.T("You are offline");
                 return;
             }
-            if (!uiExpanderGameCards.IsExpanded)
-            {
-                uiExpanderGameCards.IsExpanded = true;
-            }
-            uiServerGamesScroll.ScrollToHome();
 
             TaskQueue.Instance.ClearQueue();
 
@@ -151,6 +149,15 @@ namespace gamevault.UserControls
             List<int>? collectionIds = null;
             if (!string.IsNullOrEmpty(ViewModel.SelectedCollection) && ViewModel.SelectedCollection != LibraryViewModel.AllCollections)
                 collectionIds = LibraryData.Collections.Load().FirstOrDefault(c => c.Name == ViewModel.SelectedCollection)?.GameIds ?? new List<int>();
+            // Quick filters: games installed on this computer, installed games with an update
+            if (ViewModel.OnlyInstalled || ViewModel.OnlyUpdates)
+            {
+                IEnumerable<KeyValuePair<Game, string>> installed = InstallViewModel.Instance.InstalledGames.ToList();
+                if (ViewModel.OnlyUpdates)
+                    installed = installed.Where(g => g.Key != null && InstalledGameState.HasUpdate(g.Key, g.Value));
+                var ids = installed.Where(g => g.Key != null).Select(g => g.Key.ID).ToList();
+                collectionIds = collectionIds == null ? ids : collectionIds.Intersect(ids).ToList();
+            }
             var playedIds = playRecords.Select(r => r.GameId).ToList();
             List<int>? playOrder = null;
             string idFilter;
@@ -189,6 +196,8 @@ namespace gamevault.UserControls
                     ViewModel.NextPage = gameResult.Links.Next;
                     await ProcessGamesData(gameResult);
                 }
+                if (ViewModel.SelectedGame == null || !ViewModel.GameCards.Any(g => g?.ID == ViewModel.SelectedGame.ID))
+                    ViewModel.SelectedGame = ViewModel.GameCards.FirstOrDefault();
             }
             else
             {
@@ -254,32 +263,45 @@ namespace gamevault.UserControls
         }
         private void GameCard_Clicked(object sender, RoutedEventArgs e)
         {
-            if ((Game)((Control)sender).DataContext == null)
+            if (((Control)sender).DataContext is not Game game)
                 return;
-            MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl((Game)((Control)sender).DataContext));
+            // Shelf: a click selects, the panel shows the game (double click or Enter opens it)
+            if (ViewModel.ShowShelfPanel || ViewModel.IsShelfMode && ViewModel.IsWide)
+            {
+                ViewModel.SelectedGame = game;
+                return;
+            }
+            OpenGame(game);
         }
-
-        private void Filter_Click(object? sender, PointerPressedEventArgs e)
+        private void GameCard_DoubleTapped(object? sender, TappedEventArgs e)
+        {
+            if (ViewModel.IsShelfMode && ((Control)sender!).DataContext is Game game)
+                OpenGame(game);
+        }
+        private void OpenGame_Click(object? sender, RoutedEventArgs e)
         {
             e.Handled = true;
-            if (!uiExpanderGameCards.IsExpanded)
-            {
-                uiExpanderGameCards.IsExpanded = true;
-            }
+            if (((Control)sender!).DataContext is Game game)
+                OpenGame(game);
+        }
+        private static void OpenGame(Game game) => MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(game));
+
+        private void Filter_Click(object? sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
             ViewModel.FilterVisibility = !ViewModel.FilterVisibility;
         }
-        private void OpenFilterIfClosed()
+        private void OpenFilterIfClosed(object? sender)
         {
-            if (!uiExpanderGameCards.IsExpanded)
-            {
-                uiExpanderGameCards.IsExpanded = true;
-            }
+            // The quick filters are next to the search: only the other filters open the panel
+            if (sender == uiFilterBookmarks || sender == uiFilterEarlyAccess || sender == uiQuickInstalled || sender == uiQuickUpdates || sender == uiFilterSortBy || sender == uiFilterOrderBy)
+                return;
             if (ViewModel.FilterVisibility == false)
             {
                 ViewModel.FilterVisibility = true;
             }
         }
-        private async void ClearAllFilters_Click(object? sender, PointerPressedEventArgs e)
+        private async void ClearAllFilters_Click(object? sender, RoutedEventArgs e)
         {
             e.Handled = true;
             ClearAllFilters();
@@ -298,6 +320,8 @@ namespace gamevault.UserControls
             uiFilterEarlyAccess.IsChecked = false;
             uiFilterPlayStatus.SelectedIndex = 0;
             uiFilterCollection.SelectedIndex = 0;
+            ViewModel.OnlyInstalled = false;
+            ViewModel.OnlyUpdates = false;
 
             RefreshFilterCounter();
         }
@@ -326,9 +350,9 @@ namespace gamevault.UserControls
                 }
             }
         }
-        private void ScrollToTop_Click(object? sender, PointerReleasedEventArgs e)
+        private void ScrollToTop_Click(object? sender, RoutedEventArgs e)
         {
-            uiServerGamesScroll.ScrollToHome();
+            uiMainScrollBar.ScrollToHome();
         }
 
         private async void OrderBy_Changed(object? sender, RoutedEventArgs e)
@@ -396,7 +420,7 @@ namespace gamevault.UserControls
             {
                 Preferences.Set(AppConfigKey.LastLibrarySortBy, ViewModel.SelectedGameFilterSortBy.Value, LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
-            OpenFilterIfClosed();
+            OpenFilterIfClosed(sender);
             RefreshFilterCounter();
             await Search();
         }
@@ -533,6 +557,8 @@ namespace gamevault.UserControls
             filterCount += uiFilterGameStateSelector.HasEntries() ? 1 : 0;
             filterCount += (bool)uiFilterEarlyAccess.IsChecked ? 1 : 0;
             filterCount += (bool)uiFilterBookmarks.IsChecked ? 1 : 0;
+            filterCount += ViewModel.OnlyInstalled ? 1 : 0;
+            filterCount += ViewModel.OnlyUpdates ? 1 : 0;
             filterCount += uiFilterPlayStatus.SelectedIndex > 0 ? 1 : 0;
             filterCount += uiFilterCollection.SelectedIndex > 0 ? 1 : 0;
 

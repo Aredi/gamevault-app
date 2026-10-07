@@ -61,7 +61,7 @@ namespace gamevault.Helper
                     File.WriteAllText(shortcutPath, DesktopEntry.Create(
                         name: game.Title,
                         exec: $"{DesktopEntry.Quote(PlatformInfo.ExecutablePath)} start --gameid={game.ID}",
-                        comment: Loc.F("Play {0} with GameVault", game.Title),
+                        comment: Loc.F("Play {0} with SanctuaryVault", game.Title),
                         icon: icon,
                         extra: "Categories=Game;\n"));
                     PlatformInfo.MakeExecutable(shortcutPath);

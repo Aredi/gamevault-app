@@ -108,6 +108,12 @@ namespace gamevault.Helper
             return definition;
         }
 
+        private static Color Mix(Color a, Color b, double amount) => Color.FromArgb(
+            a.A,
+            (byte)(a.R + (b.R - a.R) * amount),
+            (byte)(a.G + (b.G - a.G) * amount),
+            (byte)(a.B + (b.B - a.B) * amount));
+
         private static bool TryParseColor(string value, out Color color)
         {
             if (Color.TryParse(value, out color))
@@ -189,6 +195,17 @@ namespace gamevault.Helper
             res["GameVault.Brushes.Blur"] = new SolidColorBrush(blur, 0.7);
 
             bool isLight = Luminance(background) > 0.5;
+            // Library and game pages: gradients that fade artwork into the page, hairlines, state colors
+            res["GameVault.Colors.BackgroundClear"] = WithAlpha(background, 0x00);
+            res["GameVault.Colors.BackgroundSoft"] = WithAlpha(background, 0x99);
+            res["GameVault.Colors.BackgroundStrong"] = WithAlpha(background, 0xE6);
+            res["Brush.Surface"] = new SolidColorBrush(background2);
+            res["Brush.Surface3"] = new SolidColorBrush(Mix(background2, foreground, isLight ? 0.06 : 0.07));
+            res["Brush.Line"] = new SolidColorBrush(WithAlpha(foreground, 0x1F));
+            res["Brush.Glass"] = new SolidColorBrush(isLight ? Color.FromArgb(0xB3, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x8C, 0x0B, 0x0A, 0x15));
+            res["Brush.Success"] = new SolidColorBrush(isLight ? Color.Parse("#1E8A55") : Color.Parse("#5FD39A"));
+            res["Brush.Warning"] = new SolidColorBrush(isLight ? Color.Parse("#B85E12") : Color.Parse("#F2A65A"));
+            res["Brush.Special"] = new SolidColorBrush(isLight ? Color.Parse("#7A3FC2") : Color.Parse("#D6B4FF"));
             app.RequestedThemeVariant = isLight ? ThemeVariant.Light : ThemeVariant.Dark;
             ApplyFluentPalette(app, isLight ? ThemeVariant.Light : ThemeVariant.Dark, foreground, background, background2, accent, border);
         }

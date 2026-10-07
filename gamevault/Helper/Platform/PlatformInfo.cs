@@ -188,6 +188,6 @@ namespace gamevault.Helper.Platform
                 "ludusavi" => "Ludusavi was not found. Install it (e.g. 'flatpak install flathub com.github.mtkennerly.ludusavi') to use cloud saves.",
                 _ => Loc.F("{0} was not found.", tool),
             }
-            : Loc.F("{0} is missing from the GameVault installation directory.", tool);
+            : Loc.F("{0} is missing from the SanctuaryVault installation directory.", tool);
     }
 }

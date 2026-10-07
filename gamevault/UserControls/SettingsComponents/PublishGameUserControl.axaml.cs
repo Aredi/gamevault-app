@@ -70,7 +70,7 @@ namespace gamevault.UserControls.SettingsComponents
 
         private async void PickTarget_Click(object sender, RoutedEventArgs e)
         {
-            string? folder = await StorageHelper.PickFolderAsync("Select the folder the GameVault server reads its games from", ViewModel.TargetDirectory);
+            string? folder = await StorageHelper.PickFolderAsync("Select the folder the SanctuaryVault server reads its games from", ViewModel.TargetDirectory);
             if (!string.IsNullOrEmpty(folder))
                 ViewModel.TargetDirectory = folder;
         }
@@ -174,7 +174,7 @@ namespace gamevault.UserControls.SettingsComponents
             {
                 if (!Uri.TryCreate(uploader, UriKind.Absolute, out Uri? address) || (address.Scheme != Uri.UriSchemeHttp && address.Scheme != Uri.UriSchemeHttps))
                 {
-                    ViewModel.Status = Loc.T("Enter the address of the GameVault Uploader.");
+                    ViewModel.Status = Loc.T("Enter the address of the SanctuaryVault Uploader.");
                     return;
                 }
                 try

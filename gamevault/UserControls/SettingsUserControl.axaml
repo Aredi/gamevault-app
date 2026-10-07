@@ -54,8 +54,8 @@
                             <TextBlock Text="{l:T 'Applies at the next start'}" VerticalAlignment="Center" Opacity="0.7" />
                         </StackPanel>
                         <TextBlock Classes="h1" Text="{l:T 'Startup'}" />
-                        <ToggleSwitch x:Name="uiAutostartToggle" Content="{l:T 'Launch GameVault on Computer Startup'}" />
-                        <ToggleSwitch Content="{l:T 'Minimize GameVault to System Tray on Startup'}" IsChecked="{Binding BackgroundStart}" />
+                        <ToggleSwitch x:Name="uiAutostartToggle" Content="{l:T 'Launch SanctuaryVault on Computer Startup'}" />
+                        <ToggleSwitch Content="{l:T 'Minimize SanctuaryVault to System Tray on Startup'}" IsChecked="{Binding BackgroundStart}" />
                         <ToggleSwitch Content="{l:T 'Auto-Load Library from Server on Startup'}" IsChecked="{Binding LibStartup}" />
                         <ToggleSwitch Content="{l:T 'Notify me when new games are added to the server'}" IsChecked="{Binding NotifyNewGames}" />
                         <StackPanel Classes="section">
@@ -286,7 +286,7 @@
                                         <TextBlock Text="Steam" FontSize="20" FontWeight="Bold" />
                                     </Button>
                                 </StackPanel>
-                                <TextBlock Text="{l:T 'GameVault offers seamless integration with Steam through the Steam Sync Integration. When enabled, all your installed games are automatically synced to your Steam Library and appear as Non-Steam Games. Launching these games via Steam will route them through GameVault, ensuring all your custom launch options are preserved.'}" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
+                                <TextBlock Text="{l:T 'SanctuaryVault offers seamless integration with Steam through the Steam Sync Integration. When enabled, all your installed games are automatically synced to your Steam Library and appear as Non-Steam Games. Launching these games via Steam will route them through SanctuaryVault, ensuring all your custom launch options are preserved.'}" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
                                 <ToggleSwitch x:Name="uiSteamSync" Content="{l:T 'Sync (You have to restart the steam client to see the changes)'}" Margin="0,10,0,0" IsChecked="{Binding SyncSteamShortcuts}" />
                                 <local:IconButton Text="{l:T 'Restore Backup'}" Kind="Danger" FontSize="15" Icon="{DynamicResource IconReload}" IconMargin="0,0,5,2" MinWidth="150" Height="30" HorizontalAlignment="Left" Margin="0,10,0,0" Click="RestoreSteamShortcutBackup_Click" />
                             </StackPanel>
@@ -313,8 +313,8 @@
                                         <TextBlock Text="{l:T 'Cloud Saves'}" FontSize="20" FontWeight="Bold" />
                                     </Button>
                                 </StackPanel>
-                                <TextBlock Text="{l:T 'Automatically backs up and restores your latest savefiles via your GameVault Server, ensuring seamless transitions between installations and devices.'}" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
-                                <TextBlock Text="{l:T 'Requires GameVault Server with savefiles feature enabled.'}" FontSize="12" FontStyle="Italic" />
+                                <TextBlock Text="{l:T 'Automatically backs up and restores your latest savefiles via your SanctuaryVault Server, ensuring seamless transitions between installations and devices.'}" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
+                                <TextBlock Text="{l:T 'Requires SanctuaryVault Server with savefiles feature enabled.'}" FontSize="12" FontStyle="Italic" />
                                 <ToggleSwitch Margin="0,5,0,0" IsChecked="{Binding CloudSaves}" />
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{l:T 'Custom Ludusavi Manifests'}" Margin="0,2,0,2" FontSize="15" VerticalAlignment="Center" />
@@ -349,7 +349,7 @@
                                     <Path Data="{StaticResource IconGameSettingsPlaynite}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
                                     <TextBlock Text="{l:T 'Playnite'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                                 </StackPanel>
-                                <TextBlock Text="{l:T 'GameVault integrates seamlessly with Playnite (Windows) using our Playnite Library Extension'}" FontSize="15" />
+                                <TextBlock Text="{l:T 'SanctuaryVault integrates seamlessly with Playnite (Windows) using our Playnite Library Extension'}" FontSize="15" />
                                 <Button Classes="link" Tag="https://playnite.link/addons.html#GameVault_fab8be77-18ab-4e6c-ad3d-89097b492d74" Click="Hyperlink_RequestNavigate">
                                     <TextBlock Text="{l:T 'Download Playnite Extension'}" FontSize="15" TextDecorations="Underline" />
                                 </Button>
@@ -403,7 +403,7 @@
                             </StackPanel>
                         </Grid>
                         <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                   Text="{l:T 'Proton and Wine builds found on this computer: downloaded by GameVault, installed for Steam (compatibilitytools.d, ProtonUp-Qt) or for Lutris.'}" />
+                                   Text="{l:T 'Proton and Wine builds found on this computer: downloaded by SanctuaryVault, installed for Steam (compatibilitytools.d, ProtonUp-Qt) or for Lutris.'}" />
                         <Border Classes="group" Width="900" HorizontalAlignment="Left" Margin="10,0,0,0">
                             <Panel>
                                 <TextBlock Text="{l:T 'No Proton or Wine build found yet. Download one below.'}" Opacity="0.7" IsVisible="{Binding !InstalledCompatibilityBuilds.Count}" />
@@ -456,7 +456,7 @@
                             <SelectableTextBlock x:Name="uiDetectedTools" Text="{Binding DetectedCompatibilityTools}" FontFamily="monospace" FontSize="13" TextWrapping="Wrap" />
                         </Border>
                         <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                   Text="{l:T 'Saves of Windows games running in the prefix are included in cloud saves automatically. Steam shortcuts start the games through GameVault.'}" />
+                                   Text="{l:T 'Saves of Windows games running in the prefix are included in cloud saves automatically. Steam shortcuts start the games through SanctuaryVault.'}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

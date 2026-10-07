@@ -14,158 +14,156 @@
         <conv:EnumDescriptionConverter x:Key="enumDescConv" />
         <conv:GameStateDescriptionConverter x:Key="gameStateDescConv" />
         <conv:GameStateColorConverter x:Key="gameStateColorConv" />
-        <conv:StringToColorConverter x:Key="colorConv" />
         <conv:GameViewSettingsPermissionRoleToVisibilityConverter x:Key="settingsPermRoleVisConv" />
         <conv:ContainsCurrentUserConverter x:Key="containsCurrentUserConv" />
         <conv:MappedTitleConverter x:Key="mappedTitleConv" />
         <conv:BoolToValueConverter x:Key="titleTooltipConv" TrueValue="Click to Show File Title" FalseValue="Click to Show Mapped Title" />
+        <conv:BlurWhenConverter x:Key="blurWhenConv" />
+        <conv:RelativeDateConverter x:Key="relativeDateConv" />
+        <conv:EarlyAccessConverter x:Key="earlyAccessConv" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TextBlock.deleted">
             <Setter Property="TextDecorations" Value="Strikethrough" />
         </Style>
         <Style Selector="TextBlock.metaLink">
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Margin" Value="0,0,6,0" />
-        </Style>
-        <Style Selector="TextBlock.metaLink:pointerover">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
-        </Style>
-        <Style Selector="TextBlock.metaTitle">
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="Margin" Value="30,0,0,0" />
-        </Style>
-        <Style Selector="TextBlock.metaValue">
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="Margin" Value="30,11,0,0" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="TextDecorations" Value="Underline" />
         </Style>
         <Style Selector="Border.chip">
-            <Setter Property="CornerRadius" Value="5" />
-            <Setter Property="Height" Value="25" />
+            <Setter Property="CornerRadius" Value="13" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="11,0" />
         </Style>
         <Style Selector="Border.chip TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="8,0,8,0" />
-            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <!-- Facts in the right column: label left, value right -->
+        <Style Selector="Grid.fact">
+            <Setter Property="MinHeight" Value="40" />
+        </Style>
+        <Style Selector="Grid.fact > TextBlock.label">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Grid.fact > :is(Control).value">
+            <Setter Property="Grid.Column" Value="1" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="16,0,0,0" />
+        </Style>
+        <Style Selector="Grid.fact > TextBlock.value">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="TextAlignment" Value="Right" />
+        </Style>
+        <!-- Play data strip -->
+        <Style Selector="StackPanel.stat">
+            <Setter Property="Spacing" Value="4" />
+            <Setter Property="Margin" Value="0,14,40,14" />
+            <Setter Property="MinWidth" Value="110" />
+        </Style>
+        <Style Selector="StackPanel.stat TextBlock.label">
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        </Style>
+        <Style Selector="StackPanel.stat > TextBlock.value">
+            <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="18" />
+        </Style>
+        <Style Selector="TabControl.page TabItem">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Padding" Value="0,0,22,0" />
+        </Style>
+        <Style Selector="Button.thumb">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Opacity" Value="0.8" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter Content="{TemplateBinding Content}" Background="Transparent" />
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.thumb:pointerover">
+            <Setter Property="Opacity" Value="1" />
         </Style>
     </UserControl.Styles>
-    <Grid>
-        <Viewbox Stretch="UniformToFill" HorizontalAlignment="Center">
-            <local:CacheImage Data="{Binding Game}" ImageCacheType="GameBackground">
-                <local:CacheImage.Effect>
-                    <BlurEffect Radius="20" />
-                </local:CacheImage.Effect>
-            </local:CacheImage>
-        </Viewbox>
-        <Grid Background="{DynamicResource GameVault.Brushes.Blur}" />
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <Grid ColumnDefinitions="*,4*,*">
-                <Viewbox Grid.Column="1" VerticalAlignment="Top" MaxWidth="1200">
-                    <Grid Background="Transparent" Margin="0,70,0,0" Height="881" ColumnDefinitions="*,300">
-                        <Border Grid.Column="0" Classes="hover" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#02000000" CornerRadius="5" Cursor="Hand" Width="30" Height="30" Margin="-170,0,0,0" PointerReleased="Back_Click" ToolTip.Tip="{l:T 'Back (Esc)'}">
-                            <Path Data="{StaticResource IconGameViewBack}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
+    <Grid>
+        <ScrollViewer x:Name="uiPageScroll" Classes="page" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Panel>
+                <!-- Artwork across the top, fading into the page and tinted with the game color -->
+                <Panel x:Name="uiHeroArt" Height="520" VerticalAlignment="Top" ClipToBounds="True">
+                    <local:CacheImage x:Name="uiBackground" Data="{Binding Game}" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill"
+                                      Effect="{Binding #uiBackground.IsShowingFallback, Converter={StaticResource blurWhenConv}, ConverterParameter=40}" />
+                    <Border>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
+                                <GradientStop Color="{DynamicResource GameVault.Colors.Background}" Offset="0" />
+                                <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundSoft}" Offset="0.45" />
+                                <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundClear}" Offset="0.85" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <Border Background="{Binding AccentBrush}" Opacity="0.35">
+                        <Border.OpacityMask>
+                            <RadialGradientBrush Center="15%,100%" GradientOrigin="15%,100%" RadiusX="65%" RadiusY="80%">
+                                <GradientStop Color="Black" Offset="0" />
+                                <GradientStop Color="Transparent" Offset="1" />
+                            </RadialGradientBrush>
+                        </Border.OpacityMask>
+                    </Border>
+                </Panel>
+
+                <StackPanel x:Name="uiContent" Margin="44,250,44,48" MaxWidth="1500" Spacing="26">
+                    <!-- Header: cover, title, actions -->
+                    <Grid x:Name="uiHeader" ColumnDefinitions="Auto,*">
+                        <Border x:Name="uiCoverFrame" Width="220" Height="330" CornerRadius="14" ClipToBounds="True" VerticalAlignment="Bottom"
+                                BoxShadow="0 30 60 -20 #E6000000" Background="{DynamicResource Brush.Surface}">
+                            <local:CacheImage x:Name="uiCover" Data="{Binding Game}" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" />
                         </Border>
-                        <StackPanel Grid.Column="0" Width="546">
-                            <Grid Background="Transparent" Height="100">
-                                <local:CacheImage Data="{Binding Game}" ImageCacheType="GameCover" Stretch="Fill" CornerRadius="5" HorizontalAlignment="Left" Height="100" Width="75" />
-                                <Grid Margin="90,0,-300,30" VerticalAlignment="Center" HorizontalAlignment="Left" Cursor="Hand" PointerReleased="GameTitle_Click" Height="60" Width="455" Background="Transparent"
-                                      ToolTip.Tip="{Binding Source={x:Static vm:SettingsViewModel.Instance}, Path=ShowMappedTitle, Converter={StaticResource titleTooltipConv}}">
-                                    <TextBlock FontSize="25" FontWeight="Bold" TextWrapping="Wrap" VerticalAlignment="Bottom"
-                                               Classes.deleted="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                        <TextBlock.Text>
-                                            <MultiBinding Converter="{StaticResource mappedTitleConv}">
-                                                <Binding Path="Game" />
-                                                <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
-                                </Grid>
-                                <StackPanel Margin="90,0,0,0" Background="Transparent" HorizontalAlignment="Left" VerticalAlignment="Bottom" Orientation="Horizontal"
-                                            IsVisible="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNull}}">
-                                    <!-- Not installed yet: one click downloads, installs and starts the game -->
-                                    <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Left" Height="35" Margin="0,0,15,0" Click="InstallAndPlay_Click" IsVisible="{Binding !IsInstalled}" ToolTip.Tip="{l:T 'Download, install and start the game'}">
-                                        <Border Classes="hover" Background="{DynamicResource Brush.Accent}" CornerRadius="5" Padding="10,0">
-                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                <Path Data="{StaticResource IconPlay}" Fill="White" Stretch="Uniform" Width="18" Height="18" VerticalAlignment="Center" />
-                                                <TextBlock Text="{l:T 'Install &amp; Play'}" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Border>
-                                    </Button>
-                                    <!-- A newer build is on the server: replaces the installed files, keeps saves and settings -->
-                                    <Button x:Name="uiBtnUpdate" Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Left" Height="35" Margin="0,0,15,0" Click="UpdateGame_Click" IsVisible="{Binding IsUpdateAvailable}" ToolTip.Tip="{l:T 'Download and install the newest version. Saves and settings are kept.'}">
-                                        <Border Classes="hover" Background="IndianRed" CornerRadius="5" Padding="10,0">
-                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="White" Stretch="Uniform" Width="16" Height="16" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Game.Version, StringFormat={l:T 'Update to {0}'}, TargetNullValue={l:T 'Update'}, FallbackValue={l:T 'Update'}}" Foreground="White" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Border>
-                                    </Button>
-                                    <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Left" Width="35" Height="35" Margin="0,0,15,0" Click="GamePlay_Click" IsVisible="{Binding IsInstalled}" ToolTip.Tip="{l:T 'Play'}">
-                                        <Grid Classes="hover" Background="#02000000">
-                                            <Path Data="{StaticResource IconPlay}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="30" Height="30" />
-                                        </Grid>
-                                    </Button>
-                                    <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Left" Width="35" Height="35" Click="GameDownload_Click">
-                                        <Grid Classes="hover" Background="#02000000" ToolTip.Tip="{Binding Game.DownloadCount, StringFormat={l:T 'Downloaded {0} times'}}">
-                                            <Path Fill="{DynamicResource Brush.Foreground}" Data="{StaticResource IconReDownload}" RenderTransform="scale(1.5)" RenderTransformOrigin="0%,20%" IsVisible="{Binding IsDownloaded}" />
-                                            <Path Fill="{DynamicResource Brush.Foreground}" Data="{StaticResource IconDownload}" RenderTransform="scale(1.5)" RenderTransformOrigin="0%,20%" IsVisible="{Binding !IsDownloaded}" />
-                                            <TextBlock Text="{Binding Game.Size, Converter={StaticResource sizeConv}}" FontSize="7" FontWeight="Bold" VerticalAlignment="Bottom" HorizontalAlignment="Center" />
-                                        </Grid>
-                                    </Button>
-                                    <Button Classes="wrapper" IsVisible="{Binding IsInstalled, Converter={StaticResource settingsPermRoleVisConv}}" VerticalAlignment="Top" HorizontalAlignment="Left" Width="35" Height="35" Margin="15,0,0,0" Click="GameSettings_Click" ToolTip.Tip="{l:T 'Game Settings'}">
-                                        <Grid Classes="hover" Background="#02000000">
-                                            <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.5)" RenderTransformOrigin="0%,0%" />
-                                        </Grid>
-                                    </Button>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                            IsVisible="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNull}}">
-                                    <ToggleButton Classes="icon bookmark" Width="35" Height="35" IsChecked="{Binding Game.BookmarkedUsers, Converter={StaticResource containsCurrentUserConv}, Mode=OneWay}" Click="Bookmark_Click" ToolTip.Tip="{l:T 'Bookmark'}" />
-                                    <Button Classes="wrapper" Width="35" Height="35" Margin="10,0,0,0" Click="Collections_Click" ToolTip.Tip="{l:T 'Collections'}">
-                                        <Grid Classes="hover" Background="#02000000">
-                                            <Path Data="{StaticResource IconCollection}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="26" Height="26" />
-                                        </Grid>
-                                    </Button>
-                                    <Button Classes="wrapper" Width="35" Height="35" Margin="10,0,0,0" Click="Share_Click" ToolTip.Tip="{l:T 'Copy share link'}">
-                                        <Grid Classes="hover" Background="#02000000">
-                                            <Path Data="{StaticResource IconGameViewShare}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.5)" RenderTransformOrigin="0%,0%" />
-                                        </Grid>
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-                            <ScrollViewer x:Name="uiChipsScroll" HorizontalAlignment="Left" Margin="0,5,0,0" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden">
-                                <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <Button Classes="wrapper" Height="25" Click="GameType_Clicked"
+                        <StackPanel x:Name="uiHeaderText" Grid.Column="1" Margin="30,0,0,4" VerticalAlignment="Bottom" Spacing="12">
+                            <ScrollViewer x:Name="uiChipsScroll" HorizontalAlignment="Left" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="wrapper" Click="GameType_Clicked"
                                             IsVisible="{Binding Game.Type, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static models:GameType.UNDETECTABLE}}">
-                                        <Border Classes="chip" Background="Gainsboro">
-                                            <TextBlock Text="{Binding Game.Type, Converter={StaticResource enumDescConv}}" Foreground="#FF424242" />
+                                        <Border Classes="chip" Background="{DynamicResource Brush.Glass}">
+                                            <TextBlock Text="{Binding Game.Type, Converter={StaticResource enumDescConv}}" />
                                         </Border>
                                     </Button>
-                                    <Border Classes="chip" Background="Gainsboro">
+                                    <Border Classes="chip" Background="{DynamicResource Brush.Glass}">
                                         <Border.IsVisible>
-                                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                                                <Binding Path="Game.EarlyAccess" FallbackValue="False" />
-                                                <Binding Path="Game.Metadata.EarlyAccess" FallbackValue="False" />
+                                            <MultiBinding Converter="{StaticResource earlyAccessConv}">
+                                                <Binding Path="Game" />
                                             </MultiBinding>
                                         </Border.IsVisible>
-                                        <TextBlock Text="{l:T 'Early Access'}" Foreground="#FF424242" />
+                                        <TextBlock Text="{l:T 'Early Access'}" Foreground="{DynamicResource Brush.Special}" />
                                     </Border>
                                     <ItemsControl ItemsSource="{Binding Game.Metadata.Genres}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="5" />
+                                                <StackPanel Orientation="Horizontal" Spacing="6" />
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Button Classes="wrapper" Height="25" Click="Genre_Clicked">
-                                                    <Border Classes="chip" Background="{Binding Name, Converter={StaticResource colorConv}}">
-                                                        <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Brush.Foreground2}" />
+                                                <Button Classes="wrapper" Click="Genre_Clicked" ToolTip.Tip="{l:T 'Show the games of this genre'}">
+                                                    <Border Classes="chip" Background="{Binding $parent[local:GameViewUserControl].DataContext.AccentSoftBrush}">
+                                                        <TextBlock Text="{Binding Name}" />
                                                     </Border>
                                                 </Button>
                                             </DataTemplate>
@@ -173,114 +171,180 @@
                                     </ItemsControl>
                                 </StackPanel>
                             </ScrollViewer>
-                            <Grid Margin="0,5,0,0" x:Name="uiMediaSliderAnchor">
-                                <local:MediaSlider Height="290" Width="546" x:Name="uiMediaSlider" Background="Transparent" />
-                            </Grid>
-                            <Grid Margin="0,10,0,0">
-                                <Border CornerRadius="5" Background="{DynamicResource Brush.Background}" Opacity="0.7" />
-                                <TabControl Background="Transparent" Padding="10,0,0,0">
-                                    <TabItem Header="{l:T 'Description'}" FontSize="24">
-                                        <md:MarkdownScrollViewer Markdown="{Binding DescriptionMarkdown}" Height="395" TextElement.FontSize="14" />
-                                    </TabItem>
-                                    <TabItem Header="{l:T 'Notes'}" FontSize="24">
-                                        <md:MarkdownScrollViewer Markdown="{Binding NotesMarkdown}" Height="395" TextElement.FontSize="14" />
-                                    </TabItem>
-                                    <TabItem Header="{l:T 'Tags'}" FontSize="24">
-                                        <ScrollViewer Height="395" Margin="2,10,0,5" VerticalScrollBarVisibility="Auto">
-                                            <ItemsControl ItemsSource="{Binding Game.Metadata.Tags}" VerticalAlignment="Top">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <UniformGrid Columns="4" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Button Classes="wrapper" Height="30" Margin="5" ToolTip.Tip="{Binding Name}" Click="Tag_Clicked" HorizontalAlignment="Stretch">
-                                                            <Border CornerRadius="5" Background="{Binding Name, Converter={StaticResource colorConv}}">
-                                                                <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Brush.Foreground2}" VerticalAlignment="Center" Margin="15,8,15,8" FontSize="10" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
-                                                            </Border>
-                                                        </Button>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
-                                    </TabItem>
-                                </TabControl>
-                            </Grid>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                            <Panel Height="20" Margin="0,40,0,0">
-                                <StackPanel Orientation="Horizontal" IsVisible="{Binding CloudSaveMatchTitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                    <Path Data="{StaticResource IconCloudSave}" Fill="{DynamicResource Brush.Foreground}" />
-                                    <Button Classes="link" Margin="5,0,150,0" VerticalAlignment="Center" Tag="https://gamevau.lt/docs/gamevault-plus/cloud-saves" Click="Website_Navigate">
-                                        <TextBlock Text="{l:T 'Cloud Saves'}" FontWeight="Bold" />
-                                    </Button>
-                                    <Button Classes="wrapper" Click="RestoreCloudSaves_Click" ToolTip.Tip="{Binding CloudSaveMatchTitle, StringFormat={l:T 'Download Savefiles for {0}'}}">
-                                        <Grid Classes="hover" Background="#02000000">
-                                            <Path Data="{StaticResource IconCloudSaveUpload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(0.8) rotate(180deg)" />
-                                        </Grid>
-                                    </Button>
-                                    <Button Classes="wrapper" Click="BackupCloudSaves_Click" ToolTip.Tip="{Binding CloudSaveMatchTitle, StringFormat={l:T 'Upload Savefiles for {0}'}}">
-                                        <Grid Classes="hover" Background="#02000000">
-                                            <Path Data="{StaticResource IconCloudSaveUpload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(0.8)" />
-                                        </Grid>
-                                    </Button>
-                                </StackPanel>
+                            <Panel Cursor="Hand" PointerReleased="GameTitle_Click" Background="Transparent" HorizontalAlignment="Left"
+                                   ToolTip.Tip="{Binding Source={x:Static vm:SettingsViewModel.Instance}, Path=ShowMappedTitle, Converter={StaticResource titleTooltipConv}}">
+                                <TextBlock x:Name="uiTitle" Classes="display" FontSize="50" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
+                                           Classes.deleted="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <TextBlock.Text>
+                                        <MultiBinding Converter="{StaticResource mappedTitleConv}">
+                                            <Binding Path="Game" />
+                                            <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
                             </Panel>
-                            <StackPanel Margin="0,4,0,0" Background="Transparent" Height="68">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
-                                    <StackPanel>
-                                        <TextBlock Text="{l:T 'PLAYTIME'}" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock Text="{Binding CurrentUserProgress.MinutesPlayed, Converter={StaticResource timeConv}}" FontSize="13" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding Subtitle}" FontSize="15" Opacity="0.85" TextWrapping="Wrap" />
+                            <!-- Actions -->
+                            <WrapPanel Margin="0,6,0,0" IsVisible="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNull}}">
+                                <Button Classes="action" Height="48" Padding="24,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="InstallAndPlay_Click" IsVisible="{Binding !IsInstalled}"
+                                        ToolTip.Tip="{l:T 'Download, install and start the game'}">
+                                    <StackPanel Orientation="Horizontal" Spacing="9">
+                                        <Path Data="{StaticResource IconPlay}" Width="18" Height="18" />
+                                        <TextBlock Text="{l:T 'Install &amp; Play'}" FontSize="15" VerticalAlignment="Center" />
                                     </StackPanel>
-                                    <StackPanel ToolTip.Tip="{Binding CurrentUserProgress.LastPlayedAt, StringFormat={l:T '{}{0:HH:mm} h'}}">
-                                        <TextBlock Text="{l:T 'LAST PLAYED'}" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock FontSize="13" HorizontalAlignment="Center" Text="{Binding CurrentUserProgress.LastPlayedAt, StringFormat={l:T '{}{0:d.M.yyyy}'}, TargetNullValue={l:T 'never'}, FallbackValue={l:T 'never'}}" />
+                                </Button>
+                                <Button Classes="action" Height="48" Padding="30,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="GamePlay_Click" IsVisible="{Binding IsInstalled}">
+                                    <StackPanel Orientation="Horizontal" Spacing="9">
+                                        <Path Data="{StaticResource IconPlay}" Width="18" Height="18" />
+                                        <TextBlock Text="{l:T 'Play'}" FontSize="15" VerticalAlignment="Center" />
                                     </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="{l:T 'AVG. PLAYTIME'}" FontWeight="Bold" FontSize="13" />
-                                        <TextBlock Text="{Binding Game.Metadata.AveragePlaytime, Converter={StaticResource timeConv}}" FontSize="13" HorizontalAlignment="Center" />
+                                </Button>
+                                <!-- A newer build is on the server: replaces the installed files, keeps saves and settings -->
+                                <Button x:Name="uiBtnUpdate" Classes="action" Height="48" Margin="0,0,10,10" Background="{DynamicResource Brush.Warning}" Foreground="{DynamicResource Brush.Background}"
+                                        Click="UpdateGame_Click" IsVisible="{Binding IsUpdateAvailable}" ToolTip.Tip="{l:T 'Download and install the newest version. Saves and settings are kept.'}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Path Data="{StaticResource IconUpdate}" />
+                                        <TextBlock FontSize="15" VerticalAlignment="Center" Text="{Binding Game.Version, StringFormat={l:T 'Update to {0}'}, TargetNullValue={l:T 'Update'}, FallbackValue={l:T 'Update'}}" />
                                     </StackPanel>
-                                </StackPanel>
-                                <ComboBox ItemsSource="{Binding GameStates}" DisplayMemberBinding="{Binding Key}" SelectedValueBinding="{Binding Value}" SelectedValue="{Binding CurrentUserProgress.State}"
-                                          Margin="0,5,0,0" FontSize="16" Width="290" FontWeight="Bold" HorizontalAlignment="Center" SelectionChanged="GameState_SelectionChanged" />
+                                </Button>
+                                <Button Classes="ghost" Height="48" Margin="0,0,10,10" Click="GameDownload_Click">
+                                    <ToolTip.Tip>
+                                        <TextBlock Text="{Binding Game.DownloadCount, StringFormat={l:T 'Downloaded {0} times'}}" />
+                                    </ToolTip.Tip>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Path Data="{StaticResource IconArrowDown}" />
+                                        <TextBlock VerticalAlignment="Center" Text="{l:T 'Download'}" IsVisible="{Binding !IsDownloaded}" />
+                                        <TextBlock VerticalAlignment="Center" Text="{l:T 'Download again'}" IsVisible="{Binding IsDownloaded}" />
+                                        <TextBlock VerticalAlignment="Center" Opacity="0.7" FontWeight="Medium" Text="{Binding Game.Size, Converter={StaticResource sizeConv}}" />
+                                    </StackPanel>
+                                </Button>
+                                <Border Background="{DynamicResource Brush.Glass}" CornerRadius="11" Width="48" Height="48" Margin="0,0,8,10">
+                                    <ToggleButton Classes="icon bookmark" Width="48" Height="48" IsChecked="{Binding Game.BookmarkedUsers, Converter={StaticResource containsCurrentUserConv}, Mode=OneWay}"
+                                                  Click="Bookmark_Click" ToolTip.Tip="{l:T 'Bookmark'}" />
+                                </Border>
+                                <Button Classes="round" Width="48" Height="48" Margin="0,0,8,10" Click="Collections_Click" ToolTip.Tip="{l:T 'Collections'}">
+                                    <Path Data="{StaticResource IconCollection}" Width="18" Height="18" />
+                                </Button>
+                                <Button Classes="round" Width="48" Height="48" Margin="0,0,8,10" Click="Share_Click" ToolTip.Tip="{l:T 'Copy share link'}">
+                                    <Path Data="{StaticResource IconGameViewShare}" Width="18" Height="18" />
+                                </Button>
+                                <Button Classes="round" Width="48" Height="48" Margin="0,0,8,10" Click="GameSettings_Click" ToolTip.Tip="{l:T 'Game Settings'}"
+                                        IsVisible="{Binding IsInstalled, Converter={StaticResource settingsPermRoleVisConv}}">
+                                    <Path Data="{StaticResource IconInstalledGamesSettings}" Width="18" Height="18" />
+                                </Button>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Play data -->
+                    <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1">
+                        <WrapPanel>
+                            <StackPanel Classes="stat">
+                                <TextBlock Classes="label" Text="{l:T 'PLAYTIME'}" />
+                                <TextBlock Classes="value" Text="{Binding CurrentUserProgress.MinutesPlayed, Converter={StaticResource timeConv}, FallbackValue='—'}" />
                             </StackPanel>
-                            <Grid Height="289.5" Margin="0,3.5,0,0">
-                                <Border CornerRadius="5" Background="{DynamicResource Brush.Background}" Opacity="0.7" />
-                                <StackPanel Margin="5,10,0,0" HorizontalAlignment="Left" Spacing="10">
-                                    <Grid Height="30">
-                                        <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameViewCalendar}" />
-                                        <TextBlock Classes="metaTitle" Text="{l:T 'Release Year'}" />
-                                        <TextBlock Classes="metaValue" Text="{Binding Game.Metadata.ReleaseDate.Year, TargetNullValue='N/A', FallbackValue='N/A'}" />
-                                    </Grid>
-                                    <Grid Height="30">
-                                        <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameViewRating}" RenderTransform="scale(1.1)" RenderTransformOrigin="0%,0%" />
-                                        <TextBlock Classes="metaTitle" Text="{l:T 'Rating'}" />
-                                        <TextBlock Classes="metaValue" Text="{Binding Game.Metadata.Rating, StringFormat='{}{0}%', TargetNullValue='N/A', FallbackValue='N/A'}" />
-                                    </Grid>
-                                    <Grid Height="30">
-                                        <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameViewVersion}" RenderTransform="scale(1.1,1.3)" RenderTransformOrigin="0%,20%" />
-                                        <TextBlock Classes="metaTitle" Text="{l:T 'Version'}" />
-                                        <TextBlock Classes="metaValue" Text="{Binding Game.Version, TargetNullValue='N/A', FallbackValue='N/A'}" />
-                                    </Grid>
-                                    <Grid Height="30">
-                                        <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameViewWebsite}" RenderTransform="scale(1.1)" RenderTransformOrigin="0%,0%" />
-                                        <TextBlock Classes="metaTitle" Text="{l:T 'Website'}" />
-                                        <Button Classes="link" Margin="30,11,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Click="Website_Navigate"
-                                                Tag="{Binding Game.Metadata.UrlWebsites[0], FallbackValue={x:Null}}"
-                                                IsVisible="{Binding Game.Metadata.UrlWebsites[0], Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}"
-                                                ToolTip.Tip="{Binding Game.Metadata.UrlWebsites[0], FallbackValue={x:Null}}">
-                                            <TextBlock Text="{l:T 'Open in Browser'}" FontSize="10" />
-                                        </Button>
-                                        <TextBlock Classes="metaValue" Text="N/A" IsVisible="{Binding Game.Metadata.UrlWebsites[0], Converter={x:Static ObjectConverters.IsNull}, FallbackValue=True}" />
-                                    </Grid>
-                                    <Grid Height="30">
-                                        <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameViewDeveloper}" RenderTransform="scale(1.1)" RenderTransformOrigin="0%,0%" />
-                                        <TextBlock Classes="metaTitle" Text="{l:T 'Developer'}" />
-                                        <ItemsControl ItemsSource="{Binding Game.Metadata.Developers}" Margin="30,11,0,0">
+                            <StackPanel Classes="stat">
+                                <TextBlock Classes="label" Text="{l:T 'LAST PLAYED'}" />
+                                <TextBlock Classes="value" Text="{Binding CurrentUserProgress.LastPlayedAt, Converter={StaticResource relativeDateConv}, FallbackValue='—'}" />
+                            </StackPanel>
+                            <StackPanel Classes="stat">
+                                <TextBlock Classes="label" Text="{l:T 'AVG. PLAYTIME'}" />
+                                <TextBlock Classes="value" Text="{Binding Game.Metadata.AveragePlaytime, Converter={StaticResource timeConv}, FallbackValue='—'}" />
+                            </StackPanel>
+                            <StackPanel Classes="stat">
+                                <TextBlock Classes="label" Text="{l:T 'RATING'}" />
+                                <TextBlock Classes="value" Text="{Binding Game.Metadata.Rating, StringFormat='{}{0:0} %', TargetNullValue='—', FallbackValue='—'}" />
+                            </StackPanel>
+                            <StackPanel Classes="stat">
+                                <TextBlock Classes="label" Text="{l:T 'STATUS'}" />
+                                <ComboBox ItemsSource="{Binding GameStates}" DisplayMemberBinding="{Binding Key}" SelectedValueBinding="{Binding Value}" SelectedValue="{Binding CurrentUserProgress.State}"
+                                          MinWidth="170" MinHeight="32" FontWeight="SemiBold" SelectionChanged="GameState_SelectionChanged" />
+                            </StackPanel>
+                            <StackPanel Classes="stat" IsVisible="{Binding CloudSaveMatchTitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <Button Classes="link" Tag="https://gamevau.lt/docs/gamevault-plus/cloud-saves" Click="Website_Navigate" HorizontalAlignment="Left">
+                                    <TextBlock Classes="label" Text="{l:T 'CLOUD SAVES'}" />
+                                </Button>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="ghost small" Click="RestoreCloudSaves_Click" ToolTip.Tip="{Binding CloudSaveMatchTitle, StringFormat={l:T 'Download Savefiles for {0}'}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Path Data="{StaticResource IconCloudSaveUpload}" RenderTransform="rotate(180deg)" Width="14" Height="14" />
+                                            <TextBlock Text="{l:T 'Restore'}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Classes="ghost small" Click="BackupCloudSaves_Click" ToolTip.Tip="{Binding CloudSaveMatchTitle, StringFormat={l:T 'Upload Savefiles for {0}'}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Path Data="{StaticResource IconCloudSaveUpload}" Width="14" Height="14" />
+                                            <TextBlock Text="{l:T 'Upload'}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </WrapPanel>
+                    </Border>
+
+                    <!-- Media and description | facts and players -->
+                    <Grid x:Name="uiBody" ColumnDefinitions="*,36,330" RowDefinitions="Auto,Auto">
+                        <StackPanel x:Name="uiMain" Grid.Column="0" Spacing="12">
+                            <local:AspectBox x:Name="uiMediaSliderAnchor" Ratio="0.5625">
+                                <Border CornerRadius="14" ClipToBounds="True" Background="Black">
+                                    <Panel>
+                                        <local:CacheImage UseUriSource="True" Data="{Binding PosterUrl}" Stretch="UniformToFill" Margin="0,0,30,0" />
+                                        <local:MediaSlider x:Name="uiMediaSlider" Background="Transparent" />
+                                    </Panel>
+                                </Border>
+                            </local:AspectBox>
+                            <ScrollViewer x:Name="uiThumbs" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="{Binding HasScreenshots}">
+                                <ItemsControl ItemsSource="{Binding Game.Metadata.Screenshots}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="10" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Classes="thumb" Click="Screenshot_Click">
+                                                <Border Width="168" Height="94" CornerRadius="9" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                    <local:CacheImage UseUriSource="True" Data="{Binding}" Stretch="UniformToFill" />
+                                                </Border>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <TabControl Classes="page" Padding="0,8,0,0" Margin="0,8,0,0">
+                                <TabItem Header="{l:T 'Description'}">
+                                    <md:MarkdownScrollViewer Markdown="{Binding DescriptionMarkdown}" TextElement.FontSize="15" MaxHeight="560" />
+                                </TabItem>
+                                <TabItem Header="{l:T 'Notes'}">
+                                    <md:MarkdownScrollViewer Markdown="{Binding NotesMarkdown}" TextElement.FontSize="15" MaxHeight="560" />
+                                </TabItem>
+                                <TabItem Header="{l:T 'Tags'}">
+                                    <ItemsControl ItemsSource="{Binding Game.Metadata.Tags}" Margin="0,6,0,0">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Classes="chip" Margin="0,0,8,8" Content="{Binding Name}" ToolTip.Tip="{l:T 'Show the games with this tag'}" Click="Tag_Clicked" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </TabItem>
+                            </TabControl>
+                        </StackPanel>
+
+                        <StackPanel x:Name="uiSide" Grid.Column="2" Spacing="26">
+                            <StackPanel>
+                                <TextBlock Classes="sectionTitle" Text="{l:T 'About the game'}" Margin="0,0,0,8" />
+                                <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1">
+                                    <Grid Classes="fact" ColumnDefinitions="Auto,*">
+                                        <TextBlock Classes="label" Text="{l:T 'Developer'}" />
+                                        <ItemsControl Classes="value" ItemsSource="{Binding Game.Metadata.Developers}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" />
+                                                    <WrapPanel HorizontalAlignment="Right" />
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
@@ -289,15 +353,15 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <TextBlock Classes="metaValue" Text="N/A" IsVisible="{Binding Game.Metadata.Developers.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}, FallbackValue=True}" />
                                     </Grid>
-                                    <Grid Height="30">
-                                        <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameViewPublisher}" />
-                                        <TextBlock Classes="metaTitle" Text="{l:T 'Publisher'}" />
-                                        <ItemsControl ItemsSource="{Binding Game.Metadata.Publishers}" Margin="30,11,0,0">
+                                </Border>
+                                <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1">
+                                    <Grid Classes="fact" ColumnDefinitions="Auto,*">
+                                        <TextBlock Classes="label" Text="{l:T 'Publisher'}" />
+                                        <ItemsControl Classes="value" ItemsSource="{Binding Game.Metadata.Publishers}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" />
+                                                    <WrapPanel HorizontalAlignment="Right" />
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
@@ -306,42 +370,80 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <TextBlock Classes="metaValue" Text="N/A" IsVisible="{Binding Game.Metadata.Publishers.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}, FallbackValue=True}" />
                                     </Grid>
-                                    <Grid Height="30">
-                                        <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconUser}" RenderTransform="scale(1.1)" RenderTransformOrigin="0%,0%" />
-                                        <TextBlock Classes="metaTitle" Text="{l:T 'Age Rating'}" />
-                                        <TextBlock Classes="metaValue" Text="{Binding Game.Metadata.AgeRating, TargetNullValue='N/A', FallbackValue='N/A'}" />
+                                </Border>
+                                <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1">
+                                    <Grid Classes="fact" ColumnDefinitions="Auto,*">
+                                        <TextBlock Classes="label" Text="{l:T 'Release'}" />
+                                        <TextBlock Classes="value" Text="{Binding ReleaseText}" />
                                     </Grid>
-                                </StackPanel>
-                            </Grid>
-                            <Grid Margin="0,10,0,0">
-                                <Border CornerRadius="5" Background="{DynamicResource Brush.Background}" Opacity="0.7" />
-                                <StackPanel Height="426">
-                                    <TextBlock Margin="10,0,0,0" Text="{l:T 'Activities'}" FontSize="24" />
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto" Height="390">
-                                        <ItemsControl ItemsSource="{Binding UserProgresses}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border CornerRadius="5" Background="#33000000" Margin="5,0,5,10" Height="50">
-                                                        <Grid Margin="5">
-                                                            <local:CacheImage Data="{Binding User}" Stretch="Fill" ImageCacheType="UserAvatar" CornerRadius="5" HorizontalAlignment="Left" VerticalAlignment="Center" Width="40" Height="40" Cursor="Hand" PointerReleased="ShowProgressUser_Click" />
-                                                            <TextBlock Text="{Binding User.Username}" FontSize="12" HorizontalAlignment="Left" Margin="50,0,0,0" VerticalAlignment="Top" />
-                                                            <TextBlock Text="{Binding MinutesPlayed, Converter={StaticResource timeConv}}" FontSize="12" HorizontalAlignment="Right" Margin="0,0,0,2" VerticalAlignment="Bottom" />
-                                                            <TextBlock FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Top" Text="{Binding LastPlayedAt, StringFormat={l:T '{}{0:d.M.yyyy}'}}" ToolTip.Tip="{Binding LastPlayedAt, StringFormat={l:T '{}{0:HH:mm} h'}}" />
-                                                            <TextBlock Text="{Binding State, Converter={StaticResource gameStateDescConv}}" Foreground="{Binding State, Converter={StaticResource gameStateColorConv}}" FontSize="12" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="50,0,0,2" />
-                                                        </Grid>
+                                </Border>
+                                <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1">
+                                    <Grid Classes="fact" ColumnDefinitions="Auto,*">
+                                        <TextBlock Classes="label" Text="{l:T 'Size'}" />
+                                        <TextBlock Classes="value" Text="{Binding Game.Size, Converter={StaticResource sizeConv}}" />
+                                    </Grid>
+                                </Border>
+                                <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1">
+                                    <Grid Classes="fact" ColumnDefinitions="Auto,*">
+                                        <TextBlock Classes="label" Text="{l:T 'Version'}" />
+                                        <TextBlock Classes="value" Text="{Binding Game.Version, TargetNullValue='—', FallbackValue='—'}" />
+                                    </Grid>
+                                </Border>
+                                <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1">
+                                    <Grid Classes="fact" ColumnDefinitions="Auto,*">
+                                        <TextBlock Classes="label" Text="{l:T 'Age Rating'}" />
+                                        <TextBlock Classes="value" Text="{Binding Game.Metadata.AgeRating, StringFormat='{}{0}+', TargetNullValue='—', FallbackValue='—'}" />
+                                    </Grid>
+                                </Border>
+                                <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1"
+                                        IsVisible="{Binding Game.Metadata.UrlWebsites[0], Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
+                                    <Grid Classes="fact" ColumnDefinitions="Auto,*">
+                                        <TextBlock Classes="label" Text="{l:T 'Website'}" />
+                                        <Button Classes="link value" Click="Website_Navigate" Tag="{Binding Game.Metadata.UrlWebsites[0], FallbackValue={x:Null}}"
+                                                ToolTip.Tip="{Binding Game.Metadata.UrlWebsites[0], FallbackValue={x:Null}}">
+                                            <TextBlock Text="{l:T 'Open in Browser'}" FontSize="13" FontWeight="SemiBold" Foreground="{Binding AccentBrush}" />
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel Spacing="10" IsVisible="{Binding HasOtherPlayers}">
+                                <TextBlock Classes="sectionTitle" Text="{l:T 'Activities'}" />
+                                <ItemsControl ItemsSource="{Binding UserProgresses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" Margin="0,0,0,8" Padding="10">
+                                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                                    <Border Width="38" Height="38" CornerRadius="19" ClipToBounds="True" Cursor="Hand" PointerReleased="ShowProgressUser_Click">
+                                                        <local:CacheImage Data="{Binding User}" Stretch="UniformToFill" ImageCacheType="UserAvatar" />
                                                     </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </ScrollViewer>
-                                </StackPanel>
-                            </Grid>
+                                                    <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Spacing="1">
+                                                        <TextBlock Text="{Binding User.Username}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding State, Converter={StaticResource gameStateDescConv}}" Foreground="{Binding State, Converter={StaticResource gameStateColorConv}}" FontSize="12" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
+                                                        <TextBlock Text="{Binding MinutesPlayed, Converter={StaticResource timeConv}}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                                        <TextBlock Classes="muted" FontSize="12" HorizontalAlignment="Right" Text="{Binding LastPlayedAt, Converter={StaticResource relativeDateConv}}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
-                </Viewbox>
-            </Grid>
+                </StackPanel>
+            </Panel>
         </ScrollViewer>
+
+        <!-- Back to the library, always reachable -->
+        <Button Classes="ghost small" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="22,18,0,0" Click="Back_Click" ToolTip.Tip="{l:T 'Back (Esc)'}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <Path Data="{StaticResource IconChevronLeft}" Width="14" Height="14" />
+                <TextBlock Text="{l:T 'Back'}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
     </Grid>
 </UserControl>

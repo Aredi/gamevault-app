@@ -98,7 +98,11 @@ namespace gamevault.Models
         //Admin: game publishing
         PublishTargetDirectory,
         PublishUploaderUrl,
-        PublishDestination
+        PublishDestination,
+        //Library layout: cover size, "gallery" / "shelf", showcase on ("1") or off ("0")
+        LibraryCardWidth,
+        LibraryLayout,
+        LibraryShowcase
     }
     public static class Globals
     {

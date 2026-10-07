@@ -555,7 +555,7 @@ namespace gamevault.Windows
                 if (release != null)
                 {
                     var result = await this.ShowMessageAsync(Loc.T("Update available"),
-                        Loc.F("A new version of GameVault is now available on GitHub.\nCurrent Version '{0}' -> new Version '{1}'\nWould you like to download it? (No automatic installation)", SettingsViewModel.Instance.Version, release.Version),
+                        Loc.F("A new version of SanctuaryVault is now available on GitHub.\nCurrent Version '{0}' -> new Version '{1}'\nWould you like to download it? (No automatic installation)", SettingsViewModel.Instance.Version, release.Version),
                         MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Download"), NegativeButtonText = Loc.T("Later") });
                     if (result == MessageDialogResult.Affirmative)
                     {
@@ -577,15 +577,15 @@ namespace gamevault.Windows
                 return;
             string newVersion = update.TargetFullRelease.Version.ToString();
             var result = await this.ShowMessageAsync(Loc.T("Update available"),
-                Loc.F("GameVault {0} is available (installed: {1}).\nInstall it now? GameVault restarts after the download.", newVersion, AppUpdater.CurrentVersion),
+                Loc.F("SanctuaryVault {0} is available (installed: {1}).\nInstall it now? SanctuaryVault restarts after the download.", newVersion, AppUpdater.CurrentVersion),
                 MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Update"), NegativeButtonText = Loc.T("Later") });
             if (result != MessageDialogResult.Affirmative)
                 return;
             try
             {
-                ViewModel.StatusText = Loc.F("Downloading GameVault {0}...", newVersion);
+                ViewModel.StatusText = Loc.F("Downloading SanctuaryVault {0}...", newVersion);
                 await AppUpdater.DownloadAndRestartAsync(update, percent =>
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => ViewModel.StatusText = Loc.F("Downloading GameVault {0}... {1}%", newVersion, percent)));
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => ViewModel.StatusText = Loc.F("Downloading SanctuaryVault {0}... {1}%", newVersion, percent)));
             }
             catch (Exception ex)
             {
@@ -614,7 +614,7 @@ namespace gamevault.Windows
                 try
                 {
                     MessageDialogResult result = await this.ShowMessageAsync(Loc.T("CLIENT-SERVER-INCOMPABILITY DETECTED"),
-                          Loc.T("Your GameVault Client is not compatible with the GameVault Server you are using (<15.0.0). This server is too old for your client.\r\n\r\nYou have the following options:\r\n"),
+                          Loc.T("Your SanctuaryVault Client is not compatible with the SanctuaryVault Server you are using (<15.0.0). This server is too old for your client.\r\n\r\nYou have the following options:\r\n"),
                           MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings()
                           {
                               AffirmativeButtonText = Loc.T("Get older client version from GitHub"),

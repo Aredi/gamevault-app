@@ -75,6 +75,27 @@ namespace gamevault.ViewModels
                 InstalledGames[index] = new KeyValuePair<Game, string>(gameToRefreshParam, gameToRefresh.Value);
             }
         }
+        /// <summary>The current user's play time and last session of each game (from the server's progresses).</summary>
+        public Dictionary<int, GameVault.Core.Library.PlayRecord> PlayRecords { get; private set; } = new();
+        private int playRecordsVersion;
+        /// <summary>Changes with <see cref="PlayRecords"/>: bindings showing play data refresh on it.</summary>
+        public int PlayRecordsVersion
+        {
+            get => playRecordsVersion;
+            private set { playRecordsVersion = value; OnPropertyChanged(); }
+        }
+        public void SetPlayRecords(IEnumerable<GameVault.Core.Library.PlayRecord> records)
+        {
+            PlayRecords = records.GroupBy(r => r.GameId).ToDictionary(g => g.Key, g => new GameVault.Core.Library.PlayRecord(g.Key, g.Max(r => r.LastPlayedAt), g.Sum(r => r.MinutesPlayed)));
+            PlayRecordsVersion++;
+        }
+        private int visibleInstalledCount;
+        /// <summary>Installed games matching the library search.</summary>
+        public int VisibleInstalledCount
+        {
+            get => visibleInstalledCount;
+            set { visibleInstalledCount = value; OnPropertyChanged(); }
+        }
         public int Rows
         {
             get { return rows; }

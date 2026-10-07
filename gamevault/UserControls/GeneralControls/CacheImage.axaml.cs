@@ -45,6 +45,38 @@ namespace gamevault.UserControls
             set => SetValue(StretchProperty, value);
         }
 
+        /// <summary>A game without a background image shows its cover instead (blurred by the page if it wants).</summary>
+        public static readonly StyledProperty<bool> FallbackToCoverProperty = AvaloniaProperty.Register<CacheImage, bool>(nameof(FallbackToCover));
+        public bool FallbackToCover
+        {
+            get => GetValue(FallbackToCoverProperty);
+            set => SetValue(FallbackToCoverProperty, value);
+        }
+
+        public static readonly StyledProperty<bool> IsShowingFallbackProperty = AvaloniaProperty.Register<CacheImage, bool>(nameof(IsShowingFallback));
+        /// <summary>The cover is shown because the game has no background image.</summary>
+        public bool IsShowingFallback
+        {
+            get => GetValue(IsShowingFallbackProperty);
+            private set => SetValue(IsShowingFallbackProperty, value);
+        }
+
+        public static readonly StyledProperty<bool> ComputeAccentProperty = AvaloniaProperty.Register<CacheImage, bool>(nameof(ComputeAccent));
+        /// <summary>Analyse the shown image for <see cref="AccentColor"/>.</summary>
+        public bool ComputeAccent
+        {
+            get => GetValue(ComputeAccentProperty);
+            set => SetValue(ComputeAccentProperty, value);
+        }
+
+        public static readonly StyledProperty<Color?> AccentColorProperty = AvaloniaProperty.Register<CacheImage, Color?>(nameof(AccentColor));
+        /// <summary>The dominant vivid color of the image (null until known, or for images without color).</summary>
+        public Color? AccentColor
+        {
+            get => GetValue(AccentColorProperty);
+            private set => SetValue(AccentColorProperty, value);
+        }
+
         //Data is a separate property (instead of DataContext), because DataContext changes before ImageCacheType is set inside a DataTemplate.
         public static readonly StyledProperty<object?> DataProperty = AvaloniaProperty.Register<CacheImage, object?>(nameof(Data));
         public object? Data
@@ -91,6 +123,7 @@ namespace gamevault.UserControls
             }
             uiImg.Source = image;
             uiImg.IsVisible = true;
+            uiImg.Opacity = 1;
         }
 
         internal void SetGif(Stream gif)
@@ -116,15 +149,24 @@ namespace gamevault.UserControls
                     SetGif(new MemoryStream(data));
                 return;
             }
-            Bitmap bitmap = await Task.Run(() => BitmapHelper.GetBitmapImage(path));
+            bool computeAccent = ComputeAccent;
+            (Bitmap bitmap, Color? accent) = await Task.Run(() =>
+            {
+                Bitmap decoded = BitmapHelper.GetBitmapImage(path);
+                return (decoded, computeAccent ? CoverColors.Get(decoded, path) : null);
+            });
             if (generation == loadGeneration)
+            {
                 SetImage(bitmap);
+                AccentColor = accent;
+            }
         }
 
         internal void SetReplacement()
         {
             loadGeneration++;
-            SetImage(CacheHelper.GetReplacementImage(ImageCacheType));
+            SetImage(CacheHelper.GetReplacementImage(IsShowingFallback ? ImageCache.GameCover : ImageCacheType));
+            AccentColor = null;
         }
         #endregion
 
@@ -174,6 +216,9 @@ namespace gamevault.UserControls
         {
             if (newData == null)
                 return;
+            // A recycled card must not show the previous game's image while the new one loads
+            if (ImageCacheType is ImageCache.GameCover or ImageCache.GameBackground)
+                uiImg.Opacity = 0;
 
             if (UseUriSource)
             {
@@ -236,6 +281,7 @@ namespace gamevault.UserControls
             }
 
             CacheImageMedia media = new CacheImageMedia();
+            bool fallback = false;
             try
             {
                 media.Convert(newData);
@@ -249,6 +295,13 @@ namespace gamevault.UserControls
                         }
                     case ImageCache.GameBackground:
                         {
+                            if (media.BackgroundID == -1 && FallbackToCover && media.CoverID != -1)
+                            {
+                                cachePath = Path.Combine(cachePath, "gbox");
+                                imageId = media.CoverID;
+                                fallback = true;
+                                break;
+                            }
                             cachePath = Path.Combine(cachePath, "gbg");
                             imageId = media.BackgroundID;
                             break;
@@ -268,6 +321,7 @@ namespace gamevault.UserControls
                 }
             }
             catch (Exception ex) { Log.Ignored(ex); }
+            IsShowingFallback = fallback;
             if (DoNotCache)
             {
                 try
@@ -283,7 +337,7 @@ namespace gamevault.UserControls
             }
             else
             {
-                await CacheHelper.LoadImageCacheToUIAsync(media.Identifier, imageId, cachePath, ImageCacheType, this);
+                await CacheHelper.LoadImageCacheToUIAsync(media.Identifier, imageId, cachePath, fallback ? ImageCache.GameCover : ImageCacheType, this);
             }
         }
         public IImage? GetImageSource()

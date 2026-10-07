@@ -29,7 +29,6 @@ namespace gamevault.UserControls
 {
     public partial class InstallUserControl : UserControl
     {
-        private InputTimer? inputTimer { get; set; }
         private List<FileSystemWatcher> m_FileWatcherList = new List<FileSystemWatcher>();
         private bool gamesRestored = false;
         private ObservableCollection<KeyValuePair<Game, string>>? observedGames;
@@ -38,13 +37,9 @@ namespace gamevault.UserControls
         {
             InitializeComponent();
             this.DataContext = InstallViewModel.Instance;
-            InitTimer();
-            uiInstalledGames.IsExpanded = Preferences.Get(AppConfigKey.InstalledGamesOpen, LoginManager.Instance.GetUserProfile().UserConfigFile) == "1" ? true : false;
-            uiInstalledGames.PropertyChanged += (_, e) =>
-            {
-                if (e.Property == Expander.IsExpandedProperty)
-                    InstalledGames_Toggled(uiInstalledGames, new RoutedEventArgs());
-            };
+            // Open unless the user closed it
+            uiInstalledGames.IsChecked = Preferences.Get(AppConfigKey.InstalledGamesOpen, LoginManager.Instance.GetUserProfile().UserConfigFile) != "0";
+            uiInstalledGames.IsCheckedChanged += (_, _) => InstalledGames_Toggled(uiInstalledGames, new RoutedEventArgs());
             // Mouse wheel scrolls the installed games horizontally, or the page when there is nothing to scroll.
             uiInstalledGamesScroll.AddHandler(PointerWheelChangedEvent, InstalledGames_PointerWheelChanged, RoutingStrategies.Tunnel);
             InstallViewModel.Instance.PropertyChanged += (_, e) =>
@@ -84,10 +79,10 @@ namespace gamevault.UserControls
 
         private async void UserControl_Loaded(object? sender, RoutedEventArgs e)
         {
-            if (this.IsVisible == true && gamesRestored && InstallViewModel.Instance.InstalledGames.Count > 0 && string.IsNullOrEmpty(inputTimer?.Data))
+            if (this.IsVisible == true && gamesRestored && InstallViewModel.Instance.InstalledGames.Count > 0 && string.IsNullOrEmpty(searchText))
             {
                 InstallViewModel.Instance.InstalledGames = await SortInstalledGamesByLastPlayed(InstallViewModel.Instance.InstalledGames);
-                InstallViewModel.Instance.InstalledGamesFilter = new FilteredCollectionView<KeyValuePair<Game, string>>(InstallViewModel.Instance.InstalledGames);
+                SetFilteredView();
             }
         }
         private List<Game> GetGamesFromOfflineCache(Dictionary<int, string> games)
@@ -240,11 +235,7 @@ namespace gamevault.UserControls
                     catch (Exception ignored) { Log.Ignored(ignored); }
                 }
                 InstallViewModel.Instance.InstalledGames = await SortInstalledGamesByLastPlayed(TempInstalledGames);
-                InstallViewModel.Instance.InstalledGamesFilter = new FilteredCollectionView<KeyValuePair<Game, string>>(InstallViewModel.Instance.InstalledGames);
-                if (gamesRestored)
-                {
-                    SearchFilterInputTimerElapsed(null, null);//Keep the filter
-                }
+                SetFilteredView();
             }
             if (!fromCLI)
                 gamesRestored = true;
@@ -389,20 +380,39 @@ namespace gamevault.UserControls
             }
             MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(((KeyValuePair<Game, string>)((Control)sender).DataContext).Key, LoginManager.Instance.IsLoggedIn()));
         }
-        private void Search_TextChanged(object? sender, TextChangedEventArgs e)
+        private string searchText = "";
+        /// <summary>The library search also narrows the installed games.</summary>
+        public void ApplySearch(string? text)
         {
-            inputTimer.Stop();
-            inputTimer.Data = ((TextBox)sender).Text;
-            inputTimer.Start();
+            searchText = text?.Trim() ?? "";
+            ApplyFilter();
         }
-        private void SearchFilterInputTimerElapsed(object? sender, EventArgs? e)
+
+        private void SetFilteredView()
         {
-            inputTimer.Stop();
-            if (InstallViewModel.Instance.InstalledGamesFilter == null) return;
-            InstallViewModel.Instance.InstalledGamesFilter.Filter = item =>
-            {
-                return ((KeyValuePair<Game, string>)item).Key.Title.Contains(inputTimer.Data ?? "", StringComparison.OrdinalIgnoreCase);
-            };
+            var view = new FilteredCollectionView<KeyValuePair<Game, string>>(InstallViewModel.Instance.InstalledGames);
+            ((System.Collections.Specialized.INotifyCollectionChanged)view).CollectionChanged += (_, _) => InstallViewModel.Instance.VisibleInstalledCount = view.Count;
+            InstallViewModel.Instance.InstalledGamesFilter = view;
+            ApplyFilter();
+        }
+
+        private void ApplyFilter()
+        {
+            var view = InstallViewModel.Instance.InstalledGamesFilter;
+            if (view == null)
+                return;
+            string text = searchText;
+            view.Filter = string.IsNullOrEmpty(text) ? null : item => ((KeyValuePair<Game, string>)item).Key?.Title?.Contains(text, StringComparison.OrdinalIgnoreCase) == true;
+            InstallViewModel.Instance.VisibleInstalledCount = view.Count;
+        }
+
+        private void ScrollPrevious_Click(object? sender, RoutedEventArgs e) => ScrollRow(-1);
+        private void ScrollNext_Click(object? sender, RoutedEventArgs e) => ScrollRow(1);
+        private void ScrollRow(int direction)
+        {
+            var scroll = uiInstalledGamesScroll;
+            double page = Math.Max(316, scroll.Viewport.Width - 316);
+            scroll.Offset = new Vector(Math.Clamp(scroll.Offset.X + direction * page, 0, Math.Max(0, scroll.Extent.Width - scroll.Viewport.Width)), 0);
         }
 
         private async void Play_Click(object sender, RoutedEventArgs e)
@@ -503,71 +513,14 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
-        private void InitTimer()
-        {
-            inputTimer = new InputTimer();
-            inputTimer.Interval = TimeSpan.FromMilliseconds(400);
-            inputTimer.Tick += SearchFilterInputTimerElapsed;
-        }
-
         private void InstalledGames_Toggled(object? sender, RoutedEventArgs e)
         {
-            Preferences.Set(AppConfigKey.InstalledGamesOpen, uiInstalledGames.IsExpanded ? "1" : "0", LoginManager.Instance.GetUserProfile().UserConfigFile);
-        }
-
-        private void RestoreRows()
-        {
-            string result = Preferences.Get(AppConfigKey.InstalledGamesRows, LoginManager.Instance.GetUserProfile().UserConfigFile);
-            if (int.TryParse(result, out int rows) && rows > 0)
-            {
-                uiRowsUpDown.Value = rows;
-            }
-            else
-            {
-                uiRowsUpDown.Value = 1;
-            }
-        }
-        private void Rows_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs? e)
-        {
-            try
-            {
-                if (InstallViewModel.Instance.InstalledGames.Count == 0)
-                    return;
-                if (uiRowsUpDown.Value == null)
-                {
-                    RestoreRows();
-                    return;
-                }
-                int calcRows = (InstallViewModel.Instance.InstalledGames.Count / 10);
-                if ((int)uiRowsUpDown.Value > calcRows)
-                {
-
-                    if (InstallViewModel.Instance.InstalledGames.Count % 10 > 0)
-                    {
-                        calcRows += 1;
-                        InstallViewModel.Instance.Colums = 10;
-                    }
-                    else
-                    {
-                        InstallViewModel.Instance.Colums = 0;
-                    }
-                    InstallViewModel.Instance.Rows = calcRows;
-                }
-                else
-                {
-                    InstallViewModel.Instance.Rows = (int)uiRowsUpDown.Value;
-                    InstallViewModel.Instance.Colums = 0;
-                }
-                Preferences.Set(AppConfigKey.InstalledGamesRows, ((int)uiRowsUpDown.Value).ToString(), LoginManager.Instance.GetUserProfile().UserConfigFile);
-            }
-            catch (Exception ignored) { Log.Ignored(ignored); }
+            Preferences.Set(AppConfigKey.InstalledGamesOpen, uiInstalledGames.IsChecked == true ? "1" : "0", LoginManager.Instance.GetUserProfile().UserConfigFile);
         }
 
         private async Task Collection_Updated(int oldCount, int newCount)
         {
-            if (uiRowsUpDown.Value == null)
-                RestoreRows();
-            Rows_ValueChanged(null, null);
+            ApplyFilter();
             if (oldCount >= 0 && oldCount != newCount && SettingsViewModel.Instance.SyncSteamShortcuts)//Make sure that a game has really been added or removed
             {
                 await SteamHelper.SyncGamesWithSteamShortcuts(InstallViewModel.Instance.InstalledGames.ToDictionary(pair => pair.Key, pair => pair.Value));

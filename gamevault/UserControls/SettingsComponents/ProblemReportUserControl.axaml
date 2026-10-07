@@ -11,7 +11,7 @@
         <Border Background="{DynamicResource Brush.Background}" Padding="25" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" CornerRadius="10" Width="640">
             <StackPanel Spacing="12">
                 <TextBlock Text="{l:T 'Report a problem'}" FontSize="26" FontWeight="Bold" />
-                <TextBlock TextWrapping="Wrap" FontSize="14" Text="{l:T 'Something does not work? Create a report and send it to the administrator of your GameVault server (e-mail, Discord, ...). It contains the versions, your settings, your installed games and downloads, and the logs of the last days.'}" />
+                <TextBlock TextWrapping="Wrap" FontSize="14" Text="{l:T 'Something does not work? Create a report and send it to the administrator of your SanctuaryVault server (e-mail, Discord, ...). It contains the versions, your settings, your installed games and downloads, and the logs of the last days.'}" />
                 <TextBlock TextWrapping="Wrap" FontSize="13" Opacity="0.75" Text="{l:T 'Passwords, sign-in tokens and API keys are never part of the report.'}" />
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <controls:IconButton x:Name="uiBtnCreate" Text="{l:T 'Create report'}" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="170" Height="36" FontSize="15" Click="Create_Click" />
@@ -21,7 +21,7 @@
                 <SelectableTextBlock x:Name="uiStatus" TextWrapping="Wrap" FontSize="14" />
                 <Separator />
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="{l:T 'A bug in GameVault itself?'}" FontSize="13" VerticalAlignment="Center" />
+                    <TextBlock Text="{l:T 'A bug in SanctuaryVault itself?'}" FontSize="13" VerticalAlignment="Center" />
                     <Button Classes="link" Click="GitHub_Click">
                         <TextBlock Text="{l:T 'Report it on GitHub'}" FontSize="13" />
                     </Button>

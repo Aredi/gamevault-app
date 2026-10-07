@@ -201,6 +201,16 @@ namespace gamevault.UserControls
                 await MediaSliderNavigate(MediaUrls[mediaIndex].Item1);
             }
         }
+        /// <summary>Shows one of the media (a screenshot picked below the player).</summary>
+        public async Task ShowUrl(string url)
+        {
+            int index = MediaUrls.FindIndex(m => m.Item1 == url);
+            if (index < 0)
+                return;
+            mediaIndex = index;
+            await MediaSliderNavigate(url);
+            uiTxtMediaIndex.Text = $"{mediaIndex + 1}/{MediaUrls.Count}";
+        }
         public bool IsWebViewNull()
         {
             return uiWebView == null;

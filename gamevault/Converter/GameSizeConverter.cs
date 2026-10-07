@@ -37,7 +37,7 @@ namespace gamevault.Converter
                 }
 
                 size = Math.Round(size, 2);
-                return $"{size} {sizeSuffixes[suffixIndex]}";
+                return $"{size.ToString(CultureInfo.CurrentCulture)} {gamevault.Localization.Loc.T(sizeSuffixes[suffixIndex])}";
             }
             catch (Exception ex)
             {
