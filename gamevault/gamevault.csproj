@@ -6,6 +6,8 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<ApplicationIcon>Resources\Images\icon.ico</ApplicationIcon>
+		<!-- Supported Windows versions: required by the native web view of the trailers -->
+		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<StartupObject>gamevault.Program</StartupObject>
 		<!-- Release builds pass -p:Version=<tag>; Velopack packages use the same version -->
 		<Version>1.22.1</Version>

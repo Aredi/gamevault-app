@@ -85,7 +85,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
+    <Grid x:Name="uiRoot" RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
         <!-- Top of the page tinted with the color of the featured / hovered game -->
         <Border Grid.RowSpan="2" Grid.ColumnSpan="2" Height="620" VerticalAlignment="Top" IsHitTestVisible="False" Opacity="0.32"
                 Background="{Binding AmbientBrush}">
@@ -709,6 +709,7 @@
             </ScrollViewer>
         </Border>
 
-        <NativeWebView x:Name="uiImgRandom" Grid.Row="0" Grid.RowSpan="2" Grid.ColumnSpan="2" ZIndex="1000" IsVisible="False" />
+        <!-- The "I'm feeling lucky" video: its native web view is only created when it plays -->
+        <Panel x:Name="uiRandomHost" Grid.Row="0" Grid.RowSpan="2" Grid.ColumnSpan="2" ZIndex="1000" IsVisible="False" />
     </Grid>
 </UserControl>

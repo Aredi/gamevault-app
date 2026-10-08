@@ -437,11 +437,19 @@ namespace gamevault.UserControls
             {
                 try
                 {
-                    uiImgRandom.IsVisible = true;
-                    uiImgRandom.NavigateToString("<html><body style='margin:0;background:transparent'><video src='https://phalco.de/images/gamevault/eastereggs/777.mp4' autoplay muted style='width:100%;height:100%'></video></body></html>");
+                    var video = new NativeWebView();
+                    uiRandomHost.Children.Add(video);
+                    uiRandomHost.IsVisible = true;
+                    video.NavigateToString("<html><body style='margin:0;background:transparent'><video src='https://phalco.de/images/gamevault/eastereggs/777.mp4' autoplay muted style='width:100%;height:100%'></video></body></html>");
                     DispatcherTimer timer = new DispatcherTimer();
                     timer.Interval = TimeSpan.FromMilliseconds(6000);
-                    timer.Tick += (s, e) => { timer.Stop(); uiImgRandom.NavigateToString("<html></html>"); uiImgRandom.IsVisible = false; PlatformInfo.OpenUrl("https://www.ncpgambling.org/help-treatment/"); };
+                    timer.Tick += (s, e) =>
+                    {
+                        timer.Stop();
+                        uiRandomHost.IsVisible = false;
+                        uiRandomHost.Children.Clear();
+                        PlatformInfo.OpenUrl("https://www.ncpgambling.org/help-treatment/");
+                    };
                     timer.Start();
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
