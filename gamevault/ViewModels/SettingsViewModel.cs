@@ -468,13 +468,28 @@ namespace gamevault.ViewModels
             }
             set { syncSteamShortcuts = value; Preferences.Set(AppConfigKey.SyncSteamShortcuts, syncSteamShortcuts ? "1" : "0", userConfigFile); OnPropertyChanged(); }
         }
+        /// <summary>The Discord application shown as the activity; empty: the default one.</summary>
+        public string DiscordApplicationId
+        {
+            get
+            {
+                try { return Preferences.Get(AppConfigKey.DiscordApplicationId, userConfigFile); }
+                catch { return ""; }
+            }
+            set
+            {
+                Preferences.Set(AppConfigKey.DiscordApplicationId, (value ?? "").Trim(), userConfigFile);
+                OnPropertyChanged();
+                Helper.DiscordHelper.Instance.SettingsChanged();
+            }
+        }
         public bool SyncDiscordPresence
         {
             get
             {
                 return syncDiscordPresence;
             }
-            set { syncDiscordPresence = value; Preferences.Set(AppConfigKey.SyncDiscordPresence, syncDiscordPresence ? "1" : "0", userConfigFile); OnPropertyChanged(); }
+            set { syncDiscordPresence = value; Preferences.Set(AppConfigKey.SyncDiscordPresence, syncDiscordPresence ? "1" : "0", userConfigFile); OnPropertyChanged(); Helper.DiscordHelper.Instance.SettingsChanged(); }
         }
         public bool CloudSaves
         {

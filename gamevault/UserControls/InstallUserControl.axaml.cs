@@ -492,6 +492,7 @@ namespace gamevault.UserControls
                     }
                 }
                 MainWindowViewModel.Instance.Library.GetGameInstalls().SetLastPlayedGame(result.Key.ID);
+                DiscordHelper.Instance.GameStarted(result.Key.ID);
             }
             else
             {

@@ -75,6 +75,8 @@ namespace gamevault.Helper
             List<int> gamesToCountUp = OperatingSystem.IsWindows()
                 ? FindRunningGamesWindows(foundGames)
                 : FindRunningGamesLinux(foundGames);
+            // Online or not, Discord shows the game being played
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => DiscordHelper.Instance.SyncGameWithDiscordPresence(gamesToCountUp, foundGames));
             if (LoginManager.Instance.IsLoggedIn())
             {
                 try
@@ -102,7 +104,6 @@ namespace gamevault.Helper
                 SaveToOfflineProgress(notSent);
                 try
                 {
-                    DiscordHelper.Instance.SyncGameWithDiscordPresence(gamesToCountUp, foundGames);
                     await SaveGameHelper.Instance.BackupSaveGamesFromIds(gamesToCountUp);//Check which games are were closed and backup them
                 }
                 catch (Exception ex) { Log.Ignored(ex); }

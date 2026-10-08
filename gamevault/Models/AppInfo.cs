@@ -104,7 +104,9 @@ namespace gamevault.Models
         LibraryLayout,
         LibraryShowcase,
         //Navigation bar folded to its icons ("1", profileconfig)
-        SidebarFolded
+        SidebarFolded,
+        //Discord application whose name is shown as the activity ("SanctuaryVault")
+        DiscordApplicationId
     }
     public static class Globals
     {

@@ -853,5 +853,9 @@
   "Living room mode: full screen, for the TV and a gamepad (F11)": "Mode salon : plein écran, pour la TV et la manette (F11)",
   "Full screen, for the TV and a gamepad (F11)": "Plein écran, pour la TV et la manette (F11)",
   "Leave the living room mode": "Quitter le mode salon",
-  "Rows of games": "Rangées"
+  "Rows of games": "Rangées",
+  "{0} played in total": "{0} de jeu au total",
+  "Discord shows the game, its total play time and the time of the current session, with the cover when it comes from a public source (IGDB).": "Discord affiche le jeu, son temps de jeu total et la durée de la session en cours, avec la jaquette quand elle vient d'une source publique (IGDB).",
+  "Discord application ID": "ID de l'application Discord",
+  "Empty: the original project's application (shown as GameVault). The activity takes the name of the Discord application.": "Vide : l'application du projet d'origine (affichée « GameVault »). L'activité prend le nom de l'application Discord."
 }
