@@ -242,3 +242,21 @@ namespace gamevault.Converter
         public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
     }
 }
+
+namespace gamevault.Converter
+{
+    /// <summary>The name of a role in the user's language ("Administrator", ...).</summary>
+    internal class RoleNameConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value switch
+        {
+            PERMISSION_ROLE.ADMIN => Loc.T("Administrator"),
+            PERMISSION_ROLE.EDITOR => Loc.T("Editor"),
+            PERMISSION_ROLE.USER => Loc.T("User"),
+            PERMISSION_ROLE.GUEST => Loc.T("Guest"),
+            _ => "",
+        };
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
+    }
+}

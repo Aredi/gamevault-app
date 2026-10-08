@@ -48,8 +48,26 @@ namespace gamevault.ViewModels
             set
             {
                 m_UserProgresses = value; OnPropertyChanged();
+                Stats = GameVault.Core.Library.ProfileStats.Compute(m_UserProgresses.Select(p => (p.MinutesPlayed ?? 0, p.LastPlayedAt, p.State)), DateTime.UtcNow);
+                RecentProgresses = m_UserProgresses.Where(p => p.LastPlayedAt != null && p.Game != null).OrderByDescending(p => p.LastPlayedAt).Take(10).ToList();
             }
         }
+
+        private GameVault.Core.Library.ProfileStats stats = new(0, 0, 0, 0);
+        /// <summary>Play time, games played, completed, played this week.</summary>
+        public GameVault.Core.Library.ProfileStats Stats
+        {
+            get => stats;
+            private set { stats = value; OnPropertyChanged(); }
+        }
+        private List<Progress> recentProgresses = new();
+        /// <summary>The games played last, for the row of covers.</summary>
+        public List<Progress> RecentProgresses
+        {
+            get => recentProgresses;
+            private set { recentProgresses = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasRecent)); }
+        }
+        public bool HasRecent => RecentProgresses.Count > 0;
         public bool LoadingUser
         {
             get { return loadingUser; }

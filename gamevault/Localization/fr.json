@@ -835,5 +835,18 @@
   "Search": "Rechercher",
   "Themes, language, installation folders": "Thèmes, langue, dossiers d'installation",
   "Users, publish a game, server": "Utilisateurs, publier un jeu, serveur",
-  "See all": "Tout voir"
+  "See all": "Tout voir",
+  "{0} player": "{0} joueur",
+  "{0} players": "{0} joueurs",
+  "GAMES PLAYED": "JEUX JOUÉS",
+  "COMPLETED": "TERMINÉS",
+  "PLAYED THIS WEEK": "JOUÉS CETTE SEMAINE",
+  "Played recently": "Joués récemment",
+  "All their games": "Tous ses jeux",
+  "Administrator": "Administrateur",
+  "Editor": "Éditeur",
+  "Guest": "Invité",
+  "Last played": "Dernière partie",
+  "Time played": "Temps de jeu",
+  "State": "Statut"
 }

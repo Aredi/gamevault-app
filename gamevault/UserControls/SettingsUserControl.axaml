@@ -12,42 +12,83 @@
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TextBlock.h1">
-            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+            <Setter Property="FontSize" Value="17" />
             <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,22,0,6" />
         </Style>
         <Style Selector="StackPanel.section">
             <Setter Property="Margin" Value="0,15,0,0" />
         </Style>
         <Style Selector="ToggleSwitch">
-            <Setter Property="Margin" Value="10,10,0,0" />
+            <Setter Property="Margin" Value="0,6,0,0" />
         </Style>
         <Style Selector="Border.group">
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="5" />
-            <Setter Property="Padding" Value="10" />
-            <Setter Property="Margin" Value="10,10,0,0" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="Margin" Value="0,10,0,0" />
             <Setter Property="HorizontalAlignment" Value="Left" />
         </Style>
+        <!-- Sections on the left, like the navigation bar -->
+        <Style Selector="TabControl#uiTabControl">
+            <Setter Property="Padding" Value="0" />
+        </Style>
         <Style Selector="TabControl#uiTabControl > TabItem">
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="MinWidth" Value="140" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="MinWidth" Value="230" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_Bg" Background="{TemplateBinding Background}" CornerRadius="12" Padding="14,0" Height="44" Margin="0,2">
+                        <ContentPresenter Content="{TemplateBinding Header}" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="TabControl#uiTabControl > TabItem:pointerover /template/ Border#PART_Bg">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <Style Selector="TabControl#uiTabControl > TabItem:selected /template/ Border#PART_Bg">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent3}" />
+        </Style>
+        <Style Selector="TabControl#uiTabControl > TabItem:selected, TabControl#uiTabControl > TabItem:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        </Style>
+        <Style Selector="TabControl#uiTabControl > TabItem Path.tabIcon">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Fill" Value="{Binding $parent[TabItem].Foreground}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style Selector="Rectangle.integrationBar">
             <Setter Property="Fill" Value="{DynamicResource Brush.Accent}" />
             <Setter Property="Width" Value="2" />
         </Style>
     </UserControl.Styles>
-    <Grid RowDefinitions="50,*">
-        <Border Background="{DynamicResource Brush.Background2}" Grid.Row="0">
-            <TextBlock Text="{l:T 'Settings'}" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
-        </Border>
-        <TextBlock Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Bottom" Text="{Binding Version, StringFormat='V {0}'}" Margin="20,0,0,5" ZIndex="1" PointerPressed="DevMode_Click" />
-        <TabControl Grid.Row="1" x:Name="uiTabControl" TabStripPlacement="Left" Margin="10" SelectionChanged="TabControl_SelectionChanged">
+    <Grid RowDefinitions="Auto,*">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="28,20,28,14">
+            <TextBlock Classes="pageTitle" Text="{l:T 'Settings'}" />
+        </StackPanel>
+        <TextBlock Grid.Row="1" Classes="muted" FontSize="12" HorizontalAlignment="Left" VerticalAlignment="Bottom" Text="{Binding Version, StringFormat='SanctuaryVault {0}'}"
+                   Margin="42,0,0,16" ZIndex="1" PointerPressed="DevMode_Click" />
+        <TabControl Grid.Row="1" x:Name="uiTabControl" TabStripPlacement="Left" Margin="28,0,0,0" SelectionChanged="TabControl_SelectionChanged">
             <!-- 0: Application -->
-            <TabItem Header="{l:T 'Application'}">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconNavSettings}" />
+                        <TextBlock Text="{l:T 'Application'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="30,0,20,20">
+                    <StackPanel Margin="36,0,28,40" MaxWidth="900" HorizontalAlignment="Left">
                         <TextBlock Classes="h1" Text="{l:T 'Language'}" />
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
                             <ComboBox ItemsSource="{Binding LanguageNames}" SelectedIndex="{Binding LanguageIndex}" Width="180" />
@@ -116,9 +157,15 @@
             </TabItem>
 
             <!-- 1: Installation -->
-            <TabItem Header="{l:T 'Installation'}">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconArrowDown}" />
+                        <TextBlock Text="{l:T 'Installation'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="30,0,20,20">
+                    <StackPanel Margin="36,0,28,40" MaxWidth="900" HorizontalAlignment="Left">
                         <TextBlock Classes="h1" Text="{l:T 'Downloads'}" />
                         <Border Classes="group" Width="510">
                             <StackPanel>
@@ -173,7 +220,13 @@
             </TabItem>
 
             <!-- 2: User -->
-            <TabItem Header="{l:T 'User'}">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconUser}" />
+                        <TextBlock Text="{l:T 'User'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <StackPanel Margin="30,0,0,0">
                     <TextBlock Classes="h1" Text="{l:T 'User'}" />
                     <local:IconButton Text="{l:T 'Edit User'}" Icon="{StaticResource IconEditUser}" IconMargin="0,0,7,2" IconScale="0.9" HorizontalAlignment="Left" Height="30" Margin="10,10,0,0" MinWidth="215" FontSize="15" Click="EditUser_Click" />
@@ -185,9 +238,15 @@
             </TabItem>
 
             <!-- 3: Data -->
-            <TabItem Header="{l:T 'Data'}">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconGameSettingsFolder}" />
+                        <TextBlock Text="{l:T 'Data'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="30,0,20,20">
+                    <StackPanel Margin="36,0,28,40" MaxWidth="900" HorizontalAlignment="Left">
                         <TextBlock Classes="h1" Text="{l:T 'File System'}" />
                         <StackPanel Margin="10,10,0,0">
                             <TextBlock Text="{l:T 'Root Directories (A \&#x27;GameVault\&#x27; subfolder will be created)'}" Margin="0,2,0,2" FontSize="15" />
@@ -273,7 +332,13 @@
             </TabItem>
 
             <!-- 4: Integrations -->
-            <TabItem Header="{l:T 'Integrations'}">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconCollection}" />
+                        <TextBlock Text="{l:T 'Integrations'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="30,0,20,20" Spacing="20">
                         <TextBlock Classes="h1" Text="{l:T 'Integrations'}" />
@@ -363,7 +428,13 @@
             </TabItem>
 
             <!-- 5: Linux compatibility layer -->
-            <TabItem Header="{l:T 'Linux'}" IsVisible="{Binding IsLinux}">
+            <TabItem IsVisible="{Binding IsLinux}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconPlatformLinux}" />
+                        <TextBlock Text="{l:T 'Linux'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="30,0,20,20" Spacing="10">
                         <TextBlock Classes="h1" Text="{l:T 'Running Windows games'}" />
@@ -462,7 +533,13 @@
             </TabItem>
 
             <!-- 6: About -->
-            <TabItem Header="{l:T 'About'}">
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconInfo}" />
+                        <TextBlock Text="{l:T 'About'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <StackPanel Margin="30,0,0,0" HorizontalAlignment="Left" Spacing="20">
                     <TextBlock Classes="h1" Text="{l:T 'About'}" />
                     <StackPanel Orientation="Horizontal">
@@ -516,7 +593,13 @@
             </TabItem>
 
             <!-- 7: Developer -->
-            <TabItem Header="{l:T 'Developer'}" IsVisible="{Binding DevModeEnabled}">
+            <TabItem IsVisible="{Binding DevModeEnabled}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconFilterLines}" />
+                        <TextBlock Text="{l:T 'Developer'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
                 <StackPanel Margin="30,0,0,0">
                     <TextBlock Classes="h1" Text="{l:T 'Developer Settings'}" />
                     <TextBlock Text="{l:T 'You may need to restart the client for the changes to take effect'}" Margin="0,5,0,0" />

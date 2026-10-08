@@ -130,6 +130,17 @@ namespace GameVault.UiTests
             }
             Preferences.Set(AppConfigKey.LastPlayed, lastPlayed, LoginManager.Instance.GetUserProfile().UserConfigFile);
 
+            // Players of the server and what they played (the community page)
+            var admin = FakeGameVaultServer.Admin;
+            admin.Username = "Alexis";
+            admin.Background = new Media { ID = games[6].Metadata!.Background!.ID };
+            admin.Progresses = session.Server.Progresses.Select(p => new Progress { Game = p.Game, MinutesPlayed = p.MinutesPlayed, State = p.State, LastPlayedAt = p.LastPlayedAt })
+                .Append(new Progress { Game = games[8], MinutesPlayed = 1320, State = State.COMPLETED.ToString(), LastPlayedAt = DateTime.UtcNow.AddDays(-40) })
+                .ToArray();
+            session.Server.Users[1] = admin;
+            session.Server.Users[2] = new User { ID = 2, Username = "Zoé", Role = PERMISSION_ROLE.USER, Activated = true, Progresses = Array.Empty<Progress>() };
+            session.Server.Users[3] = new User { ID = 3, Username = "Malik", Role = PERMISSION_ROLE.EDITOR, Activated = true, Progresses = Array.Empty<Progress>() };
+
             // Two collections of the profile, shown as rows in the showcase
             var collections = LibraryData.Collections;
             foreach (var (name, members) in new[] { ("Soirées entre amis", new[] { 1, 13, 15, 10, 3 }), ("Indés cultes", new[] { 2, 14, 12, 8, 7, 16 }) })
@@ -202,6 +213,15 @@ namespace GameVault.UiTests
             await Settle(4000);
             Capture(session, output, "09-game-page-light");
             ThemeManager.ApplyDefault();
+
+            // Community: the profile of the signed in player
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Community);
+            await Settle(4000);
+            Capture(session, output, "12-community");
+
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
+            await Settle(2000);
+            Capture(session, output, "13-settings");
 
             // Downloads: two running (slowly), one waiting in the queue
             Resize(session, 1600, 1000);

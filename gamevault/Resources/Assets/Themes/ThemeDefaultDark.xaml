@@ -8,7 +8,7 @@
     <!-- Ideally your GitHub Username -->
     <system:String x:Key="Theme.Author">Phalcode</system:String>
     <!-- Describe this theme -->
-    <system:String x:Key="Theme.Description">The default GameVault theme, reflecting the 2024 GameVault rebrand with dark tones.</system:String>
+    <system:String x:Key="Theme.Description">The default SanctuaryVault theme, with dark tones.</system:String>
     <!-- How the theme will be shown in UI -->
     <system:String x:Key="Theme.DisplayName">Default (Dark)</system:String>
 

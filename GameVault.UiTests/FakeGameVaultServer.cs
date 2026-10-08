@@ -21,6 +21,8 @@ namespace GameVault.UiTests
         public string Url { get; }
         /// <summary>Images served by /api/media/{id} (covers, backgrounds, screenshots).</summary>
         public ConcurrentDictionary<int, byte[]> Media { get; } = new();
+        /// <summary>Players returned by /api/users (the admin is user 1); empty: only the admin.</summary>
+        public ConcurrentDictionary<int, User> Users { get; } = new();
         /// <summary>Play data returned by /api/progresses.</summary>
         public ConcurrentQueue<Progress> Progresses { get; } = new();
         /// <summary>The newest save of each game: GameVault names it "&lt;upload ms&gt;_&lt;installation id&gt;.zip".</summary>
@@ -106,7 +108,11 @@ namespace GameVault.UiTests
                 else if (path == "/api/auth/refresh")
                     await Json(response, new { id = "1", access_token = "access", refresh_token = "refresh" });
                 else if (path == "/api/users/me")
-                    await Json(response, Admin);
+                    await Json(response, Users.TryGetValue(1, out User? me) ? me : Admin);
+                else if (path == "/api/users")
+                    await Json(response, Users.IsEmpty ? new[] { Admin } : Users.Values.OrderBy(u => u.ID).ToArray());
+                else if ((match = Regex.Match(path, @"^/api/users/(\d+)$")).Success && Users.TryGetValue(int.Parse(match.Groups[1].Value), out User? user))
+                    await Json(response, user);
                 else if (path == "/api/status")
                     await Json(response, new { status = "HEALTHY" });
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)/download$")).Success)
