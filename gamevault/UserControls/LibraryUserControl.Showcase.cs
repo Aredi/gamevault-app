@@ -108,6 +108,11 @@ namespace gamevault.UserControls
             SizeChanged += (_, e) => UpdateWidthDependentLayout(e.NewSize.Width);
             AddHandler(KeyDownEvent, Shelf_KeyDown, RoutingStrategies.Tunnel);
             uiRecentScroll.AddHandler(PointerWheelChangedEvent, HorizontalWheel, RoutingStrategies.Tunnel);
+            LibraryData.CollectionsChanged += (_, _) => Dispatcher.UIThread.Post(async () =>
+            {
+                if (LoginManager.Instance.IsLoggedIn())
+                    await LoadCollectionRows();
+            });
         }
 
         private System.Collections.ObjectModel.ObservableCollection<KeyValuePair<Game, string>>? observedInstalls;
@@ -158,7 +163,57 @@ namespace gamevault.UserControls
                 ViewModel.RefreshVisibility();
             }
             catch (Exception ex) { Log.Ignored(ex); }
+            await LoadCollectionRows();
             RebuildHero();
+        }
+
+        private const int MaxCollectionRows = 4;
+        /// <summary>One row per collection with games (the fullest first), with the games the server still has.</summary>
+        private async Task LoadCollectionRows()
+        {
+            var rows = new List<CollectionRow>();
+            try
+            {
+                var collections = LibraryData.Collections.Load()
+                    .Where(c => c.GameIds.Count > 0)
+                    .OrderByDescending(c => c.GameIds.Count)
+                    .Take(MaxCollectionRows)
+                    .ToList();
+                foreach (var collection in collections)
+                {
+                    string ids = string.Join(',', collection.GameIds.Take(30));
+                    string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?filter.id=$in:{ids}&limit=30");
+                    var byId = (JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>()).Where(g => g.DeletedAt == null).ToDictionary(g => g.ID);
+                    // In the order the games were added to the collection
+                    var games = collection.GameIds.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
+                    if (games.Count > 0)
+                        rows.Add(new CollectionRow { Name = collection.Name, Count = collection.GameIds.Count, Games = games });
+                }
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            ViewModel.CollectionRows.Clear();
+            foreach (CollectionRow row in rows)
+                ViewModel.CollectionRows.Add(row);
+            ViewModel.RefreshVisibility();
+        }
+
+        /// <summary>"See all": the library filtered on that collection.</summary>
+        private void ShowCollection_Click(object? sender, RoutedEventArgs e)
+        {
+            if (((Control)sender!).DataContext is not CollectionRow row)
+                return;
+            ViewModel.SelectedCollection = row.Name;
+            ViewModel.FilterVisibility = true;
+            uiMainScrollBar.ScrollToHome();
+        }
+
+        private void Rail_Loaded(object? sender, RoutedEventArgs e)
+        {
+            if (sender is ScrollViewer rail && rail.Tag == null)
+            {
+                rail.Tag = "wheel";
+                rail.AddHandler(PointerWheelChangedEvent, HorizontalWheel, RoutingStrategies.Tunnel);
+            }
         }
 
         /// <summary>The banner: the installed games last played first, completed with the newest games of the server.</summary>

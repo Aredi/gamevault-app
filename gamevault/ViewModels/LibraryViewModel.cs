@@ -22,6 +22,14 @@ namespace gamevault.ViewModels
         public string Info { get; init; } = "";
     }
 
+    /// <summary>A collection shown as a row of covers in the showcase.</summary>
+    internal class CollectionRow
+    {
+        public string Name { get; init; } = "";
+        public int Count { get; init; }
+        public List<Game> Games { get; init; } = new();
+    }
+
     internal class LibraryViewModel : ViewModelBase
     {
         public const double MinCardWidth = 120;
@@ -55,6 +63,10 @@ namespace gamevault.ViewModels
             RefreshVisibility();
         }
         public bool HasSeveralHeroItems => HeroItems.Count > 1;
+
+        /// <summary>The profile's collections, each as a row (the ones with games).</summary>
+        public ObservableCollection<CollectionRow> CollectionRows { get; } = new();
+        public bool ShowCollections => ShowcaseEnabled && IsBrowsing && !IsOffline && CollectionRows.Count > 0;
 
         /// <summary>Newest games of the server.</summary>
         public ObservableCollection<Game> RecentGames { get; } = new();
@@ -98,6 +110,7 @@ namespace gamevault.ViewModels
             OnPropertyChanged(nameof(IsBrowsing));
             OnPropertyChanged(nameof(ShowHero));
             OnPropertyChanged(nameof(ShowRecent));
+            OnPropertyChanged(nameof(ShowCollections));
             OnPropertyChanged(nameof(ShowInstalledRow));
         }
 

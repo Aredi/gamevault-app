@@ -130,6 +130,15 @@ namespace GameVault.UiTests
             }
             Preferences.Set(AppConfigKey.LastPlayed, lastPlayed, LoginManager.Instance.GetUserProfile().UserConfigFile);
 
+            // Two collections of the profile, shown as rows in the showcase
+            var collections = LibraryData.Collections;
+            foreach (var (name, members) in new[] { ("Soirées entre amis", new[] { 1, 13, 15, 10, 3 }), ("Indés cultes", new[] { 2, 14, 12, 8, 7, 16 }) })
+            {
+                collections.Create(name);
+                foreach (int member in members)
+                    collections.SetMembership(name, games[member].ID, true);
+            }
+
             MainWindow(session).WindowState = WindowState.Normal;
             Resize(session, 1600, 1000);
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
@@ -141,7 +150,10 @@ namespace GameVault.UiTests
 
             var library = MainWindowViewModel.Instance.Library;
             var scroll = library.FindControl<ScrollViewer>("uiMainScrollBar")!;
-            scroll.Offset = new Avalonia.Vector(0, 1150);
+            scroll.Offset = new Avalonia.Vector(0, 800);
+            await Settle(2500);
+            Capture(session, output, "02a-library-collections");
+            scroll.Offset = new Avalonia.Vector(0, 1150 + 2 * 330);
             await Settle(2500);
             Capture(session, output, "02-library-all-games");
             scroll.Offset = new Avalonia.Vector(0, 0);

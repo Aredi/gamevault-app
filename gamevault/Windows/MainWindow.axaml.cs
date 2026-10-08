@@ -266,6 +266,15 @@ namespace gamevault.Windows
             catch (Exception ex) { Log.Ignored(ex); }
             // Small windows keep the room for the games
             SizeChanged += (_, e) => ApplySidebarState(e.NewSize.Width);
+            // Ctrl+K opens the quick search from any page
+            AddHandler(KeyDownEvent, (_, e) =>
+            {
+                if (e.Key == Key.K && e.KeyModifiers.HasFlag(KeyModifiers.Control) && MainWindowViewModel.Instance.Popup == null)
+                {
+                    if (uiQuickSearch.IsVisible) uiQuickSearch.Close(); else uiQuickSearch.Open();
+                    e.Handled = true;
+                }
+            }, RoutingStrategies.Tunnel);
             ApplySidebarState(Bounds.Width);
             Opened += (_, _) => uiServerName.Text = ServerName();
             MainWindowViewModel.Instance.PropertyChanged += (_, e) =>
@@ -274,6 +283,8 @@ namespace gamevault.Windows
                     uiServerName.Text = ServerName();
             };
         }
+        private void QuickSearch_Click(object? sender, RoutedEventArgs e) => uiQuickSearch.Open();
+
         private void ApplySidebarState(double width)
         {
             bool folded = sidebarFoldedByUser || (width > 0 && width < 1100);

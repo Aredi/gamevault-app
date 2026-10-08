@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:gamevault.Converter"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.QuickSearchUserControl">
+    <UserControl.Styles>
+        <Style Selector="TextBox#uiQuery">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Padding" Value="4,6" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBox#uiQuery:focus /template/ Border#PART_BorderElement, TextBox#uiQuery:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="ListBox#uiResults">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="8" />
+        </Style>
+        <Style Selector="ListBox#uiResults ListBoxItem">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ListBox#uiResults ListBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style Selector="ListBox#uiResults ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent3}" />
+        </Style>
+        <Style Selector="ListBox#uiResults ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <Style Selector="Border.key">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="Padding" Value="6,2" />
+        </Style>
+        <Style Selector="Border.key TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+    </UserControl.Styles>
+
+    <Panel Background="#99000000" PointerPressed="Backdrop_PointerPressed">
+        <Border x:Name="uiCard" Width="660" MaxHeight="580" VerticalAlignment="Top" Margin="16,90,16,16" CornerRadius="18"
+                Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1"
+                BoxShadow="0 30 80 -20 #E6000000" ClipToBounds="True" PointerPressed="Card_PointerPressed">
+            <Grid RowDefinitions="Auto,Auto,*,Auto">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="18,10,14,10">
+                    <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="18" Height="18" VerticalAlignment="Center" />
+                    <TextBox x:Name="uiQuery" Grid.Column="1" Margin="8,0" Watermark="{l:T 'Search a game, a page or an action'}" TextChanged="Query_TextChanged" />
+                    <Border Grid.Column="2" Classes="key" VerticalAlignment="Center">
+                        <TextBlock Text="Esc" />
+                    </Border>
+                </Grid>
+                <Border Grid.Row="1" Height="1" Background="{DynamicResource Brush.Line}" />
+                <Panel Grid.Row="2">
+                    <ListBox x:Name="uiResults" SelectionMode="Single" ItemsSource="{Binding Results}" Tapped="Results_Tapped">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Panel Width="34" Height="46" VerticalAlignment="Center">
+                                        <Border CornerRadius="6" ClipToBounds="True" IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" />
+                                        </Border>
+                                        <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource Brush.Surface3}" IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNull}}">
+                                            <Path Data="{Binding Icon}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="16" Height="16" />
+                                        </Border>
+                                    </Panel>
+                                    <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="1">
+                                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Subtitle}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis"
+                                                   IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Classes="key" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Kind}" Foreground="{DynamicResource Brush.Muted}" />
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Classes="muted" Text="{l:T 'Nothing found'}" HorizontalAlignment="Center" Margin="0,30" FontSize="14"
+                               IsVisible="{Binding !Results.Count}" />
+                </Panel>
+                <Border Grid.Row="3" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1,0,0" Padding="18,9">
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Classes="key"><TextBlock Text="↑ ↓" /></Border>
+                            <TextBlock Classes="muted" FontSize="12" Text="{l:T 'to choose'}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Classes="key"><TextBlock Text="{l:T 'Enter'}" /></Border>
+                            <TextBlock Classes="muted" FontSize="12" Text="{l:T 'to open'}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Classes="key"><TextBlock Text="Ctrl K" /></Border>
+                            <TextBlock Classes="muted" FontSize="12" Text="{l:T 'from anywhere'}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Panel>
+</UserControl>

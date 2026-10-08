@@ -385,6 +385,63 @@
                     </ScrollViewer>
                 </StackPanel>
 
+                <!-- The profile's collections -->
+                <ItemsControl ItemsSource="{Binding CollectionRows}" IsVisible="{Binding ShowCollections}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="30" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Spacing="12">
+                                <Grid Margin="28,0" ColumnDefinitions="Auto,*,Auto">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Classes="sectionTitle" Text="{Binding Name}" />
+                                        <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center"
+                                                   Text="{Binding Count, Converter={StaticResource countConv}, ConverterParameter='{}{0} game|{0} games'}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="ShowCollection_Click" Content="{l:T 'See all'}" />
+                                </Grid>
+                                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Loaded="Rail_Loaded">
+                                    <ItemsControl ItemsSource="{Binding Games}" Margin="28,8,28,4">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="16" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Classes="gameCard" Width="150" Click="OpenGame_Click">
+                                                    <StackPanel Spacing="8">
+                                                        <local:AspectBox Ratio="1.5">
+                                                            <Panel Classes="lift">
+                                                                <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
+                                                                        BoxShadow="{Binding #collectionCover.AccentColor, Converter={StaticResource accentShadowConv}, ConverterParameter='14 30 -8 0.7'}" />
+                                                                <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                                    <local:CacheImage x:Name="collectionCover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
+                                                                </Border>
+                                                            </Panel>
+                                                        </local:AspectBox>
+                                                        <TextBlock Classes="cardTitle">
+                                                            <TextBlock.Text>
+                                                                <MultiBinding Converter="{StaticResource mappedTitleConv}">
+                                                                    <Binding />
+                                                                    <Binding Source="{x:Static vm:SettingsViewModel.Instance}" Path="ShowMappedTitle" />
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <!-- All games -->
                 <StackPanel Spacing="14">
                     <StackPanel Orientation="Horizontal" Spacing="10" Margin="28,0">

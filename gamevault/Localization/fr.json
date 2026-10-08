@@ -822,5 +822,18 @@
   "Games you download from the library show up here, with their progress.": "Les jeux que vous téléchargez depuis la bibliothèque apparaissent ici, avec leur progression.",
   "{0} game": "{0} jeu",
   "{0} installed game": "{0} installé",
-  "{0} ready to install (several)": "{0} prêts à installer"
+  "{0} ready to install (several)": "{0} prêts à installer",
+  "Search a game, a page or an action": "Rechercher un jeu, une page ou une action",
+  "Nothing found": "Aucun résultat",
+  "to choose": "pour choisir",
+  "Enter": "Entrée",
+  "to open": "pour ouvrir",
+  "from anywhere": "depuis n'importe où",
+  "Game": "Jeu",
+  "Page": "Page",
+  "Action": "Action",
+  "Search": "Rechercher",
+  "Themes, language, installation folders": "Thèmes, langue, dossiers d'installation",
+  "Users, publish a game, server": "Utilisateurs, publier un jeu, serveur",
+  "See all": "Tout voir"
 }
