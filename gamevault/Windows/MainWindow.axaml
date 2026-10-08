@@ -245,7 +245,7 @@
                         </Button>
                         <Button Classes="navItem" Click="News_Click" ToolTip.Tip="{l:T 'Open News'}">
                             <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
-                                <uc:Badged x:Name="uiNewsBadge" BadgeBackground="{DynamicResource Brush.Warning}">
+                                <uc:Badged x:Name="uiNewsBadge" Badge="{Binding NewsBadge}" BadgeBackground="{DynamicResource Brush.Warning}">
                                     <Path Data="{StaticResource IconNavNews}" />
                                 </uc:Badged>
                                 <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'News'}" Margin="13,0,0,0" />

@@ -155,6 +155,7 @@ namespace GameVault.UiTests
                 list = list.Where(g => g.Title.Contains(search, StringComparison.OrdinalIgnoreCase));
             string sort = request.QueryString["sortBy"] ?? "";
             list = sort.StartsWith("created_at:DESC") ? list.OrderByDescending(g => g.CreatedAt).ThenBy(g => g.ID)
+                : sort.StartsWith("updated_at:DESC") ? list.OrderByDescending(g => g.UpdatedAt ?? g.CreatedAt).ThenBy(g => g.ID)
                 : sort.StartsWith("sort_title") ? list.OrderBy(g => g.SortTitle)
                 : list.OrderBy(g => g.ID);
             var all = list.ToArray();

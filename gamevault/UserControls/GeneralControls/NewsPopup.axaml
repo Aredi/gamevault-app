@@ -2,23 +2,126 @@
              xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
+             xmlns:local="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.NewsPopup"
-             Height="800" Width="600" Focusable="True" Margin="0,30,0,0">
-    <Border Background="{DynamicResource Brush.Background}" CornerRadius="5" Margin="0,10,0,10" BoxShadow="0 0 7 0 #80000000">
-        <Grid>
-            <Button Classes="wrapper" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,3,0" ZIndex="1" Click="OnClose">
-                <Grid Classes="hover" Background="Transparent" Height="25" Width="23">
-                    <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" />
-                </Grid>
-            </Button>
-            <TabControl Background="Transparent" ClipToBounds="True">
-                <TabItem Header="{l:T 'GameVault News'}">
-                    <md:MarkdownScrollViewer x:Name="uiGameVaultNews" />
-                </TabItem>
-                <TabItem Header="{l:T 'Server News'}">
-                    <md:MarkdownScrollViewer x:Name="uiServerNews" />
-                </TabItem>
-            </TabControl>
+             Width="760" Focusable="True">
+    <UserControl.Styles>
+        <Style Selector="Button.newsItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_Bg" Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}" HorizontalContentAlignment="Stretch" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.newsItem:pointerover /template/ Border#PART_Bg">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <Style Selector="Border.kind">
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Success}" />
+        </Style>
+        <Style Selector="Border.kind.update">
+            <Setter Property="Background" Value="{DynamicResource Brush.Warning}" />
+        </Style>
+        <Style Selector="Border.kind TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Background}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="{DynamicResource Brush.Background}" CornerRadius="18" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*" MaxHeight="860">
+            <!-- Header -->
+            <Grid Margin="26,22,18,12" ColumnDefinitions="*,Auto,Auto">
+                <StackPanel Spacing="2">
+                    <TextBlock Classes="pageTitle" FontSize="24" Text="{l:T 'News'}" />
+                    <TextBlock x:Name="uiServerName" Classes="muted" FontSize="13" />
+                </StackPanel>
+                <Border Grid.Column="1" Background="{DynamicResource Brush.Surface}" CornerRadius="10" Padding="3" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1"
+                        VerticalAlignment="Center" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <ToggleButton x:Name="uiTabServer" Classes="segment" Width="NaN" Padding="12,0" IsChecked="True" Click="TabServer_Click">
+                            <TextBlock Text="{l:T 'Server'}" FontSize="13" FontWeight="SemiBold" />
+                        </ToggleButton>
+                        <ToggleButton x:Name="uiTabProject" Classes="segment" Width="NaN" Padding="12,0" Click="TabProject_Click">
+                            <TextBlock Text="{l:T 'GameVault project'}" FontSize="13" FontWeight="SemiBold" />
+                        </ToggleButton>
+                    </StackPanel>
+                </Border>
+                <Button Grid.Column="2" Classes="round small" Click="OnClose" ToolTip.Tip="{l:T 'Close'}" VerticalAlignment="Center">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+
+            <!-- Server: what is new on it -->
+            <ScrollViewer x:Name="uiServerPanel" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="16,0,16,22" Spacing="18">
+                    <!-- The administrator's message -->
+                    <Border x:Name="uiAnnouncement" IsVisible="False" Background="{DynamicResource Brush.Surface}" CornerRadius="14" Padding="18,14" Margin="10,0"
+                            BorderBrush="{DynamicResource Brush.Accent3}" BorderThickness="1">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="eyebrow muted" Text="{l:T 'MESSAGE FROM THE ADMINISTRATOR'}" />
+                            <md:MarkdownScrollViewer x:Name="uiAnnouncementText" MaxHeight="220" TextElement.FontSize="14" />
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl x:Name="uiGroups">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="16" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="sectionTitle" FontSize="15" Text="{Binding Title}" Margin="10,0,0,4" />
+                                    <ItemsControl ItemsSource="{Binding Items}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Classes="newsItem" Click="Item_Click">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                                        <Border Width="54" Height="81" CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                            <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="5">
+                                                            <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <Border Classes="kind" Classes.update="{Binding IsUpdate}">
+                                                                    <TextBlock Text="{Binding KindText}" />
+                                                                </Border>
+                                                                <TextBlock Classes="muted" FontSize="12.5" Text="{Binding Info}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="2" Classes="muted" FontSize="12.5" Text="{Binding DateText}" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel x:Name="uiEmpty" IsVisible="False" HorizontalAlignment="Center" Spacing="6" Margin="0,40">
+                        <TextBlock Classes="sectionTitle" Text="{l:T 'Nothing new lately'}" HorizontalAlignment="Center" />
+                        <TextBlock Classes="muted" FontSize="13" Text="{l:T 'Games added to the server and their new versions show up here.'}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                    <local:ProgressRing x:Name="uiLoading" IsActive="True" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,30" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- The original project's news -->
+            <md:MarkdownScrollViewer x:Name="uiGameVaultNews" Grid.Row="1" IsVisible="False" Margin="26,0,22,22" TextElement.FontSize="14" />
         </Grid>
     </Border>
 </UserControl>

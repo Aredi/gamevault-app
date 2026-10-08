@@ -61,6 +61,13 @@ namespace gamevault.ViewModels
         }
         #endregion
         #region AppBarProperties 
+        private string newsBadge = "";
+        /// <summary>The number of news not seen yet ("" when none).</summary>
+        public string NewsBadge
+        {
+            get => newsBadge;
+            set { newsBadge = value; OnPropertyChanged(); }
+        }
         private bool m_IsAppBarOpen { get; set; }
         public bool IsAppBarOpen
         {

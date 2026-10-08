@@ -855,5 +855,16 @@
   "Leave the living room mode": "Quitter le mode salon",
   "Rows of games": "Rangées",
   "{0} played in total": "{0} de jeu au total",
-  "Discord shows the game, its total play time and the time of the current session, with the cover when it comes from a public source (IGDB).": "Discord affiche le jeu, son temps de jeu total et la durée de la session en cours, avec la jaquette quand elle vient d'une source publique (IGDB)."
+  "Discord shows the game, its total play time and the time of the current session, with the cover when it comes from a public source (IGDB).": "Discord affiche le jeu, son temps de jeu total et la durée de la session en cours, avec la jaquette quand elle vient d'une source publique (IGDB).",
+  "This week": "Cette semaine",
+  "Last week": "La semaine dernière",
+  "Earlier this month": "Plus tôt ce mois-ci",
+  "Before": "Avant",
+  "Update · {0}": "Mise à jour · {0}",
+  "New": "Nouveau",
+  "GameVault project": "Projet GameVault",
+  "MESSAGE FROM THE ADMINISTRATOR": "MESSAGE DE L'ADMINISTRATEUR",
+  "Nothing new lately": "Rien de nouveau ces derniers temps",
+  "Games added to the server and their new versions show up here.": "Les jeux ajoutés au serveur et leurs nouvelles versions apparaissent ici.",
+  "New version": "Nouvelle version"
 }

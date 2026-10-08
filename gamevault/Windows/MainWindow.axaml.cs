@@ -141,7 +141,7 @@ namespace gamevault.Windows
             LoginManager.Instance.InitOnlineTimer();
             MainWindowViewModel.Instance.UserAvatar = LoginManager.Instance.GetCurrentUser();
 
-            uiNewsBadge.Badge = await CheckForNews() ? "!" : "";
+            await RefreshNewsBadge();
             InitNewsTimer();
         }
 
@@ -170,39 +170,38 @@ namespace gamevault.Windows
             MainWindowViewModel.Instance.Community.ShowUser(LoginManager.Instance.GetCurrentUser());
         }
 
-        private async Task<bool> CheckForNews()
+        /// <summary>
+        /// The badge on "News": the games added or updated since the news were last opened, and a new message of the
+        /// administrator.
+        /// </summary>
+        private async Task RefreshNewsBadge()
         {
             try
             {
-                if (Preferences.Get(AppConfigKey.UnreadNews, LoginManager.Instance.GetUserProfile().UserConfigFile) == "1")
+                ServerNewsData news = await ServerNewsService.LoadAsync();
+                int count = news.Unread;
+                if (news.Announcement != null)
                 {
-                    return true;
+                    string config = LoginManager.Instance.GetUserProfile().UserConfigFile;
+                    string hash = await CacheHelper.CreateHashAsync(news.Announcement);
+                    if (Preferences.Get(AppConfigKey.NewsHash, config) != hash)
+                    {
+                        Preferences.Set(AppConfigKey.UnreadNews, "1", config);
+                        Preferences.Set(AppConfigKey.NewsHash, hash, config);
+                    }
+                    if (Preferences.Get(AppConfigKey.UnreadNews, config) == "1")
+                        count++;
                 }
-                string gameVaultNews = await WebHelper.GetAsync("https://gamevau.lt/news.md");
-                string serverNews = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/config/news");
-
-                string hash = await CacheHelper.CreateHashAsync(gameVaultNews + serverNews);
-                if (Preferences.Get(AppConfigKey.NewsHash, LoginManager.Instance.GetUserProfile().UserConfigFile) != hash)
-                {
-                    Preferences.Set(AppConfigKey.UnreadNews, "1", LoginManager.Instance.GetUserProfile().UserConfigFile);
-                    Preferences.Set(AppConfigKey.NewsHash, hash, LoginManager.Instance.GetUserProfile().UserConfigFile);
-                    return true;
-                }
-                return false;
+                MainWindowViewModel.Instance.NewsBadge = count == 0 ? "" : count > 99 ? "99+" : count.ToString();
             }
-            catch
-            {
-                return false;
-            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         private void InitNewsTimer()
         {
-            DispatcherTimer newsTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromHours(1)
-            };
-            newsTimer.Tick += async (s, e) => { uiNewsBadge.Badge = await CheckForNews() ? "!" : ""; };
+            // Games are added at any time: look again every quarter of an hour
+            DispatcherTimer newsTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
+            newsTimer.Tick += async (s, e) => await RefreshNewsBadge();
             newsTimer.Start();
         }
 
@@ -373,7 +372,7 @@ namespace gamevault.Windows
             MainWindowViewModel.Instance.OpenPopup(new NewsPopup());
             try
             {
-                uiNewsBadge.Badge = "";
+                MainWindowViewModel.Instance.NewsBadge = "";
                 Preferences.Set(AppConfigKey.UnreadNews, "0", LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
             catch (Exception ignored)

@@ -216,6 +216,19 @@ namespace GameVault.UiTests
             Capture(session, output, "09-game-page-light");
             ThemeManager.ApplyDefault();
 
+            // News: games added lately, and a new version of an installed game
+            await ServerNewsService.LoadAsync();// first look: the files of the games are recorded
+            games[2].Path = "/files/Hollow Knight (v1.5.78) (W_P).zip";
+            games[2].Size = "9875611648";
+            games[2].Version = "v1.5.78";
+            games[2].UpdatedAt = DateTime.UtcNow;
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+            Resize(session, 1600, 1000);
+            MainWindowViewModel.Instance.OpenPopup(new NewsPopup());
+            await Settle(4000);
+            Capture(session, output, "16-news", (Control)MainWindowViewModel.Instance.Popup!);
+            MainWindowViewModel.Instance.ClosePopup();
+
             // Community: the profile of the signed in player
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Community);
             await Settle(4000);

@@ -104,7 +104,9 @@ namespace gamevault.Models
         LibraryLayout,
         LibraryShowcase,
         //Navigation bar folded to its icons ("1", profileconfig)
-        SidebarFolded
+        SidebarFolded,
+        //Server news: when they were last opened (the newer ones are counted on the badge)
+        NewsLastSeen
     }
     public static class Globals
     {
