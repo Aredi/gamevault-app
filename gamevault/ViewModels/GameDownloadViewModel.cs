@@ -55,7 +55,7 @@ namespace gamevault.ViewModels
         public int InstallationStepperProgress
         {
             get { return installationStepperProgress; }
-            set { installationStepperProgress = value; OnPropertyChanged(); }
+            set { installationStepperProgress = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowFileActions)); OnPropertyChanged(nameof(ShowInstallAction)); }
         }
         public string DownloadInfo
         {
@@ -71,17 +71,17 @@ namespace gamevault.ViewModels
         public bool DownloadUIVisibility
         {
             get { return m_DownloadUIVisibility; }
-            set { m_DownloadUIVisibility = value; OnPropertyChanged(); }
+            set { m_DownloadUIVisibility = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowDiskSize)); OnPropertyChanged(nameof(ShowFileActions)); OnPropertyChanged(nameof(ShowInstallAction)); }
         }
         public bool ExtractionUIVisibility
         {
             get { return m_ExtractionUIVisibility; }
-            set { m_ExtractionUIVisibility = value; OnPropertyChanged(); }
+            set { m_ExtractionUIVisibility = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowFileActions)); OnPropertyChanged(nameof(ShowInstallAction)); }
         }
         public bool DownloadFailedVisibility
         {
             get { return m_DownloadFailedVisibility; }
-            set { m_DownloadFailedVisibility = value; OnPropertyChanged(); }
+            set { m_DownloadFailedVisibility = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowFileActions)); OnPropertyChanged(nameof(ShowInstallAction)); }
         }
         public string InstallPath
         {
@@ -97,14 +97,14 @@ namespace gamevault.ViewModels
         public double TotalDataSize
         {
             get { return totalDataSize; }
-            set { totalDataSize = value; OnPropertyChanged(); }
+            set { totalDataSize = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowDiskSize)); }
         }
         private bool isQueued;
         /// <summary>Waiting in the download queue (limit of simultaneous downloads or download schedule).</summary>
         public bool IsQueued
         {
             get => isQueued;
-            set { isQueued = value; OnPropertyChanged(); }
+            set { isQueued = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowFileActions)); OnPropertyChanged(nameof(ShowInstallAction)); }
         }
         public bool IsDownloadPaused
         {
@@ -133,6 +133,12 @@ namespace gamevault.ViewModels
                 Preferences.Set(AppConfigKey.CreateDesktopShortcut, createShortcut == true ? "1" : "0", LoginManager.Instance.GetUserProfile().UserConfigFile);
             }
         }
+        /// <summary>The size of the files on disk, once there is something to show (not while downloading).</summary>
+        public bool ShowDiskSize => TotalDataSize >= 1024 && !DownloadUIVisibility;
+        /// <summary>Extract: once the download is done, while nothing runs on the files.</summary>
+        public bool ShowFileActions => !DownloadUIVisibility && !ExtractionUIVisibility && !IsQueued && !DownloadFailedVisibility;
+        /// <summary>Install: the files are there and the game is not installed yet.</summary>
+        public bool ShowInstallAction => ShowFileActions && InstallationStepperProgress != 2;
         public string[] SupportedArchives
         {
             get

@@ -40,6 +40,13 @@ namespace gamevault.Helper
             Advance();
         }
 
+        /// <summary>Earlier (negative) or later in the queue.</summary>
+        public static void Move(GameDownloadUserControl download, int offset)
+        {
+            if (GameVault.Core.Downloads.QueueOrder.Move(waiting, download, offset))
+                RefreshStates();
+        }
+
         public static void Remove(GameDownloadUserControl download)
         {
             if (waiting.Remove(download))

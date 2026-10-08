@@ -224,3 +224,21 @@ namespace gamevault.Converter
         public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
     }
 }
+
+namespace gamevault.Converter
+{
+    /// <summary>"1 game" / "3 games": parameter "singular|plural", both English texts with {0}, translated.</summary>
+    internal class CountConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            int count = value is int i ? i : 0;
+            string text = parameter as string ?? "{0}|{0}";
+            // "{}" escapes the braces in XAML
+            string[] forms = (text.StartsWith("{}") ? text[2..] : text).Split('|');
+            return Loc.F(count == 1 || count == 0 && culture.TwoLetterISOLanguageName == "fr" ? forms[0] : forms[^1], count);
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
+    }
+}

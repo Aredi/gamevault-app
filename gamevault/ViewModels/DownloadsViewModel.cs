@@ -47,5 +47,32 @@ namespace gamevault.ViewModels
             }
             set { m_DownloadedGames = value; OnPropertyChanged(); }
         }
+
+        private DownloadsViewModel()
+        {
+            // The counters of the page header and the navigation bar
+            var timer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            timer.Tick += (_, _) => RefreshCounts();
+            timer.Start();
+        }
+
+        private int activeCount, queuedCount, readyCount;
+        /// <summary>Downloads and extractions running.</summary>
+        public int ActiveCount { get => activeCount; private set { if (activeCount != value) { activeCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(BadgeText)); } } }
+        public int QueuedCount { get => queuedCount; private set { if (queuedCount != value) { queuedCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(BadgeText)); } } }
+        public int ReadyCount { get => readyCount; private set { if (readyCount != value) { readyCount = value; OnPropertyChanged(); } } }
+        /// <summary>Shown on the navigation bar: what is running or waiting.</summary>
+        public string BadgeText => ActiveCount + QueuedCount > 0 ? (ActiveCount + QueuedCount).ToString() : "";
+
+        public void RefreshCounts()
+        {
+            try
+            {
+                ActiveCount = DownloadedGames.Count(d => d.IsBusy());
+                QueuedCount = DownloadedGames.Count(d => Helper.DownloadQueue.IsWaiting(d));
+                ReadyCount = DownloadedGames.Count(d => d.IsReadyToInstall());
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
     }
 }

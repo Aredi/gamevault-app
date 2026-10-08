@@ -1,25 +1,76 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.DownloadsUserControl">
-    <Grid RowDefinitions="50,*">
-        <Border Background="{DynamicResource Brush.Background2}" Grid.Row="0">
-            <TextBlock Text="{l:T 'Downloads'}" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
-        </Border>
-        <Button Classes="wrapper" Grid.Row="1" ToolTip.Tip="{l:T 'Delete all Downloads'}" HorizontalAlignment="Right" VerticalAlignment="Top" Width="30" Height="30" Margin="0,15,20,0" ZIndex="1" Click="DeleteAllDownloads_Click">
-            <Grid Classes="hover" Background="Transparent">
-                <Path Data="{StaticResource IconTrash}" Fill="IndianRed" RenderTransform="scale(1.3)" HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Grid>
-        </Button>
-        <TextBlock Grid.Row="1" Text="{l:T 'Downloads empty'}" FontSize="50" HorizontalAlignment="Center" VerticalAlignment="Center"
-                   IsVisible="{Binding DownloadedGames.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}}" />
-        <ScrollViewer Grid.Row="1" VerticalAlignment="Top" Margin="10,10,0,10" VerticalScrollBarVisibility="Auto">
-            <Grid ColumnDefinitions="*,*,*">
-                <Viewbox Grid.Column="1" Stretch="Uniform" StretchDirection="Both" VerticalAlignment="Top">
-                    <ItemsControl ItemsSource="{Binding DownloadedGames}" />
-                </Viewbox>
-            </Grid>
+    <UserControl.Resources>
+        <conv:CountConverter x:Key="countConv" />
+        <conv:GreaterThanConverter x:Key="greaterThanConv" />
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="Border.counter">
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+        </Style>
+        <Style Selector="Border.counter TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header: title, what is going on, delete everything -->
+        <Grid Grid.Row="0" Margin="28,20,28,16" ColumnDefinitions="Auto,*,Auto">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <TextBlock Classes="pageTitle" Text="{l:T 'Downloads'}" />
+                <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Margin="0,4,0,0" Text="{Binding DownloadedGames.Count, Converter={StaticResource countConv}, ConverterParameter='{}{0} game|{0} games'}"
+                           IsVisible="{Binding DownloadedGames.Count, Converter={StaticResource greaterThanConv}, ConverterParameter=0}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="28,0,0,0" VerticalAlignment="Center">
+                <Border Classes="counter" IsVisible="{Binding ActiveCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource Brush.Success}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ActiveCount, Converter={StaticResource countConv}, ConverterParameter='{}{0} in progress|{0} in progress'}" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="counter" IsVisible="{Binding QueuedCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource Brush.Warning}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding QueuedCount, Converter={StaticResource countConv}, ConverterParameter='{}{0} waiting|{0} waiting'}" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="counter" IsVisible="{Binding ReadyCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Ellipse Width="8" Height="8" Fill="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ReadyCount, Converter={StaticResource countConv}, ConverterParameter='{}{0} ready to install|{0} ready to install (several)'}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <Button Grid.Column="2" Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="DeleteAllDownloads_Click" ToolTip.Tip="{l:T 'Delete all Downloads'}"
+                    IsVisible="{Binding DownloadedGames.Count, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                    <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
+                    <TextBlock Text="{l:T 'Delete all'}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- Nothing yet -->
+        <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="0,0,0,80"
+                    IsVisible="{Binding DownloadedGames.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}}">
+            <Border Width="72" Height="72" CornerRadius="36" Background="{DynamicResource Brush.Surface}" HorizontalAlignment="Center">
+                <Path Data="{StaticResource IconArrowDown}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="28" Height="28" />
+            </Border>
+            <TextBlock Classes="sectionTitle" Text="{l:T 'Downloads empty'}" HorizontalAlignment="Center" />
+            <TextBlock Classes="muted" FontSize="14" Text="{l:T 'Games you download from the library show up here, with their progress.'}" HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" Classes="page" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding DownloadedGames}" Margin="28,0,28,28" MaxWidth="1180" HorizontalAlignment="Stretch" />
         </ScrollViewer>
     </Grid>
 </UserControl>

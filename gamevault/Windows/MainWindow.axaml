@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:uc="clr-namespace:gamevault.UserControls"
         xmlns:conv="clr-namespace:gamevault.Converter"
+        xmlns:vm="clr-namespace:gamevault.ViewModels"
         x:Class="gamevault.Windows.MainWindow"
         Title="SanctuaryVault" Icon="/Resources/Images/icon.ico"
         Width="1280" Height="800" MinWidth="600" MinHeight="345"
@@ -185,10 +186,12 @@
                             <ListBoxItem ToolTip.Tip="{l:T 'Downloads'}">
                                 <Panel>
                                     <Border Classes="mark" />
-                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
-                                        <Path Data="{StaticResource IconNavDownloads}" />
-                                        <TextBlock Classes="wide" Text="{l:T 'Downloads'}" />
-                                    </StackPanel>
+                                    <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
+                                        <uc:Badged Badge="{Binding Source={x:Static vm:DownloadsViewModel.Instance}, Path=BadgeText}" BadgeBackground="{DynamicResource Brush.Accent}">
+                                            <Path Data="{StaticResource IconNavDownloads}" />
+                                        </uc:Badged>
+                                        <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'Downloads'}" Margin="13,0,0,0" />
+                                    </Grid>
                                 </Panel>
                             </ListBoxItem>
                             <ListBoxItem ToolTip.Tip="{l:T 'Community'}">

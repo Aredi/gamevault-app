@@ -807,5 +807,20 @@
   "Discord, documentation, GitHub": "Discord, documentation, GitHub",
   "Linux Portable": "Linux portable",
   "Windows Setup": "Windows avec installateur",
-  "Windows Portable": "Windows portable"
+  "Windows Portable": "Windows portable",
+  "{}{0} on disk": "{}{0} sur le disque",
+  "{0} on disk": "{0} sur le disque",
+  "Earlier in the queue": "Plus tôt dans la file",
+  "Later in the queue": "Plus tard dans la file",
+  "{}{0} in progress": "{}{0} en cours",
+  "{0} in progress": "{0} en cours",
+  "{}{0} waiting": "{}{0} en attente",
+  "{0} waiting": "{0} en attente",
+  "{}{0} ready to install": "{}{0} prêts à installer",
+  "{0} ready to install": "{0} prêt à installer",
+  "Delete all": "Tout supprimer",
+  "Games you download from the library show up here, with their progress.": "Les jeux que vous téléchargez depuis la bibliothèque apparaissent ici, avec leur progression.",
+  "{0} game": "{0} jeu",
+  "{0} installed game": "{0} installé",
+  "{0} ready to install (several)": "{0} prêts à installer"
 }

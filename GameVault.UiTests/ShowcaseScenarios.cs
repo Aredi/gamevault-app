@@ -190,6 +190,22 @@ namespace GameVault.UiTests
             await Settle(4000);
             Capture(session, output, "09-game-page-light");
             ThemeManager.ApplyDefault();
+
+            // Downloads: two running (slowly), one waiting in the queue
+            Resize(session, 1600, 1000);
+            SettingsViewModel.Instance.MaxConcurrentDownloadsIndex = 2;
+            session.Server.ChunkDelay = TimeSpan.FromMilliseconds(120);
+            foreach (int index in new[] { 1, 5, 9 })
+            {
+                Game game = games[index];
+                byte[] file = new byte[12 * 1024 * 1024];
+                game.Size = file.Length.ToString(CultureInfo.InvariantCulture);
+                session.Server.AddGame(game, file);
+                await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+            }
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Downloads);
+            await Settle(5000);
+            Capture(session, output, "11-downloads");
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
         }
 

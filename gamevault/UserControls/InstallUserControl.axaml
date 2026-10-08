@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.InstallUserControl">
     <UserControl.Resources>
+        <conv:CountConverter x:Key="countConv" />
         <conv:GameUpdateAvailableConverter x:Key="gameUpdateAvailableConv" />
         <conv:MappedTitleConverter x:Key="mappedTitleConv" />
         <conv:AccentBrushConverter x:Key="accentBrushConv" />
@@ -23,7 +24,7 @@
                 </ToggleButton.Template>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <TextBlock Classes="sectionTitle" Text="{l:T 'Continue playing'}" VerticalAlignment="Center" />
-                    <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding InstalledGamesFilter.Count, StringFormat={l:T '{}{0} installed'}}" />
+                    <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding InstalledGamesFilter.Count, Converter={StaticResource countConv}, ConverterParameter='{}{0} installed game|{0} installed'}" />
                     <Path Data="{StaticResource IconChevronDown}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="11" Height="11" VerticalAlignment="Center"
                           RenderTransform="{Binding #uiInstalledGames.IsChecked, Converter={x:Static conv:LibraryStatic.FlipWhenFalse}}" />
                 </StackPanel>

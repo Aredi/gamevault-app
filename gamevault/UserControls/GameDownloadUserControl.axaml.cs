@@ -145,6 +145,9 @@ namespace gamevault.UserControls
             return false;
         }
         public bool IsPaused() => ViewModel.IsDownloadPaused;
+        /// <summary>Downloaded (and extracted) but not installed yet, nothing running.</summary>
+        public bool IsReadyToInstall() => !IsBusy() && !DownloadQueue.IsWaiting(this) && !ViewModel.DownloadUIVisibility && !ViewModel.DownloadFailedVisibility
+            && ViewModel.InstallationStepperProgress is 0 or 1;
         /// <summary>The state shown in the download list (problem reports).</summary>
         public string StateText => ViewModel.State ?? "";
         public string GameTitle => ViewModel.Game?.Title ?? "";
@@ -278,6 +281,8 @@ namespace gamevault.UserControls
             StartFromQueue();
         }
 
+        private void QueueUp_Click(object? sender, RoutedEventArgs e) => DownloadQueue.Move(this, -1);
+        private void QueueDown_Click(object? sender, RoutedEventArgs e) => DownloadQueue.Move(this, 1);
         private void RemoveFromQueue_Click(object sender, RoutedEventArgs e)
         {
             CancelDownload();

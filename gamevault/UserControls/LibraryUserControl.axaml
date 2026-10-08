@@ -8,6 +8,7 @@
              x:Name="uiLibrary"
              Focusable="True">
     <UserControl.Resources>
+        <conv:CountConverter x:Key="countConv" />
         <conv:GameSizeConverter x:Key="sizeConv" />
         <conv:LibraryPermissionRoleToVisibilityConverter x:Key="libCardsPermVisConv" />
         <conv:ContainsCurrentUserConverter x:Key="containsCurrentUserConv" />
@@ -103,7 +104,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <TextBlock Classes="pageTitle" Text="{l:T 'Library'}" VerticalAlignment="Center" />
                     <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Margin="0,4,0,0"
-                               Text="{Binding TotalGamesCount, StringFormat={l:T '{}{0} games'}}"
+                               Text="{Binding TotalGamesCount, Converter={StaticResource countConv}, ConverterParameter='{}{0} game|{0} games'}"
                                IsVisible="{Binding TotalGamesCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}" />
                 </StackPanel>
                 <TextBox x:Name="uiSearch" Grid.Column="1" Classes="librarySearch" MaxWidth="460" Margin="28,0" HorizontalAlignment="Stretch"
