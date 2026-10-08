@@ -64,8 +64,9 @@ namespace gamevault.Helper
             if (!IsMouseWheel(e) || max <= 0)
                 return;
             State state = states.GetOrCreateValue(scroll);
-            // A row of games under the pointer turns sideways with the wheel, unless the page is moving already
-            if (DateTime.UtcNow - state.LastMove > TimeSpan.FromMilliseconds(450) && RowUnderPointerTakesIt(e, scroll))
+            // A row of games under the pointer turns sideways with the wheel, unless the page is moving already;
+            // a box that scrolls by itself (a game's description) scrolls first
+            if (DateTime.UtcNow - state.LastMove > TimeSpan.FromMilliseconds(450) && (RowUnderPointerTakesIt(e, scroll) || InnerScrollerTakesIt(e, scroll)))
                 return;
 
             double from = scroll.Offset.Y;
@@ -82,6 +83,16 @@ namespace gamevault.Helper
                 state.Running = true;
                 Animate(scroll, state);
             }
+        }
+
+        private static bool InnerScrollerTakesIt(PointerWheelEventArgs e, ScrollViewer page)
+        {
+            for (var visual = e.Source as Visual; visual != null && visual != page; visual = visual.GetVisualParent())
+            {
+                if (visual is ScrollViewer inner && inner.Extent.Height > inner.Viewport.Height + 1)
+                    return e.Delta.Y > 0 ? inner.Offset.Y > 0 : inner.Offset.Y < inner.Extent.Height - inner.Viewport.Height - 1;
+            }
+            return false;
         }
 
         private static bool RowUnderPointerTakesIt(PointerWheelEventArgs e, ScrollViewer page)

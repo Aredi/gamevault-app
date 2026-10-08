@@ -435,7 +435,7 @@
                 </ItemsControl>
 
                 <!-- All games -->
-                <StackPanel Spacing="14">
+                <StackPanel x:Name="uiAllGames" Spacing="14">
                     <StackPanel Orientation="Horizontal" Spacing="10" Margin="28,0">
                         <TextBlock Classes="sectionTitle" Text="{l:T 'All games'}" IsVisible="{Binding IsBrowsing}" />
                         <TextBlock Classes="sectionTitle" Text="{l:T 'Results'}" IsVisible="{Binding !IsBrowsing}" />

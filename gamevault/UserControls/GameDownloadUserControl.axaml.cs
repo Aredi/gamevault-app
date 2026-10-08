@@ -73,7 +73,7 @@ namespace gamevault.UserControls
                     ViewModel.State = "Extracted";
                     uiBtnExtract.IsEnabled = true;
                     uiBtnInstall.IsEnabled = true;
-                    uiBtnExtract.Text = "Re-Extract";
+                    uiBtnExtract.Text = Loc.T("Re-Extract");
                     ViewModel.InstallationStepperProgress = 1;
                 }
                 else
@@ -806,7 +806,7 @@ namespace gamevault.UserControls
                 }
                 Preferences.Set(AppConfigKey.ExtractionFinished, "1", Path.Combine(m_DownloadPath, "Extract", "gamevault-metadata"));
                 ViewModel.State = "Extracted";
-                uiBtnExtract.Text = "Re-Extract";
+                uiBtnExtract.Text = Loc.T("Re-Extract");
 
                 ViewModel.InstallationStepperProgress = 1;
                 ViewModel.ExtractionUIVisibility = false;
@@ -1015,7 +1015,7 @@ namespace gamevault.UserControls
                 uiBtnInstallSetup.IsEnabled = true;
 
                 ViewModel.State = "Downloaded";
-                uiBtnExtract.Text = "Extract";
+                uiBtnExtract.Text = Loc.T("Extract");
                 if (error)
                 {
                     MainWindowViewModel.Instance.AppBarText = Loc.T("Something wen't wrong during installation");

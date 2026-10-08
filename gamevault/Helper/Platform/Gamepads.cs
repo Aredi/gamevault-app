@@ -89,11 +89,43 @@ namespace gamevault.Helper.Platform
         private static bool useOldXInput;
         private static bool xinputMissing;
 
+        private static int connectedIndex = -1;
+        private static DateTime nextScanUtc;
+
+        /// <summary>
+        /// XInputGetState is slow for empty slots: the known pad is read every frame, the empty slots are looked at
+        /// every two seconds only (to notice a pad being plugged in).
+        /// </summary>
         private static PadState? ReadXInput()
         {
             if (xinputMissing)
                 return null;
+            if (connectedIndex >= 0)
+            {
+                PadState? known = ReadXInputSlot(connectedIndex);
+                if (known != null)
+                    return known;
+                connectedIndex = -1;
+            }
+            if (DateTime.UtcNow < nextScanUtc)
+                return null;
+            nextScanUtc = DateTime.UtcNow.AddSeconds(2);
             for (int index = 0; index < 4; index++)
+            {
+                PadState? state = ReadXInputSlot(index);
+                if (state != null)
+                {
+                    connectedIndex = index;
+                    return state;
+                }
+            }
+            return null;
+        }
+
+        private static PadState? ReadXInputSlot(int index)
+        {
+            if (xinputMissing)
+                return null;
             {
                 int result;
                 XInputState state;
@@ -104,8 +136,7 @@ namespace gamevault.Helper.Platform
                 catch (DllNotFoundException) when (!useOldXInput)
                 {
                     useOldXInput = true;
-                    index--;
-                    continue;
+                    return ReadXInputSlot(index);
                 }
                 catch (Exception ex)
                 {
@@ -114,7 +145,7 @@ namespace gamevault.Helper.Platform
                     return null;
                 }
                 if (result != 0)
-                    continue;// not connected
+                    return null;// not connected
                 ushort b = state.Gamepad.Buttons;
                 return new PadState(
                     (b & 0x0001) != 0, (b & 0x0002) != 0, (b & 0x0004) != 0, (b & 0x0008) != 0,

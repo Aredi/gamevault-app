@@ -87,7 +87,7 @@ namespace gamevault.Helper
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
 
-                return new ServerNewsData(string.IsNullOrWhiteSpace(announcement) ? null : announcement, Group(feed, games), ServerNews.Unread(feed, LastSeen()));
+                return new ServerNewsData(string.IsNullOrWhiteSpace(announcement) ? null : announcement, Group(feed, games), ServerNews.Unread(feed, LastSeen() ?? DateTime.UtcNow.AddDays(-7)));
             }
             finally
             {

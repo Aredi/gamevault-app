@@ -345,6 +345,10 @@ namespace gamevault.UserControls
                 else
                     await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
             }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
+            }
             finally
             {
                 button.IsEnabled = true;
@@ -472,7 +476,9 @@ namespace gamevault.UserControls
         /// <summary>Shelf: the arrow keys move the selection, Enter opens the game.</summary>
         private void Shelf_KeyDown(object? sender, KeyEventArgs e)
         {
-            if (!ViewModel.ShowShelfPanel || e.Source is TextBox || ViewModel.GameCards.Count == 0)
+            if (!ViewModel.ShowShelfPanel || ViewModel.GameCards.Count == 0
+                || e.Source is Visual source && (source is TextBox || source.FindAncestorOfType<ComboBox>(includeSelf: true) != null
+                    || source.FindAncestorOfType<ListBox>(includeSelf: true) != null || source is ComboBoxItem || source is MenuItem))
                 return;
             int index = ViewModel.SelectedGame == null ? -1 : ViewModel.GameCards.IndexOf(ViewModel.GameCards.FirstOrDefault(g => g?.ID == ViewModel.SelectedGame.ID)!);
             int columns = Math.Max(1, (int)(uiServerGamesItemsControl.Bounds.Width / GamesLayout.MinItemWidth));
@@ -496,6 +502,18 @@ namespace gamevault.UserControls
             next = Math.Clamp(next, 0, ViewModel.GameCards.Count - 1);
             ViewModel.SelectedGame = ViewModel.GameCards[next];
             uiServerGamesItemsControl.GetOrCreateElement(next).BringIntoView();
+        }
+
+        /// <summary>A new search or filter: when the page is below the results, it goes back to their top.</summary>
+        private void ShowResultsTop()
+        {
+            try
+            {
+                var top = uiAllGames.TranslatePoint(new Point(0, 0), uiMainScrollBar);
+                if (top != null && top.Value.Y < 0)
+                    uiMainScrollBar.Offset = new Vector(0, Math.Max(0, uiMainScrollBar.Offset.Y + top.Value.Y - 12));
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         private static void SavePreference(AppConfigKey key, string value)

@@ -246,13 +246,16 @@ namespace gamevault.UserControls
         {
             if (Focused() is not LivingTile tile)
                 return;
-            if (tile.IsInstalled)
+            try
             {
-                await InstallUserControl.PlayGame(tile.Game.ID);
+                if (tile.IsInstalled)
+                    await InstallUserControl.PlayGame(tile.Game.ID);
+                else
+                    await MainWindowViewModel.Instance.Downloads.TryStartDownload(tile.Game);
             }
-            else
+            catch (Exception ex)
             {
-                await MainWindowViewModel.Instance.Downloads.TryStartDownload(tile.Game);
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
 

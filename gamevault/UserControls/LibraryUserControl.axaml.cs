@@ -125,6 +125,7 @@ namespace gamevault.UserControls
         {
             Guid currentSearchToken = Guid.NewGuid();
             searchCancellationToken = currentSearchToken;
+            ShowResultsTop();
 
             if (!LoginManager.Instance.IsLoggedIn())
             {
@@ -345,6 +346,7 @@ namespace gamevault.UserControls
                     if (gameResult == null || gameResult.Data == null)
                     {
                         MainWindowViewModel.Instance.AppBarText = Loc.T("Failed to load next Page");
+                        scrollBlocked = false;
                         return;
                     }
                     await ProcessGamesData(gameResult);
