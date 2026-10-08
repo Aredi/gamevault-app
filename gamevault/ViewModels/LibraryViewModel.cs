@@ -40,7 +40,6 @@ namespace gamevault.ViewModels
 
         public LibraryViewModel()
         {
-            AmbientBrush.Transitions = new Transitions { new ColorTransition { Property = SolidColorBrush.ColorProperty, Duration = TimeSpan.FromMilliseconds(600) } };
             foreach (SolidColorBrush brush in new[] { HeroAccentBrush, ShelfAccentBrush, ShelfAccentSoftBrush })
                 brush.Transitions = new Transitions { new ColorTransition { Property = SolidColorBrush.ColorProperty, Duration = TimeSpan.FromMilliseconds(400) } };
         }
@@ -115,7 +114,20 @@ namespace gamevault.ViewModels
         }
 
         /// <summary>Top of the page, tinted with the color of the featured or hovered game.</summary>
-        public SolidColorBrush AmbientBrush { get; } = new(Color.Parse("#4F46AF"));
+        /// <summary>A plain gradient (no opacity mask: it is drawn on every frame of a scroll).</summary>
+        public RadialGradientBrush AmbientBrush { get; } = new()
+        {
+            Center = new Avalonia.RelativePoint(0.5, 0, Avalonia.RelativeUnit.Relative),
+            GradientOrigin = new Avalonia.RelativePoint(0.5, 0, Avalonia.RelativeUnit.Relative),
+            RadiusX = new Avalonia.RelativeScalar(0.75, Avalonia.RelativeUnit.Relative),
+            RadiusY = new Avalonia.RelativeScalar(1, Avalonia.RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(82, 79, 70, 175), 0),
+                new GradientStop(Color.FromArgb(20, 79, 70, 175), 0.55),
+                new GradientStop(Color.FromArgb(0, 79, 70, 175), 1),
+            },
+        };
         public SolidColorBrush HeroAccentBrush { get; } = new(Color.Parse("#4F46AF"));
         public SolidColorBrush ShelfAccentBrush { get; } = new(Color.Parse("#4F46AF"));
         public SolidColorBrush ShelfAccentSoftBrush { get; } = new(Color.Parse("#4F46AF"), 0.28);

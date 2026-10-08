@@ -104,6 +104,8 @@ namespace gamevault.UserControls
                     ViewModel.HeroIndex = (ViewModel.HeroIndex + 1) % ViewModel.HeroItems.Count;
             };
             heroTimer.Start();
+            hoverAmbient.Tick += HoverAmbient_Tick;
+            ambientTween.Tick += AmbientTween_Tick;
 
             SizeChanged += (_, e) => UpdateWidthDependentLayout(e.NewSize.Width);
             AddHandler(KeyDownEvent, Shelf_KeyDown, RoutingStrategies.Tunnel);
@@ -277,7 +279,7 @@ namespace gamevault.UserControls
             Color accent = color ?? CoverColors.ThemeAccent;
             ViewModel.HeroAccentBrush.Color = accent;
             if (!ViewModel.IsShelfMode && ViewModel.ShowHero)
-                ViewModel.AmbientBrush.Color = accent;
+                SetAmbient(accent);
         }
 
         private void ApplyShelfColor(Color? color)
@@ -285,7 +287,7 @@ namespace gamevault.UserControls
             Color accent = color ?? CoverColors.ThemeAccent;
             ViewModel.ShelfAccentBrush.Color = accent;
             ViewModel.ShelfAccentSoftBrush.Color = accent;
-            ViewModel.AmbientBrush.Color = accent;
+            SetAmbient(accent);
         }
 
         private void Hero_PointerEntered(object? sender, PointerEventArgs e) => pointerOverHero = true;
@@ -297,6 +299,8 @@ namespace gamevault.UserControls
                 ViewModel.HeroIndex = (ViewModel.HeroIndex + ViewModel.HeroItems.Count - 1) % ViewModel.HeroItems.Count;
             heroTimer.Stop();
             heroTimer.Start();
+            hoverAmbient.Tick += HoverAmbient_Tick;
+            ambientTween.Tick += AmbientTween_Tick;
         }
 
         private void HeroNext_Click(object? sender, RoutedEventArgs e)
@@ -305,6 +309,8 @@ namespace gamevault.UserControls
                 ViewModel.HeroIndex = (ViewModel.HeroIndex + 1) % ViewModel.HeroItems.Count;
             heroTimer.Stop();
             heroTimer.Start();
+            hoverAmbient.Tick += HoverAmbient_Tick;
+            ambientTween.Tick += AmbientTween_Tick;
         }
 
         private void HeroDetails_Click(object? sender, RoutedEventArgs e)
@@ -345,14 +351,52 @@ namespace gamevault.UserControls
             }
         }
 
+        private readonly DispatcherTimer hoverAmbient = new() { Interval = TimeSpan.FromMilliseconds(260) };
+        private CacheImage? hoveredCover;
+
+        /// <summary>The top of the page takes the color of a game the pointer rests on (not of every card crossed while scrolling).</summary>
         private void GameCard_PointerEntered(object? sender, PointerEventArgs e)
         {
             if (ViewModel.IsShelfMode)
                 return;
-            // The top of the page takes the color of the hovered game
-            var cover = ((Control)sender!).GetVisualDescendants().OfType<CacheImage>().FirstOrDefault();
-            if (cover?.AccentColor is Color color)
-                ViewModel.AmbientBrush.Color = color;
+            hoveredCover = ((Control)sender!).GetVisualDescendants().OfType<CacheImage>().FirstOrDefault();
+            hoverAmbient.Stop();
+            hoverAmbient.Start();
+        }
+
+        private void HoverAmbient_Tick(object? sender, EventArgs e)
+        {
+            hoverAmbient.Stop();
+            if (hoveredCover?.AccentColor is Color color && hoveredCover.IsPointerOver)
+                SetAmbient(color);
+        }
+
+        private readonly DispatcherTimer ambientTween = new() { Interval = TimeSpan.FromMilliseconds(16) };
+        private Color ambientFrom, ambientTo;
+        private DateTime ambientStart;
+
+        /// <summary>Fades the tint at the top of the page to another color (about a third of a second).</summary>
+        private void SetAmbient(Color color)
+        {
+            if (color == ambientTo && ambientTween.IsEnabled)
+                return;
+            ambientFrom = ViewModel.AmbientBrush.GradientStops[0].Color;
+            ambientTo = color;
+            ambientStart = DateTime.UtcNow;
+            ambientTween.Start();
+        }
+
+        private void AmbientTween_Tick(object? sender, EventArgs e)
+        {
+            double t = Math.Min(1, (DateTime.UtcNow - ambientStart).TotalMilliseconds / 350);
+            t = 1 - Math.Pow(1 - t, 3);
+            byte Mix(byte a, byte b) => (byte)(a + (b - a) * t);
+            var stops = ViewModel.AmbientBrush.GradientStops;
+            byte[] alphas = { 82, 20, 0 };
+            for (int i = 0; i < stops.Count; i++)
+                stops[i].Color = Color.FromArgb(alphas[i], Mix(ambientFrom.R, ambientTo.R), Mix(ambientFrom.G, ambientTo.G), Mix(ambientFrom.B, ambientTo.B));
+            if (t >= 1)
+                ambientTween.Stop();
         }
 
         private void ViewGallery_Click(object? sender, RoutedEventArgs e)

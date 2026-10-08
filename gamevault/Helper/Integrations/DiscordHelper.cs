@@ -16,7 +16,7 @@ namespace gamevault.Helper
 {
     /// <summary>
     /// Discord Rich Presence: "Playing SanctuaryVault" with the game, its total play time, a timer for the session
-    /// and its cover. The activity's name is the name of the Discord application whose id is used.
+    /// and its cover, under the SanctuaryVault Discord application.
     /// </summary>
     internal class DiscordHelper
     {
@@ -37,37 +37,21 @@ namespace gamevault.Helper
         #endregion
 
         /// <summary>The SanctuaryVault Discord application: "Playing SanctuaryVault".</summary>
-        public const string DefaultApplicationId = "1557729594478559242";
+        public const string ApplicationId = "1557729594478559242";
 
         private DiscordRpcClient? client;
-        private string? clientApplicationId;
         private int currentGameId = -1;
         private DateTime sessionStartUtc;
         private int minutesBeforeSession;
 
-        /// <summary>The application id from the settings, or the default one.</summary>
-        public static string ApplicationId
-        {
-            get
-            {
-                string? configured = null;
-                try { configured = Preferences.Get(AppConfigKey.DiscordApplicationId, LoginManager.Instance.GetUserProfile().UserConfigFile)?.Trim(); }
-                catch (Exception ex) { Log.Ignored(ex); }
-                return !string.IsNullOrEmpty(configured) && configured.All(char.IsDigit) ? configured : DefaultApplicationId;
-            }
-        }
-
         private DiscordRpcClient? Client()
         {
-            string applicationId = ApplicationId;
-            if (client != null && clientApplicationId == applicationId)
+            if (client != null)
                 return client;
-            Dispose();
             try
             {
-                client = new DiscordRpcClient(applicationId);
+                client = new DiscordRpcClient(ApplicationId);
                 client.Initialize();
-                clientApplicationId = applicationId;
             }
             catch (Exception ex)
             {
@@ -152,13 +136,11 @@ namespace gamevault.Helper
             catch (Exception ex) { Log.Ignored(ex); }
         }
 
-        /// <summary>The settings changed (turned off, other application id).</summary>
+        /// <summary>The setting was turned on or off.</summary>
         internal void SettingsChanged()
         {
             int game = currentGameId;
             Clear();
-            if (clientApplicationId != ApplicationId)
-                Dispose();
             if (game != -1 && SettingsViewModel.Instance.SyncDiscordPresence)
                 Show(game);
         }
@@ -168,7 +150,6 @@ namespace gamevault.Helper
             try { client?.Dispose(); }
             catch (Exception ex) { Log.Ignored(ex); }
             client = null;
-            clientApplicationId = null;
         }
     }
 }

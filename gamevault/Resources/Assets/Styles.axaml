@@ -1,4 +1,5 @@
 <Styles xmlns="https://github.com/avaloniaui"
+        xmlns:helper="clr-namespace:gamevault.Helper"
         xmlns:l="clr-namespace:gamevault.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ctxt="clr-namespace:ColorTextBlock.Avalonia;assembly=ColorTextBlock.Avalonia">
@@ -481,7 +482,14 @@
     <Style Selector="Button.gameCard:pointerover Panel.lift">
         <Setter Property="RenderTransform" Value="translateY(-6px)" />
     </Style>
-    <Style Selector="Button.gameCard Border.glow, Button.gameCard Border.hoverOnly, Button.gameCard Panel.hoverOnly">
+    <!-- The glow (a blurred shadow, costly) only exists on the hovered card -->
+    <Style Selector="Button.gameCard Border.glow">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.gameCard:pointerover Border.glow">
+        <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Button.gameCard Border.hoverOnly, Button.gameCard Panel.hoverOnly">
         <Setter Property="Opacity" Value="0" />
         <Setter Property="Transitions">
             <Transitions>
@@ -489,7 +497,7 @@
             </Transitions>
         </Setter>
     </Style>
-    <Style Selector="Button.gameCard:pointerover Border.glow, Button.gameCard:pointerover Border.hoverOnly, Button.gameCard:pointerover Panel.hoverOnly">
+    <Style Selector="Button.gameCard:pointerover Border.hoverOnly, Button.gameCard:pointerover Panel.hoverOnly">
         <Setter Property="Opacity" Value="1" />
     </Style>
     <Style Selector="Button.gameCard Border.selection">
@@ -499,6 +507,10 @@
     </Style>
 
     <!-- Thin scroll bars on the library pages -->
+    <!-- Pages glide with the mouse wheel -->
+    <Style Selector="ScrollViewer.page">
+        <Setter Property="helper:SmoothScroll.IsEnabled" Value="True" />
+    </Style>
     <Style Selector="ScrollViewer.page /template/ ScrollBar">
         <Setter Property="Margin" Value="0,2,2,2" />
     </Style>

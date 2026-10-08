@@ -61,6 +61,22 @@ namespace gamevault.UserControls
             private set => SetValue(IsShowingFallbackProperty, value);
         }
 
+        /// <summary>Width the image is decoded at: covers are shown small, backgrounds large (0: as the type says).</summary>
+        public static readonly StyledProperty<int> DecodeWidthOverrideProperty = AvaloniaProperty.Register<CacheImage, int>(nameof(DecodeWidthOverride));
+        public int DecodeWidthOverride
+        {
+            get => GetValue(DecodeWidthOverrideProperty);
+            set => SetValue(DecodeWidthOverrideProperty, value);
+        }
+        private int? DecodeWidth => DecodeWidthOverride > 0 ? DecodeWidthOverride : ImageCacheType switch
+        {
+            ImageCache.GameCover => 480,
+            ImageCache.GameBackground => IsShowingFallback ? 480 : 2560,
+            ImageCache.UserAvatar => 256,
+            ImageCache.UserBackground => 2560,
+            _ => null,
+        };
+
         public static readonly StyledProperty<bool> ComputeAccentProperty = AvaloniaProperty.Register<CacheImage, bool>(nameof(ComputeAccent));
         /// <summary>Analyse the shown image for <see cref="AccentColor"/>.</summary>
         public bool ComputeAccent
@@ -114,7 +130,9 @@ namespace gamevault.UserControls
         // GifImage throws when it is attached without a source, so it only exists while a GIF is shown
         private Avalonia.Labs.Gif.GifImage? uiGif;
 
-        internal void SetImage(IImage? image)
+        internal void SetImage(IImage? image) => SetImage(image, fade: true);
+
+        internal void SetImage(IImage? image, bool fade)
         {
             if (uiGif != null)
             {
@@ -123,7 +141,21 @@ namespace gamevault.UserControls
             }
             uiImg.Source = image;
             uiImg.IsVisible = true;
-            uiImg.Opacity = 1;
+            SetOpacity(1, fade);
+        }
+
+        /// <summary>Opacity with or without its fade (fades only for images that took a moment to arrive).</summary>
+        private void SetOpacity(double opacity, bool fade)
+        {
+            if (fade)
+            {
+                uiImg.Opacity = opacity;
+                return;
+            }
+            var transitions = uiImg.Transitions;
+            uiImg.Transitions = null;
+            uiImg.Opacity = opacity;
+            uiImg.Transitions = transitions;
         }
 
         internal void SetGif(Stream gif)
@@ -150,9 +182,17 @@ namespace gamevault.UserControls
                 return;
             }
             bool computeAccent = ComputeAccent;
+            int? decodeWidth = DecodeWidth;// read on the UI thread
+            // Already in memory (scrolling back): shown at once, without a fade
+            if (DecodedImages.TryGet(path, decodeWidth) is Bitmap known)
+            {
+                SetImage(known, fade: false);
+                AccentColor = computeAccent ? CoverColors.Get(known, path) : null;
+                return;
+            }
             (Bitmap bitmap, Color? accent) = await Task.Run(() =>
             {
-                Bitmap decoded = BitmapHelper.GetBitmapImage(path);
+                Bitmap decoded = DecodedImages.Load(path, decodeWidth);
                 return (decoded, computeAccent ? CoverColors.Get(decoded, path) : null);
             });
             if (generation == loadGeneration)
@@ -218,7 +258,7 @@ namespace gamevault.UserControls
                 return;
             // A recycled card must not show the previous game's image while the new one loads
             if (ImageCacheType is ImageCache.GameCover or ImageCache.GameBackground)
-                uiImg.Opacity = 0;
+                SetOpacity(0, fade: false);
 
             if (UseUriSource)
             {

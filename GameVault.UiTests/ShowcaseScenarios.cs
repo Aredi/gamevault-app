@@ -161,6 +161,8 @@ namespace GameVault.UiTests
 
             var library = MainWindowViewModel.Instance.Library;
             var scroll = library.FindControl<ScrollViewer>("uiMainScrollBar")!;
+            await MeasureScrolling(session, scroll, "library, first pass");
+            await MeasureScrolling(session, scroll, "library, second pass");
             scroll.Offset = new Avalonia.Vector(0, 800);
             await Settle(2500);
             Capture(session, output, "02a-library-collections");
@@ -259,6 +261,39 @@ namespace GameVault.UiTests
         }
 
         private static Window MainWindow(TestSession session) => session.Window;
+
+        /// <summary>Scrolls down and up in small steps and logs how long each frame takes to lay out and render.</summary>
+        private static async Task MeasureScrolling(TestSession session, ScrollViewer scroll, string what)
+        {
+            var times = new List<double>();
+            var layoutTimes = new List<double>();
+            double max = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+            var watch = new System.Diagnostics.Stopwatch();
+            var layoutWatch = new System.Diagnostics.Stopwatch();
+            for (int pass = 0; pass < 2; pass++)
+            {
+                for (double y = 0; y <= max; y += 60)
+                {
+                    scroll.Offset = new Avalonia.Vector(0, pass == 0 ? y : max - y);
+                    watch.Restart();
+                    layoutWatch.Restart();
+                    Dispatcher.UIThread.RunJobs();
+                    session.Window.UpdateLayout();
+                    layoutWatch.Stop();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    session.Window.CaptureRenderedFrame();
+                    watch.Stop();
+                    times.Add(watch.Elapsed.TotalMilliseconds);
+                    layoutTimes.Add(layoutWatch.Elapsed.TotalMilliseconds);
+                    await Task.Delay(5);
+                }
+            }
+            times.Sort();
+            layoutTimes.Sort();
+            Step($"  layout only: median {layoutTimes[layoutTimes.Count / 2]:0.0} ms, 90th {layoutTimes[(int)(layoutTimes.Count * 0.9)]:0.0} ms, max {layoutTimes[^1]:0.0} ms");
+            Step($"scrolling {what}: {times.Count} frames, median {times[times.Count / 2]:0.0} ms, 90th {times[(int)(times.Count * 0.9)]:0.0} ms, max {times[^1]:0.0} ms, memory {GC.GetTotalMemory(false) / 1048576} MB");
+            scroll.Offset = new Avalonia.Vector(0, 0);
+        }
 
         /// <summary>
         /// What is on screen, for checking the layout without looking at the picture: each visible text with its

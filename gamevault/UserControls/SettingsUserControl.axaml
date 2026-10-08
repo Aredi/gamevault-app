@@ -369,11 +369,6 @@
                                 <ToggleSwitch Content="{l:T 'Sync'}" Margin="0,10,0,0" IsChecked="{Binding SyncDiscordPresence}" />
                                 <TextBlock Text="{l:T 'Discord shows the game, its total play time and the time of the current session, with the cover when it comes from a public source (IGDB).'}"
                                            TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" Opacity="0.8" Margin="0,8,0,0" />
-                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0" IsVisible="{Binding SyncDiscordPresence}">
-                                    <TextBox Text="{Binding DiscordApplicationId}" Width="230" Watermark="{l:T 'Discord application ID'}" />
-                                    <TextBlock Text="{l:T 'Empty: the SanctuaryVault application. The activity takes the name of the Discord application.'}"
-                                               TextWrapping="Wrap" MaxWidth="320" VerticalAlignment="Center" Opacity="0.7" FontSize="12" />
-                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0">

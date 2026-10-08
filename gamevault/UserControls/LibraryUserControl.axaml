@@ -87,16 +87,7 @@
 
     <Grid x:Name="uiRoot" RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
         <!-- Top of the page tinted with the color of the featured / hovered game -->
-        <Border Grid.RowSpan="2" Grid.ColumnSpan="2" Height="620" VerticalAlignment="Top" IsHitTestVisible="False" Opacity="0.32"
-                Background="{Binding AmbientBrush}">
-            <Border.OpacityMask>
-                <RadialGradientBrush Center="50%,0%" GradientOrigin="50%,0%" RadiusX="75%" RadiusY="100%">
-                    <GradientStop Color="Black" Offset="0" />
-                    <GradientStop Color="#40000000" Offset="0.55" />
-                    <GradientStop Color="Transparent" Offset="1" />
-                </RadialGradientBrush>
-            </Border.OpacityMask>
-        </Border>
+        <Border Grid.RowSpan="2" Grid.ColumnSpan="2" Height="620" VerticalAlignment="Top" IsHitTestVisible="False" Background="{Binding AmbientBrush}" />
 
         <!-- ===== Toolbar ===== -->
         <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="28,20,28,6" Spacing="14">
