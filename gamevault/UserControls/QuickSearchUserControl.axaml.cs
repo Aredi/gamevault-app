@@ -93,8 +93,8 @@ namespace gamevault.UserControls
                 foreach (QuickSearchItem item in InstalledGames().Concat(Actions()))
                 {
                     item.Score = Math.Max(QuickMatch.Score(query, item.Title), QuickMatch.Score(query, item.Subtitle) / 2);
-                    // Installed games come before an equally good page
-                    if (item.Game != null)
+                    // Installed games that match come before an equally good page
+                    if (item.Game != null && item.Score > 0)
                         item.Score += 50;
                     if (item.Score > 0)
                         items.Add(item);
