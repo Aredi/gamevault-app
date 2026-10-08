@@ -8,7 +8,7 @@
 		<ApplicationIcon>Resources\Images\icon.ico</ApplicationIcon>
 		<StartupObject>gamevault.Program</StartupObject>
 		<!-- Release builds pass -p:Version=<tag>; Velopack packages use the same version -->
-		<Version>1.22.0</Version>
+		<Version>1.22.1</Version>
 		<Product>SanctuaryVault</Product>
 		<Copyright>© Phalcode™. All Rights Reserved.</Copyright>
 		<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
