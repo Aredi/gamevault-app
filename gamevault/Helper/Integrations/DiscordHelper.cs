@@ -36,8 +36,8 @@ namespace gamevault.Helper
         }
         #endregion
 
-        /// <summary>The Discord application of the original project ("GameVault"), until one named SanctuaryVault is set.</summary>
-        public const string DefaultApplicationId = "1313225516509302815";
+        /// <summary>The SanctuaryVault Discord application: "Playing SanctuaryVault".</summary>
+        public const string DefaultApplicationId = "1557729594478559242";
 
         private DiscordRpcClient? client;
         private string? clientApplicationId;

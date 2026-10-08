@@ -857,5 +857,5 @@
   "{0} played in total": "{0} de jeu au total",
   "Discord shows the game, its total play time and the time of the current session, with the cover when it comes from a public source (IGDB).": "Discord affiche le jeu, son temps de jeu total et la durée de la session en cours, avec la jaquette quand elle vient d'une source publique (IGDB).",
   "Discord application ID": "ID de l'application Discord",
-  "Empty: the original project's application (shown as GameVault). The activity takes the name of the Discord application.": "Vide : l'application du projet d'origine (affichée « GameVault »). L'activité prend le nom de l'application Discord."
+  "Empty: the SanctuaryVault application. The activity takes the name of the Discord application.": "Vide : l'application SanctuaryVault. L'activité prend le nom de l'application Discord."
 }
