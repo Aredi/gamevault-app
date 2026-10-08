@@ -141,6 +141,7 @@ namespace gamevault.UserControls
             }
             uiImg.Source = image;
             uiImg.IsVisible = true;
+            IsShowingReplacement = false;
             SetOpacity(1, fade);
         }
 
@@ -202,10 +203,15 @@ namespace gamevault.UserControls
             }
         }
 
+        /// <summary>The "no cover" image is shown: the real one is missing or could not be read.</summary>
+        public bool IsShowingReplacement { get; private set; }
+
         internal void SetReplacement()
         {
             loadGeneration++;
+            IsShowingReplacement = true;
             SetImage(CacheHelper.GetReplacementImage(IsShowingFallback ? ImageCache.GameCover : ImageCacheType));
+            IsShowingReplacement = true;
             AccentColor = null;
         }
         #endregion

@@ -343,6 +343,10 @@ namespace GameVault.UiTests
                     sb.AppendLine($"T {rect.X,5:0} {rect.Y,5:0} {rect.Width,4:0}x{rect.Height,-3:0} {(cut ? "CUT " : "")}{text.FontSize:0}px \"{text.Text!.Replace('\n', ' ')}\"");
                     texts.Add((text.Text!, rect));
                 }
+                else if (control is gamevault.UserControls.CacheImage cacheImage && cacheImage.IsShowingReplacement)
+                {
+                    sb.AppendLine($"I {rect.X,5:0} {rect.Y,5:0} {rect.Width,4:0}x{rect.Height,-3:0} REPLACEMENT image ({cacheImage.ImageCacheType})");
+                }
                 else if (control is Image image)
                 {
                     if (image.Source == null && image.Opacity > 0)

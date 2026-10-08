@@ -74,21 +74,29 @@ namespace gamevault.Helper
 
         private static Bitmap Decode(string path, int? maxWidth)
         {
-            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            // Read once: SKCodec closes the stream it is given, so it gets its own copy of the bytes
+            byte[] data = File.ReadAllBytes(path);
             if (maxWidth is int width)
             {
                 int sourceWidth = 0;
                 try
                 {
-                    using var codec = SKCodec.Create(file);
+                    using var skData = SKData.CreateCopy(data);
+                    using var codec = SKCodec.Create(skData);
                     sourceWidth = codec?.Info.Width ?? 0;
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
-                file.Position = 0;
                 if (sourceWidth > width)
-                    return Bitmap.DecodeToWidth(file, width, BitmapInterpolationMode.HighQuality);
+                {
+                    // Not Bitmap.DecodeToWidth: it does not keep the proportions (a 1200 x 1800 cover came out 480 x 480)
+                    using var full = new MemoryStream(data, writable: false);
+                    using var original = new Bitmap(full);
+                    int height = Math.Max(1, (int)Math.Round(original.PixelSize.Height * (double)width / original.PixelSize.Width));
+                    return original.CreateScaledBitmap(new Avalonia.PixelSize(width, height), BitmapInterpolationMode.HighQuality);
+                }
             }
-            return new Bitmap(file);
+            using var stream = new MemoryStream(data, writable: false);
+            return new Bitmap(stream);
         }
     }
 }
