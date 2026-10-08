@@ -294,23 +294,50 @@
             </TransitioningContentControl>
         </Grid>
 
-        <!-- Popups (game settings, user settings, news, ...) -->
-        <Panel x:Name="uiPopupLayer" ZIndex="1" Background="#7F000000"
+        <!-- Popups (game settings, user settings, news, ...): shown at their real size, only scaled down when the window is too small -->
+        <Panel x:Name="uiPopupLayer" ZIndex="1" Background="#A6000000"
                IsVisible="{Binding Popup, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <Viewbox>
-                <ContentControl Content="{Binding Popup}" />
+            <Viewbox x:Name="uiPopupFit" StretchDirection="DownOnly" Margin="28">
+                <Border x:Name="uiPopupFrame" CornerRadius="18" ClipToBounds="True" BoxShadow="0 30 80 -20 #E6000000">
+                    <ContentControl Content="{Binding Popup}" />
+                </Border>
             </Viewbox>
         </Panel>
 
-        <!-- App bar (bottom toast) -->
-        <Border IsVisible="{Binding IsAppBarOpen}" VerticalAlignment="Bottom" Height="80" ZIndex="2"
-                Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="0,2,0,0">
-            <Grid>
-                <TextBlock VerticalAlignment="Center" Text="{Binding AppBarText}" FontSize="25" Margin="10,0,45,0" TextTrimming="CharacterEllipsis" />
-                <Button Classes="wrapper" VerticalAlignment="Center" HorizontalAlignment="Right" Width="25" Height="25" Margin="0,0,10,0" ToolTip.Tip="{l:T 'Copy Message'}" Click="CopyMessage_Click">
-                    <Grid Classes="hover" Background="Transparent">
-                        <Path Data="{StaticResource IconCopy}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.2)" />
-                    </Grid>
+        <!-- Messages: a card in the bottom right corner, stays while hovered -->
+        <Border x:Name="uiToast" Classes.open="{Binding IsAppBarOpen}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,24" ZIndex="2"
+                MinWidth="300" MaxWidth="480" CornerRadius="14" Background="{DynamicResource Brush.Surface3}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1"
+                BoxShadow="0 18 40 -12 #B3000000" ClipToBounds="True" PointerEntered="Toast_PointerEntered" PointerExited="Toast_PointerExited">
+            <Border.Styles>
+                <Style Selector="Border#uiToast">
+                    <Setter Property="Opacity" Value="0" />
+                    <Setter Property="IsHitTestVisible" Value="False" />
+                    <Setter Property="RenderTransform" Value="translateY(16px)" />
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CubicEaseOut" />
+                        </Transitions>
+                    </Setter>
+                </Style>
+                <Style Selector="Border#uiToast.open">
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="IsHitTestVisible" Value="True" />
+                    <Setter Property="RenderTransform" Value="translateY(0px)" />
+                </Style>
+            </Border.Styles>
+            <Grid ColumnDefinitions="4,Auto,*,Auto,Auto">
+                <Border Grid.Column="0" Background="{DynamicResource Brush.Accent}" />
+                <Path Grid.Column="1" Data="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20m0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16" Fill="{DynamicResource Brush.Accent}"
+                      Stretch="Uniform" Width="18" Height="18" VerticalAlignment="Top" Margin="14,15,0,0" />
+                <TextBlock Grid.Column="2" Text="{Binding AppBarText}" FontSize="14" TextWrapping="Wrap" MaxLines="5" TextTrimming="CharacterEllipsis" Margin="12,14,8,14" VerticalAlignment="Center" />
+                <Button Grid.Column="3" Classes="round small" Width="28" Height="28" CornerRadius="8" Background="Transparent" VerticalAlignment="Top" Margin="0,10,0,0"
+                        ToolTip.Tip="{l:T 'Copy Message'}" Click="CopyMessage_Click">
+                    <Path Data="{StaticResource IconCopy}" Width="13" Height="13" />
+                </Button>
+                <Button Grid.Column="4" Classes="round small" Width="28" Height="28" CornerRadius="8" Background="Transparent" VerticalAlignment="Top" Margin="2,10,10,0"
+                        ToolTip.Tip="{l:T 'Close'}" Click="CloseToast_Click">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="10" Height="10" Stretch="Uniform" />
                 </Button>
             </Grid>
         </Border>

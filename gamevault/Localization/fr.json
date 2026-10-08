@@ -742,9 +742,6 @@
   "{}{0:d.M.yyyy}": "{}{0:d/M/yyyy}",
   "{}{0:dd/MM/yyyy}": "{}{0:dd/MM/yyyy}",
   "{}{0} min": "{}{0} min",
-  "🐧🎮 Linux Portable": "🐧🎮 Linux portable",
-  "🖥⚙️ Windows Setup": "🖥⚙️ Windows avec installeur",
-  "🖥🎮 Windows Portable": "🖥🎮 Windows portable",
   "{0} days ago": "il y a {0} jours",
   "{}{0} games": "{}{0} jeux",
   "{}{0} installed": "{}{0} installés",
@@ -807,5 +804,8 @@
   "MENU": "MENU",
   "News": "Actualités",
   "More": "Plus",
-  "Discord, documentation, GitHub": "Discord, documentation, GitHub"
+  "Discord, documentation, GitHub": "Discord, documentation, GitHub",
+  "Linux Portable": "Linux portable",
+  "Windows Setup": "Windows avec installateur",
+  "Windows Portable": "Windows portable"
 }

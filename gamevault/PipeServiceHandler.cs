@@ -32,7 +32,7 @@ namespace gamevault
         /// <summary>
         /// The friendly name of the URI
         /// </summary>
-        private const string GAMEVAULT_URI_NAME = "GameVault App";
+        private const string GAMEVAULT_URI_NAME = "SanctuaryVault";
 
         /// <summary>
         /// The name of the named pipe
@@ -143,7 +143,7 @@ namespace gamevault
                 string applicationsDir = Path.Combine(dataHome, "applications");
                 string desktopFile = Path.Combine(applicationsDir, "gamevault.desktop");
                 string content = DesktopEntry.Create(
-                    name: "GameVault",
+                    name: "SanctuaryVault",
                     exec: $"{DesktopEntry.Quote(executablePath)} --uridata %u",
                     comment: "Self-hosted gaming platform client",
                     extra: $"MimeType=x-scheme-handler/{GAMEVAULT_URI_SCHEME};\nCategories=Game;\nStartupWMClass=gamevault\n");

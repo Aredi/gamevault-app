@@ -43,9 +43,9 @@ namespace gamevault.Helper
             }
             Directory.CreateDirectory(Path.GetDirectoryName(LinuxAutostartFile)!);
             File.WriteAllText(LinuxAutostartFile, DesktopEntry.Create(
-                name: "GameVault",
+                name: "SanctuaryVault",
                 exec: $"{DesktopEntry.Quote(PlatformInfo.ExecutablePath)} show --minimized=true",
-                comment: "Start GameVault in the background",
+                comment: "Start SanctuaryVault in the background",
                 extra: "X-GNOME-Autostart-enabled=true\n"));
         }
 

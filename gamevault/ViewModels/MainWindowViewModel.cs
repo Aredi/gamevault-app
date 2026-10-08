@@ -75,15 +75,28 @@ namespace gamevault.ViewModels
             set { m_AppBarText = value == null ? value : Loc.T(value); OnPropertyChanged(); IsAppBarOpen = true; Avalonia.Threading.Dispatcher.UIThread.Post(RestartAppBarTimer); }
         }
         private Avalonia.Threading.DispatcherTimer? appBarTimer;
+        private bool appBarHeld;
         private void RestartAppBarTimer()
         {
             if (appBarTimer == null)
             {
-                appBarTimer = new Avalonia.Threading.DispatcherTimer { Interval = System.TimeSpan.FromSeconds(4) };
+                appBarTimer = new Avalonia.Threading.DispatcherTimer();
                 appBarTimer.Tick += (_, _) => { appBarTimer.Stop(); IsAppBarOpen = false; };
             }
+            // Long messages stay longer: 4 s, plus about one second per line
+            appBarTimer.Interval = System.TimeSpan.FromSeconds(System.Math.Clamp(4 + (m_AppBarText?.Length ?? 0) / 40.0, 4, 10));
             appBarTimer.Stop();
-            appBarTimer.Start();
+            if (!appBarHeld)
+                appBarTimer.Start();
+        }
+        /// <summary>The message stays while the pointer is on it.</summary>
+        public void HoldAppBar(bool hold)
+        {
+            appBarHeld = hold;
+            if (hold)
+                appBarTimer?.Stop();
+            else if (IsAppBarOpen)
+                RestartAppBarTimer();
         }
         private User? m_UserAvatar { get; set; }
         public User? UserAvatar

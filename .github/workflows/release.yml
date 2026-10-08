@@ -41,7 +41,7 @@ jobs:
           # The previous release lets vpk create a small delta update
           vpk download github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ github.token }} --channel linux -o releases || true
           vpk pack -u GameVault -v ${{ github.ref_name }} -p publish/GameVault -e gamevault --channel linux \
-            --packTitle GameVault -i gamevault/Resources/Images/icon.png -o releases
+            --packTitle SanctuaryVault -i gamevault/Resources/Images/icon.png -o releases
           mkdir upload
           cp releases/*${{ github.ref_name }}*.nupkg releases/*.json releases/RELEASES* releases/GameVault.AppImage upload/
           cp GameVault-linux-x64.tar.gz upload/
@@ -73,7 +73,7 @@ jobs:
           dotnet tool install -g vpk --version $VPK_VERSION
           vpk download github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ github.token }} --channel win -o releases || true
           vpk pack -u GameVault -v ${{ github.ref_name }} -p publish/GameVault -e gamevault.exe --channel win --runtime win-x64 \
-            --packTitle GameVault --packAuthors "Phalcode (fork: ${{ github.repository_owner }})" -i gamevault/Resources/Images/icon.ico -o releases
+            --packTitle SanctuaryVault --packAuthors "Phalcode (fork: ${{ github.repository_owner }})" -i gamevault/Resources/Images/icon.ico -o releases
           mkdir upload
           cp releases/*${{ github.ref_name }}*.nupkg releases/*.json releases/RELEASES* releases/GameVault-win-Setup.exe releases/GameVault-win-Portable.zip upload/
       - uses: actions/upload-artifact@v4

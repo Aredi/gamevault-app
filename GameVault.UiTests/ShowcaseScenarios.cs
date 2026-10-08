@@ -170,6 +170,13 @@ namespace GameVault.UiTests
             await Settle(4000);
             Capture(session, output, "06-game-page-not-installed");
 
+            // Game settings in the popup layer, and a message
+            MainWindowViewModel.Instance.OpenPopup(new GameSettingsUserControl(games[0]) { Width = 1200, Height = 800, Margin = new Avalonia.Thickness(50) });
+            MainWindowViewModel.Instance.AppBarText = "Hades a été ajouté à la file de téléchargement";
+            await Settle(2500);
+            Capture(session, output, "10-game-settings-popup");
+            MainWindowViewModel.Instance.ClosePopup();
+
             // Smaller window and light theme
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
             Resize(session, 1060, 760);

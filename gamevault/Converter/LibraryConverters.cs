@@ -204,3 +204,23 @@ namespace gamevault.Converter
         }
     }
 }
+
+namespace gamevault.Converter
+{
+    /// <summary>The platform icon of a game type (Windows / Linux), null when unknown.</summary>
+    internal class GameTypeIconConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            string? key = value switch
+            {
+                GameType.WINDOWS_SETUP or GameType.WINDOWS_PORTABLE => "IconPlatformWindows",
+                GameType.LINUX_PORTABLE => "IconPlatformLinux",
+                _ => null,
+            };
+            return key != null && Avalonia.Application.Current!.TryGetResource(key, null, out object? geometry) ? geometry : null;
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => null;
+    }
+}

@@ -9,11 +9,11 @@ namespace gamevault.Models
     public enum GameType
     {
         UNDETECTABLE,
-        [Description("🖥⚙️ Windows Setup")]
+        [Description("Windows Setup")]
         WINDOWS_SETUP,
-        [Description("🖥🎮 Windows Portable")]
+        [Description("Windows Portable")]
         WINDOWS_PORTABLE,
-        [Description("🐧🎮 Linux Portable")]
+        [Description("Linux Portable")]
         LINUX_PORTABLE
     }
     public class Game

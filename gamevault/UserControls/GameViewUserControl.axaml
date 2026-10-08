@@ -21,6 +21,7 @@
         <conv:BlurWhenConverter x:Key="blurWhenConv" />
         <conv:RelativeDateConverter x:Key="relativeDateConv" />
         <conv:EarlyAccessConverter x:Key="earlyAccessConv" />
+        <conv:GameTypeIconConverter x:Key="gameTypeIconConv" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TextBlock.deleted">
@@ -142,7 +143,10 @@
                                     <Button Classes="wrapper" Click="GameType_Clicked"
                                             IsVisible="{Binding Game.Type, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={x:Static models:GameType.UNDETECTABLE}}">
                                         <Border Classes="chip" Background="{DynamicResource Brush.Glass}">
-                                            <TextBlock Text="{Binding Game.Type, Converter={StaticResource enumDescConv}}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Path Data="{Binding Game.Type, Converter={StaticResource gameTypeIconConv}}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding Game.Type, Converter={StaticResource enumDescConv}}" />
+                                            </StackPanel>
                                         </Border>
                                     </Button>
                                     <Border Classes="chip" Background="{DynamicResource Brush.Glass}">

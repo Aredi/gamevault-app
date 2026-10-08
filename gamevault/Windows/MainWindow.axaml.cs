@@ -1,3 +1,4 @@
+using Avalonia;
 using gamevault.Localization;
 using gamevault.Helper.Integrations;
 using Avalonia.Controls;
@@ -28,6 +29,7 @@ namespace gamevault.Windows
             this.DataContext = MainWindowViewModel.Instance;
             uiGithubShortcut.Tag = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}";
             InitSidebar();
+            InitPopupLayer();
             Opened += MainWindow_Loaded;
             Closing += MainWindow_Closing;
             // Popups close themselves on Escape only while they have the keyboard focus (lost e.g. after a dialog)
@@ -203,6 +205,59 @@ namespace gamevault.Windows
             newsTimer.Start();
         }
 
+        #region Popups
+        private void InitPopupLayer()
+        {
+            MainWindowViewModel.Instance.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainWindowViewModel.Popup))
+                    LayoutPopup();
+            };
+            SizeChanged += (_, _) => LayoutPopup();
+        }
+        /// <summary>
+        /// Large panels take the room of the window (within limits), dialogs keep their own size, the full screen
+        /// player fills the window. Sizes made for the old scaled interface (fixed size, wide margins) are dropped.
+        /// </summary>
+        private void LayoutPopup()
+        {
+            Control? popup = MainWindowViewModel.Instance.Popup;
+            if (popup == null)
+                return;
+            double width = Math.Max(0, Bounds.Width), height = Math.Max(0, Bounds.Height);
+            popup.Margin = new Thickness(0);
+            if (popup is MediaSlider)
+            {
+                uiPopupFrame.Background = null;
+                uiPopupFrame.BorderThickness = new Thickness(0);
+                uiPopupFit.Margin = new Thickness(0);
+                uiPopupFrame.CornerRadius = new CornerRadius(0);
+                uiPopupFrame.Width = width;
+                uiPopupFrame.Height = height;
+                popup.Width = popup.Height = double.NaN;
+                return;
+            }
+            uiPopupFit.Margin = new Thickness(28);
+            uiPopupFrame.CornerRadius = new CornerRadius(18);
+            if (popup is GameSettingsUserControl or UserSettingsUserControl or UserControls.SettingsComponents.PublishGameUserControl)
+            {
+                popup.Width = popup.Height = double.NaN;
+                uiPopupFrame.Background = (Avalonia.Media.IBrush?)this.FindResource("Brush.Background");
+                uiPopupFrame.BorderBrush = (Avalonia.Media.IBrush?)this.FindResource("Brush.Line");
+                uiPopupFrame.BorderThickness = new Thickness(1);
+                uiPopupFrame.Width = Math.Clamp(width - 56, 900, 1240);
+                uiPopupFrame.Height = Math.Clamp(height - 56, 620, 860);
+            }
+            else
+            {
+                // Dialogs draw their own card
+                uiPopupFrame.Background = null;
+                uiPopupFrame.BorderThickness = new Thickness(0);
+                uiPopupFrame.Width = uiPopupFrame.Height = double.NaN;
+            }
+        }
+        #endregion
+
         #region Sidebar
         private bool sidebarFoldedByUser;
         private void InitSidebar()
@@ -269,6 +324,10 @@ namespace gamevault.Windows
             e.Handled = true;
             MainWindowViewModel.Instance.OpenPopup(new UserControls.SettingsComponents.ProblemReportUserControl());
         }
+        private void Toast_PointerEntered(object? sender, PointerEventArgs e) => MainWindowViewModel.Instance.HoldAppBar(true);
+        private void Toast_PointerExited(object? sender, PointerEventArgs e) => MainWindowViewModel.Instance.HoldAppBar(false);
+        private void CloseToast_Click(object? sender, RoutedEventArgs e) => MainWindowViewModel.Instance.IsAppBarOpen = false;
+
         private void CopyMessage_Click(object sender, RoutedEventArgs e)
         {
             ClipboardHelper.SetText(MainWindowViewModel.Instance.AppBarText);
