@@ -219,6 +219,24 @@ namespace GameVault.UiTests
             await Settle(4000);
             Capture(session, output, "12-community");
 
+            // Living room mode, moved to the second game of the first row
+            Resize(session, 1920, 1080);
+            await ((gamevault.Windows.MainWindow)session.Window).OpenLivingRoom();
+            var living = session.Window.FindControl<LivingRoomUserControl>("uiLivingRoom")!;
+            living.Handle(GameVault.Core.Input.PadAction.Right);
+            var livingModel = (LivingRoomViewModel)living.DataContext!;
+            Step($"living room: {livingModel.Rows.Count} rows, first row {string.Join(", ", livingModel.Rows[0].Tiles.Select(t => t.Game.Title))}, focused {livingModel.FocusedTitle}");
+            await Settle(4000);
+            Step($"after settle: focused {livingModel.FocusedTitle}");
+            Capture(session, output, "14-living-room");
+            living.Handle(GameVault.Core.Input.PadAction.Down);
+            living.Handle(GameVault.Core.Input.PadAction.Down);
+            await Settle(3000);
+            Capture(session, output, "15-living-room-collection");
+            ((gamevault.Windows.MainWindow)session.Window).CloseLivingRoom();
+            session.Window.WindowState = WindowState.Normal;
+            Resize(session, 1600, 1000);
+
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
             await Settle(2000);
             Capture(session, output, "13-settings");

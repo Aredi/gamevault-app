@@ -190,6 +190,14 @@ namespace gamevault.UserControls
             };
             yield return new QuickSearchItem
             {
+                Title = Loc.T("Living room mode"),
+                Subtitle = Loc.T("Full screen, for the TV and a gamepad (F11)"),
+                Icon = Icon("IconLivingRoom"),
+                Kind = Loc.T("Action"),
+                Run = () => { if (App.Instance.MainWindow is Windows.MainWindow window) _ = window.OpenLivingRoom(); },
+            };
+            yield return new QuickSearchItem
+            {
                 Title = Loc.T("Report a problem"),
                 Icon = Icon("IconNavBug"),
                 Kind = Loc.T("Action"),

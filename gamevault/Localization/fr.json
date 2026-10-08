@@ -848,5 +848,10 @@
   "Guest": "Invité",
   "Last played": "Dernière partie",
   "Time played": "Temps de jeu",
-  "State": "Statut"
+  "State": "Statut",
+  "Living room mode": "Mode salon",
+  "Living room mode: full screen, for the TV and a gamepad (F11)": "Mode salon : plein écran, pour la TV et la manette (F11)",
+  "Full screen, for the TV and a gamepad (F11)": "Plein écran, pour la TV et la manette (F11)",
+  "Leave the living room mode": "Quitter le mode salon",
+  "Rows of games": "Rangées"
 }

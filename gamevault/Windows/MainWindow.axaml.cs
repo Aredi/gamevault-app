@@ -30,6 +30,7 @@ namespace gamevault.Windows
             uiGithubShortcut.Tag = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}";
             InitSidebar();
             InitPopupLayer();
+            InitLivingRoom();
             Opened += MainWindow_Loaded;
             Closing += MainWindow_Closing;
             // Popups close themselves on Escape only while they have the keyboard focus (lost e.g. after a dialog)
@@ -204,6 +205,55 @@ namespace gamevault.Windows
             newsTimer.Tick += async (s, e) => { uiNewsBadge.Badge = await CheckForNews() ? "!" : ""; };
             newsTimer.Start();
         }
+
+        #region Living room mode
+        private readonly Gamepads gamepads = new();
+        private WindowState stateBeforeLivingRoom = WindowState.Maximized;
+        private void InitLivingRoom()
+        {
+            gamepads.Action += action =>
+            {
+                // Only while SanctuaryVault is in front: a game being played must not move the library
+                if (!IsActive)
+                    return;
+                if (uiLivingRoom.IsVisible)
+                    uiLivingRoom.Handle(action);
+                else if (action == GameVault.Core.Input.PadAction.Menu && MainWindowViewModel.Instance.Popup == null)
+                    _ = OpenLivingRoom();
+            };
+            gamepads.ConnectedChanged += connected => uiLivingRoom.GamepadConnected = connected;
+            gamepads.Start();
+            uiLivingRoom.CloseRequested += (_, _) => CloseLivingRoom();
+            AddHandler(KeyDownEvent, (_, e) =>
+            {
+                if (e.Key != Key.F11)
+                    return;
+                e.Handled = true;
+                if (uiLivingRoom.IsVisible) CloseLivingRoom(); else _ = OpenLivingRoom();
+            }, RoutingStrategies.Tunnel);
+            Closing += (_, _) => gamepads.Dispose();
+        }
+        public async Task OpenLivingRoom()
+        {
+            if (uiLivingRoom.IsVisible)
+                return;
+            uiQuickSearch.Close();
+            stateBeforeLivingRoom = WindowState == WindowState.FullScreen ? WindowState.Maximized : WindowState;
+            WindowState = WindowState.FullScreen;
+            uiLivingRoom.IsVisible = true;
+            await uiLivingRoom.OpenAsync();
+        }
+        public void CloseLivingRoom()
+        {
+            if (!uiLivingRoom.IsVisible)
+                return;
+            uiLivingRoom.IsVisible = false;
+            uiLivingRoom.Closed();
+            WindowState = stateBeforeLivingRoom;
+            MainWindowViewModel.Instance.ActiveControl?.Focus();
+        }
+        private void LivingRoom_Click(object? sender, RoutedEventArgs e) => _ = OpenLivingRoom();
+        #endregion
 
         #region Popups
         private void InitPopupLayer()
