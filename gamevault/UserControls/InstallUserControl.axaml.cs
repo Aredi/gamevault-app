@@ -67,15 +67,8 @@ namespace gamevault.UserControls
             await Collection_Updated(oldCount, lastObservedCount);
         }
 
-        private void InstalledGames_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
-        {
-            var scroll = uiInstalledGamesScroll;
-            if (scroll.Extent.Width > scroll.Viewport.Width)
-            {
-                scroll.Offset = new Vector(Math.Max(0, scroll.Offset.X - e.Delta.Y * 100), scroll.Offset.Y);
-                e.Handled = true;
-            }
-        }
+        private void InstalledGames_PointerWheelChanged(object? sender, PointerWheelEventArgs e) =>
+            LibraryUserControl.RowWheel(uiInstalledGamesScroll, e);
 
         private async void UserControl_Loaded(object? sender, RoutedEventArgs e)
         {

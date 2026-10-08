@@ -313,7 +313,8 @@
                             <Path Data="{StaticResource IconChevronRight}" />
                         </Button>
                         <ListBox Classes="dots" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,26,30" ItemsSource="{Binding HeroItems}"
-                                 SelectedIndex="{Binding HeroIndex}" IsVisible="{Binding HasSeveralHeroItems}">
+                                 SelectedIndex="{Binding HeroIndex}" IsVisible="{Binding HasSeveralHeroItems}"
+                                 AutoScrollToSelectedItem="False" Focusable="False">
                             <ListBox.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel Orientation="Horizontal" />

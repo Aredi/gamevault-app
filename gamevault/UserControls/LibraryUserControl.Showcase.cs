@@ -108,6 +108,11 @@ namespace gamevault.UserControls
             SizeChanged += (_, e) => UpdateWidthDependentLayout(e.NewSize.Width);
             AddHandler(KeyDownEvent, Shelf_KeyDown, RoutingStrategies.Tunnel);
             uiRecentScroll.AddHandler(PointerWheelChangedEvent, HorizontalWheel, RoutingStrategies.Tunnel);
+            uiMainScrollBar.ScrollChanged += (_, e) =>
+            {
+                if (e.OffsetDelta.Y != 0)
+                    lastPageScrollUtc = DateTime.UtcNow;
+            };
             LibraryData.CollectionsChanged += (_, _) => Dispatcher.UIThread.Post(async () =>
             {
                 if (LoginManager.Instance.IsLoggedIn())
@@ -380,10 +385,21 @@ namespace gamevault.UserControls
             scroll.Offset = new Vector(Math.Clamp(scroll.Offset.X + direction * page, 0, Math.Max(0, scroll.Extent.Width - scroll.Viewport.Width)), 0);
         }
 
-        /// <summary>The mouse wheel scrolls a row of games sideways, or the page at its ends.</summary>
-        private static void HorizontalWheel(object? sender, PointerWheelEventArgs e)
+        /// <summary>When the page last moved vertically: rows do not take over a scroll that is going on.</summary>
+        private static DateTime lastPageScrollUtc;
+
+        /// <summary>
+        /// A mouse wheel over a row of games scrolls it sideways (at its ends, the page). Touchpads are left alone: they
+        /// scroll rows with their own horizontal gesture, and a vertical swipe must keep moving the page even when the
+        /// pointer passes over a row.
+        /// </summary>
+        private static void HorizontalWheel(object? sender, PointerWheelEventArgs e) => RowWheel((ScrollViewer)sender!, e);
+
+        internal static void RowWheel(ScrollViewer scroll, PointerWheelEventArgs e)
         {
-            var scroll = (ScrollViewer)sender!;
+            bool mouseWheel = e.Delta.X == 0 && Math.Abs(e.Delta.Y) >= 1 && Math.Abs(e.Delta.Y - Math.Round(e.Delta.Y)) < 0.001;
+            if (!mouseWheel || DateTime.UtcNow - lastPageScrollUtc < TimeSpan.FromMilliseconds(450))
+                return;
             double target = scroll.Offset.X - e.Delta.Y * 120;
             double max = Math.Max(0, scroll.Extent.Width - scroll.Viewport.Width);
             if (max <= 0 || (target < 0 && scroll.Offset.X <= 0) || (target > max && scroll.Offset.X >= max))
