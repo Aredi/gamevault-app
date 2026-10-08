@@ -219,21 +219,20 @@ namespace GameVault.UiTests
             await Settle(4000);
             Capture(session, output, "12-community");
 
-            // Living room mode, moved to the second game of the first row
-            Resize(session, 1920, 1080);
-            await ((gamevault.Windows.MainWindow)session.Window).OpenLivingRoom();
+            // Living room mode at the sizes of common screens (1080p at 150 % is 1280 x 720)
             var living = session.Window.FindControl<LivingRoomUserControl>("uiLivingRoom")!;
-            living.Handle(GameVault.Core.Input.PadAction.Right);
-            var livingModel = (LivingRoomViewModel)living.DataContext!;
-            Step($"living room: {livingModel.Rows.Count} rows, first row {string.Join(", ", livingModel.Rows[0].Tiles.Select(t => t.Game.Title))}, focused {livingModel.FocusedTitle}");
-            await Settle(4000);
-            Step($"after settle: focused {livingModel.FocusedTitle}");
-            Capture(session, output, "14-living-room");
-            living.Handle(GameVault.Core.Input.PadAction.Down);
-            living.Handle(GameVault.Core.Input.PadAction.Down);
-            await Settle(3000);
-            Capture(session, output, "15-living-room-collection");
-            ((gamevault.Windows.MainWindow)session.Window).CloseLivingRoom();
+            foreach (var (width, height) in new[] { (1920, 1080), (1280, 720), (1536, 864), (2560, 1440), (2560, 1080), (1920, 1200) })
+            {
+                session.Window.WindowState = WindowState.Normal;
+                Resize(session, width, height);
+                await ((gamevault.Windows.MainWindow)session.Window).OpenLivingRoom();
+                session.Window.WindowState = WindowState.Normal;
+                Resize(session, width, height);
+                living.Handle(GameVault.Core.Input.PadAction.Right);
+                await Settle(2500);
+                Capture(session, output, $"14-living-room-{width}x{height}", living);
+                ((gamevault.Windows.MainWindow)session.Window).CloseLivingRoom();
+            }
             session.Window.WindowState = WindowState.Normal;
             Resize(session, 1600, 1000);
 
@@ -265,20 +264,29 @@ namespace GameVault.UiTests
         /// What is on screen, for checking the layout without looking at the picture: each visible text with its
         /// position (and "CUT" when it does not fit), images not loaded, texts overlapping each other.
         /// </summary>
-        private static string LayoutReport(Window window)
+        private static string LayoutReport(Window window, Control? within = null)
         {
             var sb = new System.Text.StringBuilder();
             var screen = new Avalonia.Rect(window.Bounds.Size);
             var texts = new List<(string Text, Avalonia.Rect Rect)>();
-            foreach (var visual in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(window))
+            foreach (var visual in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants((Avalonia.Visual?)within ?? window))
             {
                 if (visual is not Control control || !control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0)
                     continue;
-                var origin = control.TranslatePoint(new Avalonia.Point(0, 0), window);
-                if (origin == null)
+                // Position and size on screen (scaled controls included), cut by the parents that clip (scrolling)
+                var toWindow = control.TransformToVisual(window);
+                if (toWindow == null)
                     continue;
-                var rect = new Avalonia.Rect(origin.Value, control.Bounds.Size);
-                if (!rect.Intersects(screen))
+                var rect = new Avalonia.Rect(control.Bounds.Size).TransformToAABB(toWindow.Value);
+                foreach (var ancestor in Avalonia.VisualTree.VisualExtensions.GetVisualAncestors(control).OfType<Control>())
+                {
+                    if (!ancestor.ClipToBounds || ancestor == window)
+                        continue;
+                    var clip = ancestor.TransformToVisual(window);
+                    if (clip != null)
+                        rect = rect.Intersect(new Avalonia.Rect(ancestor.Bounds.Size).TransformToAABB(clip.Value));
+                }
+                if (rect.Width < 1 || rect.Height < 1 || !rect.Intersects(screen))
                     continue;
                 // Parts scrolled out of a clipping parent are not on screen either
                 if (control is TextBlock text && !string.IsNullOrWhiteSpace(text.Text) && text.Opacity > 0)
@@ -323,14 +331,14 @@ namespace GameVault.UiTests
             }
         }
 
-        private static void Capture(TestSession session, string folder, string name)
+        private static void Capture(TestSession session, string folder, string name, Control? within = null)
         {
             Dispatcher.UIThread.RunJobs();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             var frame = session.Window.CaptureRenderedFrame();
             Assert.NotNull(frame);
             frame!.Save(Path.Combine(folder, name + ".png"));
-            File.WriteAllText(Path.Combine(folder, name + ".txt"), LayoutReport(session.Window));
+            File.WriteAllText(Path.Combine(folder, name + ".txt"), LayoutReport(session.Window, within));
             Step(name);
         }
     }

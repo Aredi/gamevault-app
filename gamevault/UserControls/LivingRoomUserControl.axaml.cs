@@ -83,6 +83,25 @@ namespace gamevault.UserControls
             DataContext = model;
             clockTimer.Tick += (_, _) => model.Clock = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
             AddHandler(KeyDownEvent, Keyboard_KeyDown, RoutingStrategies.Tunnel);
+            SizeChanged += (_, e) => Fit(e.NewSize);
+        }
+
+        /// <summary>The design size: everything is laid out for it, then scaled to the screen.</summary>
+        public static readonly Avalonia.Size DesignSize = new(1920, 1080);
+
+        /// <summary>
+        /// Scales the composition to the screen (720p, 1080p at 150 %, 4K, ...). The canvas keeps the screen's shape,
+        /// at least 1920 x 1080: wider screens show more covers, taller ones give the game more room.
+        /// </summary>
+        private void Fit(Avalonia.Size size)
+        {
+            if (size.Width <= 0 || size.Height <= 0)
+                return;
+            // The smaller ratio: 1920 x 1080 always fits, a wider (21:9) or taller (16:10) screen gets more room
+            double scale = Math.Min(size.Width / DesignSize.Width, size.Height / DesignSize.Height);
+            uiCanvas.Width = size.Width / scale;
+            uiCanvas.Height = size.Height / scale;
+            uiScale.LayoutTransform = new Avalonia.Media.ScaleTransform(scale, scale);
         }
 
         public bool GamepadConnected
