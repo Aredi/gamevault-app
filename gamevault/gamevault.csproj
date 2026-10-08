@@ -10,7 +10,7 @@
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<StartupObject>gamevault.Program</StartupObject>
 		<!-- Release builds pass -p:Version=<tag>; Velopack packages use the same version -->
-		<Version>1.22.2</Version>
+		<Version>1.22.3</Version>
 		<Product>SanctuaryVault</Product>
 		<Copyright>© Phalcode™. All Rights Reserved.</Copyright>
 		<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
