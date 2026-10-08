@@ -1,7 +1,7 @@
 [![logo](https://gamevau.lt/img/logo-text-and-image-sbs.png)](https://gamevau.lt)
 
 > [!NOTE]
-> **This is an unofficial, non-commercial fork of [Phalcode/gamevault-app](https://github.com/Phalcode/gamevault-app)**, distributed under the same [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) license. It is not affiliated with or endorsed by Phalcode.
+> **SanctuaryVault is an unofficial, non-commercial fork of [Phalcode/gamevault-app](https://github.com/Phalcode/gamevault-app)**, distributed under the same [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/) license. It is not affiliated with or endorsed by Phalcode.
 >
 > **Changes from upstream:**
 > - All features previously gated behind a GameVault+ subscription are available without a Phalcode account: premium themes, community themes, animated (GIF) avatars, multiple server profiles, cloud saves, Steam shortcut sync, Discord Rich Presence, and `gamevault://` install/uninstall links.
@@ -16,6 +16,8 @@
 > - Faster, safer downloads: big archives come in several parts at once, interrupted downloads resume, damaged archives are downloaded again.
 > - Cloud save conflicts between computers are detected and resolved by the user instead of overwriting saves; replaced saves are kept in a history.
 > - French translation (Settings → Application → Language).
+> - A new interface that puts the games and their covers first: a showcase (featured game, continue playing, recently added, collections), a gallery with adjustable cover size or a shelf layout, game pages in the colors of their cover, a foldable navigation bar, the same style for downloads, community and settings.
+> - Quick search with Ctrl+K (games, pages, actions) and a living room mode for the TV, with a gamepad (F11 or the Start button).
 > - .NET 10, smaller packages, end-to-end UI tests in CI.
 >
 > If you enjoy GameVault, please consider supporting the original developers (see below).
