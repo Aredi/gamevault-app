@@ -27,7 +27,7 @@ namespace gamevault.Windows
             InitializeComponent();
             this.DataContext = MainWindowViewModel.Instance;
             uiGithubShortcut.Tag = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}";
-            uiBugReportShortcut.Tag = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}/issues/new";
+            InitSidebar();
             Opened += MainWindow_Loaded;
             Closing += MainWindow_Closing;
             // Popups close themselves on Escape only while they have the keyboard focus (lost e.g. after a dialog)
@@ -203,7 +203,56 @@ namespace gamevault.Windows
             newsTimer.Start();
         }
 
-        private void News_Click(object? sender, PointerReleasedEventArgs e)
+        #region Sidebar
+        private bool sidebarFoldedByUser;
+        private void InitSidebar()
+        {
+            try { sidebarFoldedByUser = Preferences.Get(AppConfigKey.SidebarFolded, ProfileManager.ProfileConfigFile) == "1"; }
+            catch (Exception ex) { Log.Ignored(ex); }
+            // Small windows keep the room for the games
+            SizeChanged += (_, e) => ApplySidebarState(e.NewSize.Width);
+            ApplySidebarState(Bounds.Width);
+            Opened += (_, _) => uiServerName.Text = ServerName();
+            MainWindowViewModel.Instance.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainWindowViewModel.UserAvatar))
+                    uiServerName.Text = ServerName();
+            };
+        }
+        private void ApplySidebarState(double width)
+        {
+            bool folded = sidebarFoldedByUser || (width > 0 && width < 1100);
+            uiSidebar.Classes.Set("folded", folded);
+            uiUnfold.IsVisible = folded;
+        }
+        private void FoldSidebar_Click(object? sender, RoutedEventArgs e)
+        {
+            sidebarFoldedByUser = !uiSidebar.Classes.Contains("folded");
+            try { Preferences.Set(AppConfigKey.SidebarFolded, sidebarFoldedByUser ? "1" : "0", ProfileManager.ProfileConfigFile); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            // Unfolding a small window shows the labels until the window is resized
+            uiSidebar.Classes.Set("folded", sidebarFoldedByUser);
+            uiUnfold.IsVisible = sidebarFoldedByUser;
+        }
+        /// <summary>"game.example.com": the server the user is signed in to.</summary>
+        private static string ServerName()
+        {
+            try { return new Uri(SettingsViewModel.Instance.ServerUrl).Host; }
+            catch { return ""; }
+        }
+        private void Link_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string? url = (string?)((Control)sender!).Tag;
+                if (Uri.IsWellFormedUriString(url, UriKind.Absolute))
+                    PlatformInfo.OpenUrl(url!);
+            }
+            catch (Exception ignored) { Log.Ignored(ignored); }
+        }
+        #endregion
+
+        private void News_Click(object? sender, RoutedEventArgs e)
         {
             MainWindowViewModel.Instance.OpenPopup(new NewsPopup());
             try
@@ -215,25 +264,11 @@ namespace gamevault.Windows
             { Log.Ignored(ignored); }
         }
 
-        private void ProblemReport_Click(object? sender, PointerReleasedEventArgs e)
+        private void ProblemReport_Click(object? sender, RoutedEventArgs e)
         {
             e.Handled = true;
             MainWindowViewModel.Instance.OpenPopup(new UserControls.SettingsComponents.ProblemReportUserControl());
         }
-        private void Shortlink_Click(object? sender, PointerReleasedEventArgs e)
-        {
-            try
-            {
-                string? url = (string?)((Control)sender!).Tag;
-                if (Uri.IsWellFormedUriString(url, UriKind.Absolute))
-                {
-                    PlatformInfo.OpenUrl(url!);
-                }
-                e.Handled = true;
-            }
-            catch (Exception ignored) { Log.Ignored(ignored); }
-        }
-
         private void CopyMessage_Click(object sender, RoutedEventArgs e)
         {
             ClipboardHelper.SetText(MainWindowViewModel.Instance.AppBarText);

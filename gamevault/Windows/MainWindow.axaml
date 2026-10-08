@@ -11,117 +11,277 @@
         <conv:PermissionRoleConverter x:Key="permissionRoleConv" />
     </Window.Resources>
     <Window.Styles>
+        <!-- Sidebar: wide with labels, or folded to its icons (small windows, or by choice) -->
+        <Style Selector="Border#uiSidebar">
+            <Setter Property="Width" Value="236" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.2" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border#uiSidebar.folded">
+            <Setter Property="Width" Value="76" />
+        </Style>
+        <Style Selector="Border#uiSidebar.folded :is(Control).wide">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Border#uiSidebar.folded :is(Control).navRow">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="TextBlock.navSection">
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.6" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="Margin" Value="26,0,0,8" />
+        </Style>
+
+        <!-- Pages -->
         <Style Selector="ListBox#uiNavigation">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Padding" Value="0" />
+            <Setter Property="Padding" Value="12,0" />
         </Style>
-        <Style Selector="ListBox#uiNavigation ListBoxItem">
-            <Setter Property="Width" Value="48" />
-            <Setter Property="Height" Value="48" />
-            <Setter Property="Margin" Value="0,3" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="CornerRadius" Value="14" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Style Selector="ListBox#uiNavigation ListBoxItem, Button.navItem">
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="Padding" Value="13,0" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style Selector="ListBox#uiNavigation ListBoxItem /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="CornerRadius" Value="12" />
         </Style>
-        <Style Selector="ListBox#uiNavigation ListBoxItem Path">
-            <Setter Property="Stretch" Value="Uniform" />
-            <Setter Property="Width" Value="22" />
-            <Setter Property="Height" Value="22" />
-            <Setter Property="Fill" Value="{DynamicResource Brush.Muted}" />
-        </Style>
-        <Style Selector="ListBox#uiNavigation ListBoxItem:selected Path">
-            <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
-        </Style>
-        <Style Selector="ListBox#uiNavigation ListBoxItem:selected /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource Brush.Accent3}" />
+        <Style Selector="Button.navItem">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_Bg" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
         <Style Selector="ListBox#uiNavigation ListBoxItem:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
         </Style>
+        <Style Selector="Button.navItem:pointerover /template/ Border#PART_Bg">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem:pointerover, Button.navItem:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent3}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem:selected">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        </Style>
         <Style Selector="ListBox#uiNavigation ListBoxItem:selected:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Brush.Accent2}" />
         </Style>
-        <Style Selector="Border.shortcut">
-            <Setter Property="Width" Value="36" />
-            <Setter Property="Height" Value="36" />
-            <Setter Property="CornerRadius" Value="10" />
-        </Style>
-        <Style Selector="Border.shortcut Path">
+        <Style Selector=":is(Control).navRow Path">
             <Setter Property="Stretch" Value="Uniform" />
-            <Setter Property="Width" Value="18" />
-            <Setter Property="Height" Value="18" />
-            <Setter Property="Fill" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Fill" Value="{Binding $parent[ContentControl].Foreground}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style Selector="Border.shortcut:pointerover Path">
-            <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
+        <Style Selector=":is(Control).navRow TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{Binding $parent[ContentControl].Foreground}" />
         </Style>
-        <Style Selector="Border.shortcut:pointerover">
+        <!-- Accent mark on the left of the current page -->
+        <Style Selector="ListBox#uiNavigation ListBoxItem Border.mark">
+            <Setter Property="Width" Value="4" />
+            <Setter Property="Height" Value="0" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="-13,0,0,0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Height" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem:selected Border.mark">
+            <Setter Property="Height" Value="20" />
+        </Style>
+        <Style Selector="Border#uiSidebar.folded ListBox#uiNavigation ListBoxItem Border.mark">
+            <Setter Property="Margin" Value="-13,0,0,0" />
+        </Style>
+
+        <!-- Profile card -->
+        <Style Selector="Button#uiProfile">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button#uiProfile:pointerover /template/ Border#PART_Bg">
             <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <Style Selector="Border#uiSidebar.folded Button#uiProfile">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
         </Style>
     </Window.Styles>
 
     <Panel>
-        <Grid ColumnDefinitions="72,*">
+        <Grid ColumnDefinitions="Auto,*">
             <!-- Navigation bar -->
-            <Border Grid.Column="0" Background="{DynamicResource Brush.Background2}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0">
-                <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
-                    <Image Grid.Row="0" Source="/Resources/Images/icon.png" Width="34" Height="34" Margin="0,18,0,18" ToolTip.Tip="SanctuaryVault" />
-                    <ListBox Grid.Row="1" x:Name="uiNavigation" SelectionMode="Single" SelectedIndex="{Binding ActiveControlIndex}" SelectionChanged="Navigation_SelectionChanged">
-                        <ListBoxItem ToolTip.Tip="{l:T 'Library'}">
-                            <Path Data="{StaticResource IconNavLibrary}" />
-                        </ListBoxItem>
-                        <ListBoxItem ToolTip.Tip="{l:T 'Downloads'}">
-                            <Path Data="{StaticResource IconNavDownloads}" />
-                        </ListBoxItem>
-                        <ListBoxItem ToolTip.Tip="{l:T 'Community'}">
-                            <Path Data="{StaticResource IconNavCommunity}" />
-                        </ListBoxItem>
-                        <ListBoxItem ToolTip.Tip="{l:T 'Settings'}">
-                            <Path Data="{StaticResource IconNavSettings}" />
-                        </ListBoxItem>
-                        <ListBoxItem ToolTip.Tip="{l:T 'Admin Console'}" IsVisible="{Binding UserAvatar, Converter={StaticResource permissionRoleConv}}">
-                            <Path Data="{StaticResource IconNavAdmin}" />
-                        </ListBoxItem>
-                    </ListBox>
-                    <StackPanel Grid.Row="3" HorizontalAlignment="Center" Spacing="4" Margin="0,0,0,12">
-                        <Border Classes="shortcut" Tag="https://phalco.de/support-us" PointerReleased="Shortlink_Click" ToolTip.Tip="{l:T 'Support the GameVault developers'}">
-                            <Path Data="{StaticResource IconNavDonate}" />
-                        </Border>
-                        <Border Classes="shortcut" Tag="https://discord.com/invite/NEdNen2dSu" PointerReleased="Shortlink_Click" ToolTip.Tip="{l:T 'Open Discord'}">
-                            <Path Data="{StaticResource IconNavDiscord}" />
-                        </Border>
-                        <Border Classes="shortcut" Tag="https://gamevau.lt/docs/intro" PointerReleased="Shortlink_Click" ToolTip.Tip="{l:T 'Open Documentation'}">
-                            <Path Data="{StaticResource IconNavDocs}" />
-                        </Border>
-                        <Border Classes="shortcut" x:Name="uiGithubShortcut" PointerReleased="Shortlink_Click" ToolTip.Tip="{l:T 'Open GitHub'}">
-                            <Path Data="{StaticResource IconNavGithub}" />
-                        </Border>
-                        <Border Classes="shortcut" x:Name="uiBugReportShortcut" PointerReleased="ProblemReport_Click" ToolTip.Tip="{l:T 'Report a problem'}">
-                            <Path Data="{StaticResource IconNavBug}" />
-                        </Border>
-                        <Border Classes="shortcut" PointerReleased="News_Click" ToolTip.Tip="{l:T 'Open News'}">
-                            <uc:Badged x:Name="uiNewsBadge" BadgeBackground="Red">
-                                <Path Data="{StaticResource IconNavNews}" />
-                            </uc:Badged>
-                        </Border>
+            <Border x:Name="uiSidebar" Grid.Column="0" Background="{DynamicResource Brush.Background2}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0" ClipToBounds="True">
+                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                    <!-- Name and fold button -->
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="20,20,12,22" Classes="navRow">
+                        <Image Source="/Resources/Images/icon.png" Width="34" Height="34" ToolTip.Tip="SanctuaryVault" />
+                        <TextBlock Grid.Column="1" Classes="wide" Text="SanctuaryVault" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="16.5"
+                                   LetterSpacing="-0.3" Margin="11,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Brush.Foreground}" />
+                        <Button Grid.Column="2" Classes="round small wide" Width="28" Height="28" CornerRadius="8" Background="Transparent" Click="FoldSidebar_Click" ToolTip.Tip="{l:T 'Fold the menu'}">
+                            <Path Data="{StaticResource IconChevronLeft}" Width="12" Height="12" />
+                        </Button>
+                    </Grid>
+                    <Button Grid.Row="1" x:Name="uiUnfold" Classes="round small" Width="34" Height="26" CornerRadius="8" HorizontalAlignment="Center" Margin="0,-12,0,12" Background="Transparent"
+                            Click="FoldSidebar_Click" ToolTip.Tip="{l:T 'Unfold the menu'}" IsVisible="False">
+                        <Path Data="{StaticResource IconChevronRight}" Width="12" Height="12" />
+                    </Button>
+
+                    <StackPanel Grid.Row="2">
+                        <TextBlock Classes="navSection wide" Text="{l:T 'MENU'}" />
+                        <ListBox x:Name="uiNavigation" SelectionMode="Single" SelectedIndex="{Binding ActiveControlIndex}" SelectionChanged="Navigation_SelectionChanged">
+                            <ListBoxItem ToolTip.Tip="{l:T 'Library'}">
+                                <Panel>
+                                    <Border Classes="mark" />
+                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                        <Path Data="{StaticResource IconNavLibrary}" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Library'}" />
+                                    </StackPanel>
+                                </Panel>
+                            </ListBoxItem>
+                            <ListBoxItem ToolTip.Tip="{l:T 'Downloads'}">
+                                <Panel>
+                                    <Border Classes="mark" />
+                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                        <Path Data="{StaticResource IconNavDownloads}" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Downloads'}" />
+                                    </StackPanel>
+                                </Panel>
+                            </ListBoxItem>
+                            <ListBoxItem ToolTip.Tip="{l:T 'Community'}">
+                                <Panel>
+                                    <Border Classes="mark" />
+                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                        <Path Data="{StaticResource IconNavCommunity}" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Community'}" />
+                                    </StackPanel>
+                                </Panel>
+                            </ListBoxItem>
+                            <ListBoxItem ToolTip.Tip="{l:T 'Settings'}">
+                                <Panel>
+                                    <Border Classes="mark" />
+                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                        <Path Data="{StaticResource IconNavSettings}" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Settings'}" />
+                                    </StackPanel>
+                                </Panel>
+                            </ListBoxItem>
+                            <ListBoxItem ToolTip.Tip="{l:T 'Admin Console'}" IsVisible="{Binding UserAvatar, Converter={StaticResource permissionRoleConv}}">
+                                <Panel>
+                                    <Border Classes="mark" />
+                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                        <Path Data="{StaticResource IconNavAdmin}" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Admin Console'}" />
+                                    </StackPanel>
+                                </Panel>
+                            </ListBoxItem>
+                        </ListBox>
                     </StackPanel>
+
+                    <!-- News, problems, links -->
+                    <StackPanel Grid.Row="4" Margin="12,0,12,10">
+                        <Button Classes="navItem" Click="News_Click" ToolTip.Tip="{l:T 'Open News'}">
+                            <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
+                                <uc:Badged x:Name="uiNewsBadge" BadgeBackground="{DynamicResource Brush.Warning}">
+                                    <Path Data="{StaticResource IconNavNews}" />
+                                </uc:Badged>
+                                <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'News'}" Margin="13,0,0,0" />
+                            </Grid>
+                        </Button>
+                        <Button Classes="navItem" x:Name="uiBugReportShortcut" Click="ProblemReport_Click" ToolTip.Tip="{l:T 'Report a problem'}">
+                            <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                <Path Data="{StaticResource IconNavBug}" />
+                                <TextBlock Classes="wide" Text="{l:T 'Report a problem'}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="navItem" ToolTip.Tip="{l:T 'Discord, documentation, GitHub'}">
+                            <Button.Flyout>
+                                <MenuFlyout Placement="RightEdgeAlignedBottom">
+                                    <MenuItem Header="{l:T 'Open Discord'}" Tag="https://discord.com/invite/NEdNen2dSu" Click="Link_Click">
+                                        <MenuItem.Icon><Path Data="{StaticResource IconNavDiscord}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="16" Height="16" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="{l:T 'Open Documentation'}" Tag="https://gamevau.lt/docs/intro" Click="Link_Click">
+                                        <MenuItem.Icon><Path Data="{StaticResource IconNavDocs}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="16" Height="16" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem x:Name="uiGithubShortcut" Header="{l:T 'Open GitHub'}" Click="Link_Click">
+                                        <MenuItem.Icon><Path Data="{StaticResource IconNavGithub}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="16" Height="16" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="{l:T 'Support the GameVault developers'}" Tag="https://phalco.de/support-us" Click="Link_Click">
+                                        <MenuItem.Icon><Path Data="{StaticResource IconNavDonate}" Fill="{DynamicResource Brush.Foreground}" Stretch="Uniform" Width="16" Height="16" /></MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                            <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
+                                <Path Data="M6 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4m6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4" />
+                                <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'More'}" Margin="13,0,0,0" />
+                                <Path Grid.Column="2" Classes="wide" Data="{StaticResource IconChevronRight}" Width="11" Height="11" Opacity="0.6" />
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
                     <!-- Profile -->
-                    <Button Grid.Row="4" Classes="wrapper" Click="UserAvatar_Clicked" Width="44" Height="44" Margin="0,0,0,16" ToolTip.Tip="{l:T 'Your profile'}">
-                        <Panel>
-                            <Border CornerRadius="22" ClipToBounds="True" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="2">
-                                <uc:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding UserAvatar}" />
-                            </Border>
-                            <Border Background="{DynamicResource Brush.Background2}" CornerRadius="9" Width="18" Height="18" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                    IsVisible="{Binding IsOffline}" ToolTip.Tip="{l:T 'Offline'}">
-                                <Path Data="{DynamicResource IconNoSignal}" Fill="IndianRed" Stretch="Uniform" Width="12" Height="12" />
-                            </Border>
-                        </Panel>
+                    <Button Grid.Row="5" x:Name="uiProfile" Margin="12,0,12,16" Click="UserAvatar_Clicked" ToolTip.Tip="{l:T 'Your profile'}">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Panel Width="40" Height="40">
+                                <Border CornerRadius="20" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                    <uc:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding UserAvatar}" />
+                                </Border>
+                                <!-- Online / offline -->
+                                <Border Width="13" Height="13" CornerRadius="7" HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="2"
+                                        BorderBrush="{DynamicResource Brush.Background2}" Background="{DynamicResource Brush.Success}" IsVisible="{Binding !IsOffline}" />
+                                <Border Width="13" Height="13" CornerRadius="7" HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="2"
+                                        BorderBrush="{DynamicResource Brush.Background2}" Background="IndianRed" IsVisible="{Binding IsOffline}" ToolTip.Tip="{l:T 'Offline'}" />
+                            </Panel>
+                            <StackPanel Grid.Column="1" Classes="wide" Margin="11,0,0,0" VerticalAlignment="Center" Spacing="1">
+                                <TextBlock Text="{Binding UserAvatar.Username}" FontWeight="Bold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="uiServerName" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsOffline}" />
+                                <TextBlock Classes="muted" FontSize="11.5" Text="{l:T 'Offline'}" Foreground="IndianRed" IsVisible="{Binding IsOffline}" />
+                            </StackPanel>
+                        </Grid>
                     </Button>
                 </Grid>
             </Border>

@@ -172,7 +172,7 @@ namespace GameVault.UiTests
 
             // Smaller window and light theme
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
-            Resize(session, 1180, 800);
+            Resize(session, 1060, 760);
             await Settle(2500);
             Capture(session, output, "07-library-small-window");
             ThemeManager.Apply(ThemeManager.BuiltInThemeBase + "ThemeDefaultLight.xaml");

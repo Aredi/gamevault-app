@@ -102,7 +102,9 @@ namespace gamevault.Models
         //Library layout: cover size, "gallery" / "shelf", showcase on ("1") or off ("0")
         LibraryCardWidth,
         LibraryLayout,
-        LibraryShowcase
+        LibraryShowcase,
+        //Navigation bar folded to its icons ("1", profileconfig)
+        SidebarFolded
     }
     public static class Globals
     {

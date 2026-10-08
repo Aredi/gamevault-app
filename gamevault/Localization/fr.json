@@ -801,5 +801,11 @@
   "MB": "Mo",
   "GB": "Go",
   "TB": "To",
-  "PB": "Po"
+  "PB": "Po",
+  "Fold the menu": "Replier le menu",
+  "Unfold the menu": "Déplier le menu",
+  "MENU": "MENU",
+  "News": "Actualités",
+  "More": "Plus",
+  "Discord, documentation, GitHub": "Discord, documentation, GitHub"
 }
