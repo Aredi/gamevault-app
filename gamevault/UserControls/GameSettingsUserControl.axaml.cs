@@ -924,8 +924,17 @@ namespace gamevault.UserControls
             this.Cursor = new Cursor(StandardCursorType.Wait);
             try
             {
-                string currentShownUser = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/metadata/providers/{ViewModel.MetadataProviders?[ViewModel.SelectedMetadataProviderIndex]?.Slug}/search?query={GameMetadataSearchTimer.Data}");
-                ViewModel.RemapSearchResults = JsonSerializer.Deserialize<MinimalGame[]>(currentShownUser);
+                string query = Uri.EscapeDataString(GameMetadataSearchTimer.Data ?? "");
+                string currentShownUser = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/metadata/providers/{ViewModel.MetadataProviders?[ViewModel.SelectedMetadataProviderIndex]?.Slug}/search?query={query}");
+                MinimalGame[] results = JsonSerializer.Deserialize<MinimalGame[]>(currentShownUser) ?? Array.Empty<MinimalGame>();
+                // Ranked by how well they match the game's file (the rules RoMM uses), the likely one first
+                string file = ViewModel.Game?.Path ?? GameMetadataSearchTimer.Data ?? "";
+                foreach (MinimalGame result in results)
+                    result.MatchScore = GameVault.Core.Library.TitleMatching.Score(file, new GameVault.Core.Library.TitleCandidate(result.Title, result.ReleaseDate));
+                results = results.OrderByDescending(r => r.MatchScore).ToArray();
+                if (results.Length > 0 && results[0].MatchScore >= GameVault.Core.Library.TitleMatching.MinimumScore)
+                    results[0].IsBestMatch = true;
+                ViewModel.RemapSearchResults = results;
             }
             catch (Exception ex)
             {
@@ -974,6 +983,11 @@ namespace gamevault.UserControls
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
+        /// <summary>The likely result has a green border.</summary>
+        public static readonly Avalonia.Data.Converters.IValueConverter BestMatchBorder =
+            new Avalonia.Data.Converters.FuncValueConverter<bool, Avalonia.Media.IBrush?>(best =>
+                best && Avalonia.Application.Current!.TryGetResource("Brush.Accent", null, out object? brush) ? brush as Avalonia.Media.IBrush : Avalonia.Media.Brushes.Transparent);
+
         private async Task RemapGame(string? providerId, string? providerSlug, int gameId, int? priority = null)
         {
             bool success = false;
@@ -1011,7 +1025,7 @@ namespace gamevault.UserControls
                 ViewModel.MetadataProvidersLoaded = false;
                 string result = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/metadata/providers");
                 var providers = JsonSerializer.Deserialize<MetadataProviderDto[]?>(result);
-                foreach (GameMetadata gmd in ViewModel.Game.ProviderMetadata)
+                foreach (GameMetadata gmd in ViewModel.Game.ProviderMetadata ?? new List<GameMetadata>())
                 {
                     if (gmd.ProviderPriority != null)
                     {
@@ -1026,6 +1040,9 @@ namespace gamevault.UserControls
                 ViewModel.MetadataProviders = providers;
                 ViewModel.SelectedMetadataProviderIndex = 0;
                 ViewModel.MetadataProvidersLoaded = true;
+                // The search starts with the title read from the file name (without tags and version)
+                if (string.IsNullOrWhiteSpace(uiRemapSearch.Text))
+                    uiRemapSearch.Text = GameVault.Core.Library.TitleMatching.SearchTerm(ViewModel.Game?.Path);
             }
             catch (Exception ex)
             {

@@ -165,6 +165,10 @@ namespace gamevault.UserControls
         {
             MainWindowViewModel.Instance.OpenPopup(new PublishGameUserControl() { Margin = new Thickness(80, 40) });
         }
+        private void AutoMatch_Click(object sender, RoutedEventArgs e)
+        {
+            MainWindowViewModel.Instance.OpenPopup(new AutoMatchUserControl());
+        }
         private void BackupRestore_Click(object sender, RoutedEventArgs e)
         {
             var obj = new BackupRestoreUserControl() { Margin = new Thickness(220) };

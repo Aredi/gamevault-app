@@ -39,6 +39,10 @@ namespace GameVault.UiTests
         /// real GameVault server: 200 with the part only, its size in X-Download-Size and no Content-Range.
         /// </summary>
         public bool StandardRanges { get; set; }
+        /// <summary>The games the "igdb" provider knows: its search returns those sharing a word with the query.</summary>
+        public ConcurrentBag<MinimalGame> ProviderCatalog { get; } = new();
+        /// <summary>The mappings received (PUT /api/games/{id}): game, provider, provider id.</summary>
+        public ConcurrentQueue<(int GameId, string Slug, string ProviderId)> Mappings { get; } = new();
         /// <summary>Downloads ignore the Range header and always send the whole file with 200.</summary>
         public bool IgnoreRange { get; set; }
         /// <summary>Delay between two chunks of a download, to keep downloads running for a while.</summary>
@@ -117,8 +121,14 @@ namespace GameVault.UiTests
                     await Json(response, new { status = "HEALTHY" });
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)/download$")).Success)
                     await Download(context, int.Parse(match.Groups[1].Value));
+                else if ((match = Regex.Match(path, @"^/api/games/(\d+)$")).Success && request.HttpMethod == "PUT" && games.TryGetValue(int.Parse(match.Groups[1].Value), out var mapped))
+                    await Json(response, Map(mapped.Game, await new StreamReader(request.InputStream).ReadToEndAsync()));
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)$")).Success && games.TryGetValue(int.Parse(match.Groups[1].Value), out var entry))
                     await Json(response, entry.Game);
+                else if (path == "/api/metadata/providers")
+                    await Json(response, new[] { new { slug = "igdb", name = "IGDB", priority = 10, enabled = true } });
+                else if (path == "/api/metadata/providers/igdb/search")
+                    await Json(response, SearchProvider(request.QueryString["query"] ?? ""));
                 else if (path == "/api/games")
                     await Json(response, GameList(request));
                 else if ((match = Regex.Match(path, @"^/api/media/(\d+)$")).Success && Media.TryGetValue(int.Parse(match.Groups[1].Value), out byte[]? image))
@@ -144,6 +154,29 @@ namespace GameVault.UiTests
             {
                 try { response.Close(); } catch { }
             }
+        }
+
+        private MinimalGame[] SearchProvider(string query)
+        {
+            string[] words = Regex.Split(query.ToLowerInvariant(), @"\W+").Where(w => w.Length > 1).ToArray();
+            return ProviderCatalog.Where(g => words.Any(w => g.Title.ToLowerInvariant().Contains(w))).OrderBy(g => g.ProviderDataId).ToArray();
+        }
+
+        /// <summary>Applies the mapping requests of an update: the game gets the provider game's metadata.</summary>
+        private Game Map(Game game, string body)
+        {
+            using var json = System.Text.Json.JsonDocument.Parse(body);
+            foreach (var request in json.RootElement.GetProperty("mapping_requests").EnumerateArray())
+            {
+                string slug = request.GetProperty("provider_slug").GetString()!;
+                string id = request.GetProperty("provider_data_id").GetString()!;
+                Mappings.Enqueue((game.ID, slug, id));
+                MinimalGame? known = ProviderCatalog.FirstOrDefault(g => g.ProviderDataId == id);
+                var metadata = new gamevault.Models.GameMetadata { ProviderSlug = slug, ProviderDataId = id, Title = known?.Title ?? game.Title, ReleaseDate = known?.ReleaseDate };
+                game.ProviderMetadata = new List<gamevault.Models.GameMetadata> { metadata };
+                game.Metadata = metadata;
+            }
+            return game;
         }
 
         /// <summary>/api/games with the parts of the query the client relies on: search, newest first, limit.</summary>

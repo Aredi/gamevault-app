@@ -60,5 +60,14 @@ namespace gamevault.Models
 
         [JsonPropertyName("description")]
         public string Description { get; set; }
+
+        /// <summary>How well this result matches the game's file (0 to 1), computed by the client.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public double MatchScore { get; set; }
+        /// <summary>The first result, good enough to be the likely game.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool IsBestMatch { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public string MatchText => $"{Math.Round(MatchScore * 100):0} %";
     }
 }

@@ -311,7 +311,8 @@
                     </Grid>
 
                     <!-- Metadata -->
-                    <StackPanel Margin="20,20,20,0" IsEnabled="{Binding MetadataProvidersLoaded}">
+                    <DockPanel Margin="20,20,20,12" IsEnabled="{Binding MetadataProvidersLoaded}" LastChildFill="True">
+                      <StackPanel DockPanel.Dock="Top">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{DynamicResource IconDatabase}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
                             <TextBlock Text="{l:T 'Metadata'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
@@ -413,28 +414,40 @@
                         </Grid>
                         <TextBlock Classes="section" Text="{l:T 'Remap Game'}" />
                         <TextBlock Classes="text" Text="{l:T 'Is the mapped game incorrect or missing? Manually search the provider and remap it here.'}" />
-                        <TextBox Classes="search" Height="27" Margin="0,10,0,0" TextChanged="ProviderGameSearch_TextChanged" />
-                        <ScrollViewer Height="370" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
+                        <TextBox x:Name="uiRemapSearch" Classes="search" UseFloatingWatermark="False" Height="32" Margin="0,10,0,0" TextChanged="ProviderGameSearch_TextChanged" />
+                      </StackPanel>
+                      <!-- The results take the rest of the page and scroll: every result can be reached -->
+                      <ScrollViewer MinHeight="200" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding RemapSearchResults}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border CornerRadius="5" Height="119" Margin="0,5,0,0" Background="{DynamicResource Brush.Background2}">
-                                            <Grid Margin="5" ColumnDefinitions="82,*">
-                                                <local:CacheImage Grid.Column="0" UseUriSource="True" Data="{Binding CoverUrl}" ImageCacheType="GameCover" CornerRadius="5" Stretch="UniformToFill" />
-                                                <Grid Grid.Column="1" Margin="8,0,0,0">
-                                                    <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" Margin="0,0,80,0" />
-                                                    <TextBlock Text="{Binding ReleaseDate, StringFormat={l:T '{}{0:MM/dd/yyyy}'}}" FontSize="13" VerticalAlignment="Top" Margin="0,20,0,0" />
-                                                    <TextBlock Text="{Binding Description}" Height="60" FontSize="10" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" Margin="0,40,65,0" />
-                                                    <TextBlock Text="{Binding ProviderDataId, StringFormat={l:T 'ID: {0}'}}" FontSize="13" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,0,5,0" />
-                                                    <local:IconButton Text="{l:T 'Remap'}" VerticalAlignment="Bottom" HorizontalAlignment="Right" MinWidth="60" Height="25" FontSize="12" Margin="0,0,0,2" Click="GameRemap_Click" />
-                                                </Grid>
+                                        <Border CornerRadius="12" Margin="0,0,8,8" Padding="8" Background="{DynamicResource Brush.Background2}"
+                                                BorderThickness="2" BorderBrush="{Binding IsBestMatch, Converter={x:Static local:GameSettingsUserControl.BestMatchBorder}}">
+                                            <Grid ColumnDefinitions="72,*,Auto">
+                                                <Border Width="72" Height="104" CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}" VerticalAlignment="Top">
+                                                    <local:CacheImage UseUriSource="True" Data="{Binding CoverUrl}" ImageCacheType="GameCover" Stretch="UniformToFill" DecodeWidthOverride="200" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Margin="12,2,12,0" Spacing="4">
+                                                    <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="15" TextTrimming="CharacterEllipsis" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <Border CornerRadius="8" Padding="8,2" Background="{DynamicResource Brush.Accent}" IsVisible="{Binding IsBestMatch}">
+                                                            <TextBlock Text="{l:T 'Best match'}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                                                        </Border>
+                                                        <TextBlock Classes="muted" FontSize="12.5" VerticalAlignment="Center"
+                                                                   Text="{Binding MatchText, StringFormat={l:T 'Match {0}'}}" />
+                                                        <TextBlock Classes="muted" FontSize="12.5" VerticalAlignment="Center" Text="{Binding ReleaseDate, StringFormat={l:T '{}{0:yyyy}'}}" />
+                                                        <TextBlock Classes="muted" FontSize="12.5" VerticalAlignment="Center" Text="{Binding ProviderDataId, StringFormat={l:T 'ID: {0}'}}" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.8" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <local:IconButton Grid.Column="2" Text="{l:T 'Remap'}" VerticalAlignment="Center" MinWidth="80" Height="30" FontSize="12.5" Click="GameRemap_Click" />
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </ScrollViewer>
-                    </StackPanel>
+                      </ScrollViewer>
+                    </DockPanel>
 
                     <!-- Custom metadata -->
                     <StackPanel Margin="20,20,20,0">

@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.AutoMatchUserControl"
+             Focusable="True">
+    <!-- Finds the games without metadata (or with a title far from their file name) and proposes the provider game
+         that matches the file name best. Nothing changes on the server until "Map checked games". -->
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24,18,24,18">
+        <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="sectionTitle" Text="{l:T 'Automatic mapping'}" />
+                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13"
+                           Text="{l:T 'Reads the title in each file name (without tags, version and release group), searches the provider and proposes the closest game. Check the proposals, then map them.'}" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="round small" VerticalAlignment="Top" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+            </Button>
+        </Grid>
+
+        <WrapPanel Grid.Row="1" Margin="0,14,0,10" Orientation="Horizontal">
+            <ComboBox x:Name="uiProvider" MinWidth="180" Margin="0,0,10,6" VerticalAlignment="Center">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <CheckBox x:Name="uiDoubtful" Content="{l:T 'Also check mapped games whose title differs from the file name'}" Margin="0,0,10,6" VerticalAlignment="Center" />
+            <local:IconButton x:Name="uiAnalyze" IsEnabled="False" Text="{l:T 'Analyze the library'}" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" Height="32" Padding="12,0" Margin="0,0,10,6" Click="Analyze_Click" />
+            <local:ProgressRing x:Name="uiLoading" IsActive="False" IsVisible="False" Width="22" Height="22" Margin="0,0,8,6" VerticalAlignment="Center" />
+            <TextBlock x:Name="uiStatus" Classes="muted" FontSize="13" VerticalAlignment="Center" Margin="0,0,0,6" />
+        </WrapPanel>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="uiItems">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border CornerRadius="12" Margin="0,0,8,8" Padding="10" Background="{DynamicResource Brush.Background2}">
+                            <Grid ColumnDefinitions="Auto,*,Auto,60,*">
+                                <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding HasProposal}" VerticalAlignment="Center" />
+                                <!-- The file and what the server shows now -->
+                                <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center" Margin="4,0,12,0">
+                                    <TextBlock Text="{Binding FileName}" FontWeight="Bold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding FileName}" />
+                                    <TextBlock Classes="muted" FontSize="12.5" Text="{Binding SearchTerm, StringFormat={l:T 'Searched: {0}'}}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="muted" FontSize="12.5" Text="{Binding CurrentText}" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <Path Grid.Column="2" Data="{StaticResource IconChevronRight}" Fill="{DynamicResource Brush.Muted}" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" />
+                                <!-- The proposal -->
+                                <Border Grid.Column="3" Width="48" Height="68" Margin="12,0,0,0" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}" IsVisible="{Binding HasProposal}">
+                                    <local:CacheImage UseUriSource="True" Data="{Binding Proposal.CoverUrl}" ImageCacheType="GameCover" Stretch="UniformToFill" DecodeWidthOverride="120" />
+                                </Border>
+                                <StackPanel Grid.Column="4" Spacing="3" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <TextBlock Text="{Binding ProposalTitle}" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Border CornerRadius="8" Padding="8,2" Background="{DynamicResource Brush.Accent}" IsVisible="{Binding IsConfident}">
+                                            <TextBlock Text="{l:T 'Sure'}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                                        </Border>
+                                        <Border CornerRadius="8" Padding="8,2" Background="{DynamicResource Brush.Warning}" IsVisible="{Binding IsUnsure}">
+                                            <TextBlock Text="{l:T 'To check'}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                                        </Border>
+                                        <TextBlock Classes="muted" FontSize="12.5" VerticalAlignment="Center" Text="{Binding ProposalInfo}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
+            <TextBlock x:Name="uiSelection" Classes="muted" FontSize="13" VerticalAlignment="Center" />
+            <local:IconButton Grid.Column="1" Text="{l:T 'Check the sure ones'}" Height="34" Padding="12,0" Margin="0,0,10,0" Click="CheckSure_Click" />
+            <local:IconButton x:Name="uiApply" Grid.Column="2" Text="{l:T 'Map checked games'}" Icon="{StaticResource IconTick}" IconMargin="0,0,5,0" Height="34" Padding="12,0" Click="Apply_Click" />
+        </Grid>
+    </Grid>
+</UserControl>

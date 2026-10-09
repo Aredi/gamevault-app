@@ -53,6 +53,8 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <local:IconButton Text="{l:T 'Publish a Game'}" Icon="{StaticResource IconAddSimple}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="PublishGame_Click" />
                             <local:IconButton Text="{l:T 'Backup / Restore Database'}" Icon="{StaticResource IconDatabase}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="BackupRestore_Click" />
+                            <local:IconButton Text="{l:T 'Automatic mapping'}" Icon="{StaticResource IconTick}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="AutoMatch_Click"
+                                              ToolTip.Tip="{l:T 'Map the games without metadata from their file name'}" />
                             <local:IconButton Text="{l:T 'Reindex Games'}" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="Reindex_Click" />
                             <ToggleSwitch Content="{l:T 'Show deleted Users'}" IsChecked="{Binding ShowDeletedUsers}" VerticalAlignment="Center" Margin="20,0,0,0" />
                             <Grid x:Name="uiBtnReload" Classes="hover" Background="Transparent" Cursor="Hand" VerticalAlignment="Center" Margin="10,0,0,0"

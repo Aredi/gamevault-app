@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using gamevault.Helper;
 using gamevault.Models;
 using gamevault.UserControls;
@@ -282,6 +283,61 @@ namespace GameVault.UiTests
             await Settle(5000);
             Capture(session, output, "11-downloads");
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+
+            // Metadata: the provider knows the showcase games (with their covers) and a few namesakes
+            string Cover(Game game) => $"{session.Server.Url}/api/media/{game.Metadata!.Cover!.ID}";
+            MinimalGame Known(string id, string title, int year, string? cover = null, string? description = null) =>
+                new() { ProviderSlug = "igdb", ProviderDataId = id, Title = title, ReleaseDate = new DateTime(year, 1, 1), CoverUrl = cover, Description = description };
+            for (int i = 0; i < games.Count; i++)
+                session.Server.ProviderCatalog.Add(Known((1000 + i).ToString(CultureInfo.InvariantCulture), games[i].Title, games[i].Metadata!.ReleaseDate?.Year ?? 2020, Cover(games[i]), games[i].Metadata!.Description));
+            foreach (var known in new[]
+            {
+                Known("2001", "Hades II", 2024, description: "Battle beyond the Underworld using dark sorcery to take on the Titan of Time."),
+                Known("2002", "Hades' Star", 2016, description: "A real-time space strategy game."),
+                Known("2003", "Hades Challenge", 1998, description: "An adventure in the myths of ancient Greece."),
+                Known("2004", "Hades: Original Soundtrack", 2020),
+                Known("2005", "Hades Canyon", 2019),
+                Known("2006", "Dead Cells: Return to Castlevania", 2023),
+                Known("2007", "Cuphead: The Delicious Last Course", 2022),
+            })
+                session.Server.ProviderCatalog.Add(known);
+            games[0].ProviderMetadata ??= new List<GameMetadata>();
+            var remap = new GameSettingsUserControl(games[0]);
+            MainWindowViewModel.Instance.OpenPopup(remap);
+            await Settle(1500);
+            remap.FindControl<ListBox>("uiSettingsHeadersRemote")!.SelectedIndex = 1;
+            await Settle(4000);
+            Capture(session, output, "17-remap");
+            var remapButtons = remap.GetVisualDescendants().OfType<IconButton>().Where(b => b.DataContext is MinimalGame).ToList();
+            if (remapButtons.Count > 0)
+            {
+                var resultsScroll = remapButtons[^1].FindAncestorOfType<ScrollViewer>()!;
+                resultsScroll.Offset = new Avalonia.Vector(0, resultsScroll.Extent.Height);
+                await Settle(1500);
+                Capture(session, output, "17b-remap-scrolled");
+            }
+            MainWindowViewModel.Instance.ClosePopup();
+
+            // Automatic mapping: games added with scene or repack names, nothing mapped yet
+            int unmappedId = 9950;
+            foreach (string file in new[]
+            {
+                "Outer_Wilds_v1.1.15 (W_P).zip", "Dead.Cells.v3.4.Rise.of.the.Giant-GOG.zip", "Cuphead (2017) [GOG] (W_P).zip",
+                "Portal 2 (igdb-1009) (W_P).zip", "Balatro v1.0.1n.zip", "Terraria v1.4.4.9 [FitGirl Repack].zip",
+                "Sea.of.Stars.v1.0.47-GOG.zip", "Ori and the Will of the Wisps.iso", "My Homebrew Demo.zip",
+            })
+                session.Server.AddGame(new Game
+                {
+                    ID = unmappedId++, Title = Path.GetFileNameWithoutExtension(file), SortTitle = file.ToLowerInvariant(), Type = GameType.WINDOWS_PORTABLE,
+                    Path = $"/files/{file}", Size = "1073741824", EntityVersion = 1, Progresses = new List<Progress>(), ProviderMetadata = new List<GameMetadata>(),
+                }, Array.Empty<byte>());
+            var autoMatch = new AutoMatchUserControl();
+            MainWindowViewModel.Instance.OpenPopup(autoMatch);
+            await Settle(1500);
+            autoMatch.FindControl<IconButton>("uiAnalyze")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            await Settle(5000);
+            Capture(session, output, "18-auto-match");
+            MainWindowViewModel.Instance.ClosePopup();
         }
 
         private static Window MainWindow(TestSession session) => session.Window;
