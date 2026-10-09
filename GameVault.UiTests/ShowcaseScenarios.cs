@@ -272,7 +272,8 @@ namespace GameVault.UiTests
                 },
             }.ToJson();
             admin.CreatedAt = DateTime.UtcNow.AddDays(-420);
-            ProfileService.ConfiguredUrl = session.Server.Url;
+            SanctuaryService.Current = session.Server.Url;
+            ProfileService.Reset();
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Community);
             await Settle(4000);
             Capture(session, output, "12-community");

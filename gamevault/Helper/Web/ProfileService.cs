@@ -16,7 +16,7 @@ namespace gamevault.Helper
 {
     /// <summary>
     /// The players' customized profiles, kept by the SanctuaryVault service next to the server (the one "Publish a
-    /// Game" uses). Without it every profile is the default one and can not be customized.
+    /// Game" uses, at <see cref="SanctuaryService.Url"/>). Without it every profile is the default one.
     /// </summary>
     internal static class ProfileService
     {
@@ -26,43 +26,26 @@ namespace gamevault.Helper
         private static DateTime missingUntil;
         private static readonly Dictionary<int, ProfileDocument> cache = new();
 
-        /// <summary>The address entered in "Publish a Game" or on the profile page.</summary>
-        public static string ConfiguredUrl
-        {
-            get
-            {
-                try { return Preferences.Get(AppConfigKey.PublishUploaderUrl, LoginManager.Instance.GetUserProfile().UserConfigFile)?.Trim() ?? ""; }
-                catch (Exception ex) { Log.Ignored(ex); return ""; }
-            }
-            set
-            {
-                Preferences.Set(AppConfigKey.PublishUploaderUrl, value.Trim(), LoginManager.Instance.GetUserProfile().UserConfigFile);
-                resolved = null;
-                missingUntil = default;
-                cache.Clear();
-            }
-        }
-
-        /// <summary>The service: the address set, else the server's host on the service's usual port (7477).</summary>
+        /// <summary>The service, when it answers and keeps profiles.</summary>
         private static async Task<string?> ResolveAsync()
         {
-            if (resolved != null)
+            if (resolved != null && resolved == SanctuaryService.Current)
                 return resolved;
-            // Not looked for again at every profile shown
+            // Not asked again at every profile shown
             if (DateTime.UtcNow < missingUntil)
                 return null;
-            var candidates = new List<string>();
-            if (!string.IsNullOrEmpty(ConfiguredUrl))
-                candidates.Add(ConfiguredUrl);
-            else if (Uri.TryCreate(SettingsViewModel.Instance.ServerUrl, UriKind.Absolute, out Uri? server))
-                candidates.Add($"http://{server.Host}:7477");
-            foreach (string candidate in candidates)
-            {
-                if (await HasProfilesAsync(candidate))
-                    return resolved = candidate.TrimEnd('/');
-            }
+            if (await HasProfilesAsync(SanctuaryService.Current))
+                return resolved = SanctuaryService.Current.TrimEnd('/');
             missingUntil = DateTime.UtcNow.AddMinutes(1);
             return null;
+        }
+
+        /// <summary>Forgets what was found and read (the tests change the address).</summary>
+        internal static void Reset()
+        {
+            resolved = null;
+            missingUntil = default;
+            cache.Clear();
         }
 
         /// <summary>Whether the service at this address keeps profiles.</summary>
@@ -87,7 +70,7 @@ namespace gamevault.Helper
                 return new LoadResult(known.Clone(), true, null);
             string? service = await ResolveAsync();
             if (service == null)
-                return new LoadResult(ProfileDocument.Default(), false, Loc.T("The SanctuaryVault service was not found: profiles can not be customized."));
+                return new LoadResult(ProfileDocument.Default(), false, Loc.T("Customized profiles are unavailable for the moment."));
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, $"{service}/profiles/{userId}");
@@ -103,13 +86,13 @@ namespace gamevault.Helper
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Log.Ignored(ex);
-                return new LoadResult(ProfileDocument.Default(), false, ex.Message);
+                return new LoadResult(ProfileDocument.Default(), false, Loc.T("Customized profiles are unavailable for the moment."));
             }
         }
 
         public static async Task SaveAsync(int userId, ProfileDocument profile)
         {
-            string service = await ResolveAsync() ?? throw new InvalidOperationException(Loc.T("The SanctuaryVault service was not found: profiles can not be customized."));
+            string service = await ResolveAsync() ?? throw new InvalidOperationException(Loc.T("Customized profiles are unavailable for the moment."));
             ProfileDocument clean = profile.Sanitized();
             using var request = new HttpRequestMessage(HttpMethod.Put, $"{service}/profiles/{userId}")
             {

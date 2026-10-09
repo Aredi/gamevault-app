@@ -199,19 +199,8 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- The SanctuaryVault service keeps the profiles: its address, when it was not found (own profile) -->
-                        <Border Classes="module editing" IsVisible="{Binding ShowServiceSetup}">
-                            <StackPanel Spacing="10">
-                                <TextBlock FontWeight="Bold" FontSize="15" Text="{l:T 'Customize your profile'}" />
-                                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Text="{Binding ServiceProblem}" />
-                                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13"
-                                           Text="{l:T 'Profiles are kept by the SanctuaryVault service installed next to the server (the one used to publish games). Enter its address:'}" />
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBox x:Name="uiServiceUrl" Width="360" Height="32" Watermark="http://192.168.1.25:7477" UseFloatingWatermark="False" />
-                                    <Button Classes="action small" Content="{l:T 'Connect'}" Click="ConnectService_Click" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
+                        <!-- Own profile while the SanctuaryVault service (which keeps the profiles) does not answer -->
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{Binding ServiceProblem}" IsVisible="{Binding ShowServiceSetup}" />
 
                         <!-- Changing the profile: tagline, color, sections -->
                         <Border Classes="module editing" IsVisible="{Binding IsEditing}" BorderBrush="{Binding AccentColor, Converter={StaticResource accentBrushConv}}">

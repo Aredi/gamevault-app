@@ -35,8 +35,15 @@ namespace gamevault.UserControls.SettingsComponents
             DataContext = ViewModel;
             string configFile = LoginManager.Instance.GetUserProfile().UserConfigFile;
             ViewModel.TargetDirectory = Preferences.Get(AppConfigKey.PublishTargetDirectory, configFile);
-            ViewModel.UploaderUrl = Preferences.Get(AppConfigKey.PublishUploaderUrl, configFile);
             ViewModel.DestinationIndex = Preferences.Get(AppConfigKey.PublishDestination, configFile) == "1" ? 1 : 0;
+            // Uploading: says at once whether the service answers
+            ViewModel.PropertyChanged += async (_, e) =>
+            {
+                if (e.PropertyName == nameof(PublishGameViewModel.IsUpload) && ViewModel.IsUpload)
+                    await CheckUploaderAsync();
+            };
+            if (ViewModel.IsUpload)
+                Loaded += async (_, _) => await CheckUploaderAsync();
             KeyDown += (_, e) =>
             {
                 if (e.Key == Key.Escape && ViewModel.IsIdle)
@@ -152,17 +159,18 @@ namespace gamevault.UserControls.SettingsComponents
         #endregion
 
         #region Publish
-        private async void TestUploader_Click(object sender, RoutedEventArgs e)
+        /// <summary>Whether the SanctuaryVault service answers, shown when uploading is chosen.</summary>
+        internal async Task CheckUploaderAsync()
         {
             ViewModel.UploaderStatus = Loc.T("Connecting...");
-            ViewModel.UploaderStatus = (await GameUploader.CheckAsync(ViewModel.UploaderUrl?.Trim() ?? "")).Message;
+            ViewModel.UploaderStatus = (await GameUploader.CheckAsync(SanctuaryService.Current)).Message;
         }
 
         private async void Publish_Click(object sender, RoutedEventArgs e)
         {
             string configFile = LoginManager.Instance.GetUserProfile().UserConfigFile;
             string target = ViewModel.TargetDirectory?.Trim() ?? "";
-            string uploader = ViewModel.UploaderUrl?.Trim() ?? "";
+            string uploader = SanctuaryService.Current;
             bool upload = ViewModel.IsUpload;
             bool overwrite = false;
             if (!ViewModel.HasSource || string.IsNullOrWhiteSpace(ViewModel.FileName))
@@ -172,11 +180,6 @@ namespace gamevault.UserControls.SettingsComponents
             }
             if (upload)
             {
-                if (!Uri.TryCreate(uploader, UriKind.Absolute, out Uri? address) || (address.Scheme != Uri.UriSchemeHttp && address.Scheme != Uri.UriSchemeHttps))
-                {
-                    ViewModel.Status = Loc.T("Enter the address of the SanctuaryVault Uploader.");
-                    return;
-                }
                 try
                 {
                     if ((await GameUploader.GetStateAsync(uploader, ViewModel.FileName)).Exists)
@@ -191,7 +194,6 @@ namespace gamevault.UserControls.SettingsComponents
                     ViewModel.Status = Loc.F("Publishing failed: {0}", ex.Message);
                     return;
                 }
-                Preferences.Set(AppConfigKey.PublishUploaderUrl, uploader, configFile);
                 Preferences.Set(AppConfigKey.PublishDestination, "1", configFile);
             }
             else

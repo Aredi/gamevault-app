@@ -62,7 +62,8 @@ namespace GameVault.UiTests
                     new ProfileModule { Type = ProfileModuleType.Text, Text = "Je joue surtout le soir." },
                 },
             }.ToJson();
-            ProfileService.ConfiguredUrl = session.Server.Url;
+            SanctuaryService.Current = session.Server.Url;
+            ProfileService.Reset();
             try
             {
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Community);
@@ -117,7 +118,8 @@ namespace GameVault.UiTests
             }
             finally
             {
-                ProfileService.ConfiguredUrl = "";
+                SanctuaryService.Current = SanctuaryService.Url;
+                ProfileService.Reset();
                 session.Server.Profiles.Clear();
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
             }

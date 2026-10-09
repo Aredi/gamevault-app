@@ -37,7 +37,8 @@ namespace gamevault.Helper
             }
             catch (Exception ex)
             {
-                return (false, Loc.F("The uploader can not be reached at {0}: {1}", uploader, ex.Message));
+                Log.Ignored(ex);
+                return (false, Loc.T("The SanctuaryVault service can not be reached for the moment. Try again later."));
             }
         }
 

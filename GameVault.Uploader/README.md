@@ -12,8 +12,8 @@ archives to it from any computer; it writes them into the server's games folder 
 ## Run
 
 See `docker-compose.example.yml`: mount the games folder of the GameVault server as `/files`, set
-`GAMEVAULT_URL` to the server and `user:` to the owner of the games folder. Then enter the address of the
-uploader (e.g. `https://upload.example.com` or `http://192.168.1.25:7477`) in **Publish a Game → Upload to the server**.
+`GAMEVAULT_URL` to the server and `user:` to the owner of the games folder. The client uses the service at a fixed
+address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdominguez.fr): nobody has to enter it.
 
 | Variable | Default | |
 |---|---|---|

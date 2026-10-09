@@ -398,22 +398,6 @@ namespace gamevault.UserControls
             uiSaveProfile.IsEnabled = true;
         }
 
-        private async void ConnectService_Click(object? sender, RoutedEventArgs e)
-        {
-            string url = uiServiceUrl.Text?.Trim() ?? "";
-            if (url.Length == 0)
-                return;
-            if (!url.Contains("://"))
-                url = "http://" + url;
-            if (!await ProfileService.HasProfilesAsync(url))
-            {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("No SanctuaryVault service keeping profiles at {0}", url);
-                return;
-            }
-            ProfileService.ConfiguredUrl = url;
-            await LoadProfileAsync();
-        }
-
         private static ProfileModuleView? ModuleOf(object? sender) =>
             (sender as Control)?.GetSelfAndVisualAncestors().OfType<Control>().Select(c => c.DataContext).OfType<ProfileModuleView>().FirstOrDefault();
 

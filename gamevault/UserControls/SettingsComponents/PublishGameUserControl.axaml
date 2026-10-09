@@ -75,10 +75,6 @@
                             <controls:IconButton Grid.Column="1" Text="{l:T 'Browse'}" MinWidth="90" Height="32" FontSize="14" Click="PickTarget_Click" />
                         </Grid>
                         <StackPanel IsVisible="{Binding IsUpload}" Spacing="4">
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                                <TextBox Text="{Binding UploaderUrl}" Watermark="{l:T 'Address of the uploader, e.g. https://upload.example.com'}" />
-                                <controls:IconButton Grid.Column="1" Text="{l:T 'Test'}" MinWidth="90" Height="32" FontSize="14" Click="TestUploader_Click" />
-                            </Grid>
                             <TextBlock Classes="hint" Text="{Binding UploaderStatus, Converter={x:Static l:LocConverter.Instance}}" />
                             <TextBlock Classes="hint" Text="{l:T 'The archive is created on this computer, then sent. Interrupted uploads continue where they stopped.'}" />
                         </StackPanel>

@@ -116,12 +116,6 @@ namespace gamevault.ViewModels
             set { destinationIndex = Math.Clamp(value, 0, 1); OnPropertyChanged(); OnPropertyChanged(nameof(IsUpload)); }
         }
         public bool IsUpload => destinationIndex == 1;
-        private string uploaderUrl = "";
-        public string UploaderUrl
-        {
-            get => uploaderUrl;
-            set { uploaderUrl = value; OnPropertyChanged(); }
-        }
         private string uploaderStatus = "";
         public string UploaderStatus
         {

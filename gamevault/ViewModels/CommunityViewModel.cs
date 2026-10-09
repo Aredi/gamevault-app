@@ -116,7 +116,7 @@ namespace gamevault.ViewModels
             set { serviceProblem = value; OnPropertyChanged(); }
         }
         public bool ShowCustomize => CanCustomize && ServiceAvailable && !IsEditing;
-        /// <summary>Own profile without the SanctuaryVault service: where to enter its address.</summary>
+        /// <summary>Own profile while the SanctuaryVault service does not answer: says why it can't be customized.</summary>
         public bool ShowServiceSetup => CanCustomize && !ServiceAvailable;
 
         private string? draftTagline;
