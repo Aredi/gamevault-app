@@ -186,6 +186,12 @@ namespace gamevault.Converter
     {
         /// <summary>Turns a chevron upside down while its panel is open.</summary>
         public static readonly IValueConverter FlipWhenTrue = new FuncValueConverter<bool, Avalonia.Media.ITransform?>(open => open ? new Avalonia.Media.RotateTransform(180) : null);
+        /// <summary>The shown screenshot fully visible, the others dimmed.</summary>
+        public static readonly IMultiValueConverter SelectedOpacity = new FuncMultiValueConverter<object?, double>(values =>
+        {
+            var list = values.ToList();
+            return list.Count == 2 && Equals(list[0], list[1]) ? 1.0 : 0.55;
+        });
         public static readonly IValueConverter IsPositive = new FuncValueConverter<object?, bool>(v => v is int i && i > 0);
         public static readonly IValueConverter FlipWhenFalse = new FuncValueConverter<bool?, Avalonia.Media.ITransform?>(open => open == true ? null : new Avalonia.Media.RotateTransform(-90));
     }

@@ -271,34 +271,35 @@ namespace gamevault.UserControls
                 string uri = newData.ToString();
                 if (Uri.IsWellFormedUriString(uri, UriKind.Absolute))
                 {
+                    // Screenshots: decoded off the UI thread, at the size they are shown at, kept in memory
+                    int generation = ++loadGeneration;
+                    int? width = DecodeWidthOverride > 0 ? DecodeWidthOverride : 1600;
+                    if (DecodedImages.TryGetUrl(uri, width) is Bitmap known)
+                    {
+                        SetImage(known, fade: false);
+                        return;
+                    }
                     try
                     {
-                        using (MemoryStream stream = new MemoryStream())
+                        using HttpResponseMessage response = await GameVault.Core.HttpClients.Shared.GetAsync(uri);
+                        if (!response.IsSuccessStatusCode || generation != loadGeneration)
+                            return;
+                        byte[] data = await response.Content.ReadAsByteArrayAsync();
+                        if (generation != loadGeneration)
+                            return;
+                        if (GifHelper.IsGif(new MemoryStream(data)))
                         {
-                            {
-                                using (HttpResponseMessage response = await GameVault.Core.HttpClients.Shared.GetAsync(uri))
-                                {
-                                    if (response.IsSuccessStatusCode)
-                                    {
-                                        await response.Content.CopyToAsync(stream);
-                                        stream.Position = 0;
-                                        if (GifHelper.IsGif(stream))
-                                        {
-                                            stream.Position = 0;
-                                            SetGif(new MemoryStream(stream.ToArray()));
-                                        }
-                                        else
-                                        {
-                                            SetImage(await BitmapHelper.GetBitmapImageAsync(stream));
-                                        }
-                                    }
-                                }
-                            }
+                            SetGif(new MemoryStream(data));
+                            return;
                         }
+                        Bitmap bitmap = await Task.Run(() => DecodedImages.LoadUrl(uri, data, width));
+                        // A newer image may have been asked for meanwhile (screenshots changed quickly)
+                        if (generation == loadGeneration)
+                            SetImage(bitmap);
                     }
                     catch (Exception ex)
                     {
-                        MainWindowViewModel.Instance.AppBarText = ex.Message;
+                        Log.Ignored(ex);
                     }
                 }
                 else

@@ -25,9 +25,22 @@ namespace gamevault.UserControls
         private bool isMediaSliderFullscreen = false;
         private Panel webViewAnchor;
         private bool navigationHooked;
+        public static readonly Avalonia.StyledProperty<bool> ShowFullscreenButtonProperty =
+            Avalonia.AvaloniaProperty.Register<MediaSlider, bool>(nameof(ShowFullscreenButton), true);
+        public bool ShowFullscreenButton
+        {
+            get => GetValue(ShowFullscreenButtonProperty);
+            set => SetValue(ShowFullscreenButtonProperty, value);
+        }
+
         public MediaSlider()
         {
             InitializeComponent();
+            PropertyChanged += (_, e) =>
+            {
+                if (e.Property == ShowFullscreenButtonProperty)
+                    uiFullscreenButton.IsVisible = ShowFullscreenButton;
+            };
             uiRoot.KeyDown += MediaSliderFullscreen_Escape_KeyDown;
             uiVolumeSlider.AddHandler(Thumb.DragCompletedEvent, VolumeSlider_DragCompleted, RoutingStrategies.Bubble);
             uiVolumeSlider.PropertyChanged += async (_, e) =>

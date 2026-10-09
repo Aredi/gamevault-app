@@ -93,6 +93,8 @@ namespace GameVault.UiTests
                         Cover = Image("cover.jpg"),
                         Background = Image("hero.jpg"),
                         Screenshots = screenshots,
+                        // A trailer: the page shows its button (the video is not played here)
+                        Trailers = new[] { "https://www.youtube.com/watch?v=gmA6MrX81z4" },
                     },
                 };
                 games.Add(game);
@@ -191,6 +193,15 @@ namespace GameVault.UiTests
                 await Settle(2000);
                 Capture(session, output, "05-game-page-details");
             }
+            // Red Dead Redemption 2: a long page with many screenshots, measured while scrolling
+            MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(games[10]));
+            await Settle(4000);
+            Capture(session, output, "04b-game-page-rdr2");
+            var rdrScroll = ((Control)MainWindowViewModel.Instance.ActiveControl!).FindControl<ScrollViewer>("uiPageScroll")!;
+            await MeasureScrolling(session, rdrScroll, "game page, Red Dead Redemption 2");
+            rdrScroll.Offset = new Avalonia.Vector(0, 560);
+            await Settle(2500);
+            Capture(session, output, "04c-game-page-rdr2-gallery");
             MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(games[7]));
             await Settle(4000);
             Capture(session, output, "06-game-page-not-installed");

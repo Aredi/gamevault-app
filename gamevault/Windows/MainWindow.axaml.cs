@@ -288,6 +288,20 @@ namespace gamevault.Windows
             }
             uiPopupFit.Margin = new Thickness(28);
             uiPopupFrame.CornerRadius = new CornerRadius(18);
+            if (popup is TrailerPopup)
+            {
+                // 16:9 video under its title bar, as large as the window allows (1440 px wide at most)
+                const double titleBar = 52;
+                double videoWidth = Math.Clamp(width - 80, 480, 1440);
+                if (videoWidth * 9 / 16 + titleBar > height - 80)
+                    videoWidth = Math.Max(480, (height - 80 - titleBar) * 16 / 9);
+                popup.Width = popup.Height = double.NaN;
+                uiPopupFrame.Background = null;
+                uiPopupFrame.BorderThickness = new Thickness(0);
+                uiPopupFrame.Width = videoWidth;
+                uiPopupFrame.Height = videoWidth * 9 / 16 + titleBar;
+                return;
+            }
             if (popup is GameSettingsUserControl or UserSettingsUserControl or UserControls.SettingsComponents.PublishGameUserControl)
             {
                 popup.Width = popup.Height = double.NaN;

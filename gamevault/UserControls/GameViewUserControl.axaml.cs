@@ -40,93 +40,13 @@ namespace gamevault.UserControls
         private bool loaded = false;
 
 
-        #region MediaSlider     
-        private YoutubeClient YoutubeClient { get; set; }
-        private async Task PrepareMetadataMedia(GameMetadata data)
+        private void PlayTrailer_Click(object? sender, RoutedEventArgs e)
         {
-            List<Tuple<string, string>> MediaUrls = new List<Tuple<string, string>>();
-            if (YoutubeClient == null)
-            {
-                YoutubeClient = new YoutubeClient();
-            }
-            //Load first video separately, as it might take a while until the first playback
-            bool trailerPreloaded = false;
-            bool gameplayPreloaded = false;
-            if (data?.Trailers?.Count() > 0)
-            {
-                var preloaded = await ConvertYoutubeLinkToEmbedded(data?.Trailers[0]);
-                if (preloaded != null)
-                {
-                    trailerPreloaded = true;
-                    MediaUrls.Add(preloaded);
-                    await uiMediaSlider.LoadFirstElement(preloaded);
-                }
-            }
-            else if (data?.Gameplays?.Count() > 0)
-            {
-                var preloaded = await ConvertYoutubeLinkToEmbedded(data?.Gameplays[0]);
-                if (preloaded != null)
-                {
-                    gameplayPreloaded = true;
-                    MediaUrls.Add(preloaded);
-                    await uiMediaSlider.LoadFirstElement(preloaded);
-                }
-            }
-
-            for (int i = 0; i < data?.Trailers?.Count(); i++)
-            {
-                if (i == 0 && trailerPreloaded)
-                {
-                    continue;//Prevent the first element from being reloaded
-                }
-                var url = await ConvertYoutubeLinkToEmbedded(data?.Trailers[i]);
-                if (url != null)
-                {
-                    MediaUrls.Add(url);
-                }
-            }
-            for (int i = 0; i < data?.Gameplays?.Count(); i++)
-            {
-                if (i == 0 && gameplayPreloaded)
-                {
-                    continue;//Prevent the first element from being reloaded
-                }
-                var url = await ConvertYoutubeLinkToEmbedded(data?.Gameplays[i]);
-                if (url != null)
-                {
-                    MediaUrls.Add(url);
-                }
-            }
-            for (int i = 0; i < data?.Screenshots?.Count(); i++)
-            {
-                MediaUrls.Add(new Tuple<string, string>(data?.Screenshots[i], ""));
-            }
-
-            uiMediaSlider.SetMediaList(MediaUrls);
-            if (trailerPreloaded == false && gameplayPreloaded == false)
-            {
-                await uiMediaSlider.LoadFirstElement();
-            }
+            if (ViewModel.Game?.Metadata is GameMetadata metadata && TrailerPopup.HasVideos(metadata))
+                MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(metadata, ViewModel.Game.Metadata?.Title ?? ViewModel.Game.Title));
         }
-        private async Task<Tuple<string, string>> ConvertYoutubeLinkToEmbedded(string input)
-        {
-            try
-            {
-                if (input.Contains("youtu", StringComparison.OrdinalIgnoreCase))
-                {
-                    var streamManifest = await YoutubeClient.Videos.Streams.GetManifestAsync(input);
-                    var videoStreamInfo = streamManifest.GetVideoStreams().GetWithHighestVideoQuality();
-                    var audioStreamInfo = streamManifest.GetAudioStreams().GetWithHighestBitrate();
-                    return new Tuple<string, string>(videoStreamInfo.Url, audioStreamInfo.Url);
-                }
-                else
-                {
-                    return new Tuple<string, string>(input, "");
-                }
-            }
-            catch { return null; }
-        }
-        #endregion
+        private void PreviousScreenshot_Click(object? sender, RoutedEventArgs e) => ViewModel.MoveScreenshot(-1);
+        private void NextScreenshot_Click(object? sender, RoutedEventArgs e) => ViewModel.MoveScreenshot(1);
 
         public GameViewUserControl(Game game, bool reloadGameObject = true)
         {
@@ -141,13 +61,7 @@ namespace gamevault.UserControls
             Loaded += UserControl_Loaded;
             Loaded += (_, _) => ObserveInstallState(true);
             InitLayout();
-            Unloaded += (_, _) =>
-            {
-                ObserveInstallState(false);
-                // Stop trailers when the page is left.
-                if (loaded && !uiMediaSlider.IsWebViewNull())
-                    uiMediaSlider.UnloadMediaSlider();
-            };
+            Unloaded += (_, _) => ObserveInstallState(false);
             KeyDown += ReloadGameView_Click;
             uiChipsScroll.AddHandler(PointerWheelChangedEvent, (s, e) =>
             {
@@ -194,14 +108,6 @@ namespace gamevault.UserControls
                     }
                     catch (Exception ignored) { Log.Ignored(ignored); }
                 });
-                //MediaSlider
-                try
-                {
-                    await uiMediaSlider.InitVideoPlayer();
-                    await PrepareMetadataMedia(ViewModel?.Game?.Metadata);
-                }
-                catch (Exception ignored) { Log.Ignored(ignored); }
-                //###########              
             }
         }
         private async void ReloadGameView_Click(object? sender, KeyEventArgs e)
@@ -311,7 +217,8 @@ namespace gamevault.UserControls
         private async void Screenshot_Click(object? sender, RoutedEventArgs e)
         {
             if (((Control)sender!).DataContext is string url)
-                await uiMediaSlider.ShowUrl(url);
+                ViewModel.SelectedScreenshot = url;
+            await Task.CompletedTask;
         }
         /// <summary>The page takes the color of the cover; narrow windows stack the columns.</summary>
         private void InitLayout()
@@ -367,11 +274,6 @@ namespace gamevault.UserControls
         {
             if (ViewModel.Game == null)
                 return;
-
-            if (IsGameDownloaded(ViewModel.Game))
-            {
-                uiMediaSlider.UnloadMediaSlider();
-            }
             await MainWindowViewModel.Instance.Downloads.TryStartDownload(ViewModel.Game);
         }
         private void Collections_Click(object? sender, RoutedEventArgs e)

@@ -26,9 +26,16 @@ namespace gamevault.Helper
         }
 
         /// <summary>The image if it is in memory already (scrolling back), without reading the file.</summary>
-        public static Bitmap? TryGet(string path, int? maxWidth)
+        public static Bitmap? TryGet(string path, int? maxWidth) => TryGetKey(Key(path, maxWidth));
+
+        /// <summary>An image downloaded from an address (screenshots), if it is in memory already.</summary>
+        public static Bitmap? TryGetUrl(string url, int? maxWidth) => TryGetKey($"{url}|{maxWidth}");
+
+        /// <summary>Decodes a downloaded image at the size it is shown at and keeps it.</summary>
+        public static Bitmap LoadUrl(string url, byte[] data, int? maxWidth) => Store($"{url}|{maxWidth}", Decode(data, maxWidth));
+
+        private static Bitmap? TryGetKey(string key)
         {
-            string key = Key(path, maxWidth);
             lock (gate)
             {
                 if (!byKey.TryGetValue(key, out var node))
@@ -52,7 +59,11 @@ namespace gamevault.Helper
                     return node.Value.Bitmap;
                 }
             }
-            Bitmap bitmap = Decode(path, maxWidth);
+            return Store(key, Decode(File.ReadAllBytes(path), maxWidth));
+        }
+
+        private static Bitmap Store(string key, Bitmap bitmap)
+        {
             long bytes = (long)bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4;
             lock (gate)
             {
@@ -72,10 +83,9 @@ namespace gamevault.Helper
             return bitmap;
         }
 
-        private static Bitmap Decode(string path, int? maxWidth)
+        private static Bitmap Decode(byte[] data, int? maxWidth)
         {
-            // Read once: SKCodec closes the stream it is given, so it gets its own copy of the bytes
-            byte[] data = File.ReadAllBytes(path);
+            // SKCodec closes the stream it is given: it reads its own copy of the bytes
             if (maxWidth is int width)
             {
                 int sourceWidth = 0;

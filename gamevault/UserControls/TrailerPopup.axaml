@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.TrailerPopup"
+             Focusable="True">
+    <!-- Trailers and gameplay videos, opened from a game page: the web player only exists while this is open -->
+    <Border Background="Black" CornerRadius="18" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+            <Grid Background="{DynamicResource Brush.Background}" ColumnDefinitions="*,Auto" Height="52">
+                <TextBlock x:Name="uiTitle" Classes="sectionTitle" Margin="20,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Classes="round small" Margin="0,0,12,0" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+            <Panel Grid.Row="1">
+                <local:ProgressRing x:Name="uiLoading" IsActive="True" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <local:MediaSlider x:Name="uiPlayer" ShowFullscreenButton="False" />
+            </Panel>
+        </Grid>
+    </Border>
+</UserControl>

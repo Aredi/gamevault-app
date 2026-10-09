@@ -92,16 +92,13 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Opacity" Value="0.8" />
             <Setter Property="Template">
                 <ControlTemplate>
                     <ContentPresenter Content="{TemplateBinding Content}" Background="Transparent" />
                 </ControlTemplate>
             </Setter>
         </Style>
-        <Style Selector="Button.thumb:pointerover">
-            <Setter Property="Opacity" Value="1" />
-        </Style>
+
     </UserControl.Styles>
 
     <Grid>
@@ -289,32 +286,69 @@
                     <!-- Media and description | facts and players -->
                     <Grid x:Name="uiBody" ColumnDefinitions="*,36,330" RowDefinitions="Auto,Auto">
                         <StackPanel x:Name="uiMain" Grid.Column="0" Spacing="12">
-                            <local:AspectBox x:Name="uiMediaSliderAnchor" Ratio="0.5625">
-                                <Border CornerRadius="14" ClipToBounds="True" Background="Black">
-                                    <Panel>
-                                        <local:CacheImage UseUriSource="True" Data="{Binding PosterUrl}" Stretch="UniformToFill" Margin="0,0,30,0" />
-                                        <local:MediaSlider x:Name="uiMediaSlider" Background="Transparent" />
-                                    </Panel>
-                                </Border>
-                            </local:AspectBox>
-                            <ScrollViewer x:Name="uiThumbs" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="{Binding HasScreenshots}">
-                                <ItemsControl ItemsSource="{Binding Game.Metadata.Screenshots}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="10" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Classes="thumb" Click="Screenshot_Click">
-                                                <Border Width="168" Height="94" CornerRadius="9" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
-                                                    <local:CacheImage UseUriSource="True" Data="{Binding}" Stretch="UniformToFill" />
-                                                </Border>
+                            <!-- Gallery: drawn by the app (no web view in the page, so it scrolls smoothly), at most 860 px wide -->
+                            <StackPanel Spacing="10" MaxWidth="860" HorizontalAlignment="Left" IsVisible="{Binding HasMedia}">
+                                <local:AspectBox x:Name="uiGallery" Ratio="0.5625">
+                                    <Border CornerRadius="14" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                        <Panel>
+                                            <local:CacheImage UseUriSource="True" Data="{Binding SelectedScreenshot}" Stretch="UniformToFill" IsVisible="{Binding HasScreenshots}" />
+                                            <!-- Without screenshots: the artwork behind the play button -->
+                                            <local:CacheImage Data="{Binding Game}" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" IsVisible="{Binding !HasScreenshots}" />
+                                            <Border>
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
+                                                        <GradientStop Color="#99000000" Offset="0" />
+                                                        <GradientStop Color="#00000000" Offset="0.45" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
+                                            <Button Classes="round" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0" Click="PreviousScreenshot_Click"
+                                                    IsVisible="{Binding HasSeveralScreenshots}" ToolTip.Tip="{l:T 'Previous'}">
+                                                <Path Data="{StaticResource IconChevronLeft}" />
                                             </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                                            <Button Classes="round" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0" Click="NextScreenshot_Click"
+                                                    IsVisible="{Binding HasSeveralScreenshots}" ToolTip.Tip="{l:T 'Next'}">
+                                                <Path Data="{StaticResource IconChevronRight}" />
+                                            </Button>
+                                            <Button Classes="action" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Background="{Binding AccentBrush}"
+                                                    Click="PlayTrailer_Click" IsVisible="{Binding HasVideos}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Path Data="{StaticResource IconPlay}" />
+                                                    <TextBlock Text="{l:T 'Watch the trailer'}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16" Background="{DynamicResource Brush.Glass}" CornerRadius="8" Padding="9,4"
+                                                    IsVisible="{Binding HasSeveralScreenshots}">
+                                                <TextBlock Text="{Binding ScreenshotCounter}" FontSize="12" FontWeight="Bold" />
+                                            </Border>
+                                        </Panel>
+                                    </Border>
+                                </local:AspectBox>
+                                <ScrollViewer x:Name="uiThumbs" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="{Binding HasSeveralScreenshots}">
+                                    <ItemsControl ItemsSource="{Binding Game.Metadata.Screenshots}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="10" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Classes="thumb" Click="Screenshot_Click">
+                                                    <Button.Opacity>
+                                                        <MultiBinding Converter="{x:Static conv:LibraryStatic.SelectedOpacity}">
+                                                            <Binding />
+                                                            <Binding Path="DataContext.SelectedScreenshot" RelativeSource="{RelativeSource AncestorType=local:GameViewUserControl}" />
+                                                        </MultiBinding>
+                                                    </Button.Opacity>
+                                                    <Border Width="144" Height="81" CornerRadius="9" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                        <local:CacheImage UseUriSource="True" Data="{Binding}" Stretch="UniformToFill" DecodeWidthOverride="320" />
+                                                    </Border>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
                             <TabControl Classes="page" Padding="0,8,0,0" Margin="0,8,0,0">
                                 <TabItem Header="{l:T 'Description'}">
                                     <md:MarkdownScrollViewer Markdown="{Binding DescriptionMarkdown}" TextElement.FontSize="15" MaxHeight="560" />

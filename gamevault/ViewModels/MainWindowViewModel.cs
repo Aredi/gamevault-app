@@ -170,10 +170,6 @@ namespace gamevault.ViewModels
         }
         public void OpenPopup(Control userControl)
         {
-            if (MainWindowViewModel.Instance.ActiveControl is GameViewUserControl gameView && userControl is not MediaSlider)//Else the popup would be rendered below the native trailer view (airspace problem)
-            {
-                gameView.uiMediaSlider.UnloadMediaSlider();
-            }
             Popup = userControl;
         }
         public void ClosePopup()

@@ -32,8 +32,13 @@ namespace gamevault.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(Subtitle));
                 OnPropertyChanged(nameof(ReleaseText));
+                selectedScreenshot = null;
                 OnPropertyChanged(nameof(HasScreenshots));
-                OnPropertyChanged(nameof(PosterUrl));
+                OnPropertyChanged(nameof(SelectedScreenshot));
+                OnPropertyChanged(nameof(ScreenshotCounter));
+                OnPropertyChanged(nameof(HasSeveralScreenshots));
+                OnPropertyChanged(nameof(HasVideos));
+                OnPropertyChanged(nameof(HasMedia));
             }
         }
 
@@ -63,8 +68,35 @@ namespace gamevault.ViewModels
 
         public string ReleaseText => Game?.Metadata?.ReleaseDate is DateTime date ? date.ToString("d MMMM yyyy", System.Globalization.CultureInfo.CurrentUICulture) : "—";
         public bool HasScreenshots => Game?.Metadata?.Screenshots?.Length > 0;
-        /// <summary>Shown in the player's place until it has loaded (and when it cannot).</summary>
-        public string? PosterUrl => Game?.Metadata?.Screenshots?.FirstOrDefault();
+        private string? selectedScreenshot;
+        /// <summary>The screenshot shown large; the first one by default.</summary>
+        public string? SelectedScreenshot
+        {
+            get => selectedScreenshot ?? Game?.Metadata?.Screenshots?.FirstOrDefault();
+            set { selectedScreenshot = value; OnPropertyChanged(); OnPropertyChanged(nameof(ScreenshotCounter)); }
+        }
+        public void MoveScreenshot(int offset)
+        {
+            var shots = Game?.Metadata?.Screenshots;
+            if (shots == null || shots.Length == 0)
+                return;
+            int index = Math.Max(0, Array.IndexOf(shots, SelectedScreenshot));
+            SelectedScreenshot = shots[(index + offset + shots.Length) % shots.Length];
+        }
+        /// <summary>"2 / 6"</summary>
+        public string ScreenshotCounter
+        {
+            get
+            {
+                var shots = Game?.Metadata?.Screenshots;
+                return shots == null || shots.Length < 2 ? "" : $"{Math.Max(0, Array.IndexOf(shots, SelectedScreenshot)) + 1} / {shots.Length}";
+            }
+        }
+        public bool HasSeveralScreenshots => Game?.Metadata?.Screenshots?.Length > 1;
+        /// <summary>Trailers or gameplay videos to play.</summary>
+        public bool HasVideos => gamevault.UserControls.TrailerPopup.HasVideos(Game?.Metadata);
+        /// <summary>A gallery (screenshots, or the artwork with the play button) is shown.</summary>
+        public bool HasMedia => HasScreenshots || HasVideos;
         public bool HasOtherPlayers => UserProgresses?.Length > 0;
         public Progress? CurrentUserProgress
         {
