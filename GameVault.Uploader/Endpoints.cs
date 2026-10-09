@@ -6,13 +6,42 @@ namespace GameVault.Uploader
     /// PUT  /uploads/{name}?offset=N&amp;total=T  appends a chunk (at most 64 MB) at offset N
     /// POST /uploads/{name}/complete?size=S       makes the file visible to the GameVault server
     /// DELETE /uploads/{name}                     drops an unfinished upload
-    /// Everything except /status needs the Authorization header of a GameVault administrator.
+    /// GET  /profiles/{userId}                    the profile chosen by a player (any signed-in player)
+    /// PUT  /profiles/{userId}                    saves it (the player themselves, or an administrator)
+    /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
     {
         public static void MapUploadEndpoints(this WebApplication app)
         {
-            app.MapGet("/status", (UploadStore store) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace() }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled }));
+
+            app.MapGet("/profiles/{userId:int}", async (int userId, HttpRequest request, AdminCheck users, ProfileStore profiles, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!profiles.Enabled)
+                    return Results.Json(new { error = "Profiles are not kept by this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                string? profile = profiles.Get(userId);
+                return profile == null ? Results.NotFound() : Results.Content(profile, "application/json");
+            });
+
+            app.MapPut("/profiles/{userId:int}", async (int userId, HttpRequest request, AdminCheck users, ProfileStore profiles, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (check.Id != userId && !check.Admin)
+                    return Results.Json(new { error = "Only this player or an administrator can change this profile." }, statusCode: StatusCodes.Status403Forbidden);
+                return await profiles.SaveAsync(userId, request.Body, ct) switch
+                {
+                    ProfileStore.SaveResult.Saved => Results.NoContent(),
+                    ProfileStore.SaveResult.TooLarge => Results.Json(new { error = $"A profile can have at most {ProfileStore.MaxSize} bytes." }, statusCode: StatusCodes.Status413PayloadTooLarge),
+                    ProfileStore.SaveResult.Disabled => Results.Json(new { error = "Profiles are not kept by this server." }, statusCode: StatusCodes.Status503ServiceUnavailable),
+                    _ => Results.Json(new { error = "A profile is a JSON object." }, statusCode: StatusCodes.Status400BadRequest),
+                };
+            });
 
             app.MapGet("/uploads/{name}", async (string name, HttpRequest request, AdminCheck admins, UploadStore store, CancellationToken ct) =>
                 await Guarded(name, request, admins, ct, () =>

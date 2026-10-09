@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using GameVault.Core.Library;
 
 namespace gamevault.UserControls
 {
@@ -143,6 +144,7 @@ namespace gamevault.UserControls
                 }
                 string currentShownUser = await WebHelper.GetAsync(userUrl);
                 ViewModel.CurrentShownUser = JsonSerializer.Deserialize<User>(currentShownUser);
+                await LoadProfileAsync();
                 ViewModel.LoadingUser = false;
                 string lastSort = TryGetLastProgressSort();
                 if (uiSortBy.SelectedItem as string == lastSort)
@@ -255,6 +257,8 @@ namespace gamevault.UserControls
                 string currentShownUser = await WebHelper.GetAsync(userUrl);
                 ViewModel.CurrentShownUser = JsonSerializer.Deserialize<User>(currentShownUser);
                 ApplySort(uiSortBy.SelectedItem as string);
+                ProfileService.Forget(currentUserId);
+                await LoadProfileAsync();
 
             }
             catch (Exception ex) { Log.Ignored(ex); }
@@ -292,5 +296,210 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Could not delete. {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
         }
+
+        #region Profile
+        private ProfileDocument profile = ProfileDocument.Default();
+        private ProfileDocument? draft;
+        /// <summary>The games chosen in the profile that the player has not played (fetched from the server).</summary>
+        private readonly Dictionary<int, Game> chosenGames = new();
+        private int profileGeneration;
+
+        internal ProfileDocument ShownProfile => profile;
+
+        /// <summary>The profile of the player shown, from the SanctuaryVault service (the default one without it).</summary>
+        private async Task LoadProfileAsync()
+        {
+            User? user = ViewModel.CurrentShownUser;
+            if (user == null)
+                return;
+            int generation = ++profileGeneration;
+            ViewModel.IsEditing = false;
+            draft = null;
+            User? me = LoginManager.Instance.GetCurrentUser();
+            ViewModel.CanCustomize = me != null && (me.ID == user.ID || me.Role == PERMISSION_ROLE.ADMIN);
+            ProfileService.LoadResult result = await ProfileService.LoadAsync(user.ID);
+            if (generation != profileGeneration)
+                return;
+            profile = result.Profile;
+            ViewModel.ServiceAvailable = result.Available;
+            ViewModel.ServiceProblem = result.Problem;
+            await FetchChosenGamesAsync(profile);
+            if (generation != profileGeneration)
+                return;
+            ShowProfile();
+        }
+
+        /// <summary>The chosen games the player never played: their progress does not bring them.</summary>
+        private async Task FetchChosenGamesAsync(ProfileDocument document)
+        {
+            var played = ViewModel.UserProgresses.Where(p => p.Game != null).Select(p => p.Game!.ID).ToHashSet();
+            var missing = document.Modules.SelectMany(m => m.Games).Where(id => !played.Contains(id) && !chosenGames.ContainsKey(id)).Distinct().ToList();
+            if (missing.Count == 0)
+                return;
+            try
+            {
+                string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?filter.id=$in:{string.Join(",", missing)}&limit=-1");
+                foreach (Game game in JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>())
+                    chosenGames[game.ID] = game;
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>Shows the profile, or the draft while it is changed.</summary>
+        private void ShowProfile()
+        {
+            ProfileDocument shown = draft ?? profile;
+            List<ProfileModuleView> views = ProfileModuleFactory.Build(shown, ViewModel.UserProgresses, chosenGames, ViewModel.CurrentShownUser, DateTime.UtcNow);
+            foreach (ProfileModuleView view in views)
+                view.IsEditing = draft != null;
+            ViewModel.Modules = new System.Collections.ObjectModel.ObservableCollection<ProfileModuleView>(views);
+            ViewModel.Tagline = draft != null ? ViewModel.DraftTagline : profile.Tagline;
+            if (draft == null)
+                ViewModel.AccentColor = profile.Accent != null ? Color.Parse(profile.Accent) : null;
+            ViewModel.AddChoices = draft != null ? ProfileModuleFactory.Choices(draft) : new();
+        }
+
+        private void Customize_Click(object? sender, RoutedEventArgs e)
+        {
+            draft = profile.Clone();
+            ViewModel.IsEditing = true;
+            ViewModel.DraftTagline = profile.Tagline;
+            ViewModel.DraftAccentChoice = ViewModel.AccentChoices.FirstOrDefault(c => c.Hex == profile.Accent) ?? ViewModel.AccentChoices[0];
+            ShowProfile();
+        }
+
+        private void CancelCustomize_Click(object? sender, RoutedEventArgs e)
+        {
+            draft = null;
+            ViewModel.IsEditing = false;
+            ShowProfile();
+        }
+
+        private async void SaveProfile_Click(object? sender, RoutedEventArgs e)
+        {
+            if (draft == null || ViewModel.CurrentShownUser == null)
+                return;
+            draft.Tagline = ViewModel.DraftTagline;
+            draft.Accent = ViewModel.DraftAccentChoice?.Hex;
+            uiSaveProfile.IsEnabled = false;
+            try
+            {
+                await ProfileService.SaveAsync(ViewModel.CurrentShownUser.ID, draft);
+                profile = draft.Sanitized();
+                draft = null;
+                ViewModel.IsEditing = false;
+                ShowProfile();
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Profile saved");
+            }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = Loc.F("The profile could not be saved: {0}", ex.Message);
+            }
+            uiSaveProfile.IsEnabled = true;
+        }
+
+        private async void ConnectService_Click(object? sender, RoutedEventArgs e)
+        {
+            string url = uiServiceUrl.Text?.Trim() ?? "";
+            if (url.Length == 0)
+                return;
+            if (!url.Contains("://"))
+                url = "http://" + url;
+            if (!await ProfileService.HasProfilesAsync(url))
+            {
+                MainWindowViewModel.Instance.AppBarText = Loc.F("No SanctuaryVault service keeping profiles at {0}", url);
+                return;
+            }
+            ProfileService.ConfiguredUrl = url;
+            await LoadProfileAsync();
+        }
+
+        private static ProfileModuleView? ModuleOf(object? sender) =>
+            (sender as Control)?.GetSelfAndVisualAncestors().OfType<Control>().Select(c => c.DataContext).OfType<ProfileModuleView>().FirstOrDefault();
+
+        private void MoveModule(object? sender, int step)
+        {
+            if (draft == null || ModuleOf(sender) is not ProfileModuleView view)
+                return;
+            int index = draft.Modules.IndexOf(view.Module);
+            int target = index + step;
+            if (index < 0 || target < 0 || target >= draft.Modules.Count)
+                return;
+            draft.Modules.RemoveAt(index);
+            draft.Modules.Insert(target, view.Module);
+            ShowProfile();
+        }
+
+        private void ModuleUp_Click(object? sender, RoutedEventArgs e) => MoveModule(sender, -1);
+        private void ModuleDown_Click(object? sender, RoutedEventArgs e) => MoveModule(sender, 1);
+
+        private void ModuleRemove_Click(object? sender, RoutedEventArgs e)
+        {
+            if (draft == null || ModuleOf(sender) is not ProfileModuleView view)
+                return;
+            draft.Modules.Remove(view.Module);
+            ShowProfile();
+        }
+
+        private void AddSection_Click(object? sender, RoutedEventArgs e)
+        {
+            if (draft == null || (sender as Control)?.DataContext is not ProfileModuleChoice choice)
+                return;
+            uiAddSection.Flyout?.Hide();
+            var module = new ProfileModule { Type = choice.Type };
+            draft.Modules.Add(module);
+            ShowProfile();
+            // Showcases and the favorite game start with choosing a game
+            if (ProfileModuleType.ChoosesGames(choice.Type))
+                PickGame(module);
+        }
+
+        private void AddGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if (draft != null && ModuleOf(sender) is ProfileModuleView view)
+                PickGame(view.Module);
+        }
+
+        /// <summary>Adds a game to a showcase, or sets the favorite one.</summary>
+        internal void PickGame(ProfileModule module)
+        {
+            bool favorite = module.Type == ProfileModuleType.Favorite;
+            var suggestions = ViewModel.UserProgresses.Where(p => p.Game != null).OrderByDescending(p => p.MinutesPlayed ?? 0).Select(p => p.Game!).ToList();
+            var picker = new GamePickerPopup(favorite ? Loc.T("Choose your favorite game") : Loc.T("Add a game to the showcase"), suggestions,
+                favorite ? Array.Empty<int>() : module.Games, game =>
+                {
+                    if (draft == null || !draft.Modules.Contains(module))
+                        return;
+                    chosenGames[game.ID] = game;
+                    if (favorite)
+                        module.Games = new List<int> { game.ID };
+                    else if (module.Games.Count < ProfileModuleType.MaxGames(module.Type) && !module.Games.Contains(game.ID))
+                        module.Games.Add(game.ID);
+                    ShowProfile();
+                });
+            MainWindowViewModel.Instance.OpenPopup(picker);
+        }
+
+        private void RemoveGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if (draft == null || (sender as Control)?.DataContext is not ProfileGameView game || ModuleOf((sender as Control)?.GetVisualParent()?.GetVisualParent()) is not GamesModuleView view)
+                return;
+            view.Module.Games.Remove(game.Game.ID);
+            ShowProfile();
+        }
+
+        private void ModuleGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if (draft != null || (sender as Control)?.DataContext is not ProfileGameView game)
+                return;
+            MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(game.Game));
+        }
+
+        private void FavoriteGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ModuleOf(sender) is FavoriteModuleView { Game: not null } view)
+                MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(view.Game.Game));
+        }
+        #endregion
     }
 }

@@ -33,6 +33,7 @@ namespace GameVault.Uploader.Tests
     public sealed class UploaderTests : IDisposable
     {
         private readonly string files = Path.Combine(Path.GetTempPath(), $"gv-uploader-{Guid.NewGuid():N}");
+        private readonly string profiles = Path.Combine(Path.GetTempPath(), $"gv-profiles-{Guid.NewGuid():N}");
         private readonly FakeGameVault gameVault = new();
         private readonly WebApplicationFactory<Program> factory;
 
@@ -44,6 +45,7 @@ namespace GameVault.Uploader.Tests
             {
                 host.UseSetting("GAMEVAULT_URL", "http://gamevault.test");
                 host.UseSetting("FILES_DIRECTORY", files);
+                host.UseSetting("PROFILES_DIRECTORY", profiles);
                 host.ConfigureServices(services => services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault));
             });
         }
@@ -52,6 +54,7 @@ namespace GameVault.Uploader.Tests
         {
             factory.Dispose();
             try { Directory.Delete(files, true); } catch { }
+            try { Directory.Delete(profiles, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -150,6 +153,34 @@ namespace GameVault.Uploader.Tests
         {
             foreach (string name in new[] { "Hades (v1.38) (W_P) (2020).zip", "Celeste (L_P).tar.gz", "Game [GOG].7z", "Disc.iso" })
                 Assert.True(UploadStore.IsValidName(name, out string error), $"{name}: {error}");
+        }
+
+        [Fact]
+        public async Task Profiles_AreSeenByEveryPlayer_AndChangedOnlyByTheirOwner()
+        {
+            const string profile = "{\"tagline\":\"Speedrunner du dimanche\",\"modules\":[{\"type\":\"showcase\",\"games\":[4,8]}]}";
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("user").GetAsync("/profiles/2")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("user").PutAsync("/profiles/2", new StringContent(profile))).StatusCode);
+            // Another player (here the administrator) sees it; nobody signed out does
+            Assert.Equal(profile, await (await Client("admin").GetAsync("/profiles/2")).Content.ReadAsStringAsync());
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/profiles/2")).StatusCode);
+            // A player can not change someone else's profile; an administrator can
+            Assert.Equal(HttpStatusCode.Forbidden, (await Client("user").PutAsync("/profiles/1", new StringContent("{}"))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PutAsync("/profiles/2", new StringContent("{}"))).StatusCode);
+            Assert.Equal("{}", await (await Client("user").GetAsync("/profiles/2")).Content.ReadAsStringAsync());
+            using JsonDocument status = JsonDocument.Parse(await Client(null).GetStringAsync("/status"));
+            Assert.True(status.RootElement.GetProperty("profiles").GetBoolean());
+        }
+
+        [Fact]
+        public async Task Profiles_MustBeSmallJsonObjects()
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, (await Client("user").PutAsync("/profiles/2", new StringContent("not json"))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await Client("user").PutAsync("/profiles/2", new StringContent("[1,2]"))).StatusCode);
+            string huge = "{\"about\":\"" + new string('a', ProfileStore.MaxSize) + "\"}";
+            Assert.Equal(HttpStatusCode.RequestEntityTooLarge, (await Client("user").PutAsync("/profiles/2", new StringContent(huge))).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("user").GetAsync("/profiles/2")).StatusCode);
+            Assert.Empty(Directory.GetFiles(profiles, "*.json"));
         }
     }
 }

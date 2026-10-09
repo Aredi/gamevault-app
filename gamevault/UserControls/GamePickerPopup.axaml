@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.GamePickerPopup"
+             Width="760" Height="600" Focusable="True">
+    <!-- Choosing a game for a profile section: the player's games first, any game of the server by searching -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <Grid RowDefinitions="Auto,Auto,*" Margin="22,18,22,18">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock x:Name="uiTitle" Classes="sectionTitle" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+            <TextBox x:Name="uiSearch" Grid.Row="1" Classes="search" Height="34" Margin="0,14,0,12" Watermark="{l:T 'Search the games of the server...'}" TextChanged="Search_TextChanged" />
+            <Panel Grid.Row="2">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="uiResults">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel ItemWidth="116" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Classes="gameCard" Margin="0,0,12,14" Click="Game_Click" ToolTip.Tip="{Binding Title}">
+                                    <StackPanel Spacing="6">
+                                        <Border Width="104" Height="156" CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                            <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding}" />
+                                        </Border>
+                                        <TextBlock Classes="cardTitle" Width="104" FontSize="12.5" Text="{Binding Metadata.Title, FallbackValue={x:Null}, TargetNullValue={x:Null}}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <TextBlock x:Name="uiEmpty" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" Text="{l:T 'No game found'}" />
+            </Panel>
+        </Grid>
+    </Border>
+</UserControl>

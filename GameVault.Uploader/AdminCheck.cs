@@ -12,10 +12,17 @@ namespace GameVault.Uploader
     /// </summary>
     public sealed class AdminCheck(HttpClient gameVault, ILogger<AdminCheck> logger)
     {
-        private static readonly ConcurrentDictionary<string, (bool Admin, string User, DateTime Until)> cache = new();
+        private static readonly ConcurrentDictionary<string, (bool Admin, string User, int Id, DateTime Until)> cache = new();
         private static readonly TimeSpan CacheTime = TimeSpan.FromMinutes(1);
 
-        public sealed record Result(bool Allowed, int Status, string Message, string User = "");
+        public sealed record Result(bool Allowed, int Status, string Message, string User = "", int Id = 0, bool Admin = false);
+
+        /// <summary>Any signed-in user of the GameVault server (profiles are seen by every player).</summary>
+        public async Task<Result> CheckUserAsync(HttpRequest request, CancellationToken cancellationToken)
+        {
+            Result result = await CheckAsync(request, cancellationToken);
+            return result.Status == StatusCodes.Status403Forbidden ? result with { Allowed = true, Status = 200, Message = "" } : result;
+        }
 
         public async Task<Result> CheckAsync(HttpRequest request, CancellationToken cancellationToken)
         {
@@ -25,7 +32,7 @@ namespace GameVault.Uploader
 
             string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(authorization)));
             if (cache.TryGetValue(key, out var cached) && cached.Until > DateTime.UtcNow)
-                return cached.Admin ? new Result(true, 200, "", cached.User) : Forbidden(cached.User);
+                return cached.Admin ? new Result(true, 200, "", cached.User, cached.Id, true) : Forbidden(cached.User, cached.Id);
 
             using var me = new HttpRequestMessage(HttpMethod.Get, "api/users/me");
             me.Headers.Authorization = header;
@@ -46,8 +53,9 @@ namespace GameVault.Uploader
                 using JsonDocument user = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
                 string name = user.RootElement.TryGetProperty("username", out var username) ? username.GetString() ?? "" : "";
                 bool admin = user.RootElement.TryGetProperty("role", out var role) && IsAdmin(role);
-                cache[key] = (admin, name, DateTime.UtcNow + CacheTime);
-                return admin ? new Result(true, 200, "", name) : Forbidden(name);
+                int id = user.RootElement.TryGetProperty("id", out var idValue) && idValue.ValueKind == JsonValueKind.Number ? idValue.GetInt32() : 0;
+                cache[key] = (admin, name, id, DateTime.UtcNow + CacheTime);
+                return admin ? new Result(true, 200, "", name, id, true) : Forbidden(name, id);
             }
         }
 
@@ -59,7 +67,7 @@ namespace GameVault.Uploader
             _ => false,
         };
 
-        private static Result Forbidden(string user) => new(false, StatusCodes.Status403Forbidden, $"'{user}' is not an administrator of the GameVault server.", user);
+        private static Result Forbidden(string user, int id) => new(false, StatusCodes.Status403Forbidden, $"'{user}' is not an administrator of the GameVault server.", user, id);
 
         internal static void ClearCache() => cache.Clear();
     }

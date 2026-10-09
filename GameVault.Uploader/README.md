@@ -19,6 +19,7 @@ uploader (e.g. `https://upload.example.com` or `http://192.168.1.25:7477`) in **
 |---|---|---|
 | `GAMEVAULT_URL` | (required) | GameVault server, e.g. `http://gamevault-backend:8080` |
 | `FILES_DIRECTORY` | `/files` | Games folder |
+| `PROFILES_DIRECTORY` | `/data/profiles` | Players' profiles (mount `/data` as a volume to keep them) |
 
 ## API
 
@@ -29,3 +30,12 @@ uploader (e.g. `https://upload.example.com` or `http://192.168.1.25:7477`) in **
 | `PUT /uploads/{name}?offset=N&total=T` | appends a chunk at offset N |
 | `POST /uploads/{name}/complete?size=S[&overwrite=true]` | publishes the file |
 | `DELETE /uploads/{name}` | drops an unfinished upload |
+| `GET /profiles/{userId}` | a player's profile (any signed-in player) |
+| `PUT /profiles/{userId}` | saves it (the player, or an administrator; a JSON object of at most 64 KB) |
+
+## Profiles
+
+The client's **Community** page lets each player customize their profile (game showcase, favorite game, texts,
+badges, colors), like the modules of a Steam profile. The GameVault server has no place for it, so the profiles
+are kept here, one JSON file per player in `PROFILES_DIRECTORY`. Without a writable volume the uploads still work
+and the profiles simply stay the default ones.

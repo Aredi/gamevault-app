@@ -13,6 +13,8 @@ services:
     volumes:
       # The same folder the GameVault server has as /files
       - /path/to/your/games:/files
+      # The players' profiles (showcases, favorite game...): a folder writable by the "user:" above
+      - ./data:/data
     ports:
       - "7477:8080"
     # Behind a reverse proxy (HTTPS), turn off request buffering for this host:

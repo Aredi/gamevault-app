@@ -43,6 +43,8 @@ namespace GameVault.UiTests
         public TimeSpan MediaDelay { get; set; } = TimeSpan.Zero;
         /// <summary>The games the "igdb" provider knows: its search returns those sharing a word with the query.</summary>
         public ConcurrentBag<MinimalGame> ProviderCatalog { get; } = new();
+        /// <summary>The SanctuaryVault service part: the players' profiles (JSON) it keeps.</summary>
+        public ConcurrentDictionary<int, string> Profiles { get; } = new();
         /// <summary>The mappings received (PUT /api/games/{id}): game, provider, provider id.</summary>
         public ConcurrentQueue<(int GameId, string Slug, string ProviderId)> Mappings { get; } = new();
         /// <summary>Downloads ignore the Range header and always send the whole file with 200.</summary>
@@ -119,6 +121,25 @@ namespace GameVault.UiTests
                     await Json(response, Users.IsEmpty ? new[] { Admin } : Users.Values.OrderBy(u => u.ID).ToArray());
                 else if ((match = Regex.Match(path, @"^/api/users/(\d+)$")).Success && Users.TryGetValue(int.Parse(match.Groups[1].Value), out User? user))
                     await Json(response, user);
+                else if (path == "/status")
+                    await Json(response, new { status = "OK", version = "1.0.0", freeSpace = 1L << 40, profiles = true });
+                else if ((match = Regex.Match(path, @"^/profiles/(\d+)$")).Success)
+                {
+                    int userId = int.Parse(match.Groups[1].Value);
+                    if (request.HttpMethod == "PUT")
+                    {
+                        Profiles[userId] = await new StreamReader(request.InputStream).ReadToEndAsync();
+                        response.StatusCode = 204;
+                    }
+                    else if (Profiles.TryGetValue(userId, out string? profile))
+                    {
+                        byte[] bytes = Encoding.UTF8.GetBytes(profile);
+                        response.ContentType = "application/json";
+                        await response.OutputStream.WriteAsync(bytes);
+                    }
+                    else
+                        response.StatusCode = 404;
+                }
                 else if (path == "/api/status")
                     await Json(response, new { status = "HEALTHY" });
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)/download$")).Success)

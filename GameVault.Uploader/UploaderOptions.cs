@@ -8,6 +8,8 @@ namespace GameVault.Uploader
         public required string GameVaultUrl { get; init; }
         /// <summary>FILES_DIRECTORY: the folder mounted as /files in the GameVault server.</summary>
         public required string FilesDirectory { get; init; }
+        /// <summary>PROFILES_DIRECTORY: where the players' profiles are kept (a volume, e.g. /data/profiles).</summary>
+        public string ProfilesDirectory { get; init; } = "/data/profiles";
 
         public static UploaderOptions From(IConfiguration configuration)
         {
@@ -15,7 +17,7 @@ namespace GameVault.Uploader
             string files = configuration["FILES_DIRECTORY"] ?? "/files";
             if (!Directory.Exists(files))
                 throw new InvalidOperationException($"FILES_DIRECTORY '{files}' does not exist: mount the games folder of the GameVault server there.");
-            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files };
+            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles" };
         }
     }
 }

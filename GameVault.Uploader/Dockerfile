@@ -8,7 +8,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
 ENV ASPNETCORE_HTTP_PORTS=8080 \
-    FILES_DIRECTORY=/files
+    FILES_DIRECTORY=/files \
+    PROFILES_DIRECTORY=/data/profiles
 EXPOSE 8080
 # Runs as the image's unprivileged user unless the compose file sets "user:" to the owner of the games folder
 USER $APP_UID

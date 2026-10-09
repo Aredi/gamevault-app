@@ -16,6 +16,7 @@
         <conv:RoleNameConverter x:Key="roleNameConv" />
         <conv:MappedTitleConverter x:Key="mappedTitleConv" />
         <conv:AccentShadowConverter x:Key="accentShadowConv" />
+        <conv:AccentBrushConverter x:Key="accentBrushConv" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TextBlock.deleted">
@@ -54,6 +55,59 @@
             <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="22" />
+        </Style>
+        <Style Selector="Border.module">
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.module.editing">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            <Setter Property="Padding" Value="18,14" />
+        </Style>
+        <Style Selector="Border.badge">
+            <Setter Property="Width" Value="250" />
+            <Setter Property="Margin" Value="0,0,14,14" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.removeGame">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="6" />
+            <Setter Property="Background" Value="#CC000000" />
+        </Style>
+        <Style Selector="Button.addGame">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="ListBox.accents">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.accents ListBoxItem">
+            <Setter Property="Padding" Value="3" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="CornerRadius" Value="15" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ListBox.accents ListBoxItem /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="15" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.accents ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Foreground}" />
         </Style>
         <Style Selector="Border.state">
             <Setter Property="CornerRadius" Value="10" />
@@ -94,6 +148,7 @@
                     <!-- Banner -->
                     <Panel Height="280" VerticalAlignment="Top" ClipToBounds="True">
                         <local:CacheImage ImageCacheType="UserBackground" Stretch="UniformToFill" Data="{Binding CurrentShownUser}" />
+                        <Border Background="{Binding AccentColor, Converter={StaticResource accentBrushConv}, ConverterParameter=0.22}" />
                         <Border>
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
@@ -108,7 +163,7 @@
                     <StackPanel Margin="36,150,36,40" MaxWidth="1300" Spacing="26">
                         <!-- Who -->
                         <Grid ColumnDefinitions="Auto,*,Auto">
-                            <Border Width="124" Height="124" CornerRadius="62" ClipToBounds="True" BorderThickness="4" BorderBrush="{DynamicResource Brush.Background}"
+                            <Border Width="124" Height="124" CornerRadius="62" ClipToBounds="True" BorderThickness="4" BorderBrush="{Binding AccentColor, Converter={StaticResource accentBrushConv}}"
                                     Background="{DynamicResource Brush.Surface3}" BoxShadow="0 18 40 -14 #CC000000">
                                 <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding CurrentShownUser}" />
                             </Border>
@@ -120,10 +175,19 @@
                                     </Border>
                                     <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Text="{Binding CurrentShownUser.FirstName}" />
                                 </StackPanel>
+                                <TextBlock x:Name="uiTagline" Text="{Binding Tagline}" IsVisible="{Binding Tagline, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           FontSize="15" FontStyle="Italic" Opacity="0.9" TextWrapping="Wrap" MaxLines="2" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom" Margin="0,0,0,10">
                                 <Button Classes="round small" x:Name="uiBtnReloadUser" ToolTip.Tip="{l:T 'Reload current user (F5)'}">
                                     <Path Data="{StaticResource IconReload}" Width="14" Height="14" />
+                                </Button>
+                                <Button x:Name="uiCustomize" Classes="action small" Click="Customize_Click" IsVisible="{Binding ShowCustomize}"
+                                        Background="{Binding AccentColor, Converter={StaticResource accentBrushConv}}">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <Path Data="{StaticResource IconGameSettingsEditDetails}" Width="14" Height="14" />
+                                        <TextBlock Text="{l:T 'Customize profile'}" VerticalAlignment="Center" />
+                                    </StackPanel>
                                 </Button>
                                 <Button Classes="ghost small" Click="UserEdit_Clicked" Background="{DynamicResource Brush.Surface}"
                                         IsVisible="{Binding #uiSelectUser.SelectedIndex, Converter={StaticResource roleToVisConv}}">
@@ -135,60 +199,269 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Figures -->
-                        <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1">
-                            <WrapPanel>
-                                <StackPanel Classes="stat">
-                                    <TextBlock Classes="label" Text="{l:T 'PLAYTIME'}" />
-                                    <TextBlock Classes="value" Text="{Binding Stats.TotalMinutes, Converter={StaticResource gameTimeConv}}" />
+                        <!-- The SanctuaryVault service keeps the profiles: its address, when it was not found (own profile) -->
+                        <Border Classes="module editing" IsVisible="{Binding ShowServiceSetup}">
+                            <StackPanel Spacing="10">
+                                <TextBlock FontWeight="Bold" FontSize="15" Text="{l:T 'Customize your profile'}" />
+                                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Text="{Binding ServiceProblem}" />
+                                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13"
+                                           Text="{l:T 'Profiles are kept by the SanctuaryVault service installed next to the server (the one used to publish games). Enter its address:'}" />
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBox x:Name="uiServiceUrl" Width="360" Height="32" Watermark="http://192.168.1.25:7477" UseFloatingWatermark="False" />
+                                    <Button Classes="action small" Content="{l:T 'Connect'}" Click="ConnectService_Click" />
                                 </StackPanel>
-                                <StackPanel Classes="stat">
-                                    <TextBlock Classes="label" Text="{l:T 'GAMES PLAYED'}" />
-                                    <TextBlock Classes="value" Text="{Binding Stats.GamesPlayed}" />
-                                </StackPanel>
-                                <StackPanel Classes="stat">
-                                    <TextBlock Classes="label" Text="{l:T 'COMPLETED'}" />
-                                    <TextBlock Classes="value" Text="{Binding Stats.Completed}" />
-                                </StackPanel>
-                                <StackPanel Classes="stat">
-                                    <TextBlock Classes="label" Text="{l:T 'PLAYED THIS WEEK'}" />
-                                    <TextBlock Classes="value" Text="{Binding Stats.PlayedThisWeek, Converter={StaticResource countConv}, ConverterParameter='{}{0} game|{0} games'}" />
-                                </StackPanel>
-                            </WrapPanel>
+                            </StackPanel>
                         </Border>
 
-                        <!-- Played last -->
-                        <StackPanel Spacing="12" IsVisible="{Binding HasRecent}">
-                            <TextBlock Classes="sectionTitle" Text="{l:T 'Played recently'}" />
-                            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                                <ItemsControl ItemsSource="{Binding RecentProgresses}" Margin="0,6,0,4">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="16" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Classes="gameCard" Width="140" Click="GameImage_Click">
-                                                <StackPanel Spacing="7">
-                                                    <local:AspectBox Ratio="1.5">
-                                                        <Panel Classes="lift">
-                                                            <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
-                                                                    BoxShadow="{Binding #recentCover.AccentColor, Converter={StaticResource accentShadowConv}, ConverterParameter='14 30 -8 0.7'}" />
-                                                            <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
-                                                                <local:CacheImage x:Name="recentCover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
-                                                            </Border>
-                                                        </Panel>
-                                                    </local:AspectBox>
-                                                    <TextBlock Classes="cardTitle" Text="{Binding Game.Metadata.Title, FallbackValue={x:Null}, TargetNullValue={x:Null}}" />
-                                                    <TextBlock Classes="cardInfo" Text="{Binding LastPlayedAt, Converter={StaticResource relativeDateConv}}" />
+                        <!-- Changing the profile: tagline, color, sections -->
+                        <Border Classes="module editing" IsVisible="{Binding IsEditing}" BorderBrush="{Binding AccentColor, Converter={StaticResource accentBrushConv}}">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                <TextBlock FontWeight="Bold" FontSize="15" Text="{l:T 'Customize your profile'}" />
+                                <StackPanel Grid.Column="1" Grid.RowSpan="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                                    <Button Classes="ghost small" Content="{l:T 'Cancel'}" Click="CancelCustomize_Click" Background="{DynamicResource Brush.Surface3}" />
+                                    <Button x:Name="uiSaveProfile" Classes="action small" Click="SaveProfile_Click" Background="{Binding AccentColor, Converter={StaticResource accentBrushConv}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="7">
+                                            <Path Data="{StaticResource IconTick}" Width="14" Height="14" />
+                                            <TextBlock Text="{l:T 'Save'}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Spacing="6" Margin="0,12,20,0">
+                                    <TextBlock Classes="muted" FontSize="12.5" Text="{l:T 'Tagline'}" />
+                                    <TextBox x:Name="uiTaglineBox" Text="{Binding DraftTagline}" MaxLength="80" MaxWidth="560" HorizontalAlignment="Left" Width="560" UseFloatingWatermark="False"
+                                             Watermark="{l:T 'A few words under your name'}" />
+                                </StackPanel>
+                                <WrapPanel Grid.Row="2" Margin="0,14,20,0">
+                                    <StackPanel Spacing="6" Margin="0,0,28,6">
+                                        <TextBlock Classes="muted" FontSize="12.5" Text="{l:T 'Color'}" />
+                                        <ListBox x:Name="uiAccents" Classes="accents" ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding DraftAccentChoice}">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Ellipse Width="24" Height="24" Fill="{Binding Brush}" ToolTip.Tip="{Binding Name}" />
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                    <StackPanel Spacing="6" Margin="0,0,0,6">
+                                        <TextBlock Classes="muted" FontSize="12.5" Text="{l:T 'Sections'}" />
+                                        <Button x:Name="uiAddSection" Classes="ghost small" Background="{DynamicResource Brush.Surface3}" IsEnabled="{Binding CanAddSection}">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <Path Data="{StaticResource IconAddSimple}" Width="13" Height="13" />
+                                                <TextBlock Text="{l:T 'Add a section'}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <Button.Flyout>
+                                                <Flyout Placement="BottomEdgeAlignedLeft">
+                                                    <ItemsControl ItemsSource="{Binding AddChoices}" Width="340">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Button Classes="wrapper" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="10,8" Cursor="Hand" Click="AddSection_Click">
+                                                                    <StackPanel Spacing="2">
+                                                                        <TextBlock Text="{Binding Title}" FontWeight="Bold" />
+                                                                        <TextBlock Text="{Binding Description}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                                                                    </StackPanel>
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Flyout>
+                                            </Button.Flyout>
+                                        </Button>
+                                    </StackPanel>
+                                </WrapPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- The sections chosen by the player, in their order -->
+                        <ItemsControl x:Name="uiModules" ItemsSource="{Binding Modules}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="26" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="module" Classes.editing="{Binding IsEditing}" IsVisible="{Binding IsVisibleOnPage}">
+                                        <StackPanel Spacing="12">
+                                            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding ShowTitle}">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <Border Width="4" Height="20" CornerRadius="2" VerticalAlignment="Center"
+                                                            Background="{Binding $parent[local:CommunityUserControl].DataContext.AccentColor, Converter={StaticResource accentBrushConv}}" />
+                                                    <TextBlock Classes="sectionTitle" Text="{Binding Title}" IsVisible="{Binding !ShowRenameBox}" VerticalAlignment="Center" />
+                                                    <TextBox Text="{Binding Title}" IsVisible="{Binding ShowRenameBox}" Width="340" MaxLength="60" UseFloatingWatermark="False" FontWeight="Bold" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsEditing}">
+                                                    <Button Classes="round small" Click="ModuleUp_Click" IsEnabled="{Binding CanMoveUp}" ToolTip.Tip="{l:T 'Move up'}">
+                                                        <Path Data="{StaticResource IconChevronDown}" Width="11" Height="11" RenderTransform="rotate(180deg)" />
+                                                    </Button>
+                                                    <Button Classes="round small" Click="ModuleDown_Click" IsEnabled="{Binding CanMoveDown}" ToolTip.Tip="{l:T 'Move down'}">
+                                                        <Path Data="{StaticResource IconChevronDown}" Width="11" Height="11" />
+                                                    </Button>
+                                                    <Button Classes="round small" Click="ModuleRemove_Click" ToolTip.Tip="{l:T 'Remove this section'}">
+                                                        <Path Data="{StaticResource IconTrash}" Width="12" Height="12" Fill="IndianRed" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                            <ContentControl Content="{Binding}" />
+                                            <TextBlock Classes="muted" FontSize="13" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                            <ItemsControl.DataTemplates>
+                                <!-- Statistics -->
+                                <DataTemplate DataType="vm:StatsModuleView">
+                                    <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1">
+                                        <WrapPanel>
+                                            <StackPanel Classes="stat">
+                                                <TextBlock Classes="label" Text="{l:T 'PLAYTIME'}" />
+                                                <TextBlock Classes="value" Text="{Binding Stats.TotalMinutes, Converter={StaticResource gameTimeConv}}" />
+                                            </StackPanel>
+                                            <StackPanel Classes="stat">
+                                                <TextBlock Classes="label" Text="{l:T 'GAMES PLAYED'}" />
+                                                <TextBlock Classes="value" Text="{Binding Stats.GamesPlayed}" />
+                                            </StackPanel>
+                                            <StackPanel Classes="stat">
+                                                <TextBlock Classes="label" Text="{l:T 'COMPLETED'}" />
+                                                <TextBlock Classes="value" Text="{Binding Stats.Completed}" />
+                                            </StackPanel>
+                                            <StackPanel Classes="stat">
+                                                <TextBlock Classes="label" Text="{l:T 'PLAYED THIS WEEK'}" />
+                                                <TextBlock Classes="value" Text="{Binding Stats.PlayedThisWeek, Converter={StaticResource countConv}, ConverterParameter='{}{0} game|{0} games'}" />
+                                            </StackPanel>
+                                        </WrapPanel>
+                                    </Border>
+                                </DataTemplate>
+
+                                <!-- Games: a showcase of chosen games, or the games played lately / the most / completed -->
+                                <DataTemplate DataType="vm:GamesModuleView">
+                                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,4">
+                                            <ItemsControl ItemsSource="{Binding Games}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" Spacing="16" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Classes="gameCard" Width="150" VerticalAlignment="Top" Click="ModuleGame_Click">
+                                                            <StackPanel Spacing="7">
+                                                                <local:AspectBox Ratio="1.5">
+                                                                    <Panel Classes="lift">
+                                                                        <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
+                                                                                BoxShadow="{Binding #moduleCover.AccentColor, Converter={StaticResource accentShadowConv}, ConverterParameter='14 30 -8 0.7'}" />
+                                                                        <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                                            <local:CacheImage x:Name="moduleCover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding Game}" />
+                                                                        </Border>
+                                                                        <Button Classes="round small removeGame" Click="RemoveGame_Click" ToolTip.Tip="{l:T 'Remove'}"
+                                                                                IsVisible="{Binding $parent[ItemsControl].DataContext.CanRemoveGames}">
+                                                                            <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="White" StrokeThickness="1.8" Fill="Transparent" Width="10" Height="10" Stretch="Uniform" />
+                                                                        </Button>
+                                                                    </Panel>
+                                                                </local:AspectBox>
+                                                                <TextBlock Classes="cardTitle" Text="{Binding Title}" />
+                                                                <TextBlock Classes="cardInfo" Text="{Binding Caption}" />
+                                                            </StackPanel>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <Button Classes="addGame" Width="150" Height="225" VerticalAlignment="Top" Click="AddGame_Click" IsVisible="{Binding CanAddGame}" ToolTip.Tip="{l:T 'Add a game'}">
+                                                <StackPanel Spacing="8">
+                                                    <Path Data="{StaticResource IconAddSimple}" Width="26" Height="26" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" />
+                                                    <TextBlock Classes="muted" Text="{l:T 'Add a game'}" HorizontalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </StackPanel>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </DataTemplate>
+
+                                <!-- Favorite game, shown large -->
+                                <DataTemplate DataType="vm:FavoriteModuleView">
+                                    <Panel>
+                                        <Border Height="250" CornerRadius="16" ClipToBounds="True" Background="{DynamicResource Brush.Surface}" IsVisible="{Binding HasGame}">
+                                            <Panel>
+                                                <local:CacheImage x:Name="favoriteArt" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" Data="{Binding Game.Game}" />
+                                                <Border>
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                                            <GradientStop Color="{DynamicResource GameVault.Colors.Background}" Offset="0" />
+                                                            <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundSoft}" Offset="0.45" />
+                                                            <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundClear}" Offset="1" />
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                </Border>
+                                                <Grid ColumnDefinitions="Auto,*" Margin="24" VerticalAlignment="Center">
+                                                    <Border Width="134" Height="201" CornerRadius="10" ClipToBounds="True" BoxShadow="0 18 40 -12 #CC000000" Margin="0,0,24,0">
+                                                        <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game.Game}" />
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
+                                                        <TextBlock Classes="display" FontSize="32" Text="{Binding Game.Title}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Details}" FontSize="14" Opacity="0.85" TextWrapping="Wrap" />
+                                                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                                                            <Button Classes="ghost small" Content="{l:T 'Game page'}" Click="FavoriteGame_Click" Background="{DynamicResource Brush.Surface}" />
+                                                            <Button Classes="ghost small" Content="{l:T 'Change'}" Click="AddGame_Click" IsVisible="{Binding CanChoose}" Background="{DynamicResource Brush.Surface}" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Panel>
+                                        </Border>
+                                        <Button Classes="addGame" Height="120" HorizontalAlignment="Stretch" Click="AddGame_Click" IsVisible="{Binding ShowChooseTile}">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <Path Data="{StaticResource IconAddSimple}" Width="20" Height="20" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" />
+                                                <TextBlock Classes="muted" Text="{l:T 'Choose your favorite game'}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Panel>
+                                </DataTemplate>
+
+                                <!-- Text of the player's own -->
+                                <DataTemplate DataType="vm:TextModuleView">
+                                    <Panel>
+                                        <TextBlock Text="{Binding Text}" IsVisible="{Binding ShowText}" FontSize="14.5" TextWrapping="Wrap" LineHeight="22" MaxWidth="900" HorizontalAlignment="Left" />
+                                        <TextBox Text="{Binding Text}" IsVisible="{Binding IsEditing}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="110" MaxLength="1500"
+                                                 UseFloatingWatermark="False" Watermark="{l:T 'Write something about you.'}" />
+                                    </Panel>
+                                </DataTemplate>
+
+                                <!-- Badges -->
+                                <DataTemplate DataType="vm:BadgesModuleView">
+                                    <ItemsControl ItemsSource="{Binding Badges}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Classes="badge" ToolTip.Tip="{Binding NextText}">
+                                                    <Grid ColumnDefinitions="Auto,*">
+                                                        <Border Width="46" Height="46" CornerRadius="23" VerticalAlignment="Top"
+                                                                Background="{Binding $parent[local:CommunityUserControl].DataContext.AccentColor, Converter={StaticResource accentBrushConv}, ConverterParameter=0.9}">
+                                                            <Path Data="{Binding IconGeometry}" Fill="White" Width="20" Height="20" Stretch="Uniform" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="12,0,0,0" Spacing="3">
+                                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" />
+                                                            <TextBlock Text="{Binding Description}" Classes="muted" FontSize="12.5" />
+                                                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                                                <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="5" MinWidth="0" VerticalAlignment="Center"
+                                                                             Foreground="{Binding $parent[local:CommunityUserControl].DataContext.AccentColor, Converter={StaticResource accentBrushConv}}" />
+                                                                <TextBlock Grid.Column="1" Text="{Binding LevelText}" FontSize="11.5" FontWeight="Bold" Margin="8,0,0,0" />
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DataTemplate>
+                            </ItemsControl.DataTemplates>
+                        </ItemsControl>
 
                         <!-- All their games -->
                         <StackPanel Spacing="12">

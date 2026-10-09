@@ -256,10 +256,40 @@ namespace GameVault.UiTests
             Capture(session, output, "16-news", (Control)MainWindowViewModel.Instance.Popup!);
             MainWindowViewModel.Instance.ClosePopup();
 
-            // Community: the profile of the signed in player
+            // Community: the profile of the signed in player, customized like a Steam profile
+            session.Server.Profiles[1] = new GameVault.Core.Library.ProfileDocument
+            {
+                Tagline = "Toujours une dernière partie avant de dormir",
+                Accent = "#F59E0B",
+                Modules =
+                {
+                    new() { Type = GameVault.Core.Library.ProfileModuleType.Favorite, Games = { games[0].ID } },
+                    new() { Type = GameVault.Core.Library.ProfileModuleType.Showcase, Title = "Mes indispensables", Games = { games[2].ID, games[14].ID, games[8].ID, games[11].ID, games[15].ID, games[7].ID } },
+                    new() { Type = GameVault.Core.Library.ProfileModuleType.Stats },
+                    new() { Type = GameVault.Core.Library.ProfileModuleType.Badges },
+                    new() { Type = GameVault.Core.Library.ProfileModuleType.Text, Text = "Fan de roguelikes et de metroidvanias. Je termine (presque) tout ce que je commence ; proposez-moi vos pépites indés !" },
+                    new() { Type = GameVault.Core.Library.ProfileModuleType.Recent },
+                },
+            }.ToJson();
+            admin.CreatedAt = DateTime.UtcNow.AddDays(-420);
+            ProfileService.ConfiguredUrl = session.Server.Url;
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Community);
             await Settle(4000);
             Capture(session, output, "12-community");
+            var communityPage = MainWindowViewModel.Instance.Community;
+            var communityScroll = communityPage.FindControl<ScrollViewer>("uiProgressScrollView")!;
+            communityScroll.Offset = new Avalonia.Vector(0, 900);
+            await Settle(2000);
+            Capture(session, output, "12b-community-sections");
+            communityScroll.Offset = default;
+            communityPage.FindControl<Button>("uiCustomize")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            await Settle(2500);
+            Capture(session, output, "12c-community-customize");
+            var showcaseModule = ((CommunityViewModel)communityPage.DataContext!).Modules.OfType<GamesModuleView>().First(m => m.Type == GameVault.Core.Library.ProfileModuleType.Showcase);
+            communityPage.PickGame(showcaseModule.Module);
+            await Settle(2500);
+            Capture(session, output, "12d-game-picker");
+            MainWindowViewModel.Instance.ClosePopup();
 
             // Living room mode at the sizes of common screens (1080p at 150 % is 1280 x 720)
             var living = session.Window.FindControl<LivingRoomUserControl>("uiLivingRoom")!;

@@ -6,6 +6,7 @@ builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = 
 var options = UploaderOptions.From(builder.Configuration);
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<UploadStore>();
+builder.Services.AddSingleton<ProfileStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
@@ -14,7 +15,8 @@ builder.Services.AddHttpClient<AdminCheck>(client =>
 
 var app = builder.Build();
 app.MapUploadEndpoints();
-app.Logger.LogInformation("GameVault Uploader {Version}: files in {Files}, users checked by {Server}", UploaderOptions.Version, options.FilesDirectory, options.GameVaultUrl);
+app.Logger.LogInformation("GameVault Uploader {Version}: files in {Files}, profiles in {Profiles}, users checked by {Server}", UploaderOptions.Version, options.FilesDirectory, options.ProfilesDirectory, options.GameVaultUrl);
+_ = app.Services.GetRequiredService<ProfileStore>();// says at once whether profiles are kept
 app.Run();
 
 public partial class Program { }
