@@ -161,6 +161,21 @@ namespace GameVault.UiTests
             Step("library loaded");
             await Settle(4000);
             Capture(session, output, "01-library");
+            // Each game of the banner: its cover and its art are shown
+            var heroLibrary = MainWindowViewModel.Instance.Library;
+            for (int h = 0; h < heroLibrary.Model.HeroItems.Count; h++)
+            {
+                heroLibrary.Model.HeroIndex = h;
+                await Settle(1500);
+                foreach (string name in new[] { "uiHeroCover", "uiHeroArt" })
+                {
+                    var image = heroLibrary.FindControl<CacheImage>(name)!;
+                    var shown = image.GetVisualDescendants().OfType<Image>().FirstOrDefault();
+                    Step($"hero {h} {heroLibrary.Model.CurrentHero?.Game.Title} {name}: source={image.GetImageSource() != null} opacity={shown?.Opacity} replacement={image.IsShowingReplacement}");
+                }
+                Capture(session, output, $"01-hero-{h}");
+            }
+            heroLibrary.Model.HeroIndex = 0;
 
             var library = MainWindowViewModel.Instance.Library;
             var scroll = library.FindControl<ScrollViewer>("uiMainScrollBar")!;

@@ -133,8 +133,6 @@ namespace gamevault.UserControls
                 return;
             }
 
-            TaskQueue.Instance.ClearQueue();
-
             string gameSortByFilter = ViewModel.SelectedGameFilterSortBy.Value;
             string gameOrderByFilter = (bool)uiFilterOrderBy.IsChecked ? "DESC" : "ASC";
             ViewModel.GameCards.Clear();

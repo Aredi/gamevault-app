@@ -258,10 +258,14 @@ namespace gamevault.UserControls
             InitializeComponent();
         }
 
+        /// <summary>Changes with each new image asked for: a download that ends late does not replace a newer image.</summary>
+        internal int DataGeneration { get; private set; }
+
         private async Task DataChanged(object? newData)
         {
             if (newData == null)
                 return;
+            DataGeneration++;
             // A recycled card must not show the previous game's image while the new one loads
             if (ImageCacheType is ImageCache.GameCover or ImageCache.GameBackground)
                 SetOpacity(0, fade: false);

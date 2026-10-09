@@ -39,6 +39,8 @@ namespace GameVault.UiTests
         /// real GameVault server: 200 with the part only, its size in X-Download-Size and no Content-Range.
         /// </summary>
         public bool StandardRanges { get; set; }
+        /// <summary>How long images take to arrive (a slow server or connection).</summary>
+        public TimeSpan MediaDelay { get; set; } = TimeSpan.Zero;
         /// <summary>The games the "igdb" provider knows: its search returns those sharing a word with the query.</summary>
         public ConcurrentBag<MinimalGame> ProviderCatalog { get; } = new();
         /// <summary>The mappings received (PUT /api/games/{id}): game, provider, provider id.</summary>
@@ -133,6 +135,8 @@ namespace GameVault.UiTests
                     await Json(response, GameList(request));
                 else if ((match = Regex.Match(path, @"^/api/media/(\d+)$")).Success && Media.TryGetValue(int.Parse(match.Groups[1].Value), out byte[]? image))
                 {
+                    if (MediaDelay > TimeSpan.Zero)
+                        await Task.Delay(MediaDelay);
                     response.ContentType = "image/jpeg";
                     response.ContentLength64 = image.Length;
                     await response.OutputStream.WriteAsync(image);

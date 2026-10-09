@@ -1,18 +1,18 @@
-﻿using gamevault.ViewModels;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace gamevault.Helper
 {
+    /// <summary>
+    /// Downloads of the image cache: a few at a time, and one download per image however many controls ask for it
+    /// (the banner, the rows and the grid often show the same cover at once).
+    /// </summary>
     public class TaskQueue
     {
         #region Singleton
-        private static TaskQueue instance = null;
+        private static TaskQueue? instance;
         private static readonly object padlock = new object();
 
         public static TaskQueue Instance
@@ -21,59 +21,62 @@ namespace gamevault.Helper
             {
                 lock (padlock)
                 {
-                    if (instance == null)
-                    {
-                        instance = new TaskQueue();
-                    }
-                    return instance;
+                    return instance ??= new TaskQueue();
                 }
             }
         }
         #endregion
-        private SemaphoreSlim m_Semaphore;
-        private List<int> m_ProcessedIds;
-        private int maxProcessCount = 1;
 
-        public TaskQueue()
+        private const int MaxConcurrentDownloads = 4;
+        private readonly SemaphoreSlim slots = new(MaxConcurrentDownloads, MaxConcurrentDownloads);
+        private readonly Dictionary<int, Task> running = new();
+        private readonly object sync = new();
+
+        /// <summary>Runs the task, or waits for the one already running for this id.</summary>
+        public Task Enqueue(Func<Task> taskGenerator, int id)
         {
-            m_Semaphore = new SemaphoreSlim(maxProcessCount, maxProcessCount);
-            m_ProcessedIds = new List<int>();           
+            lock (sync)
+            {
+                if (running.TryGetValue(id, out Task? existing))
+                    return existing;
+                Task task = Run(taskGenerator, id);
+                running[id] = task;
+                return task;
+            }
         }
-        public async Task Enqueue(Func<Task> taskGenerator, int id)
+
+        private async Task Run(Func<Task> taskGenerator, int id)
         {
-            m_ProcessedIds.Add(id);
-            await m_Semaphore.WaitAsync();
+            // Asynchronous from here, so the task is registered before it can finish
+            await Task.Yield();
+            await slots.WaitAsync();
             try
             {
-                //Debug.WriteLine($"->Task stated with id: {id}");
                 await taskGenerator();
             }
             finally
             {
-                m_Semaphore.Release();
-                m_ProcessedIds.Remove(id);
-                //Debug.WriteLine($"###Task endet with id: {id}");
+                slots.Release();
+                lock (sync)
+                    running.Remove(id);
             }
         }
-        public void ClearQueue()
-        {
-            if (m_Semaphore != null)
-            {
-                m_Semaphore.Dispose();
-            }
-            m_Semaphore = new SemaphoreSlim(maxProcessCount, maxProcessCount);
-            m_ProcessedIds.Clear();
-        }
+
         public bool IsAlreadyInProcess(int id)
         {
-            return m_ProcessedIds.Contains(id);
+            lock (sync)
+                return running.ContainsKey(id);
         }
+
         public async Task WaitForProcessToFinish(int id)
         {
-            while (IsAlreadyInProcess(id))
-            {
-                await Task.Delay(25);
-            }
+            Task? task;
+            lock (sync)
+                running.TryGetValue(id, out task);
+            if (task == null)
+                return;
+            try { await task; }
+            catch (Exception ignored) { GameVault.Core.Log.Ignored(ignored); }
         }
     }
 }

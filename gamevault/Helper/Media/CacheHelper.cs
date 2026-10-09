@@ -34,6 +34,7 @@ namespace gamevault.Helper
         internal static async Task LoadImageCacheToUIAsync(int identifier, int imageId, string cachePath, ImageCache cacheType, CacheImage img)
         {
             string cacheFile = Path.Combine(cachePath, $"{identifier}.{imageId}");
+            int generation = img.DataGeneration;
             try
             {
                 if (imageId == -1)
@@ -60,16 +61,27 @@ namespace gamevault.Helper
                     string[] files = Directory.GetFiles(cachePath, $"{identifier}.*");
                     if (LoginManager.Instance.IsLoggedIn())
                     {
-                        //when we are online we download the new image and delete an outdated one if available
-                        if (files.Length > 0)
+                        //when we are online we download the new image (once, whoever asks) and delete an outdated one
+                        await TaskQueue.Instance.Enqueue(async () =>
                         {
-                            File.Delete(files[0]);
-                        }
-                        await TaskQueue.Instance.Enqueue(() => WebHelper.DownloadImageFromUrlAsync($"{SettingsViewModel.Instance.ServerUrl}/api/media/{imageId}", cacheFile), imageId);
+                            if (File.Exists(cacheFile))
+                                return;
+                            foreach (string outdated in Directory.GetFiles(cachePath, $"{identifier}.*"))
+                            {
+                                if (outdated == cacheFile || outdated.EndsWith(".part"))
+                                    continue;
+                                try { File.Delete(outdated); }
+                                catch (Exception ignored) { Log.Ignored(ignored); }
+                            }
+                            await WebHelper.DownloadImageFromUrlAsync($"{SettingsViewModel.Instance.ServerUrl}/api/media/{imageId}", cacheFile);
+                        }, imageId);
+                        if (generation != img.DataGeneration)
+                            return;
                         await img.SetImageFileAsync(cacheFile);
                     }
                     else
                     {
+                        files = files.Where(f => !f.EndsWith(".part")).ToArray();
                         if (files.Length > 0)
                         {
                             //if we are offline, we will try to load an old image with the same identifier
@@ -87,17 +99,21 @@ namespace gamevault.Helper
             catch (Exception ex)
             {
                 GameVault.Core.Log.Ignored(ex);
+                if (generation != img.DataGeneration)
+                    return;
                 try
                 {
                     if (TaskQueue.Instance.IsAlreadyInProcess(imageId))
-                    {
                         await TaskQueue.Instance.WaitForProcessToFinish(imageId);
+                    if (File.Exists(cacheFile) && generation == img.DataGeneration)
+                    {
                         await img.SetImageFileAsync(cacheFile);
                         return;
                     }
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
-                img.SetReplacement();
+                if (generation == img.DataGeneration)
+                    img.SetReplacement();
             }
         }
         internal static async Task EnsureImageCacheForGame(Game game)
@@ -174,7 +190,7 @@ namespace gamevault.Helper
                     var files = Directory.GetFiles(LoginManager.Instance.GetUserProfile().ImageCacheDir, "*.*", SearchOption.AllDirectories);
                     foreach (string file in files)
                     {
-                        if (file == imageOptimizationMetadata)
+                        if (file == imageOptimizationMetadata || file.EndsWith(".part"))
                             continue;
                         try
                         {
@@ -223,7 +239,7 @@ namespace gamevault.Helper
             string cachePath = LoginManager.Instance.GetUserProfile().ImageCacheDir;
             // The cache folders only exist once an image was cached (games without cover/background)
             string? FindCached(string folder) => Directory.Exists(Path.Combine(cachePath, folder))
-                ? Directory.GetFiles(Path.Combine(cachePath, folder), $"{game.ID}.*").FirstOrDefault()
+                ? Directory.GetFiles(Path.Combine(cachePath, folder), $"{game.ID}.*").FirstOrDefault(f => !f.EndsWith(".part"))
                 : null;
             var boxArt = FindCached("gbox");
             var background = FindCached("gbg");

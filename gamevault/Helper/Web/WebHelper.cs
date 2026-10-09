@@ -136,7 +136,10 @@ namespace gamevault.Helper
             var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             var imageBytes = await response.Content.ReadAsByteArrayAsync();
-            await File.WriteAllBytesAsync(cacheFile, imageBytes);
+            // Written aside then moved: a cover being read never is a half-written file
+            string part = cacheFile + ".part";
+            await File.WriteAllBytesAsync(part, imageBytes);
+            File.Move(part, cacheFile, overwrite: true);
         }
         public static async Task<Bitmap> DownloadImageFromUrlAsync(string imageUrl)
         {
