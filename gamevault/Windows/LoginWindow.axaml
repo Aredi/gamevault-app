@@ -168,7 +168,11 @@
                         <TextBlock Text="{l:T 'OR'}" Margin="10,0,10,0" />
                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                     </StackPanel>
-                    <CheckBox IsChecked="{Binding LoginUser.IsLoggedInWithSSO}" IsEnabled="{Binding LoginServerInfo.IsSSOEnabled}" Content="{l:T 'Sign in using your Identity Provider'}" HorizontalAlignment="Center" Margin="0,15,0,0" />
+                    <!-- The server signs in through an identity provider (Authentik, with the Plex accounts): one click -->
+                    <uc:IconButton x:Name="uiSsoLogin" Text="{l:T 'Sign in with Plex / your account (SSO)'}" Icon="{StaticResource IconLogin}" IconMargin="0,0,8,0"
+                                   Height="38" FontSize="15" HorizontalAlignment="Stretch" Margin="0,15,0,0" Click="SsoLogin_Click"
+                                   IsVisible="{Binding LoginServerInfo.IsSSOEnabled}" />
+                    <CheckBox IsChecked="{Binding LoginUser.IsLoggedInWithSSO}" IsEnabled="{Binding LoginServerInfo.IsSSOEnabled}" Content="{l:T 'Sign in using your Identity Provider'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
                 </StackPanel>
                 <uc:IconButton Text="{l:T 'Save'}" Kind="Skeleton" Height="30" BorderThickness="1" Margin="0,0,120,10" Width="100" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="SaveWithoutLogin_Click">
                     <uc:IconButton.IsEnabled>

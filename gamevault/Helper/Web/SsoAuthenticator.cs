@@ -63,7 +63,7 @@ namespace gamevault.Helper
             var webView = new NativeWebView();
             var window = new Window
             {
-                Title = "GameVault - Sign in",
+                Title = "SanctuaryVault - " + gamevault.Localization.Loc.T("Sign In"),
                 Width = 800,
                 Height = 600,
                 WindowStartupLocation = WindowStartupLocation.CenterScreen,

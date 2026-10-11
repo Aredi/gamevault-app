@@ -204,6 +204,12 @@ namespace gamevault.Windows
         {
             await SaveAndLogin();
         }
+        /// <summary>Signs in with the server's identity provider (SSO) at once.</summary>
+        private async void SsoLogin_Click(object sender, RoutedEventArgs e)
+        {
+            ViewModel.LoginUser.IsLoggedInWithSSO = true;
+            await SaveAndLogin();
+        }
         private async Task SaveAndLogin(bool saveOnly = false)
         {
             try
