@@ -17,6 +17,29 @@ namespace GameVault.Uploader.Tests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref Calls);
+            string path = request.RequestUri!.AbsolutePath;
+            // Sign-in: "admin:secret" is the only valid account
+            if (path.EndsWith("/api/auth/basic/login"))
+                return Task.FromResult(request.Headers.Authorization?.Parameter == Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("admin:secret"))
+                    ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { access_token = "admin", refresh_token = "refresh-admin" }) }
+                    : new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = JsonContent.Create(new { message = "Unauthorized" }) });
+            if (path.EndsWith("/api/auth/refresh"))
+                return Task.FromResult(request.Headers.Authorization?.Parameter == "refresh-admin"
+                    ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { access_token = "admin", refresh_token = "refresh-admin" }) }
+                    : new HttpResponseMessage(HttpStatusCode.Unauthorized));
+            if (path.EndsWith("/api/games") && request.Headers.Authorization?.Parameter == "admin")
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new
+                    {
+                        data = new object[]
+                        {
+                            new { id = 5, title = "Escape from Duckov", version = (string?)null, release_date = (string?)null, deleted_at = (string?)null },
+                            new { id = 6, title = "Prey", version = "v1.0", release_date = "2017-01-01T00:00:00.000Z", deleted_at = (string?)null },
+                            new { id = 7, title = "Old", version = (string?)null, release_date = (string?)null, deleted_at = "2025-01-01T00:00:00.000Z" },
+                        },
+                    }),
+                });
             string token = request.Headers.Authorization?.Parameter ?? "";
             object? user = token switch
             {
@@ -57,7 +80,11 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("FILES_DIRECTORY", files);
                 host.UseSetting("PROFILES_DIRECTORY", profiles);
                 host.UseSetting("SAVEFILES_DIRECTORY", saves);
-                host.ConfigureServices(services => services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault));
+                host.ConfigureServices(services =>
+                {
+                    services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
+                    services.AddHttpClient<GameVaultProxy>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
+                });
             });
         }
 
@@ -210,6 +237,43 @@ namespace GameVault.Uploader.Tests
             Assert.Equal("[]", await Client("user").GetStringAsync("/savefiles/99"));
             using JsonDocument status = JsonDocument.Parse(await Client(null).GetStringAsync("/status"));
             Assert.True(status.RootElement.GetProperty("saveHistory").GetBoolean());
+        }
+
+        [Fact]
+        public async Task TheWebPage_IsServed_AndSignsInWithTheGameVaultAccount()
+        {
+            string page = await Client(null).GetStringAsync("/");
+            Assert.Contains("Publier un jeu", page);
+            Assert.Contains("app.js", page);
+            Assert.Equal(HttpStatusCode.OK, (await Client(null).GetAsync("/app.js")).StatusCode);
+
+            var bad = await Client(null).PostAsJsonAsync("/auth/login", new { username = "admin", password = "wrong" });
+            Assert.Equal(HttpStatusCode.Unauthorized, bad.StatusCode);
+            var good = await Client(null).PostAsJsonAsync("/auth/login", new { username = "admin", password = "secret" });
+            Assert.Equal(HttpStatusCode.OK, good.StatusCode);
+            using JsonDocument pair = JsonDocument.Parse(await good.Content.ReadAsStringAsync());
+            Assert.Equal("admin", pair.RootElement.GetProperty("access_token").GetString());
+
+            var refreshing = Client("refresh-admin");
+            Assert.Equal(HttpStatusCode.OK, (await refreshing.PostAsync("/auth/refresh", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).PostAsync("/auth/refresh", null)).StatusCode);
+
+            using JsonDocument me = JsonDocument.Parse(await Client("admin").GetStringAsync("/me"));
+            Assert.True(me.RootElement.GetProperty("admin").GetBoolean());
+            using JsonDocument player = JsonDocument.Parse(await Client("user").GetStringAsync("/me"));
+            Assert.False(player.RootElement.GetProperty("admin").GetBoolean());
+        }
+
+        [Fact]
+        public async Task TheGamesOfTheServer_AreFoundForTheWebPage()
+        {
+            using JsonDocument games = JsonDocument.Parse(await Client("admin").GetStringAsync("/games?search=escape"));
+            var list = games.RootElement.EnumerateArray().ToList();
+            Assert.Equal(2, list.Count);// the deleted one is left out
+            Assert.Equal("Escape from Duckov", list[0].GetProperty("title").GetString());
+            Assert.Equal(2017, list[1].GetProperty("year").GetInt32());
+            Assert.Equal("[]", await Client("admin").GetStringAsync("/games?search=e"));
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/games?search=escape")).StatusCode);
         }
     }
 }

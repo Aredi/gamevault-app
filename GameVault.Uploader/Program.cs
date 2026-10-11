@@ -13,8 +13,16 @@ builder.Services.AddHttpClient<AdminCheck>(client =>
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromSeconds(15);
 });
+builder.Services.AddHttpClient<GameVaultProxy>(client =>
+{
+    client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 var app = builder.Build();
+// The web page (wwwroot): publish a game from a browser, without the client
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.MapUploadEndpoints();
 app.Logger.LogInformation("GameVault Uploader {Version}: files in {Files}, profiles in {Profiles}, users checked by {Server}", UploaderOptions.Version, options.FilesDirectory, options.ProfilesDirectory, options.GameVaultUrl);
 _ = app.Services.GetRequiredService<ProfileStore>();// says at once whether profiles are kept

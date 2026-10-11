@@ -22,6 +22,14 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `PROFILES_DIRECTORY` | `/data/profiles` | Players' profiles (mount `/data` as a volume to keep them) |
 | `SAVEFILES_DIRECTORY` | `/savefiles` | The GameVault server's savefiles volume, read-only: older cloud saves can be restored |
 
+## Web page
+
+Open the service's address in a browser (e.g. https://gamevaultupload.example.com) to publish a game without the
+client: sign in with an administrator account of the GameVault server, drop an archive, check the title, version,
+year and type (the games already on the server are offered, to publish a new version of one), then **Publier**.
+The file is sent in chunks and an interrupted upload continues where it stopped. The sign-in goes through the service
+(`/auth/login`, `/auth/refresh`), so nothing has to be allowed on the GameVault server.
+
 ## API
 
 | | |
@@ -33,6 +41,8 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `DELETE /uploads/{name}` | drops an unfinished upload |
 | `GET /profiles/{userId}` | a player's profile (any signed-in player) |
 | `PUT /profiles/{userId}` | saves it (the player, or an administrator; a JSON object of at most 64 KB) |
+| `POST /auth/login`, `POST /auth/refresh` | GameVault sign-in for the web page (forwarded to the server) |
+| `GET /me`, `GET /games?search=` | the signed-in user, the games already on the server |
 | `GET /savefiles/{gameId}` | the cloud saves the server keeps for the signed-in player (newest first) |
 | `GET /savefiles/{gameId}/{name}` | one of them, to restore an older save |
 

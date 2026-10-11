@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SanctuaryVault · Publier un jeu</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237C5CFF'/%3E%3Cpath d='M8 7l9 5-9 5z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">▶</span> SanctuaryVault</div>
+    <div id="who" class="who" hidden><span id="whoName"></span> <button id="logout" class="link">Se déconnecter</button></div>
+  </header>
+
+  <main>
+    <!-- Sign in with the GameVault account -->
+    <section id="login" class="card narrow" hidden>
+      <h1>Publier un jeu</h1>
+      <p class="muted">Connectez-vous avec votre compte SanctuaryVault (administrateur) pour envoyer des jeux sur le serveur depuis n’importe quel navigateur.</p>
+      <form id="loginForm">
+        <label>Nom d’utilisateur<input id="username" autocomplete="username" required></label>
+        <label>Mot de passe<input id="password" type="password" autocomplete="current-password" required></label>
+        <label class="check"><input id="remember" type="checkbox"> Rester connecté sur cet appareil</label>
+        <button class="primary" id="loginButton" type="submit">Se connecter</button>
+        <p id="loginError" class="error" hidden></p>
+      </form>
+    </section>
+
+    <section id="notAdmin" class="card narrow" hidden>
+      <h1>Publier un jeu</h1>
+      <p>Seuls les administrateurs du serveur peuvent publier des jeux.</p>
+    </section>
+
+    <!-- Publish -->
+    <section id="publish" class="card" hidden>
+      <h1>Publier un jeu</h1>
+      <p class="muted">Envoie une archive (.zip, .7z, .rar, .iso, .tar.gz…) dans le dossier des jeux du serveur, avec le nom de fichier que SanctuaryVault comprend. Un envoi interrompu reprend où il s’était arrêté.</p>
+
+      <h2>1. Archive du jeu</h2>
+      <label id="drop" class="drop">
+        <input id="file" type="file" accept=".zip,.7z,.rar,.iso,.tar,.gz,.tgz,.xz,.txz,.bz2,.tbz2,.zst">
+        <span id="dropText">Déposez l’archive ici ou <u>choisissez un fichier</u></span>
+      </label>
+
+      <div id="details" hidden>
+        <h2>2. Jeu</h2>
+        <div class="row">
+          <label class="grow">Titre<input id="title" autocomplete="off"></label>
+          <label class="small">Version<input id="version" placeholder="1.0" autocomplete="off"></label>
+          <label class="small">Année<input id="year" inputmode="numeric" placeholder="2024" autocomplete="off"></label>
+        </div>
+        <div id="matches" class="matches" hidden>
+          <p class="muted">Déjà sur le serveur ? Choisissez le jeu pour publier ce fichier comme sa nouvelle version :</p>
+          <div id="matchList" class="matchList"></div>
+        </div>
+        <p id="existingHint" class="hint ok" hidden></p>
+        <p id="titleWarning" class="hint warn" hidden></p>
+        <p id="versionWarning" class="hint warn" hidden></p>
+        <div class="row">
+          <label class="grow">Type
+            <select id="type">
+              <option value="W_P">Jeu Windows, portable</option>
+              <option value="W_S">Jeu Windows, installateur</option>
+              <option value="L_P">Jeu Linux, portable</option>
+            </select>
+          </label>
+          <label class="check inline"><input id="earlyAccess" type="checkbox"> Accès anticipé</label>
+        </div>
+
+        <h2>Fichier sur le serveur</h2>
+        <p id="fileName" class="fileName"></p>
+
+        <div id="progress" class="progress" hidden>
+          <div class="bar"><div id="bar"></div></div>
+          <p id="progressText" class="muted"></p>
+        </div>
+        <p id="status" class="status" hidden></p>
+        <div class="actions">
+          <button class="primary" id="publishButton">Publier</button>
+          <button class="ghost" id="cancelButton" hidden>Interrompre</button>
+        </div>
+      </div>
+      <p class="muted foot">Les réglages de lancement (exécutable, paramètres de l’installateur) se font ensuite dans l’application, depuis les paramètres du jeu.</p>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

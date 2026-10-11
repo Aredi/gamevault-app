@@ -10,6 +10,8 @@ namespace GameVault.Uploader
     /// PUT  /profiles/{userId}                    saves it (the player themselves, or an administrator)
     /// GET  /savefiles/{gameId}                   the cloud saves the server keeps for the signed-in player
     /// GET  /savefiles/{gameId}/{name}            one of them (to restore an older save)
+    /// POST /auth/login, POST /auth/refresh       the GameVault sign-in for the web page (forwarded to the server)
+    /// GET  /me, GET /games?search=               the signed-in user, the games already on the server (web page)
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
@@ -17,6 +19,45 @@ namespace GameVault.Uploader
         public static void MapUploadEndpoints(this WebApplication app)
         {
             app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled }));
+
+            // The web page signs in with the GameVault account through here: same origin, nothing to allow on the server
+            app.MapPost("/auth/login", async (LoginRequest login, HttpRequest request, GameVaultProxy gameVault, CancellationToken ct) =>
+            {
+                if (string.IsNullOrWhiteSpace(login.Username) || string.IsNullOrEmpty(login.Password))
+                    return Results.Json(new { message = "Enter the user name and the password." }, statusCode: StatusCodes.Status400BadRequest);
+                var answer = await gameVault.LoginAsync(login.Username.Trim(), login.Password, request.Headers.UserAgent.ToString(), ct);
+                if (answer.Status != 200)
+                    await Task.Delay(800, ct);// a little slower to guess passwords
+                return Results.Content(answer.Body, "application/json", statusCode: answer.Status);
+            });
+
+            app.MapPost("/auth/refresh", async (HttpRequest request, GameVaultProxy gameVault, CancellationToken ct) =>
+            {
+                string? authorization = request.Headers.Authorization;
+                if (string.IsNullOrEmpty(authorization))
+                    return Results.Json(new { message = "Sign in again." }, statusCode: StatusCodes.Status401Unauthorized);
+                var answer = await gameVault.RefreshAsync(authorization, ct);
+                return Results.Content(answer.Body, "application/json", statusCode: answer.Status);
+            });
+
+            app.MapGet("/me", async (HttpRequest request, AdminCheck users, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                return check.Allowed
+                    ? Results.Json(new { id = check.Id, username = check.User, admin = check.Admin })
+                    : Results.Json(new { error = check.Message }, statusCode: check.Status);
+            });
+
+            app.MapGet("/games", async (string? search, HttpRequest request, AdminCheck users, GameVaultProxy gameVault, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (string.IsNullOrWhiteSpace(search) || search.Trim().Length < 2)
+                    return Results.Json(Array.Empty<object>());
+                var games = await gameVault.SearchGamesAsync(request.Headers.Authorization!, search.Trim(), ct);
+                return Results.Json(games.Select(g => new { id = g.Id, title = g.Title, version = g.Version, year = g.Year }));
+            });
 
             app.MapGet("/savefiles/{gameId:int}", async (int gameId, HttpRequest request, AdminCheck users, SaveStore saves, CancellationToken ct) =>
             {
@@ -123,4 +164,6 @@ namespace GameVault.Uploader
             return await action(check.User);
         }
     }
+
+    public sealed record LoginRequest(string? Username, string? Password);
 }
