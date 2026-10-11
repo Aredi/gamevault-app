@@ -172,10 +172,37 @@ namespace gamevault.ViewModels
             set { status = value; OnPropertyChanged(); }
         }
         private Game? publishedGame;
+        #region Existing game
+        private List<ExistingGameChoice> existingMatches = new();
+        /// <summary>Games of the server with a close title: the file can become a new version of one of them.</summary>
+        public List<ExistingGameChoice> ExistingMatches
+        {
+            get => existingMatches;
+            set { existingMatches = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasExistingMatches)); }
+        }
+        public bool HasExistingMatches => ExistingMatches.Count > 0;
+
+        private Game? existingGame;
+        /// <summary>The game this file will be a new version of (null: a new game).</summary>
+        public Game? ExistingGame
+        {
+            get => existingGame;
+            set { existingGame = value; OnPropertyChanged(); }
+        }
+
+        private string? existingHint, titleWarning, versionWarning;
+        public string? ExistingHint { get => existingHint; set { existingHint = value; OnPropertyChanged(); } }
+        public string? TitleWarning { get => titleWarning; set { titleWarning = value; OnPropertyChanged(); } }
+        public string? VersionWarning { get => versionWarning; set { versionWarning = value; OnPropertyChanged(); } }
+        #endregion
+
         public Game? PublishedGame
         {
             get => publishedGame;
             set { publishedGame = value; OnPropertyChanged(); }
         }
     }
+
+    /// <summary>A game of the server offered as "publish as a new version of this game".</summary>
+    internal sealed record ExistingGameChoice(Game Game, string Info, bool IsSelected);
 }

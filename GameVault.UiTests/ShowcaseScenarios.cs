@@ -384,6 +384,22 @@ namespace GameVault.UiTests
             await Settle(5000);
             Capture(session, output, "18-auto-match");
             MainWindowViewModel.Instance.ClosePopup();
+
+            // Publish a Game: a new build of a game already on the server, its title typed differently
+            var publish = new gamevault.UserControls.SettingsComponents.PublishGameUserControl();
+            MainWindowViewModel.Instance.OpenPopup(publish);
+            var publishModel = (PublishGameViewModel)publish.DataContext!;
+            string publishSource = Path.Combine(session.LibraryRoot, "hollow knight v1.5.80");
+            Directory.CreateDirectory(publishSource);
+            publishModel.SourcePath = publishSource;
+            publishModel.Title = "hollow knight";
+            publishModel.Version = "1.5.80";
+            await Settle(2500);
+            Capture(session, output, "19-publish-new-version-typo");
+            publish.GetVisualDescendants().OfType<Button>().First(b => b.DataContext is ExistingGameChoice).RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            await Settle(1500);
+            Capture(session, output, "19b-publish-new-version");
+            MainWindowViewModel.Instance.ClosePopup();
         }
 
         private static Window MainWindow(TestSession session) => session.Window;

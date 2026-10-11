@@ -44,12 +44,106 @@ namespace gamevault.UserControls.SettingsComponents
             };
             if (ViewModel.IsUpload)
                 Loaded += async (_, _) => await CheckUploaderAsync();
+            // The games of the server with this title: the file can be published as their new version
+            existingSearch.Tick += async (_, _) =>
+            {
+                existingSearch.Stop();
+                await FindExistingGamesAsync();
+            };
+            ViewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(PublishGameViewModel.Title))
+                {
+                    existingSearch.Stop();
+                    existingSearch.Start();
+                }
+                else if (e.PropertyName is nameof(PublishGameViewModel.Year) or nameof(PublishGameViewModel.Version))
+                    EvaluateExistingGames();
+            };
             KeyDown += (_, e) =>
             {
                 if (e.Key == Key.Escape && ViewModel.IsIdle)
                     MainWindowViewModel.Instance.ClosePopup();
             };
         }
+
+        #region Existing game
+        private readonly Avalonia.Threading.DispatcherTimer existingSearch = new() { Interval = TimeSpan.FromMilliseconds(450) };
+        private List<Game> existingCandidates = new();
+        private int existingGeneration;
+
+        /// <summary>The chosen game has a colored border.</summary>
+        public static readonly Avalonia.Data.Converters.IValueConverter SelectedBorder =
+            new Avalonia.Data.Converters.FuncValueConverter<bool, Avalonia.Media.IBrush?>(selected =>
+                selected && Avalonia.Application.Current!.TryGetResource("Brush.Accent", null, out object? brush) ? brush as Avalonia.Media.IBrush : Avalonia.Media.Brushes.Transparent);
+
+        private static ServerGameTitle TitleOf(Game game) => new(game.Title ?? "", game.Version, game.ReleaseDate?.Year);
+
+        /// <summary>Asks the server for games with a title close to the one typed.</summary>
+        private async Task FindExistingGamesAsync()
+        {
+            int generation = ++existingGeneration;
+            string title = ViewModel.Title?.Trim() ?? "";
+            if (title.Length < 2)
+            {
+                existingCandidates = new();
+                EvaluateExistingGames();
+                return;
+            }
+            try
+            {
+                // The first words find the games written differently too ("Escape from duckov" → "Escape from Duckov")
+                string query = string.Join(' ', title.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(3));
+                string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?search={Uri.EscapeDataString(query)}&limit=20");
+                Game[] games = JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>();
+                if (generation != existingGeneration)
+                    return;
+                existingCandidates = games.Where(g => g.DeletedAt == null && !string.IsNullOrEmpty(g.Title) && ExistingGameMatch.IsCandidate(title, TitleOf(g)))
+                    .OrderByDescending(g => GameVault.Core.Library.TitleMatching.JaroWinkler(
+                        GameVault.Core.Library.TitleMatching.Normalize(title), GameVault.Core.Library.TitleMatching.Normalize(g.Title)))
+                    .Take(4).ToList();
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                existingCandidates = new();
+            }
+            EvaluateExistingGames();
+        }
+
+        /// <summary>Says whether the file will be a new version of a game, a second game written differently, or a new game.</summary>
+        private void EvaluateExistingGames()
+        {
+            string title = ViewModel.Title?.Trim() ?? "";
+            int? year = int.TryParse(ViewModel.Year, out int y) ? y : null;
+            Game? merged = existingCandidates.FirstOrDefault(g => ExistingGameMatch.MergesWith(title, year, TitleOf(g)));
+            Game? lookalike = merged == null ? existingCandidates.FirstOrDefault(g => ExistingGameMatch.SpelledDifferently(title, TitleOf(g))) : null;
+            ViewModel.ExistingGame = merged;
+            ViewModel.ExistingMatches = existingCandidates.Select(g => new ExistingGameChoice(g,
+                string.IsNullOrEmpty(g.Version) ? Loc.T("On the server, without version") : Loc.F("On the server: {0}", g.Version), g == merged)).ToList();
+            ViewModel.ExistingHint = merged == null ? null
+                : Loc.F("Will be added as a new version of '{0}': players who installed it will be offered the update.", merged.Title);
+            ViewModel.TitleWarning = lookalike == null ? null
+                : Loc.F("'{0}' is on the server, written differently: as it is, a second game would be created. Choose it above to publish a new version.", lookalike.Title);
+            string? tag = ExistingGameMatch.VersionTag(ViewModel.Version);
+            ViewModel.VersionWarning = merged == null ? null
+                : tag == null ? Loc.T("Enter the version of this file (e.g. 2.0): without it, it does not replace the current one.")
+                : string.Equals(tag, merged.Version, StringComparison.OrdinalIgnoreCase) || merged.Versions?.Any(v => string.Equals(v.Version, tag, StringComparison.OrdinalIgnoreCase)) == true
+                    ? Loc.F("Version {0} is already on the server.", tag)
+                    : null;
+        }
+
+        private void UseExistingGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ExistingGameChoice choice)
+                return;
+            // The exact title (and year tag) of that game: the server then adds the file as its new version
+            ViewModel.Year = choice.Game.ReleaseDate?.Year.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "";
+            ViewModel.Title = choice.Game.Title;
+            existingSearch.Stop();
+            EvaluateExistingGames();
+        }
+        #endregion
 
         private void Close_Click(object? sender, PointerReleasedEventArgs e)
         {
@@ -234,7 +328,7 @@ namespace gamevault.UserControls.SettingsComponents
                 }
 
                 ViewModel.Status = Loc.T("Waiting for the server to index the game...");
-                Game? game = await WaitForIndexedGameAsync(ViewModel.FileName, ViewModel.Title);
+                Game? game = await WaitForIndexedGameAsync(ViewModel.FileName, ViewModel.Title, ViewModel.ExistingGame?.ID);
                 if (game == null)
                 {
                     ViewModel.Status = Loc.F("{0} was created, but the server has not indexed it yet. Check that this folder is the one mounted as /files, then reindex from the admin console.", ViewModel.FileName);
@@ -290,7 +384,7 @@ namespace gamevault.UserControls.SettingsComponents
             }
         }
 
-        private static async Task<Game?> WaitForIndexedGameAsync(string fileName, string title)
+        private static async Task<Game?> WaitForIndexedGameAsync(string fileName, string title, int? existingGameId = null)
         {
             bool reindexRequested = false;
             for (int attempt = 0; attempt < 40; attempt++)
@@ -306,14 +400,27 @@ namespace gamevault.UserControls.SettingsComponents
                     string search = Uri.EscapeDataString(title);
                     string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?search={search}&limit=50");
                     var games = JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>();
-                    Game? match = games.FirstOrDefault(g => g.Path != null && Path.GetFileName(g.Path.Replace('\\', '/')) == fileName);
+                    Game? match = games.FirstOrDefault(g => HasFile(g, fileName));
                     if (match != null)
                         return match;
+                    // A new version: the existing game lists the file among its versions
+                    if (existingGameId != null)
+                    {
+                        Game? existing = JsonSerializer.Deserialize<Game>(await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{existingGameId}"));
+                        if (existing != null && HasFile(existing, fileName))
+                            return existing;
+                    }
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
                 await Task.Delay(TimeSpan.FromSeconds(3));
             }
             return null;
+        }
+
+        private static bool HasFile(Game game, string fileName)
+        {
+            static string? Name(string? path) => path == null ? null : Path.GetFileName(path.Replace('\\', '/'));
+            return Name(game.Path) == fileName || game.Versions?.Any(v => Name(v.FilePath) == fileName) == true;
         }
 
         private async Task SaveMetadataAsync(Game game)

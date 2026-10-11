@@ -967,5 +967,12 @@
   "Customized profiles are unavailable for the moment.": "Les profils personnalisés sont indisponibles pour le moment.",
   "The SanctuaryVault service can not be reached for the moment. Try again later.": "Le service SanctuaryVault est injoignable pour le moment. Réessayez plus tard.",
   "The metadata provider did not answer within {0} seconds: the server may be busy indexing games, or unable to reach the provider.": "Le fournisseur de métadonnées n'a pas répondu en {0} secondes : le serveur est peut-être occupé à indexer les jeux, ou n'arrive pas à joindre le fournisseur.",
-  "Searching the metadata provider...": "Recherche chez le fournisseur de métadonnées..."
+  "Searching the metadata provider...": "Recherche chez le fournisseur de métadonnées...",
+  "Already on the server? Choose the game to publish this file as its new version:": "Déjà sur le serveur ? Choisissez le jeu pour publier ce fichier comme sa nouvelle version :",
+  "On the server, without version": "Sur le serveur, sans version",
+  "On the server: {0}": "Sur le serveur : {0}",
+  "Will be added as a new version of '{0}': players who installed it will be offered the update.": "Sera ajouté comme nouvelle version de « {0} » : la mise à jour sera proposée aux joueurs qui l'ont installé.",
+  "'{0}' is on the server, written differently: as it is, a second game would be created. Choose it above to publish a new version.": "« {0} » est déjà sur le serveur, écrit différemment : en l'état, un second jeu serait créé. Choisissez-le ci-dessus pour publier une nouvelle version.",
+  "Enter the version of this file (e.g. 2.0): without it, it does not replace the current one.": "Indiquez la version de ce fichier (ex. 2.0) : sans elle, il ne remplace pas la version actuelle.",
+  "Version {0} is already on the server.": "La version {0} est déjà sur le serveur."
 }

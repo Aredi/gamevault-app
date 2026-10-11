@@ -2,6 +2,7 @@
              xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:gamevault.UserControls"
+             xmlns:sc="clr-namespace:gamevault.UserControls.SettingsComponents"
              x:Class="gamevault.UserControls.SettingsComponents.PublishGameUserControl"
              Focusable="True">
     <UserControl.Styles>
@@ -42,6 +43,41 @@
                             <TextBox Grid.Column="1" Text="{Binding Version}" Watermark="{l:T 'Version (1.0)'}" />
                             <TextBox Grid.Column="2" Text="{Binding Year}" Watermark="{l:T 'Year'}" />
                         </Grid>
+                        <!-- Already on the server: published as a new version of that game, not as a second game -->
+                        <StackPanel IsVisible="{Binding HasExistingMatches}" Margin="0,8,0,0" Spacing="6">
+                            <TextBlock Classes="hint" Text="{l:T 'Already on the server? Choose the game to publish this file as its new version:'}" />
+                            <ItemsControl ItemsSource="{Binding ExistingMatches}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Classes="wrapper" Margin="0,0,10,8" Padding="0" Cursor="Hand" Click="UseExistingGame_Click">
+                                            <Border CornerRadius="10" Padding="8" Width="260" BorderThickness="2" Background="{DynamicResource Brush.Background2}"
+                                                    BorderBrush="{Binding IsSelected, Converter={x:Static sc:PublishGameUserControl.SelectedBorder}}">
+                                                <Grid ColumnDefinitions="40,*">
+                                                    <Border Width="40" Height="60" CornerRadius="5" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                                        <controls:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" />
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="3">
+                                                        <TextBlock Text="{Binding Game.Title}" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Info}" Classes="hint" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                        <TextBlock Classes="hint" Text="{Binding ExistingHint}" Foreground="{DynamicResource Brush.Accent}" Opacity="1" FontWeight="SemiBold" Margin="0,4,0,0"
+                                   IsVisible="{Binding ExistingHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <TextBlock Classes="hint" Text="{Binding TitleWarning}" Foreground="{DynamicResource Brush.Warning}" Opacity="1" FontWeight="SemiBold" Margin="0,4,0,0"
+                                   IsVisible="{Binding TitleWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <TextBlock Classes="hint" Text="{Binding VersionWarning}" Foreground="{DynamicResource Brush.Warning}" Opacity="1" FontWeight="SemiBold" Margin="0,4,0,0"
+                                   IsVisible="{Binding VersionWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,8,0,0">
                             <ComboBox SelectedIndex="{Binding TypeIndex}" Width="260">
                                 <ComboBoxItem Content="{l:T 'Windows game, portable'}" />

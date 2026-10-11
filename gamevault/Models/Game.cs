@@ -127,6 +127,10 @@ namespace gamevault.Models
         [JsonPropertyName("provider_metadata")]
         public List<GameMetadata> ProviderMetadata { get; set; }
 
+        /// <summary>The files of this game on the server, one per version (when the server sends them).</summary>
+        [JsonPropertyName("versions")]
+        public List<GameVersionFile>? Versions { get; set; }
+
         /// <summary>
         /// user-defined metadata of the game
         /// </summary>
@@ -165,5 +169,15 @@ namespace gamevault.Models
 
         [JsonPropertyName("download_count")]
         public int DownloadCount { get; set; }
+    }
+
+    /// <summary>One file (version) of a game on the server.</summary>
+    public class GameVersionFile
+    {
+        [JsonPropertyName("file_path")]
+        public string? FilePath { get; set; }
+
+        [JsonPropertyName("version")]
+        public string? Version { get; set; }
     }
 }
