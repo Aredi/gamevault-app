@@ -6,6 +6,7 @@ using gamevault.UserControls;
 using gamevault.ViewModels;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
@@ -244,7 +245,17 @@ namespace gamevault
 
                 if (!string.IsNullOrEmpty(message))
                 {
-                    var response = await HandleMessage(message).ConfigureAwait(false);
+                    string? response;
+                    try
+                    {
+                        response = await HandleMessage(message).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        // An answer rather than a broken pipe: the caller (Playnite...) reads a line in any case
+                        Log.Error(ex, $"Pipe message failed: {message}");
+                        response = "error: " + ex.Message.Replace('\n', ' ');
+                    }
 
                     if (!string.IsNullOrEmpty(response))
                     {
@@ -468,7 +479,7 @@ namespace gamevault
         private async Task<Game?> GetInstalledGame(int id)
         {
             Game? game = null;
-            if (!InstallViewModel.Instance.InstalledGames.Any())
+            if ((await InstalledSnapshotAsync()).Count == 0)
             {
                 try
                 {
@@ -476,9 +487,18 @@ namespace gamevault
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
             }
-            game = InstallViewModel.Instance.InstalledGames.Where(g => g.Key.ID == id).Select(g => g.Key).FirstOrDefault();
+            game = (await InstalledSnapshotAsync()).Where(g => g.Key?.ID == id).Select(g => g.Key).FirstOrDefault();
             return game;
         }
+
+        /// <summary>
+        /// The installed games, read on the UI thread: the pipe is served on background threads while the UI may change
+        /// the list (an install, a restore), and enumerating it meanwhile throws.
+        /// </summary>
+        private static async Task<List<System.Collections.Generic.KeyValuePair<Game, string>>> InstalledSnapshotAsync() =>
+            Dispatcher.UIThread.CheckAccess()
+                ? InstallViewModel.Instance.InstalledGames.ToList()
+                : await Dispatcher.UIThread.InvokeAsync(() => InstallViewModel.Instance.InstalledGames.ToList());
 
         /// <summary>
         /// Get a game from the server or offline cache
@@ -782,7 +802,7 @@ namespace gamevault
                         if (game == null)
                             return "";
 
-                        var installDirectory = InstallViewModel.Instance.InstalledGames.Where(g => g.Key.ID == game.ID).Select(g => g.Value).FirstOrDefault();
+                        var installDirectory = (await InstalledSnapshotAsync()).Where(g => g.Key?.ID == game.ID).Select(g => g.Value).FirstOrDefault();
 
                         return installDirectory ?? "";
                     }
