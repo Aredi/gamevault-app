@@ -965,5 +965,7 @@
   "{0} game completed": "{0} jeu terminé",
   "{0} game this week": "{0} jeu cette semaine",
   "Customized profiles are unavailable for the moment.": "Les profils personnalisés sont indisponibles pour le moment.",
-  "The SanctuaryVault service can not be reached for the moment. Try again later.": "Le service SanctuaryVault est injoignable pour le moment. Réessayez plus tard."
+  "The SanctuaryVault service can not be reached for the moment. Try again later.": "Le service SanctuaryVault est injoignable pour le moment. Réessayez plus tard.",
+  "The metadata provider did not answer within {0} seconds: the server may be busy indexing games, or unable to reach the provider.": "Le fournisseur de métadonnées n'a pas répondu en {0} secondes : le serveur est peut-être occupé à indexer les jeux, ou n'arrive pas à joindre le fournisseur.",
+  "Searching the metadata provider...": "Recherche chez le fournisseur de métadonnées..."
 }

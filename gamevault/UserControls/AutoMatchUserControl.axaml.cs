@@ -156,7 +156,7 @@ namespace gamevault.UserControls
                 return;
             try
             {
-                string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/metadata/providers/{slug}/search?query={Uri.EscapeDataString(item.SearchTerm)}");
+                string json = await WebHelper.GetMetadataAsync($"{SettingsViewModel.Instance.ServerUrl}/api/metadata/providers/{slug}/search?query={Uri.EscapeDataString(item.SearchTerm)}");
                 MinimalGame[] results = JsonSerializer.Deserialize<MinimalGame[]>(json) ?? Array.Empty<MinimalGame>();
                 TitleMatch? best = TitleMatching.Best(item.Game.Path, results.Select(r => new TitleCandidate(r.Title ?? "", r.ReleaseDate)).ToList());
                 if (best == null)
@@ -194,7 +194,7 @@ namespace gamevault.UserControls
                 try
                 {
                     UpdateGameDto update = new() { MappingRequests = new List<MapGameDto> { new() { ProviderSlug = provider.Slug!, ProviderDataId = item.Proposal!.ProviderDataId } } };
-                    string json = await WebHelper.PutAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{item.Game.ID}", JsonSerializer.Serialize(update));
+                    string json = await WebHelper.PutMetadataAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{item.Game.ID}", JsonSerializer.Serialize(update));
                     Game? game = JsonSerializer.Deserialize<Game>(json);
                     if (game != null)
                     {

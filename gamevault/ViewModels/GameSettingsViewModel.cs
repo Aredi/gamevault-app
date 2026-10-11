@@ -131,6 +131,13 @@ namespace gamevault.ViewModels
             get { return launchParameter; }
             set { launchParameter = value; OnPropertyChanged(); }
         }
+        private string? remapStatus;
+        /// <summary>"Searching..." while the provider is asked, or why nothing came.</summary>
+        public string? RemapStatus
+        {
+            get => remapStatus;
+            set { remapStatus = value; OnPropertyChanged(); }
+        }
         public MinimalGame[]? RemapSearchResults
         {
             get { return remapSearchResults; }

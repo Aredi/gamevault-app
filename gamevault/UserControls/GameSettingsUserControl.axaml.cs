@@ -919,13 +919,19 @@ namespace gamevault.UserControls
             GameMetadataSearchTimer?.Stop();
             await GameMetadataSearch();
         }
+        private int metadataSearchGeneration;
         private async Task GameMetadataSearch()
         {
+            int generation = ++metadataSearchGeneration;
             this.Cursor = new Cursor(StandardCursorType.Wait);
+            ViewModel.RemapStatus = Loc.T("Searching the metadata provider...");
             try
             {
                 string query = Uri.EscapeDataString(GameMetadataSearchTimer.Data ?? "");
-                string currentShownUser = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/metadata/providers/{ViewModel.MetadataProviders?[ViewModel.SelectedMetadataProviderIndex]?.Slug}/search?query={query}");
+                string currentShownUser = await WebHelper.GetMetadataAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/metadata/providers/{ViewModel.MetadataProviders?[ViewModel.SelectedMetadataProviderIndex]?.Slug}/search?query={query}");
+                // A newer search was started meanwhile: its results are the ones shown
+                if (generation != metadataSearchGeneration)
+                    return;
                 MinimalGame[] results = JsonSerializer.Deserialize<MinimalGame[]>(currentShownUser) ?? Array.Empty<MinimalGame>();
                 // Ranked by how well they match the game's file (the rules RoMM uses), the likely one first
                 string file = ViewModel.Game?.Path ?? GameMetadataSearchTimer.Data ?? "";
@@ -935,13 +941,22 @@ namespace gamevault.UserControls
                 if (results.Length > 0 && results[0].MatchScore >= GameVault.Core.Library.TitleMatching.MinimumScore)
                     results[0].IsBestMatch = true;
                 ViewModel.RemapSearchResults = results;
+                ViewModel.RemapStatus = results.Length == 0 ? Loc.T("No game found") : null;
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Could not load metadata provider data. ({0})", ex.Message);
+                if (generation != metadataSearchGeneration)
+                    return;
+                string message = Loc.F("Could not load metadata provider data. ({0})", WebExceptionHelper.TryGetServerMessage(ex));
+                MainWindowViewModel.Instance.AppBarText = message;
+                ViewModel.RemapStatus = message;
                 ViewModel.RemapSearchResults = null;
             }
-            this.Cursor = null;
+            finally
+            {
+                if (generation == metadataSearchGeneration)
+                    this.Cursor = null;
+            }
         }
         private async void Recache_Click(object sender, RoutedEventArgs e)
         {
@@ -995,7 +1010,7 @@ namespace gamevault.UserControls
             try
             {
                 UpdateGameDto updateGame = new UpdateGameDto() { MappingRequests = new List<MapGameDto>() { new MapGameDto() { ProviderSlug = providerSlug, ProviderDataId = providerId, ProviderPriority = priority } } };
-                string remappedGame = await WebHelper.PutAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{gameId}", JsonSerializer.Serialize(updateGame));
+                string remappedGame = await WebHelper.PutMetadataAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{gameId}", JsonSerializer.Serialize(updateGame));
                 ViewModel.Game = JsonSerializer.Deserialize<Game>(remappedGame);
                 success = true;
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully re-mapped {0}", ViewModel.Game.Title);

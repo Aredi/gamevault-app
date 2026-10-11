@@ -415,6 +415,8 @@
                         <TextBlock Classes="section" Text="{l:T 'Remap Game'}" />
                         <TextBlock Classes="text" Text="{l:T 'Is the mapped game incorrect or missing? Manually search the provider and remap it here.'}" />
                         <TextBox x:Name="uiRemapSearch" Classes="search" UseFloatingWatermark="False" Height="32" Margin="0,10,0,0" TextChanged="ProviderGameSearch_TextChanged" />
+                        <TextBlock Classes="muted" FontSize="12.5" Margin="2,6,0,0" TextWrapping="Wrap" Text="{Binding RemapStatus}"
+                                   IsVisible="{Binding RemapStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                       </StackPanel>
                       <!-- The results take the rest of the page and scroll: every result can be reached -->
                       <ScrollViewer MinHeight="200" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

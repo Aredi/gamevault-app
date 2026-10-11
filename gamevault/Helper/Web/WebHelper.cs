@@ -115,6 +115,35 @@ namespace gamevault.Helper
             return await response.Content.ReadAsStringAsync();
         }
 
+        /// <summary>
+        /// Metadata providers (IGDB...) answer through the server, which waits for them in turn, and mapping a game
+        /// downloads its images: these requests get more than the usual 20 s.
+        /// </summary>
+        public static readonly TimeSpan MetadataTimeout = TimeSpan.FromSeconds(90);
+
+        internal static Task<string> GetMetadataAsync(string url) => SendMetadataAsync(HttpMethod.Get, url, null);
+        internal static Task<string> PutMetadataAsync(string url, string payload) => SendMetadataAsync(HttpMethod.Put, url, payload);
+
+        private static async Task<string> SendMetadataAsync(HttpMethod method, string url, string? payload)
+        {
+            using var request = new HttpRequestMessage(method, url);
+            if (payload != null)
+                request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+            foreach (var header in AdditionalRequestHeaders ?? new List<RequestHeader>())
+                request.Headers.TryAddWithoutValidation(header.Name, header.Value);
+            using var timeout = new System.Threading.CancellationTokenSource(MetadataTimeout);
+            try
+            {
+                using HttpResponseMessage response = await HttpClient.SendLongAsync(request, timeout.Token);
+                await WebExceptionHelper.EnsureSuccessStatusCode(response);
+                return await response.Content.ReadAsStringAsync();
+            }
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                throw new TimeoutException(gamevault.Localization.Loc.F("The metadata provider did not answer within {0} seconds: the server may be busy indexing games, or unable to reach the provider.", (int)MetadataTimeout.TotalSeconds));
+            }
+        }
+
         internal static async Task<string> PutAsync(string url, string payload)
         {
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
