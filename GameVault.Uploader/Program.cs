@@ -7,6 +7,7 @@ var options = UploaderOptions.From(builder.Configuration);
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<UploadStore>();
 builder.Services.AddSingleton<ProfileStore>();
+builder.Services.AddSingleton<SaveStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
@@ -17,6 +18,7 @@ var app = builder.Build();
 app.MapUploadEndpoints();
 app.Logger.LogInformation("GameVault Uploader {Version}: files in {Files}, profiles in {Profiles}, users checked by {Server}", UploaderOptions.Version, options.FilesDirectory, options.ProfilesDirectory, options.GameVaultUrl);
 _ = app.Services.GetRequiredService<ProfileStore>();// says at once whether profiles are kept
+_ = app.Services.GetRequiredService<SaveStore>();
 app.Run();
 
 public partial class Program { }

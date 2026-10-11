@@ -173,6 +173,22 @@ namespace gamevault.UserControls
             };
             yield return Page("Library", "IconNavLibrary", MainControl.Library);
             yield return Page("Downloads", "IconNavDownloads", MainControl.Downloads);
+            yield return new QuickSearchItem
+            {
+                Title = Loc.T("What to play tonight?"),
+                Subtitle = Loc.T("A game of the library at random, the forgotten ones first"),
+                Icon = Icon("IconLibraryDices"),
+                Kind = Loc.T("Action"),
+                Run = () => MainWindowViewModel.Instance.OpenPopup(new TonightUserControl()),
+            };
+            yield return new QuickSearchItem
+            {
+                Title = Loc.T("Storage"),
+                Subtitle = Loc.T("The room the installed games take, and the ones not played for months"),
+                Icon = Icon("IconHardDrive"),
+                Kind = Loc.T("Page"),
+                Run = () => MainWindowViewModel.Instance.OpenPopup(new StorageUserControl()),
+            };
             yield return Page("Community", "IconNavCommunity", MainControl.Community);
             yield return Page("Settings", "IconNavSettings", MainControl.Settings, "Themes, language, installation folders");
             if (LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN)

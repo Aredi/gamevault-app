@@ -17,6 +17,7 @@
         <conv:MappedTitleConverter x:Key="mappedTitleConv" />
         <conv:AccentShadowConverter x:Key="accentShadowConv" />
         <conv:AccentBrushConverter x:Key="accentBrushConv" />
+        <conv:PresenceConverter x:Key="presenceConv" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TextBlock.deleted">
@@ -123,16 +124,67 @@
                 <TextBlock DockPanel.Dock="Top" Classes="pageTitle" Text="{l:T 'Community'}" Margin="22,20,22,4" />
                 <TextBlock DockPanel.Dock="Top" Classes="muted" FontSize="13" Margin="22,0,22,14"
                            Text="{Binding Users.Length, Converter={StaticResource countConv}, ConverterParameter='{}{0} player|{0} players'}" />
+                <!-- What the players played lately, and whether this player shows what they play -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="12,6,12,14" Spacing="8">
+                    <StackPanel Spacing="4" IsVisible="{Binding HasRecentActivity}">
+                        <TextBlock Classes="muted" FontSize="11" FontWeight="Bold" LetterSpacing="1.2" Margin="10,0,0,2" Text="{l:T 'RECENT ACTIVITY'}" />
+                        <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="uiRecentActivity" ItemsSource="{Binding RecentActivity}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Classes="wrapper" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,5" Cursor="Hand" Click="ActivityItem_Click">
+                                            <Grid ColumnDefinitions="Auto,*">
+                                                <Border Width="26" Height="39" CornerRadius="4" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}" VerticalAlignment="Top">
+                                                    <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" DecodeWidthOverride="80" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Margin="9,0,0,0" Spacing="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Text}" FontSize="12.5" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                    <ToggleSwitch FontSize="12.5" Margin="10,2,0,0" IsChecked="{Binding ShareActivity}" OnContent="{l:T 'Show what I play'}" OffContent="{l:T 'Show what I play'}"
+                                  ToolTip.Tip="{l:T 'The other players see the game you are playing'}" />
+                </StackPanel>
                 <ListBox x:Name="uiSelectUser" ItemsSource="{Binding Users}" SelectionChanged="Users_SelectionChanged">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid ColumnDefinitions="Auto,*">
-                                <Border Width="38" Height="38" CornerRadius="19" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
-                                    <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding}" />
-                                </Border>
+                                <Panel>
+                                    <Border Width="38" Height="38" CornerRadius="19" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                        <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding}" />
+                                    </Border>
+                                    <!-- Online (green) or playing (accent) -->
+                                    <Ellipse Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Stroke="{DynamicResource Brush.Background}" StrokeThickness="2">
+                                        <Ellipse.Fill>
+                                            <MultiBinding Converter="{StaticResource presenceConv}" ConverterParameter="dot">
+                                                <Binding />
+                                                <Binding Path="$parent[local:CommunityUserControl].DataContext.ActivityVersion" />
+                                            </MultiBinding>
+                                        </Ellipse.Fill>
+                                        <Ellipse.IsVisible>
+                                            <MultiBinding Converter="{StaticResource presenceConv}" ConverterParameter="hasdot">
+                                                    <Binding />
+                                                    <Binding Path="$parent[local:CommunityUserControl].DataContext.ActivityVersion" />
+                                                </MultiBinding>
+                                        </Ellipse.IsVisible>
+                                    </Ellipse>
+                                </Panel>
                                 <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center" Spacing="1">
                                     <TextBlock Text="{Binding Username}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding Role, Converter={StaticResource roleNameConv}}" Classes="muted" FontSize="11.5" />
+                                    <TextBlock Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource presenceConv}" ConverterParameter="text">
+                                                <Binding />
+                                                <Binding Path="$parent[local:CommunityUserControl].DataContext.ActivityVersion" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
@@ -172,6 +224,25 @@
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Border Background="{DynamicResource Brush.Accent3}" CornerRadius="10" Padding="10,3">
                                         <TextBlock Text="{Binding CurrentShownUser.Role, Converter={StaticResource roleNameConv}}" FontSize="12" FontWeight="Bold" />
+                                    </Border>
+                                    <Border x:Name="uiPlayingBadge" CornerRadius="10" Padding="10,3" Background="{Binding AccentColor, Converter={StaticResource accentBrushConv}}">
+                                        <Border.IsVisible>
+                                            <MultiBinding Converter="{StaticResource presenceConv}" ConverterParameter="isplaying">
+                                                    <Binding Path="CurrentShownUser" />
+                                                    <Binding Path="ActivityVersion" />
+                                                </MultiBinding>
+                                        </Border.IsVisible>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Path Data="{StaticResource IconPlay}" Fill="White" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" />
+                                            <TextBlock FontSize="12" FontWeight="Bold" Foreground="White">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource presenceConv}" ConverterParameter="playing">
+                                                        <Binding Path="CurrentShownUser" />
+                                                        <Binding Path="ActivityVersion" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </StackPanel>
                                     </Border>
                                     <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Text="{Binding CurrentShownUser.FirstName}" />
                                 </StackPanel>

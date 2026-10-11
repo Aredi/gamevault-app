@@ -59,6 +59,9 @@ namespace gamevault.Windows
             if (PipeServiceHandler.Instance != null)// not started without a desktop session (tests)
                 PipeServiceHandler.Instance.IsReadyForCommands = true;
             NewGamesNotifier.Start();
+            // Who is online and what they play (not in the tests: no desktop session there)
+            if (PipeServiceHandler.Instance != null)
+                _ = ActivityService.Instance.StartAsync();
             // Savegames of games closed offline in a previous session
             Task.Run(async () =>
             {
@@ -253,7 +256,7 @@ namespace gamevault.Windows
                 uiPopupFrame.Height = videoWidth * 9 / 16 + titleBar;
                 return;
             }
-            if (popup is GameSettingsUserControl or UserSettingsUserControl or UserControls.SettingsComponents.PublishGameUserControl or AutoMatchUserControl)
+            if (popup is GameSettingsUserControl or UserSettingsUserControl or UserControls.SettingsComponents.PublishGameUserControl or AutoMatchUserControl or StorageUserControl)
             {
                 popup.Width = popup.Height = double.NaN;
                 uiPopupFrame.Background = (Avalonia.Media.IBrush?)this.FindResource("Brush.Background");
@@ -387,6 +390,7 @@ namespace gamevault.Windows
             LoginManager.Instance.StopOnlineTimer();
             if (PipeServiceHandler.Instance != null)
                 PipeServiceHandler.Instance.IsReadyForCommands = false;
+            _ = ActivityService.Instance.StopAsync();
             MainWindowViewModel.Instance.UserAvatar = null;
             this.Close();
         }

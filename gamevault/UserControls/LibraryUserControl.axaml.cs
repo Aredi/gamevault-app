@@ -428,51 +428,11 @@ namespace gamevault.UserControls
         }
 
 
-        private async void RandomGame_Click(object sender, RoutedEventArgs e)
+        /// <summary>"What to play tonight?": a game proposed among the library, with filters.</summary>
+        private void RandomGame_Click(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
-            ((Control)sender).IsEnabled = false;
-            Random random = new Random();
-            if (random.Next(0, 100) < 7)
-            {
-                try
-                {
-                    var video = new NativeWebView();
-                    uiRandomHost.Children.Add(video);
-                    uiRandomHost.IsVisible = true;
-                    video.NavigateToString("<html><body style='margin:0;background:transparent'><video src='https://phalco.de/images/gamevault/eastereggs/777.mp4' autoplay muted style='width:100%;height:100%'></video></body></html>");
-                    DispatcherTimer timer = new DispatcherTimer();
-                    timer.Interval = TimeSpan.FromMilliseconds(6000);
-                    timer.Tick += (s, e) =>
-                    {
-                        timer.Stop();
-                        uiRandomHost.IsVisible = false;
-                        uiRandomHost.Children.Clear();
-                        PlatformInfo.OpenUrl("https://www.ncpgambling.org/help-treatment/");
-                    };
-                    timer.Start();
-                }
-                catch (Exception ignored) { Log.Ignored(ignored); }
-            }
-            else
-            {
-                Game? result = null;
-                try
-                {
-                    string randomGame = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/random");
-                    result = JsonSerializer.Deserialize<Game>(randomGame);
-                }
-                catch (Exception ex)
-                {
-                    MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
-                }
-
-                if (result != null)
-                {
-                    MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(result, true));
-                }
-            }
-            ((Control)sender).IsEnabled = true;
+            MainWindowViewModel.Instance.OpenPopup(new TonightUserControl());
         }
         private readonly HashSet<int> busyCards = new HashSet<int>();
         private async void CardSettings_Click(object sender, RoutedEventArgs e)

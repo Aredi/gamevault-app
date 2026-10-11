@@ -34,18 +34,29 @@ namespace GameVault.Uploader.Tests
     {
         private readonly string files = Path.Combine(Path.GetTempPath(), $"gv-uploader-{Guid.NewGuid():N}");
         private readonly string profiles = Path.Combine(Path.GetTempPath(), $"gv-profiles-{Guid.NewGuid():N}");
+        private readonly string saves = Path.Combine(Path.GetTempPath(), $"gv-saves-{Guid.NewGuid():N}");
         private readonly FakeGameVault gameVault = new();
         private readonly WebApplicationFactory<Program> factory;
 
         public UploaderTests()
         {
             Directory.CreateDirectory(files);
+            // The server's savefiles volume: player 2 has three saves of game 7, player 1 one
+            string game7 = Path.Combine(saves, "users", "2", "games", "7");
+            Directory.CreateDirectory(game7);
+            File.WriteAllText(Path.Combine(game7, "1760000000000_aaaa-1111.zip"), "oldest");
+            File.WriteAllText(Path.Combine(game7, "1760100000000_bbbb-2222.zip"), "middle");
+            File.WriteAllText(Path.Combine(game7, "1760200000000_aaaa-1111.zip"), "newest");
+            File.WriteAllText(Path.Combine(game7, "notes.txt"), "not a save");
+            Directory.CreateDirectory(Path.Combine(saves, "users", "1", "games", "7"));
+            File.WriteAllText(Path.Combine(saves, "users", "1", "games", "7", "1760300000000_cccc-3333.zip"), "admin's");
             AdminCheck.ClearCache();
             factory = new WebApplicationFactory<Program>().WithWebHostBuilder(host =>
             {
                 host.UseSetting("GAMEVAULT_URL", "http://gamevault.test");
                 host.UseSetting("FILES_DIRECTORY", files);
                 host.UseSetting("PROFILES_DIRECTORY", profiles);
+                host.UseSetting("SAVEFILES_DIRECTORY", saves);
                 host.ConfigureServices(services => services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault));
             });
         }
@@ -55,6 +66,7 @@ namespace GameVault.Uploader.Tests
             factory.Dispose();
             try { Directory.Delete(files, true); } catch { }
             try { Directory.Delete(profiles, true); } catch { }
+            try { Directory.Delete(saves, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -181,6 +193,23 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.RequestEntityTooLarge, (await Client("user").PutAsync("/profiles/2", new StringContent(huge))).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await Client("user").GetAsync("/profiles/2")).StatusCode);
             Assert.Empty(Directory.GetFiles(profiles, "*.json"));
+        }
+
+        [Fact]
+        public async Task ThePlayersSaves_AreListedNewestFirst_AndOnlyTheirOwn()
+        {
+            using JsonDocument list = JsonDocument.Parse(await Client("user").GetStringAsync("/savefiles/7"));
+            var names = list.RootElement.EnumerateArray().Select(s => s.GetProperty("name").GetString()).ToList();
+            Assert.Equal(new[] { "1760200000000_aaaa-1111.zip", "1760100000000_bbbb-2222.zip", "1760000000000_aaaa-1111.zip" }, names);
+            Assert.Equal("bbbb-2222", list.RootElement[1].GetProperty("installationId").GetString());
+            Assert.Equal("middle", await Client("user").GetStringAsync("/savefiles/7/1760100000000_bbbb-2222.zip"));
+            // Another player's save, a path, or nothing signed in: refused
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("user").GetAsync("/savefiles/7/1760300000000_cccc-3333.zip")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("user").GetAsync("/savefiles/7/..%2F..%2F1%2Fgames%2F7%2F1760300000000_cccc-3333.zip")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/savefiles/7")).StatusCode);
+            Assert.Equal("[]", await Client("user").GetStringAsync("/savefiles/99"));
+            using JsonDocument status = JsonDocument.Parse(await Client(null).GetStringAsync("/status"));
+            Assert.True(status.RootElement.GetProperty("saveHistory").GetBoolean());
         }
     }
 }

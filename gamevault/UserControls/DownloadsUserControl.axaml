@@ -50,13 +50,21 @@
                     </StackPanel>
                 </Border>
             </StackPanel>
-            <Button Grid.Column="2" Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="DeleteAllDownloads_Click" ToolTip.Tip="{l:T 'Delete all Downloads'}"
-                    IsVisible="{Binding DownloadedGames.Count, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
-                <StackPanel Orientation="Horizontal" Spacing="7">
-                    <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
-                    <TextBlock Text="{l:T 'Delete all'}" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <Button x:Name="uiStorage" Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="Storage_Click" ToolTip.Tip="{l:T 'The room the installed games take, and the ones not played for months'}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Path Data="{StaticResource IconHardDrive}" Width="14" Height="14" />
+                        <TextBlock Text="{l:T 'Storage'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="DeleteAllDownloads_Click" ToolTip.Tip="{l:T 'Delete all Downloads'}"
+                        IsVisible="{Binding DownloadedGames.Count, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
+                        <TextBlock Text="{l:T 'Delete all'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </Grid>
 
         <!-- Nothing yet -->

@@ -77,6 +77,8 @@ namespace gamevault.Helper
                 : FindRunningGamesLinux(foundGames);
             // Online or not, Discord shows the game being played
             Avalonia.Threading.Dispatcher.UIThread.Post(() => DiscordHelper.Instance.SyncGameWithDiscordPresence(gamesToCountUp, foundGames));
+            // The other players see what is played
+            ActivityService.Instance.SetPlaying(gamesToCountUp.Count > 0 ? gamesToCountUp[0] : null);
             if (LoginManager.Instance.IsLoggedIn())
             {
                 try

@@ -278,6 +278,12 @@
                                             <TextBlock Text="{l:T 'Upload'}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
+                                    <Button Classes="ghost small" Click="SaveHistory_Click" ToolTip.Tip="{l:T 'The cloud saves the server keeps: restore an older one'}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Path Data="{StaticResource IconGameViewCalendar}" Width="14" Height="14" />
+                                            <TextBlock Text="{l:T 'History'}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
                                 </StackPanel>
                             </StackPanel>
                         </WrapPanel>

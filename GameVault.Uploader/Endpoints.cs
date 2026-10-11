@@ -8,13 +8,35 @@ namespace GameVault.Uploader
     /// DELETE /uploads/{name}                     drops an unfinished upload
     /// GET  /profiles/{userId}                    the profile chosen by a player (any signed-in player)
     /// PUT  /profiles/{userId}                    saves it (the player themselves, or an administrator)
+    /// GET  /savefiles/{gameId}                   the cloud saves the server keeps for the signed-in player
+    /// GET  /savefiles/{gameId}/{name}            one of them (to restore an older save)
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
     {
         public static void MapUploadEndpoints(this WebApplication app)
         {
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled }));
+
+            app.MapGet("/savefiles/{gameId:int}", async (int gameId, HttpRequest request, AdminCheck users, SaveStore saves, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!saves.Enabled)
+                    return Results.Json(new { error = "The save history is not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                return Results.Json(saves.List(check.Id, gameId).Select(s => new { name = s.Name, savedAt = s.SavedAt, size = s.Size, installationId = s.InstallationId }));
+            });
+
+            app.MapGet("/savefiles/{gameId:int}/{name}", async (int gameId, string name, HttpRequest request, AdminCheck users, SaveStore saves, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                // Only the signed-in player's own saves
+                string? path = saves.PathOf(check.Id, gameId, name);
+                return path == null ? Results.NotFound() : Results.File(path, "application/zip", name);
+            });
 
             app.MapGet("/profiles/{userId:int}", async (int userId, HttpRequest request, AdminCheck users, ProfileStore profiles, CancellationToken ct) =>
             {

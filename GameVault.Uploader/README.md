@@ -20,6 +20,7 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `GAMEVAULT_URL` | (required) | GameVault server, e.g. `http://gamevault-backend:8080` |
 | `FILES_DIRECTORY` | `/files` | Games folder |
 | `PROFILES_DIRECTORY` | `/data/profiles` | Players' profiles (mount `/data` as a volume to keep them) |
+| `SAVEFILES_DIRECTORY` | `/savefiles` | The GameVault server's savefiles volume, read-only: older cloud saves can be restored |
 
 ## API
 
@@ -32,6 +33,8 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `DELETE /uploads/{name}` | drops an unfinished upload |
 | `GET /profiles/{userId}` | a player's profile (any signed-in player) |
 | `PUT /profiles/{userId}` | saves it (the player, or an administrator; a JSON object of at most 64 KB) |
+| `GET /savefiles/{gameId}` | the cloud saves the server keeps for the signed-in player (newest first) |
+| `GET /savefiles/{gameId}/{name}` | one of them, to restore an older save |
 
 ## Profiles
 

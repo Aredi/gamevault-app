@@ -272,10 +272,24 @@ namespace GameVault.UiTests
                 },
             }.ToJson();
             admin.CreatedAt = DateTime.UtcNow.AddDays(-420);
+            // What the others played lately, and Zoé playing right now
+            var zoe = session.Server.Users[2];
+            var malik = session.Server.Users[3];
+            session.Server.Progresses.Enqueue(new Progress { ID = 88001, Game = games[14], User = zoe, MinutesPlayed = 610, State = State.COMPLETED.ToString(), LastPlayedAt = DateTime.UtcNow.AddHours(-3) });
+            session.Server.Progresses.Enqueue(new Progress { ID = 88002, Game = games[15], User = malik, MinutesPlayed = 95, State = State.PLAYING.ToString(), LastPlayedAt = DateTime.UtcNow.AddHours(-20) });
+            session.Server.Progresses.Enqueue(new Progress { ID = 88003, Game = games[3], User = zoe, MinutesPlayed = 2400, State = State.PLAYING.ToString(), LastPlayedAt = DateTime.UtcNow.AddDays(-2) });
+            ActivityService.Instance.Apply(new[]
+            {
+                new PlayerActivity { UserId = 2, State = "PLAYING", GameId = games[13].ID },
+                new PlayerActivity { UserId = 3, State = "ONLINE" },
+                new PlayerActivity { UserId = 1, State = "ONLINE" },
+            }, replaceAll: true);
             SanctuaryService.Current = session.Server.Url;
             ProfileService.Reset();
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Community);
             await Settle(4000);
+            await MainWindowViewModel.Instance.Community.ActivityChangedAsync();
+            await Settle(1000);
             Capture(session, output, "12-community");
             var communityPage = MainWindowViewModel.Instance.Community;
             var communityScroll = communityPage.FindControl<ScrollViewer>("uiProgressScrollView")!;
@@ -386,6 +400,34 @@ namespace GameVault.UiTests
             await Settle(1500);
             Capture(session, output, "19b-publish-new-version");
             MainWindowViewModel.Instance.ClosePopup();
+
+            // Storage, "What to play tonight?" and the cloud save history
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Downloads);
+            MainWindowViewModel.Instance.OpenPopup(new StorageUserControl());
+            await Settle(3000);
+            Capture(session, output, "20-storage");
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+            MainWindowViewModel.Instance.OpenPopup(new TonightUserControl());
+            await Settle(3500);
+            Capture(session, output, "21-tonight");
+            MainWindowViewModel.Instance.ClosePopup();
+            var hollowInstall = InstallViewModel.Instance.InstalledGames.First(g => g.Key.ID == games[2].ID);
+            Preferences.Set(AppConfigKey.InstallationId, "aaaa-1111", Path.Combine(hollowInstall.Value, "gamevault-exec"));
+            long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            session.Server.SaveVersions[games[2].ID] = new()
+            {
+                [$"{nowMs - 3_600_000}_aaaa-1111.zip"] = new byte[3_400_000],
+                [$"{nowMs - 86_400_000}_bbbb-2222.zip"] = new byte[3_300_000],
+                [$"{nowMs - 3 * 86_400_000L}_aaaa-1111.zip"] = new byte[3_100_000],
+                [$"{nowMs - 9 * 86_400_000L}_aaaa-1111.zip"] = new byte[2_900_000],
+            };
+            MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(games[2]));
+            await Settle(2500);
+            MainWindowViewModel.Instance.OpenPopup(new SaveHistoryUserControl(games[2], hollowInstall.Value));
+            await Settle(2500);
+            Capture(session, output, "22-save-history");
+            MainWindowViewModel.Instance.ClosePopup();
+            ActivityService.Instance.Apply(Array.Empty<PlayerActivity>(), replaceAll: true);
         }
 
         private static Window MainWindow(TestSession session) => session.Window;

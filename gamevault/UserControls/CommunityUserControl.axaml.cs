@@ -42,6 +42,7 @@ namespace gamevault.UserControls
                 if (e.Property == IsVisibleProperty && IsVisible)
                     this.Focus();
             };
+            ActivityService.Instance.Changed += async () => await ActivityChangedAsync();
         }
         private async void UserControl_Loaded(object? sender, RoutedEventArgs e)
         {
@@ -64,6 +65,7 @@ namespace gamevault.UserControls
         }
         public async Task InitUserList()
         {
+            _ = LoadRecentActivityAsync();
             string result = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users");
             var users = JsonSerializer.Deserialize<User[]>(result);
             users = BringCurrentUserToTop(users?.Where(u => u.DeletedAt == null)?.ToArray());
@@ -483,6 +485,58 @@ namespace gamevault.UserControls
         {
             if (ModuleOf(sender) is FavoriteModuleView { Game: not null } view)
                 MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(view.Game.Game));
+        }
+        #endregion
+
+        #region Activity
+        /// <summary>Someone came online or started a game: the titles of the games played are fetched once.</summary>
+        internal async Task ActivityChangedAsync()
+        {
+            foreach (int gameId in ActivityService.Instance.All.Where(a => a.IsPlaying).Select(a => a.GameId!.Value).Distinct().ToList())
+            {
+                if (Converter.PresenceConverter.GameTitles.ContainsKey(gameId))
+                    continue;
+                Game? known = MainWindowViewModel.Instance.Library?.Model.GameCards.FirstOrDefault(g => g.ID == gameId)
+                    ?? InstallViewModel.Instance.InstalledGames.Select(g => g.Key).FirstOrDefault(g => g?.ID == gameId);
+                try
+                {
+                    known ??= JsonSerializer.Deserialize<Game>(await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{gameId}"));
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+                if (known != null)
+                    Converter.PresenceConverter.GameTitles[gameId] = known.Metadata?.Title ?? known.Title;
+            }
+            ViewModel.ActivityVersion++;
+        }
+
+        /// <summary>The games played lately by all the players.</summary>
+        internal async Task LoadRecentActivityAsync()
+        {
+            try
+            {
+                string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/progresses?sortBy=updated_at:DESC&limit=30");
+                Progress[] progresses = JsonSerializer.Deserialize<PaginatedData<Progress>>(json)?.Data ?? Array.Empty<Progress>();
+                ViewModel.RecentActivity = progresses
+                    .Where(p => p.Game != null && p.User != null && p.LastPlayedAt != null && p.Game.DeletedAt == null && p.User.DeletedAt == null)
+                    .OrderByDescending(p => p.LastPlayedAt)
+                    .Take(12)
+                    .Select(p =>
+                    {
+                        string game = p.Game!.Metadata?.Title ?? p.Game.Title;
+                        string text = string.Equals(p.State, "COMPLETED", StringComparison.OrdinalIgnoreCase)
+                            ? Loc.F("{0} completed {1}", p.User!.Username, game)
+                            : Loc.F("{0} played {1}", p.User!.Username, game);
+                        return new ActivityFeedItem(p.User, p.Game, text, Converter.RelativeDate.Format(p.LastPlayedAt!.Value));
+                    })
+                    .ToList();
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private void ActivityItem_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is ActivityFeedItem item)
+                MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(item.Game));
         }
         #endregion
     }

@@ -116,45 +116,13 @@ namespace gamevault.Helper.Integrations
                         // Whatever happens, the save that is replaced can be taken back
                         if (ludusaviTitle != "" && localChange != null)
                             await KeepLocalCopy(gameId, ludusaviTitle);
-                        string tempFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                        Directory.CreateDirectory(tempFolder);
-                        try
+                        await RestoreArchiveAsync(async archive =>
                         {
-                            string archive = Path.Combine(tempFolder, "backup.zip");
-                            using (Stream contentStream = await response.Content.ReadAsStreamAsync(), fileStream = new FileStream(archive, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
-                            {
-                                await contentStream.CopyToAsync(fileStream);
-                            }
-
-                            await zipHelper.ExtractArchive(archive, tempFolder);
-                            var mappingFile = Directory.GetFiles(tempFolder, "mapping.yaml", SearchOption.AllDirectories);
-                            string extractFolder = "";
-                            if (mappingFile.Length < 1)
-                                throw new Exception(Loc.T("no savegame extracted"));
-
-                            extractFolder = Path.GetDirectoryName(Path.GetDirectoryName(mappingFile[0]));
-                            PrepareConfigFile(installationDir, Path.Combine(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "config.yaml"));
-                            Process process = new Process();
-                            ProcessShepherd.Instance.AddProcess(process);
-                            process.StartInfo = CreateProcessHeader();
-                            process.StartInfo.ArgumentList.Add("--config");
-                            process.StartInfo.ArgumentList.Add(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir);
-                            process.StartInfo.ArgumentList.Add("restore");
-                            process.StartInfo.ArgumentList.Add("--force");
-                            process.StartInfo.ArgumentList.Add("--path");
-                            process.StartInfo.ArgumentList.Add(extractFolder);
-                            process.Start();
-                            // Awaited: the restore runs while the UI waits to start the game
-                            await process.WaitForExitAsync();
-                            ProcessShepherd.Instance.RemoveProcess(process);
-                            WriteLastSync(installationDir);
-                            return CloudSaveStatus.RestoreSuccess;
-                        }
-                        finally
-                        {
-                            try { Directory.Delete(tempFolder, true); }
-                            catch (Exception ex) { Log.Ignored(ex); }
-                        }
+                            using Stream contentStream = await response.Content.ReadAsStreamAsync();
+                            using var fileStream = new FileStream(archive, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+                            await contentStream.CopyToAsync(fileStream);
+                        }, installationDir);
+                        return CloudSaveStatus.RestoreSuccess;
                     }
                     else
                     {
@@ -187,6 +155,71 @@ namespace gamevault.Helper.Integrations
         {
             try { Preferences.Set(AppConfigKey.LastCloudSync, DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), SettingsFile(installationDir)); }
             catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>Restores a cloud save archive (written by <paramref name="writeArchive"/>) with Ludusavi.</summary>
+        private async Task RestoreArchiveAsync(Func<string, Task> writeArchive, string installationDir)
+        {
+            string tempFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempFolder);
+            try
+            {
+                string archive = Path.Combine(tempFolder, "backup.zip");
+                await writeArchive(archive);
+                await zipHelper.ExtractArchive(archive, tempFolder);
+                var mappingFile = Directory.GetFiles(tempFolder, "mapping.yaml", SearchOption.AllDirectories);
+                string extractFolder = "";
+                if (mappingFile.Length < 1)
+                    throw new Exception(Loc.T("no savegame extracted"));
+
+                extractFolder = Path.GetDirectoryName(Path.GetDirectoryName(mappingFile[0]));
+                PrepareConfigFile(installationDir, Path.Combine(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "config.yaml"));
+                Process process = new Process();
+                ProcessShepherd.Instance.AddProcess(process);
+                process.StartInfo = CreateProcessHeader();
+                process.StartInfo.ArgumentList.Add("--config");
+                process.StartInfo.ArgumentList.Add(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir);
+                process.StartInfo.ArgumentList.Add("restore");
+                process.StartInfo.ArgumentList.Add("--force");
+                process.StartInfo.ArgumentList.Add("--path");
+                process.StartInfo.ArgumentList.Add(extractFolder);
+                process.Start();
+                // Awaited: the restore runs while the UI waits to start the game
+                await process.WaitForExitAsync();
+                ProcessShepherd.Instance.RemoveProcess(process);
+                WriteLastSync(installationDir);
+            }
+            finally
+            {
+                try { Directory.Delete(tempFolder, true); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+        }
+
+        /// <summary>
+        /// Restores an older cloud save (from the save history of the SanctuaryVault service), after keeping a local copy of
+        /// the current one, then makes it the current cloud save: the next start does not bring the newer one back.
+        /// </summary>
+        internal async Task<string> RestoreVersion(int gameId, string installationDir, string versionName)
+        {
+            if (!LoginManager.Instance.IsLoggedIn())
+                return CloudSaveStatus.RestoreFailed;
+            if (!SettingsViewModel.Instance.CloudSaves)
+                return CloudSaveStatus.SettingDisabled;
+            try
+            {
+                string ludusaviTitle = await LudusaviTitleOf(gameId);
+                if (ludusaviTitle != "" && await GetLocalSaveLastChange(ludusaviTitle) != null)
+                    await KeepLocalCopy(gameId, ludusaviTitle);
+                await RestoreArchiveAsync(archive => SaveHistoryService.DownloadAsync(gameId, versionName, archive), installationDir);
+                await BackupSaveGame(gameId, force: true);
+                return CloudSaveStatus.RestoreSuccess;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Restoring an older cloud save");
+                return CloudSaveStatus.RestoreFailed;
+            }
         }
 
         private async Task<string> LudusaviTitleOf(int gameId)

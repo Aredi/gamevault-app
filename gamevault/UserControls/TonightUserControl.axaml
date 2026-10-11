@@ -1,0 +1,82 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:gamevault.Converter"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.TonightUserControl"
+             Width="980" Focusable="True">
+    <UserControl.Resources>
+        <conv:PlainTextConverter x:Key="plainTextConv" />
+        <conv:AccentBrushConverter x:Key="accentBrushConv" />
+    </UserControl.Resources>
+    <!-- A game for tonight: the filters narrow the choice, "Another idea" draws again -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,Auto,Auto" Margin="22,18,22,22">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Path Data="{StaticResource IconLibraryDices}" Fill="{DynamicResource Brush.Accent}" Width="22" Height="22" Stretch="Uniform" VerticalAlignment="Center" />
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'What to play tonight?'}" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+
+            <WrapPanel Grid.Row="1" Margin="0,14,0,6">
+                <ToggleButton x:Name="uiInstalledOnly" Classes="chip" Margin="0,0,8,8" Content="{l:T 'Installed games'}" IsCheckedChanged="Filter_Changed" />
+                <ToggleButton x:Name="uiNeverPlayed" Classes="chip" Margin="0,0,8,8" Content="{l:T 'Never played'}" IsCheckedChanged="Filter_Changed" />
+                <ToggleButton x:Name="uiNotFinished" Classes="chip" Margin="0,0,8,8" Content="{l:T 'Not finished'}" IsChecked="True" IsCheckedChanged="Filter_Changed" />
+                <ToggleButton x:Name="uiShort" Classes="chip" Margin="0,0,8,8" Content="{l:T 'Short (less than 10 h)'}" IsCheckedChanged="Filter_Changed" />
+                <ComboBox x:Name="uiGenre" MinWidth="190" Margin="0,0,8,8" SelectionChanged="Genre_Changed" />
+                <TextBlock x:Name="uiCount" Classes="muted" FontSize="13" VerticalAlignment="Center" Margin="6,0,0,8" />
+            </WrapPanel>
+
+            <Panel Grid.Row="2" Height="330">
+                <!-- The game proposed -->
+                <Border x:Name="uiCard" CornerRadius="16" ClipToBounds="True" Background="{DynamicResource Brush.Surface}" IsVisible="False">
+                    <Panel>
+                        <local:CacheImage x:Name="uiArt" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" />
+                        <Border>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.Background}" Offset="0" />
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundSoft}" Offset="0.5" />
+                                    <GradientStop Color="{DynamicResource GameVault.Colors.BackgroundClear}" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                        <Grid ColumnDefinitions="Auto,*" Margin="26" VerticalAlignment="Center">
+                            <Border Width="180" Height="270" CornerRadius="12" ClipToBounds="True" BoxShadow="0 18 40 -12 #CC000000" Margin="0,0,26,0">
+                                <local:CacheImage x:Name="uiCover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Center">
+                                <TextBlock x:Name="uiReason" Classes="eyebrow" Opacity="0.85" />
+                                <TextBlock x:Name="uiTitle" Classes="display" FontSize="34" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="uiInfo" FontSize="14" Opacity="0.85" TextWrapping="Wrap" />
+                                <TextBlock x:Name="uiDescription" FontSize="13.5" Opacity="0.8" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" MaxWidth="560" HorizontalAlignment="Left" />
+                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+                                    <Button x:Name="uiPlay" Classes="action" Click="Play_Click"
+                                            Background="{Binding #uiCover.AccentColor, Converter={StaticResource accentBrushConv}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Path x:Name="uiPlayIcon" Data="{StaticResource IconPlay}" />
+                                            <TextBlock x:Name="uiPlayText" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Classes="ghost" Content="{l:T 'Game page'}" Click="GamePage_Click" />
+                                    <Button x:Name="uiAnother" Classes="ghost" Click="Another_Click">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Path Data="{StaticResource IconLibraryDices}" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+                                            <TextBlock Text="{l:T 'Another idea'}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Panel>
+                </Border>
+                <TextBlock x:Name="uiEmpty" Classes="muted" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" IsVisible="False" />
+                <local:ProgressRing x:Name="uiLoading" IsActive="True" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Panel>
+        </Grid>
+    </Border>
+</UserControl>

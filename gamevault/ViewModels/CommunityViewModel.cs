@@ -68,6 +68,31 @@ namespace gamevault.ViewModels
             private set { recentProgresses = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasRecent)); }
         }
         public bool HasRecent => RecentProgresses.Count > 0;
+        #region Activity
+        private int activityVersion;
+        /// <summary>Changes with the players' activities: the bindings showing them refresh on it.</summary>
+        public int ActivityVersion
+        {
+            get => activityVersion;
+            set { activityVersion = value; OnPropertyChanged(); }
+        }
+
+        private List<ActivityFeedItem> recentActivity = new();
+        /// <summary>What the players played lately, newest first.</summary>
+        public List<ActivityFeedItem> RecentActivity
+        {
+            get => recentActivity;
+            set { recentActivity = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasRecentActivity)); }
+        }
+        public bool HasRecentActivity => RecentActivity.Count > 0;
+
+        public bool ShareActivity
+        {
+            get => gamevault.Helper.ActivityService.ShareMine;
+            set { gamevault.Helper.ActivityService.ShareMine = value; OnPropertyChanged(); }
+        }
+        #endregion
+
         #region Profile
         private ObservableCollection<ProfileModuleView> modules = new();
         /// <summary>The sections of the profile shown, in their order.</summary>
@@ -179,4 +204,7 @@ namespace gamevault.ViewModels
             new("#F59E0B", L("Amber")), new("#F97316", L("Orange")), new("#EF4444", L("Red")), new("#EC4899", L("Pink")), new("#94A3B8", L("Slate")),
         };
     }
+
+    /// <summary>A line of the activity feed: "Zoé played Hades · 2 h ago".</summary>
+    internal sealed record ActivityFeedItem(User User, Game Game, string Text, string When);
 }

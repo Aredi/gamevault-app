@@ -45,6 +45,8 @@ namespace GameVault.UiTests
         public ConcurrentBag<MinimalGame> ProviderCatalog { get; } = new();
         /// <summary>The SanctuaryVault service part: the players' profiles (JSON) it keeps.</summary>
         public ConcurrentDictionary<int, string> Profiles { get; } = new();
+        /// <summary>The SanctuaryVault service part: the signed-in player's cloud saves per game (file name → content), any order.</summary>
+        public ConcurrentDictionary<int, ConcurrentDictionary<string, byte[]>> SaveVersions { get; } = new();
         /// <summary>The mappings received (PUT /api/games/{id}): game, provider, provider id.</summary>
         public ConcurrentQueue<(int GameId, string Slug, string ProviderId)> Mappings { get; } = new();
         /// <summary>Downloads ignore the Range header and always send the whole file with 200.</summary>
@@ -122,7 +124,18 @@ namespace GameVault.UiTests
                 else if ((match = Regex.Match(path, @"^/api/users/(\d+)$")).Success && Users.TryGetValue(int.Parse(match.Groups[1].Value), out User? user))
                     await Json(response, user);
                 else if (path == "/status")
-                    await Json(response, new { status = "OK", version = "1.0.0", freeSpace = 1L << 40, profiles = true });
+                    await Json(response, new { status = "OK", version = "1.0.0", freeSpace = 1L << 40, profiles = true, saveHistory = true });
+                else if ((match = Regex.Match(path, @"^/savefiles/(\d+)$")).Success)
+                    await Json(response, (SaveVersions.TryGetValue(int.Parse(match.Groups[1].Value), out var versions) ? versions : new())
+                        .Select(v => (Name: v.Key, Size: v.Value.LongLength, Parts: v.Key.Split('_', '.')))
+                        .OrderByDescending(v => long.Parse(v.Parts[0]))
+                        .Select(v => new { name = v.Name, savedAt = long.Parse(v.Parts[0]), size = v.Size, installationId = v.Parts[1] }));
+                else if ((match = Regex.Match(path, @"^/savefiles/(\d+)/([^/]+)$")).Success
+                         && SaveVersions.TryGetValue(int.Parse(match.Groups[1].Value), out var gameSaves) && gameSaves.TryGetValue(Uri.UnescapeDataString(match.Groups[2].Value), out byte[]? save))
+                {
+                    response.ContentType = "application/zip";
+                    await response.OutputStream.WriteAsync(save);
+                }
                 else if ((match = Regex.Match(path, @"^/profiles/(\d+)$")).Success)
                 {
                     int userId = int.Parse(match.Groups[1].Value);

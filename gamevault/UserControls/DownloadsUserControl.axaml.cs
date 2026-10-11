@@ -333,5 +333,7 @@ namespace gamevault.UserControls
                 catch (Exception ignored) { Log.Ignored(ignored); }
             }
         }
+
+        private void Storage_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => MainWindowViewModel.Instance.OpenPopup(new StorageUserControl());
     }
 }
