@@ -235,14 +235,8 @@
                         </ListBox>
                     </StackPanel>
 
-                    <!-- Living room, news, problems, links -->
+                    <!-- News, problems, links -->
                     <StackPanel Grid.Row="4" Margin="12,0,12,10">
-                        <Button Classes="navItem" Click="LivingRoom_Click" ToolTip.Tip="{l:T 'Living room mode: full screen, for the TV and a gamepad (F11)'}">
-                            <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
-                                <Path Data="{StaticResource IconLivingRoom}" />
-                                <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'Living room mode'}" Margin="13,0,0,0" />
-                            </Grid>
-                        </Button>
                         <Button Classes="navItem" Click="News_Click" ToolTip.Tip="{l:T 'Open News'}">
                             <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
                                 <uc:Badged x:Name="uiNewsBadge" Badge="{Binding NewsBadge}" BadgeBackground="{DynamicResource Brush.Warning}">
@@ -362,8 +356,6 @@
             </Grid>
         </Border>
 
-        <!-- Living room mode (full screen, gamepad) -->
-        <uc:LivingRoomUserControl x:Name="uiLivingRoom" IsVisible="False" ZIndex="4" />
 
         <!-- Ctrl+K -->
         <uc:QuickSearchUserControl x:Name="uiQuickSearch" IsVisible="False" ZIndex="5" />

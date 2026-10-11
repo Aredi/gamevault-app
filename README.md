@@ -17,7 +17,7 @@
 > - Cloud save conflicts between computers are detected and resolved by the user instead of overwriting saves; replaced saves are kept in a history.
 > - French translation (Settings → Application → Language).
 > - A new interface that puts the games and their covers first: a showcase (featured game, continue playing, recently added, collections), a gallery with adjustable cover size or a shelf layout, game pages in the colors of their cover, a foldable navigation bar, the same style for downloads, community and settings.
-> - Quick search with Ctrl+K (games, pages, actions) and a living room mode for the TV, with a gamepad (F11 or the Start button).
+> - Quick search with Ctrl+K (games, pages, actions). For the TV and gamepads, use Playnite (Fullscreen mode) with the GameVault extension.
 > - .NET 10, smaller packages, end-to-end UI tests in CI.
 >
 > If you enjoy GameVault, please consider supporting the original developers (see below).

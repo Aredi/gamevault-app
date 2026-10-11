@@ -292,20 +292,6 @@ namespace GameVault.UiTests
             Capture(session, output, "12d-game-picker");
             MainWindowViewModel.Instance.ClosePopup();
 
-            // Living room mode at the sizes of common screens (1080p at 150 % is 1280 x 720)
-            var living = session.Window.FindControl<LivingRoomUserControl>("uiLivingRoom")!;
-            foreach (var (width, height) in new[] { (1920, 1080), (1280, 720), (1536, 864), (2560, 1440), (2560, 1080), (1920, 1200) })
-            {
-                session.Window.WindowState = WindowState.Normal;
-                Resize(session, width, height);
-                await ((gamevault.Windows.MainWindow)session.Window).OpenLivingRoom();
-                session.Window.WindowState = WindowState.Normal;
-                Resize(session, width, height);
-                living.Handle(GameVault.Core.Input.PadAction.Right);
-                await Settle(2500);
-                Capture(session, output, $"14-living-room-{width}x{height}", living);
-                ((gamevault.Windows.MainWindow)session.Window).CloseLivingRoom();
-            }
             session.Window.WindowState = WindowState.Normal;
             Resize(session, 1600, 1000);
 

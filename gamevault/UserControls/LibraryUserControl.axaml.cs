@@ -30,7 +30,7 @@ namespace gamevault.UserControls
     public partial class LibraryUserControl : UserControl
     {
         private LibraryViewModel ViewModel;
-        /// <summary>The library's data (showcase rows), also used by the living room mode.</summary>
+        /// <summary>The library's data (showcase rows).</summary>
         internal LibraryViewModel Model => ViewModel;
         private InputTimer inputTimer { get; set; }
 
