@@ -16,6 +16,9 @@ namespace GameVault.UiTests
             var session = await TestSession.GetAsync();
             session.Server.AddGame(970, "Living Room Game One", GameType.LINUX_PORTABLE, TestSession.LinuxGameArchive(), "Living Room Game One (L_P).tar.gz");
             session.Server.AddGame(971, "Living Room Game Two", GameType.LINUX_PORTABLE, TestSession.LinuxGameArchive(), "Living Room Game Two (L_P).tar.gz");
+            // The living room's last row is the library: it must know the new games first
+            await MainWindowViewModel.Instance.Library.LoadLibrary();
+            await TestSession.WaitUntil(() => MainWindowViewModel.Instance.Library.Model.GameCards.Any(g => g.ID == 970), TimeSpan.FromSeconds(10), "the library with the new games");
             var before = session.Window.WindowState;
             var living = session.Window.FindControl<LivingRoomUserControl>("uiLivingRoom")!;
 
