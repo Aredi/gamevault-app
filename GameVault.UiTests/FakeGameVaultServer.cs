@@ -221,6 +221,12 @@ namespace GameVault.UiTests
         private PaginatedData<Game> GameList(HttpListenerRequest request)
         {
             IEnumerable<Game> list = games.Values.Select(g => g.Game);
+            string? ids = request.QueryString["filter.id"];
+            if (ids != null && ids.StartsWith("$in:"))
+            {
+                var wanted = ids[4..].Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToHashSet();
+                list = list.Where(g => wanted.Contains(g.ID));
+            }
             string? search = request.QueryString["search"];
             if (!string.IsNullOrEmpty(search))
                 list = list.Where(g => g.Title.Contains(search, StringComparison.OrdinalIgnoreCase));

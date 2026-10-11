@@ -516,12 +516,29 @@ namespace gamevault.UserControls
             {
                 string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/progresses?sortBy=updated_at:DESC&limit=30");
                 Progress[] progresses = JsonSerializer.Deserialize<PaginatedData<Progress>>(json)?.Data ?? Array.Empty<Progress>();
-                ViewModel.RecentActivity = progresses
+                var recent = progresses
                     .Where(p => p.Game != null && p.User != null && p.LastPlayedAt != null && p.Game.DeletedAt == null && p.User.DeletedAt == null)
                     .OrderByDescending(p => p.LastPlayedAt)
                     .Take(12)
+                    .ToList();
+                // The progresses bring their game without its metadata (no cover): the games are asked for whole
+                var games = new Dictionary<int, Game>();
+                string ids = string.Join(",", recent.Select(p => p.Game!.ID).Distinct());
+                if (ids.Length > 0)
+                {
+                    try
+                    {
+                        string gamesJson = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?filter.id=$in:{ids}&limit=-1");
+                        foreach (Game game in JsonSerializer.Deserialize<PaginatedData<Game>>(gamesJson)?.Data ?? Array.Empty<Game>())
+                            games[game.ID] = game;
+                    }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
+                ViewModel.RecentActivity = recent
                     .Select(p =>
                     {
+                        if (games.TryGetValue(p.Game!.ID, out Game? whole))
+                            p.Game = whole;
                         string game = p.Game!.Metadata?.Title ?? p.Game.Title;
                         string text = string.Equals(p.State, "COMPLETED", StringComparison.OrdinalIgnoreCase)
                             ? Loc.F("{0} completed {1}", p.User!.Username, game)

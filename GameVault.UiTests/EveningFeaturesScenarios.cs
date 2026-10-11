@@ -103,7 +103,10 @@ namespace GameVault.UiTests
             Game game = NewGame(9731, "Activity Arena");
             session.Server.AddGame(game, new byte[16]);
             var zoe = new User { ID = 2, Username = "Zoé", Role = PERMISSION_ROLE.USER, Activated = true, Progresses = Array.Empty<Progress>() };
-            session.Server.Progresses.Enqueue(new Progress { ID = 97310, Game = game, User = zoe, MinutesPlayed = 90, State = "COMPLETED", LastPlayedAt = DateTime.UtcNow.AddHours(-2) });
+            game.Metadata!.Cover = new Media { ID = 97311 };
+            // Like the server: the progress brings its game without the metadata
+            var bare = new Game { ID = game.ID, Title = game.Title, Type = game.Type, EntityVersion = 1 };
+            session.Server.Progresses.Enqueue(new Progress { ID = 97310, Game = bare, User = zoe, MinutesPlayed = 90, State = "COMPLETED", LastPlayedAt = DateTime.UtcNow.AddHours(-2) });
 
             var community = MainWindowViewModel.Instance.Community;
             var model = (CommunityViewModel)community.DataContext!;
@@ -111,6 +114,7 @@ namespace GameVault.UiTests
             var line = Assert.Single(model.RecentActivity, a => a.Game.ID == 9731);
             Assert.Contains("Zoé", line.Text);
             Assert.Contains("Activity Arena", line.Text);
+            Assert.Equal(97311, line.Game.Metadata?.Cover?.ID);// the cover of the feed
 
             // Zoé starts the game: the server sends her activity
             ActivityService.Instance.Apply(new[] { new PlayerActivity { UserId = 2, State = "PLAYING", GameId = 9731 } }, replaceAll: true);
