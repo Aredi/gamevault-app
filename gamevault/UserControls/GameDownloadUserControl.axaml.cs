@@ -230,10 +230,6 @@ namespace gamevault.UserControls
         {
             return ViewModel.Game.ID;
         }
-        public int GetCoverID()
-        {
-            return ViewModel.Game.Metadata.Cover.ID;
-        }
         public int GetDownloadProgress()
         {
             return ViewModel.GameDownloadProgress;

@@ -54,6 +54,10 @@ namespace GameVault.Uploader
                 string name = user.RootElement.TryGetProperty("username", out var username) ? username.GetString() ?? "" : "";
                 bool admin = user.RootElement.TryGetProperty("role", out var role) && IsAdmin(role);
                 int id = user.RootElement.TryGetProperty("id", out var idValue) && idValue.ValueKind == JsonValueKind.Number ? idValue.GetInt32() : 0;
+                // Each session token adds an entry: the expired ones go, so the cache does not grow for ever
+                foreach (var entry in cache)
+                    if (entry.Value.Until <= DateTime.UtcNow)
+                        cache.TryRemove(entry);
                 cache[key] = (admin, name, id, DateTime.UtcNow + CacheTime);
                 return admin ? new Result(true, 200, "", name, id, true) : Forbidden(name, id);
             }

@@ -39,6 +39,8 @@ namespace GameVault.UiTests
                     # restore --force --path DIR
                     mapping=$(find "$3" -name mapping.yaml | head -1)
                     title=$(sed -n 's/^name: //p' "$mapping")
+                    # A test can make the restore fail, like a folder Ludusavi can not write
+                    [ -e "$saves/$title/restore-fails" ] && exit 1
                     mkdir -p "$saves/$title"
                     cp "$(dirname "$mapping")/save.dat" "$saves/$title/save.dat" ;;
                 esac

@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 namespace gamevault.Helper
 {
     /// <summary>
-    /// Downloads of the image cache: a few at a time, and one download per image however many controls ask for it
-    /// (the banner, the rows and the grid often show the same cover at once).
+    /// Downloads of the image cache: a few at a time, and one download per cache file however many controls ask for it
+    /// (the banner, the rows and the grid often show the same cover at once). Keyed by the file, not the image id:
+    /// two games can share an image, each with a cache file of its own.
     /// </summary>
     public class TaskQueue
     {
@@ -29,11 +30,11 @@ namespace gamevault.Helper
 
         private const int MaxConcurrentDownloads = 4;
         private readonly SemaphoreSlim slots = new(MaxConcurrentDownloads, MaxConcurrentDownloads);
-        private readonly Dictionary<int, Task> running = new();
+        private readonly Dictionary<string, Task> running = new(StringComparer.Ordinal);
         private readonly object sync = new();
 
-        /// <summary>Runs the task, or waits for the one already running for this id.</summary>
-        public Task Enqueue(Func<Task> taskGenerator, int id)
+        /// <summary>Runs the task, or waits for the one already writing this file.</summary>
+        public Task Enqueue(Func<Task> taskGenerator, string id)
         {
             lock (sync)
             {
@@ -45,7 +46,7 @@ namespace gamevault.Helper
             }
         }
 
-        private async Task Run(Func<Task> taskGenerator, int id)
+        private async Task Run(Func<Task> taskGenerator, string id)
         {
             // Asynchronous from here, so the task is registered before it can finish
             await Task.Yield();
@@ -62,13 +63,13 @@ namespace gamevault.Helper
             }
         }
 
-        public bool IsAlreadyInProcess(int id)
+        public bool IsAlreadyInProcess(string id)
         {
             lock (sync)
                 return running.ContainsKey(id);
         }
 
-        public async Task WaitForProcessToFinish(int id)
+        public async Task WaitForProcessToFinish(string id)
         {
             Task? task;
             lock (sync)

@@ -493,11 +493,6 @@ namespace gamevault.UserControls
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
-        private async void Download_Click(object sender, RoutedEventArgs e)
-        {
-            e.Handled = true;
-            await MainWindowViewModel.Instance.Downloads.TryStartDownload((Game)(((Control)sender).DataContext));
-        }
         private bool reloadingCollections;
         private void ReloadCollectionNames()
         {

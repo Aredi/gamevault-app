@@ -174,51 +174,6 @@ namespace gamevault.UserControls
             var obj = new BackupRestoreUserControl() { Margin = new Thickness(220) };
             MainWindowViewModel.Instance.OpenPopup(obj);
         }
-        protected async void UserSaved(object sender, EventArgs e)
-        {
-            ((Button)sender).IsEnabled = false;
-            this.IsEnabled = false;
-            User selectedUser = (User)((Button)sender).DataContext;
-            bool error = false;
-
-            try
-            {
-                await WebHelper.PutAsync($@"{SettingsViewModel.Instance.ServerUrl}/api/users/{selectedUser.ID}", JsonSerializer.Serialize(selectedUser));
-                MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully saved user changes");
-            }
-            catch (Exception ex)
-            {
-                error = true;
-                string msg = WebExceptionHelper.TryGetServerMessage(ex);
-                MainWindowViewModel.Instance.AppBarText = msg;
-            }
-
-            if (!error)
-            {
-                await HandleChangesOnCurrentUser(selectedUser);
-            }
-            ((Button)sender).IsEnabled = true;
-            this.IsEnabled = true;
-        }
-        private async Task HandleChangesOnCurrentUser(User selectedUser)
-        {
-            if (LoginManager.Instance.GetCurrentUser().ID == selectedUser.ID)
-            {
-                UserProfile profile = LoginManager.Instance.GetUserProfile();
-                bool isLoggedInWithSSO = Preferences.Get(AppConfigKey.IsLoggedInWithSSO, profile.UserConfigFile) == "1";
-                if (isLoggedInWithSSO)
-                {
-                    await LoginManager.Instance.SSOLogin(profile);
-                }
-                else
-                {
-                    await LoginManager.Instance.Login(profile, WebHelper.GetCredentials()[0], WebHelper.GetCredentials()[1]);
-                }
-                MainWindowViewModel.Instance.UserAvatar = LoginManager.Instance.GetCurrentUser();
-            }
-            await InitUserList();
-        }
-
         private void ShowUser_Click(object sender, RoutedEventArgs e)
         {
             User selectedUser = ((Control)sender).DataContext as User;

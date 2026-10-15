@@ -45,9 +45,9 @@ namespace gamevault.Helper
                 {
                     if (cacheType == ImageCache.UserAvatar)
                     {
-                        if (TaskQueue.Instance.IsAlreadyInProcess(imageId))
+                        if (TaskQueue.Instance.IsAlreadyInProcess(cacheFile))
                         {
-                            await TaskQueue.Instance.WaitForProcessToFinish(imageId);
+                            await TaskQueue.Instance.WaitForProcessToFinish(cacheFile);
                         }
                     }
                     //if file exists then return it directly
@@ -74,7 +74,7 @@ namespace gamevault.Helper
                                 catch (Exception ignored) { Log.Ignored(ignored); }
                             }
                             await WebHelper.DownloadImageFromUrlAsync($"{SettingsViewModel.Instance.ServerUrl}/api/media/{imageId}", cacheFile);
-                        }, imageId);
+                        }, cacheFile);
                         if (generation != img.DataGeneration)
                             return;
                         await img.SetImageFileAsync(cacheFile);
@@ -103,8 +103,8 @@ namespace gamevault.Helper
                     return;
                 try
                 {
-                    if (TaskQueue.Instance.IsAlreadyInProcess(imageId))
-                        await TaskQueue.Instance.WaitForProcessToFinish(imageId);
+                    if (TaskQueue.Instance.IsAlreadyInProcess(cacheFile))
+                        await TaskQueue.Instance.WaitForProcessToFinish(cacheFile);
                     if (File.Exists(cacheFile) && generation == img.DataGeneration)
                     {
                         await img.SetImageFileAsync(cacheFile);
@@ -132,13 +132,13 @@ namespace gamevault.Helper
         {
             if (mediaId == null)
                 return;
-            if (TaskQueue.Instance.IsAlreadyInProcess(mediaId.Value))
-            {
-                await TaskQueue.Instance.WaitForProcessToFinish(mediaId.Value);
-            }
             string directory = Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, folder);
             Directory.CreateDirectory(directory);
             string cacheFile = Path.Combine(directory, $"{game.ID}.{mediaId}");
+            if (TaskQueue.Instance.IsAlreadyInProcess(cacheFile))
+            {
+                await TaskQueue.Instance.WaitForProcessToFinish(cacheFile);
+            }
             if (!File.Exists(cacheFile))
             {
                 //Not in que because its not loading images for the UI

@@ -55,17 +55,16 @@ namespace gamevault.Helper
         public async Task<bool> LoginBasicAuthAsync(string username, string password)
         {
             var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{ServerUrl}/api/auth/basic/login");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", authValue);
 
-            var response = await _httpClient.GetAsync($"{ServerUrl}/api/auth/basic/login");
+            var response = await _httpClient.SendAsync(request);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             var responseContent = await response.Content.ReadAsStringAsync();
             var json = JsonSerializer.Deserialize<AuthResponse>(responseContent);
 
             _accessToken = json?.AccessToken;
             _refreshToken = json?.RefreshToken;
-
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
             return true;
         }
 
@@ -77,7 +76,30 @@ namespace gamevault.Helper
             return await _longHttpClient.SendAsync(request, cancellationToken);
         }
 
+        private Task? signingIn;
+        private readonly object signInLock = new();
+
+        /// <summary>Requests run in parallel (images, downloads): when the token expires, they all wait for one renewal.</summary>
         private async Task EnsureSignedInAsync()
+        {
+            if (!string.IsNullOrEmpty(_accessToken) && !IsTokenExpired())
+                return;
+            Task task;
+            lock (signInLock)
+                task = signingIn ??= SignInAsync();
+            try
+            {
+                await task;
+            }
+            finally
+            {
+                lock (signInLock)
+                    if (signingIn == task)
+                        signingIn = null;
+            }
+        }
+
+        private async Task SignInAsync()
         {
             if (string.IsNullOrEmpty(_accessToken))
                 await LoginBasicAuthAsync(UserName, Password);
@@ -87,13 +109,7 @@ namespace gamevault.Helper
 
         private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, List<RequestHeader>? additionalHeaders = null, HttpCompletionOption option = HttpCompletionOption.ResponseContentRead)
         {
-            if (string.IsNullOrEmpty(_accessToken))
-            {
-                await LoginBasicAuthAsync(UserName, Password);
-            }
-
-            if (IsTokenExpired() && !await RefreshTokenAsync())
-                throw new InvalidOperationException(Loc.T("Failed to refresh token."));
+            await EnsureSignedInAsync();
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
             if (additionalHeaders != null)
@@ -121,10 +137,13 @@ namespace gamevault.Helper
 
         private async Task<bool> RefreshTokenAsync()
         {
-            var content = new StringContent("", Encoding.UTF8, "application/json");
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _refreshToken);
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{ServerUrl}/api/auth/refresh")
+            {
+                Content = new StringContent("", Encoding.UTF8, "application/json"),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _refreshToken);
 
-            var response = await _httpClient.PostAsync($"{ServerUrl}/api/auth/refresh", content);
+            var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode) return false;
 
             var responseContent = await response.Content.ReadAsStringAsync();

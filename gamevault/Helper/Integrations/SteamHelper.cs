@@ -161,17 +161,6 @@ namespace gamevault.Helper
                 writer.Write((byte)0);
             }
 
-            public static string GetShortcutHash(string input)
-            {
-                uint crc32 = Crc32.Compute(input);
-                long full64 = (crc32 | 0x80000000) | ((long)0x02000000 << 32);
-                return full64.ToString();
-            }
-
-            public static string GetShortcutUrl(string appName, string exe)
-            {
-                return $"steam://rungameid/{GetShortcutHash(exe + appName)}";
-            }
             private static int GenerateShortcutVDFAppId(string input)
             {
                 // Create MD5 hash from the input string
@@ -194,37 +183,6 @@ namespace gamevault.Helper
             }
         }
 
-        public static class Crc32
-        {
-            private const uint Polynomial = 0x04C11DB7;
-            private const uint DefaultSeed = 0xFFFFFFFF;
-            private static readonly uint[] Table;
-
-            static Crc32()
-            {
-                Table = new uint[256];
-                for (uint i = 0; i < 256; i++)
-                {
-                    uint crc = i << 24;
-                    for (int j = 0; j < 8; j++)
-                    {
-                        crc = (crc & 0x80000000) != 0 ? (crc << 1) ^ Polynomial : (crc << 1);
-                    }
-                    Table[i] = crc;
-                }
-            }
-
-            public static uint Compute(string input, uint seed = DefaultSeed)
-            {
-                uint crc = seed;
-                foreach (byte b in Encoding.UTF8.GetBytes(input))
-                {
-                    byte tableIndex = (byte)((crc >> 24) ^ b);
-                    crc = (crc << 8) ^ Table[tableIndex];
-                }
-                return ~crc;
-            }
-        }
         #endregion
 
         private static string EntryValue(object entry, string key)

@@ -257,6 +257,7 @@
   "Failed to load image: {0}": "Impossible de charger l'image : {0}",
   "Failed to load next Page": "Impossible de charger la page suivante",
   "Failed to refresh token.": "Impossible de renouveler le jeton.",
+  "Ludusavi could not restore the save (exit code {0})": "Ludusavi n'a pas pu restaurer la sauvegarde (code {0})",
   "Failed to setup User Profile": "Impossible de configurer le profil utilisateur",
   "File": "Fichier",
   "File System": "Système de fichiers",

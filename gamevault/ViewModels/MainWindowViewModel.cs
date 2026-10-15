@@ -29,18 +29,6 @@ namespace gamevault.ViewModels
             m_Community = new CommunityUserControl();
             m_AdminConsole = new AdminConsoleUserControl();
         }
-        public void UpdateTaskbarProgress()
-        {
-            List<int> downloadProgresses = new List<int>();
-            foreach (var download in DownloadsViewModel.Instance.DownloadedGames)
-            {
-                if (download.IsDownloading())
-                {
-                    downloadProgresses.Add(download.GetDownloadProgress());
-                }
-            }
-            TaskbarProgress = downloadProgresses.Count > 0 ? (downloadProgresses.Average() / 100) : 0.0;
-        }
         #region Singleton
         private static MainWindowViewModel instance = null;
         private static readonly object padlock = new object();
@@ -118,7 +106,6 @@ namespace gamevault.ViewModels
         }
         #endregion
         #region PrivateMembers     
-        private double m_TaskbarProgress = 0;
         private int m_ActiveControlIndex = -1;
         private bool isOffline = false;
         private UserControl m_ActiveControl { get; set; }
@@ -130,11 +117,6 @@ namespace gamevault.ViewModels
         private AdminConsoleUserControl m_AdminConsole { get; set; }
         #endregion
         public MainControl LastMainControl { get; set; }
-        public double TaskbarProgress
-        {
-            get { return m_TaskbarProgress; }
-            set { m_TaskbarProgress = value; OnPropertyChanged(); }
-        }
         public int ActiveControlIndex
         {
             get { return m_ActiveControlIndex; }

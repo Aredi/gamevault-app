@@ -478,17 +478,25 @@ namespace gamevault
         /// <returns>The game or null if not installed</returns>
         private async Task<Game?> GetInstalledGame(int id)
         {
-            Game? game = null;
             if ((await InstalledSnapshotAsync()).Count == 0)
             {
-                try
-                {
-                    await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames(true);
-                }
-                catch (Exception ignored) { Log.Ignored(ignored); }
+                // Once: with nothing installed, Playnite's sync would otherwise scan the disks for each of its games
+                lock (this)
+                    installedRestore ??= RestoreInstalledGamesAsync();
+                await installedRestore;
             }
-            game = (await InstalledSnapshotAsync()).Where(g => g.Key?.ID == id).Select(g => g.Key).FirstOrDefault();
-            return game;
+            return (await InstalledSnapshotAsync()).Where(g => g.Key?.ID == id).Select(g => g.Key).FirstOrDefault();
+        }
+
+        private Task? installedRestore;
+
+        private static async Task RestoreInstalledGamesAsync()
+        {
+            try
+            {
+                await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames(true);
+            }
+            catch (Exception ignored) { Log.Ignored(ignored); }
         }
 
         /// <summary>
@@ -761,13 +769,10 @@ namespace gamevault
                         if (!options.GameId.HasValue)
                             return "error: no game id";
 
-                        var downloaded = false;
-                        var game = await GetInstalledGame(options.GameId.Value);
-
-                        if (game == null)
-                            downloaded = true;
-                        else if (DownloadsViewModel.Instance.DownloadedGames.Any(g => g.GetGameId() == options.GameId.Value))
-                            downloaded = true;
+                        // Installed, or downloaded and waiting for its installation (the list is the UI's)
+                        int id = options.GameId.Value;
+                        bool downloaded = await GetInstalledGame(id) != null
+                            || await Dispatcher.UIThread.InvokeAsync(() => DownloadsViewModel.Instance.DownloadedGames.Any(g => g.GetGameId() == id));
 
                         return downloaded.ToString();
                     }

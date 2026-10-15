@@ -51,6 +51,8 @@ namespace GameVault.UiTests
                 Assert.Equal("True", await Task.Run(() => SendLikePlaynite("gamevault://query?query=installed&gameid=9901")));
                 Assert.Equal(directory, await Task.Run(() => SendLikePlaynite("gamevault://query?query=getinstalldirectory&gameid=9901")));
                 Assert.True(bool.TryParse(await Task.Run(() => SendLikePlaynite("gamevault://query?query=installed&gameid=123456")), out bool other) && !other);
+                Assert.Equal("True", await Task.Run(() => SendLikePlaynite("gamevault://query?query=downloaded&gameid=9901")));
+                Assert.Equal("False", await Task.Run(() => SendLikePlaynite("gamevault://query?query=downloaded&gameid=123456")));
                 Assert.Equal("True", await Task.Run(() => SendLikePlaynite("gamevault://query?query=exists&gameid=9901")));
             }
             finally

@@ -187,6 +187,9 @@ namespace gamevault.Helper.Integrations
                 // Awaited: the restore runs while the UI waits to start the game
                 await process.WaitForExitAsync();
                 ProcessShepherd.Instance.RemoveProcess(process);
+                // A failed restore must not count as a sync: the old local save would then replace the cloud one without asking
+                if (process.ExitCode != 0)
+                    throw new Exception(Loc.F("Ludusavi could not restore the save (exit code {0})", process.ExitCode));
                 WriteLastSync(installationDir);
             }
             finally

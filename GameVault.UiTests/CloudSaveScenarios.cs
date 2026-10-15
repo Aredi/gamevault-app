@@ -112,5 +112,24 @@ namespace GameVault.UiTests
             Assert.Equal(gamevault.Helper.Integrations.CloudSaveStatus.KeptCloud, await upload);
             Assert.Contains(OtherComputer, session.Server.Saves[game.ID].FileName);
         }
+
+        [AvaloniaFact]
+        public async Task TheRestoreFails_TheOldLocalSaveDoesNotSilentlyReplaceTheCloudOne()
+        {
+            if (!OperatingSystem.IsLinux())
+                return;
+            var (session, game, _) = await InstalledGameWithLocalSave(405, "Saved Game E", "old local save");
+            File.SetLastWriteTimeUtc(FakeLudusavi.SaveFile("Saved Game E"), DateTime.UtcNow.AddDays(-2));
+            ServerSaveFromOtherComputer(session, game.ID, "Saved Game E", "newer save from the other computer", DateTime.UtcNow.AddHours(-1));
+            File.WriteAllText(Path.Combine(Path.GetDirectoryName(FakeLudusavi.SaveFile("Saved Game E"))!, "restore-fails"), "");
+
+            Assert.Equal(gamevault.Helper.Integrations.CloudSaveStatus.RestoreFailed, await gamevault.Helper.Integrations.SaveGameHelper.Instance.RestoreBackup(game.ID, session.InstallFolder(game)));
+
+            // Not counted as in sync: uploading the old save asks first
+            Task<string> upload = gamevault.Helper.Integrations.SaveGameHelper.Instance.BackupSaveGame(game.ID);
+            await Choose(session, "Keep the cloud save");
+            Assert.Equal(gamevault.Helper.Integrations.CloudSaveStatus.KeptCloud, await upload);
+            Assert.Contains(OtherComputer, session.Server.Saves[game.ID].FileName);
+        }
     }
 }
