@@ -236,16 +236,26 @@ namespace gamevault.UserControls
             DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, root, true, installed.Value) { IsUpdate = true });
             MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is updated{1}, your saves and settings are kept", game.Title, (string.IsNullOrEmpty(game.Version) ? "" : Loc.F(" to {0}", game.Version)));
         }
-        public async Task TryStartDownload(Game game, bool playWhenInstalled = false)
+        /// <param name="unattended">Asked from elsewhere (remote install): nobody answers questions, the last
+        /// install location is used and a game already downloaded stays as it is.</param>
+        public async Task TryStartDownload(Game game, bool playWhenInstalled = false, bool unattended = false)
         {
             if (SettingsViewModel.Instance.RootDirectories.Count == 0)
             {
                 MainWindowViewModel.Instance.AppBarText = Loc.T("No Root Directory configured! Go to ⚙️Settings->Data");
                 return;
             }
-            var installLocationPicker = new InstallLocationUserControl();
-            MainWindowViewModel.Instance.OpenPopup(installLocationPicker);
-            string selectedDirectory = await installLocationPicker.SelectInstallLocation();
+            string selectedDirectory;
+            if (unattended)
+            {
+                selectedDirectory = InstallLocationUserControl.DefaultLocation();
+            }
+            else
+            {
+                var installLocationPicker = new InstallLocationUserControl();
+                MainWindowViewModel.Instance.OpenPopup(installLocationPicker);
+                selectedDirectory = await installLocationPicker.SelectInstallLocation();
+            }
             if (selectedDirectory == string.Empty)
                 return;
 
@@ -264,7 +274,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is already in the download queue", game.Title);
                 return;
             }
-            if (await IsAlreadyDownloaded(game.ID))
+            if (unattended ? DownloadsViewModel.Instance.DownloadedGames.Any(g => g.GetGameId() == game.ID) : await IsAlreadyDownloaded(game.ID))
             {
                 return;
             }

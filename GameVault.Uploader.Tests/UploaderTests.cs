@@ -58,6 +58,7 @@ namespace GameVault.Uploader.Tests
         private readonly string files = Path.Combine(Path.GetTempPath(), $"gv-uploader-{Guid.NewGuid():N}");
         private readonly string profiles = Path.Combine(Path.GetTempPath(), $"gv-profiles-{Guid.NewGuid():N}");
         private readonly string saves = Path.Combine(Path.GetTempPath(), $"gv-saves-{Guid.NewGuid():N}");
+        private readonly string remote = Path.Combine(Path.GetTempPath(), $"gv-remote-{Guid.NewGuid():N}");
         private readonly FakeGameVault gameVault = new();
         private readonly WebApplicationFactory<Program> factory;
 
@@ -80,6 +81,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("FILES_DIRECTORY", files);
                 host.UseSetting("PROFILES_DIRECTORY", profiles);
                 host.UseSetting("SAVEFILES_DIRECTORY", saves);
+                host.UseSetting("REMOTE_INSTALLS_DIRECTORY", remote);
                 host.ConfigureServices(services =>
                 {
                     services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
@@ -94,6 +96,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(files, true); } catch { }
             try { Directory.Delete(profiles, true); } catch { }
             try { Directory.Delete(saves, true); } catch { }
+            try { Directory.Delete(remote, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -220,6 +223,26 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.RequestEntityTooLarge, (await Client("user").PutAsync("/profiles/2", new StringContent(huge))).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await Client("user").GetAsync("/profiles/2")).StatusCode);
             Assert.Empty(Directory.GetFiles(profiles, "*.json"));
+        }
+
+        [Fact]
+        public async Task RemoteInstalls_AreKeptPerPlayer_UntilTheirPCTakesThem()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.Created, (await player.PostAsJsonAsync("/remote-installs", new { gameId = 6, title = "Prey" })).StatusCode);
+            // Asked twice: kept once
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/remote-installs", new { gameId = 6, title = "Prey" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/remote-installs", new { gameId = 0, title = "" })).StatusCode);
+
+            using (JsonDocument list = JsonDocument.Parse(await player.GetStringAsync("/remote-installs")))
+                Assert.Equal(6, Assert.Single(list.RootElement.EnumerateArray()).GetProperty("gameId").GetInt32());
+            // Another player does not see it
+            Assert.Equal("[]", await Client("admin").GetStringAsync("/remote-installs"));
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/remote-installs")).StatusCode);
+
+            // The PC takes it
+            Assert.Equal(HttpStatusCode.NoContent, (await player.DeleteAsync("/remote-installs/6")).StatusCode);
+            Assert.Equal("[]", await player.GetStringAsync("/remote-installs"));
         }
 
         [Fact]

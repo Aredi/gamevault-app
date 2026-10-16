@@ -47,6 +47,8 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<int, string> Profiles { get; } = new();
         /// <summary>The SanctuaryVault service part: the signed-in player's cloud saves per game (file name → content), any order.</summary>
         public ConcurrentDictionary<int, ConcurrentDictionary<string, byte[]>> SaveVersions { get; } = new();
+        /// <summary>"Install on my PC" asked from the web page (the signed-in player's list): game id, title.</summary>
+        public ConcurrentDictionary<int, string> RemoteInstalls { get; } = new();
         /// <summary>The mappings received (PUT /api/games/{id}): game, provider, provider id.</summary>
         public ConcurrentQueue<(int GameId, string Slug, string ProviderId)> Mappings { get; } = new();
         /// <summary>Downloads ignore the Range header and always send the whole file with 200.</summary>
@@ -152,6 +154,13 @@ namespace GameVault.UiTests
                     }
                     else
                         response.StatusCode = 404;
+                }
+                else if (path == "/remote-installs")
+                    await Json(response, RemoteInstalls.Select(r => new { gameId = r.Key, title = r.Value }).ToArray());
+                else if ((match = Regex.Match(path, @"^/remote-installs/(\d+)$")).Success && request.HttpMethod == "DELETE")
+                {
+                    RemoteInstalls.TryRemove(int.Parse(match.Groups[1].Value), out _);
+                    response.StatusCode = 204;
                 }
                 else if (path == "/api/status")
                     await Json(response, new { status = "HEALTHY" });

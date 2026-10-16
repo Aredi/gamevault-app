@@ -19,18 +19,28 @@ namespace GameVault.Uploader
         {
             directory = options.ProfilesDirectory;
             this.logger = logger;
+            Enabled = IsWritable(directory, out string error);
+            // Uploads keep working without the volume; the clients then show the profiles as they were
+            if (!Enabled)
+                logger.LogWarning("Profiles are off: {Directory} can not be written ({Error}). Mount a volume there to keep the players' profiles.", directory, error);
+        }
+
+        /// <summary>Creates the folder if needed and checks that a file can be written there.</summary>
+        internal static bool IsWritable(string directory, out string error)
+        {
+            error = "";
             try
             {
                 Directory.CreateDirectory(directory);
                 string probe = Path.Combine(directory, ".write-test");
                 File.WriteAllText(probe, "");
                 File.Delete(probe);
-                Enabled = true;
+                return true;
             }
             catch (Exception ex)
             {
-                // Uploads keep working without the volume; the clients then show the profiles as they were
-                logger.LogWarning("Profiles are off: {Directory} can not be written ({Error}). Mount a volume there to keep the players' profiles.", directory, ex.Message);
+                error = ex.Message;
+                return false;
             }
         }
 

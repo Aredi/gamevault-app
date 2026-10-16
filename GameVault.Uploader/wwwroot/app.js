@@ -1,4 +1,4 @@
-// SanctuaryVault — publish a game from a browser. Same file name rules as the client's "Publish a Game"
+// SanctuaryVault — install a game on my PC, or publish a game from a browser. Same file name rules as the client's "Publish a Game"
 // (GameVault.Core/Publishing), same matching of the games already on the server, same chunked upload.
 "use strict";
 
@@ -306,10 +306,69 @@ async function publish() {
   }
 }
 
+// ---- Install on my PC ----
+function remoteStatus(text, kind = "") {
+  $("remoteStatus").textContent = text;
+  $("remoteStatus").className = "status " + kind;
+  show("remoteStatus", !!text);
+}
+
+async function loadRemote() {
+  const response = await api("remote-installs");
+  if (!response.ok) { show("remote", false); return; }
+  const waiting = await response.json();
+  const list = $("remoteList");
+  list.replaceChildren();
+  for (const entry of waiting) {
+    const button = document.createElement("button");
+    button.className = "match";
+    button.title = "Retirer de la liste";
+    button.textContent = entry.title || "Jeu " + entry.gameId;
+    const small = document.createElement("small");
+    small.textContent = "Demandé le " + new Date(entry.requestedAt).toLocaleString("fr-FR") + " · ✕ retirer";
+    button.append(small);
+    button.onclick = async () => { await api("remote-installs/" + entry.gameId, { method: "DELETE" }); await loadRemote(); };
+    list.append(button);
+  }
+  show("remoteEmpty", waiting.length === 0);
+  show("remote");
+}
+
+let remoteSearchGeneration = 0;
+async function searchRemote() {
+  const generation = ++remoteSearchGeneration;
+  const text = $("remoteSearch").value.trim();
+  const results = $("remoteResults");
+  if (text.length < 2) { results.replaceChildren(); return; }
+  const response = await api("games?search=" + encodeURIComponent(text));
+  if (!response.ok || generation !== remoteSearchGeneration) return;
+  results.replaceChildren();
+  for (const game of await response.json()) {
+    const button = document.createElement("button");
+    button.className = "match";
+    button.textContent = game.title;
+    const small = document.createElement("small");
+    small.textContent = [game.version, game.year].filter(Boolean).join(" · ") || "Installer sur mon PC";
+    button.append(small);
+    button.onclick = async () => {
+      const added = await api("remote-installs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: game.id, title: game.title }) });
+      if (added.ok) {
+        remoteStatus(`« ${game.title} » se téléchargera sur ton PC dès que SanctuaryVault y sera ouvert.`, "ok");
+        $("remoteSearch").value = "";
+        results.replaceChildren();
+        await loadRemote();
+      } else {
+        remoteStatus(await errorOf(added), "error");
+      }
+    };
+    results.append(button);
+  }
+}
+
 // ---- Screens ----
 function signOut() {
   tokens.clear();
-  show("publish", false); show("notAdmin", false); show("who", false);
+  show("publish", false); show("remote", false); show("who", false);
   show("login");
 }
 
@@ -321,7 +380,8 @@ async function start() {
     const me = await response.json();
     $("whoName").textContent = me.username;
     show("who"); show("login", false);
-    show(me.admin ? "publish" : "notAdmin");
+    show("publish", me.admin);
+    await loadRemote();
   } catch { signOut(); }
 }
 
@@ -361,6 +421,8 @@ for (const id of ["title", "version", "year", "type", "earlyAccess"]) $(id).addE
 $("type").addEventListener("change", refresh);
 $("title").addEventListener("input", findExisting);
 $("publishButton").onclick = publish;
+let remoteTimer;
+$("remoteSearch").addEventListener("input", () => { clearTimeout(remoteTimer); remoteTimer = setTimeout(searchRemote, 300); });
 $("cancelButton").onclick = () => { if (uploading) { uploading.aborted = true; uploading.controller?.abort(); } };
 window.addEventListener("beforeunload", e => { if (uploading) { e.preventDefault(); e.returnValue = ""; } });
 

@@ -162,6 +162,28 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AGameAskedFromTheWebPage_IsDownloadedWithoutAQuestion_AndTakenOffTheList()
+        {
+            var session = await TestSession.GetAsync();
+            Game game = NewGame(9736, "Remote Rally");
+            session.Server.AddGame(game, new byte[16]);
+            session.Server.RemoteInstalls[9736] = "Remote Rally";
+            SanctuaryService.Current = session.Server.Url;
+            try
+            {
+                await RemoteInstalls.CheckAsync();
+
+                await TestSession.WaitUntil(() => DownloadsViewModel.Instance.DownloadedGames.Any(d => d.GetGameId() == 9736), TimeSpan.FromSeconds(30), "the download asked from the web page");
+                Assert.Empty(session.Server.RemoteInstalls);
+                Assert.Null(MainWindowViewModel.Instance.Popup);// no install location question
+            }
+            finally
+            {
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task SaveHistory_ListsTheCloudSaves_NewestAsTheCurrentOne()
         {
             var session = await TestSession.GetAsync();

@@ -85,6 +85,13 @@ namespace gamevault.UserControls
 
             return $"{number:n1} {suffixes[counter]}";
         }
+        /// <summary>Without asking: the last install location if it is still a root directory, else the first one.</summary>
+        public static string DefaultLocation()
+        {
+            string last = Preferences.Get(AppConfigKey.LastSelectedRootDirectory, LoginManager.Instance.GetUserProfile().UserConfigFile);
+            var roots = SettingsViewModel.Instance.RootDirectories;
+            return roots.Any(r => r.Uri == last) && Directory.Exists(last) ? last : roots.FirstOrDefault()?.Uri ?? string.Empty;
+        }
         public Task<string> SelectInstallLocation()
         {
             return ResultTaskSource.Task;

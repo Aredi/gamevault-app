@@ -12,6 +12,8 @@ namespace GameVault.Uploader
         public string ProfilesDirectory { get; init; } = "/data/profiles";
         /// <summary>SAVEFILES_DIRECTORY: the savefiles volume of the GameVault server, mounted read-only (save history).</summary>
         public string SavefilesDirectory { get; init; } = "/savefiles";
+        /// <summary>REMOTE_INSTALLS_DIRECTORY: the games each player asked to install on their PC (a volume, e.g. /data/remote).</summary>
+        public string RemoteInstallsDirectory { get; init; } = "/data/remote";
 
         public static UploaderOptions From(IConfiguration configuration)
         {
@@ -19,7 +21,7 @@ namespace GameVault.Uploader
             string files = configuration["FILES_DIRECTORY"] ?? "/files";
             if (!Directory.Exists(files))
                 throw new InvalidOperationException($"FILES_DIRECTORY '{files}' does not exist: mount the games folder of the GameVault server there.");
-            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles" };
+            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote" };
         }
     }
 }

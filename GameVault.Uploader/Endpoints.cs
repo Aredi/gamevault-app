@@ -9,6 +9,8 @@ namespace GameVault.Uploader
     /// DELETE /uploads/{name}                     drops an unfinished upload
     /// GET  /profiles/{userId}                    the profile chosen by a player (any signed-in player)
     /// PUT  /profiles/{userId}                    saves it (the player themselves, or an administrator)
+    /// GET  /remote-installs                      the games the signed-in player asked to install on their PC
+    /// POST /remote-installs, DELETE /remote-installs/{gameId}   asks for one / takes it (the client) or drops it
     /// GET  /savefiles/{gameId}                   the cloud saves the server keeps for the signed-in player
     /// GET  /savefiles/{gameId}/{name}            one of them (to restore an older save)
     /// POST /auth/login, POST /auth/refresh       the GameVault sign-in for the web page (forwarded to the server)
@@ -22,7 +24,46 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled }));
+
+            // "Install on my PC": the web page adds, the player's client takes (each player sees only their own list)
+            app.MapGet("/remote-installs", async (HttpRequest request, AdminCheck users, RemoteInstallStore remote, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!remote.Enabled)
+                    return Results.Json(new { error = "Remote installs are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                return Results.Json(remote.List(check.Id).Select(e => new { gameId = e.GameId, title = e.Title, requestedAt = e.RequestedAt }));
+            });
+
+            app.MapPost("/remote-installs", async (RemoteInstallRequest asked, HttpRequest request, AdminCheck users, RemoteInstallStore remote, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (asked.GameId <= 0)
+                    return Results.Json(new { error = "Choose a game." }, statusCode: StatusCodes.Status400BadRequest);
+                string title = (asked.Title ?? "").Trim();
+                if (title.Length > 200)
+                    title = title[..200];
+                return remote.Add(check.Id, asked.GameId, title) switch
+                {
+                    RemoteInstallStore.AddResult.Added => Results.StatusCode(StatusCodes.Status201Created),
+                    RemoteInstallStore.AddResult.AlreadyAsked => Results.NoContent(),
+                    RemoteInstallStore.AddResult.Full => Results.Json(new { error = $"At most {RemoteInstallStore.MaxPerUser} games can wait." }, statusCode: StatusCodes.Status409Conflict),
+                    _ => Results.Json(new { error = "Remote installs are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable),
+                };
+            });
+
+            app.MapDelete("/remote-installs/{gameId:int}", async (int gameId, HttpRequest request, AdminCheck users, RemoteInstallStore remote, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                remote.Remove(check.Id, gameId);
+                return Results.NoContent();
+            });
 
             // The web page signs in with the GameVault account through here: same origin, nothing to allow on the server
             app.MapPost("/auth/login", async (LoginRequest login, HttpRequest request, GameVaultProxy gameVault, CancellationToken ct) =>
@@ -170,4 +211,5 @@ namespace GameVault.Uploader
     }
 
     public sealed record LoginRequest(string? Username, string? Password);
+    public sealed record RemoteInstallRequest(int GameId, string? Title);
 }

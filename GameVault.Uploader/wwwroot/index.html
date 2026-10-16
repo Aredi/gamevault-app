@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SanctuaryVault · Publier un jeu</title>
+  <title>SanctuaryVault</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237C5CFF'/%3E%3Cpath d='M8 7l9 5-9 5z' fill='white'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="app.css">
 </head>
@@ -16,8 +16,8 @@
   <main>
     <!-- Sign in with the GameVault account -->
     <section id="login" class="card narrow" hidden>
-      <h1>Publier un jeu</h1>
-      <p class="muted">Connectez-vous avec votre compte SanctuaryVault (administrateur) pour envoyer des jeux sur le serveur depuis n’importe quel navigateur.</p>
+      <h1>SanctuaryVault</h1>
+      <p class="muted">Connecte-toi avec ton compte SanctuaryVault pour lancer l’installation d’un jeu sur ton PC, ou, pour les administrateurs, publier des jeux sur le serveur.</p>
       <form id="loginForm">
         <label>Nom d’utilisateur<input id="username" autocomplete="username" required></label>
         <label>Mot de passe<input id="password" type="password" autocomplete="current-password" required></label>
@@ -27,9 +27,16 @@
       </form>
     </section>
 
-    <section id="notAdmin" class="card narrow" hidden>
-      <h1>Publier un jeu</h1>
-      <p>Seuls les administrateurs du serveur peuvent publier des jeux.</p>
+    <!-- Install on my PC: the player's client takes the games from here -->
+    <section id="remote" class="card" hidden>
+      <h1>Installer sur mon PC</h1>
+      <p class="muted">Choisis un jeu : il se télécharge sur ton PC dès que SanctuaryVault y est ouvert, même si tu n’es pas devant.</p>
+      <label>Jeu<input id="remoteSearch" placeholder="Rechercher un jeu…" autocomplete="off"></label>
+      <div id="remoteResults" class="matchList"></div>
+      <p id="remoteStatus" class="status" hidden></p>
+      <h2>En attente de ton PC</h2>
+      <p id="remoteEmpty" class="muted">Aucun jeu en attente.</p>
+      <div id="remoteList" class="matchList"></div>
     </section>
 
     <!-- Publish -->

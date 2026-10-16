@@ -21,14 +21,24 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `FILES_DIRECTORY` | `/files` | Games folder |
 | `PROFILES_DIRECTORY` | `/data/profiles` | Players' profiles (mount `/data` as a volume to keep them) |
 | `SAVEFILES_DIRECTORY` | `/savefiles` | The GameVault server's savefiles volume, read-only: older cloud saves can be restored |
+| `REMOTE_INSTALLS_DIRECTORY` | `/data/remote` | Games the players asked to install on their PC from the web page |
 
 ## Web page
 
-Open the service's address in a browser (e.g. https://gamevaultupload.example.com) to publish a game without the
-client: sign in with an administrator account of the GameVault server, drop an archive, check the title, version,
+Open the service's address in a browser (e.g. https://gamevaultupload.example.com) and sign in with a GameVault
+account.
+
+**Install on my PC** (every player): search a game of the server and ask for it; the player's SanctuaryVault
+client reads the list every minute while it is open, downloads the game without asking (last install location)
+and takes it off the list.
+
+**Publish a game** without the client: sign in with an administrator account of the GameVault server, drop an archive, check the title, version,
 year and type (the games already on the server are offered, to publish a new version of one), then **Publier**.
 The file is sent in chunks and an interrupted upload continues where it stopped. The sign-in goes through the service
 (`/auth/login`, `/auth/refresh`), so nothing has to be allowed on the GameVault server.
+
+`/invite` is the page to send to a new player: download links for Windows and Linux, and how to sign in. The client's
+**Community → Invite a friend** copies its link.
 
 ## API
 
@@ -45,6 +55,10 @@ The file is sent in chunks and an interrupted upload continues where it stopped.
 | `GET /me`, `GET /games?search=` | the signed-in user, the games already on the server |
 | `GET /savefiles/{gameId}` | the cloud saves the server keeps for the signed-in player (newest first) |
 | `GET /savefiles/{gameId}/{name}` | one of them, to restore an older save |
+| `GET /remote-installs` | the games the signed-in player asked to install on their PC |
+| `POST /remote-installs` | asks for one (`{"gameId": 5, "title": "..."}`, at most 20 waiting) |
+| `DELETE /remote-installs/{gameId}` | takes it (the client) or drops it |
+| `GET /invite` | the page to send to a new player (public) |
 
 ## Profiles
 

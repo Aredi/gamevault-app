@@ -35,6 +35,8 @@
   "Activated": "Activé",
   "Your friends played it": "Tes amis y ont joué",
   "Invite a friend": "Inviter un ami",
+  "'{0}' asked from the web page is already installed": "« {0} », demandé depuis la page web, est déjà installé",
+  "Install asked from the web page": "Installation demandée depuis la page web",
   "Copies a link to send: download and sign in": "Copie un lien à envoyer : téléchargement et connexion",
   "Invitation link copied: send it to your friend": "Lien d'invitation copié : envoie-le à ton ami",
   "Playing now": "Y joue en ce moment",

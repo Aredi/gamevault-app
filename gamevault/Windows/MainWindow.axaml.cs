@@ -59,6 +59,9 @@ namespace gamevault.Windows
             if (PipeServiceHandler.Instance != null)// not started without a desktop session (tests)
                 PipeServiceHandler.Instance.IsReadyForCommands = true;
             NewGamesNotifier.Start();
+            // Games asked from the web page ("Install on my PC")
+            if (PipeServiceHandler.Instance != null)
+                RemoteInstalls.Start();
             // Who is online and what they play (not in the tests: no desktop session there)
             if (PipeServiceHandler.Instance != null)
                 _ = ActivityService.Instance.StartAsync();
