@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rejoins SanctuaryVault</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237C5CFF'/%3E%3Cpath d='M8 7l9 5-9 5z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">▶</span> SanctuaryVault</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h1>Rejoins SanctuaryVault</h1>
+      <p class="muted">Tes amis t’invitent sur leur bibliothèque de jeux : télécharge, installe et joue aux jeux du serveur, avec tes sauvegardes dans le cloud.</p>
+
+      <h2>1. Télécharge l’application</h2>
+      <div class="actions">
+        <a class="button primary" id="windows" href="https://github.com/Aredi/gamevault-app/releases/latest/download/GameVault-win-Setup.exe">Windows</a>
+        <a class="button ghost" id="linux" href="https://github.com/Aredi/gamevault-app/releases/latest/download/GameVault.AppImage">Linux (AppImage)</a>
+      </div>
+      <p class="muted">Windows peut afficher « Windows a protégé votre ordinateur » : choisis <em>Informations complémentaires</em> puis <em>Exécuter quand même</em>. Sur Linux : <code>chmod +x GameVault.AppImage</code> puis lance-le.</p>
+
+      <h2>2. Connecte-toi</h2>
+      <p>L’adresse du serveur est déjà remplie. Entre ton nom d’utilisateur et ton mot de passe, ou utilise le bouton de connexion externe s’il est proposé.</p>
+      <p class="muted">Pas encore de compte ? Crée-le depuis l’application (« S’inscrire »), puis demande à la personne qui t’a invité de l’activer.</p>
+
+      <h2>3. Joue</h2>
+      <p>Choisis un jeu dans la bibliothèque et clique sur <strong>Installer et jouer</strong>. Le jeu que tu cherches n’y est pas ? Demande-le depuis l’application.</p>
+    </section>
+  </main>
+  <script>
+    // The download for this computer first
+    if (/Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent)) {
+      document.getElementById("linux").className = "button primary";
+      document.getElementById("windows").className = "button ghost";
+      document.getElementById("linux").parentNode.prepend(document.getElementById("linux"));
+    }
+  </script>
+</body>
+</html>

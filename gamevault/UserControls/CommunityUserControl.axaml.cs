@@ -550,6 +550,15 @@ namespace gamevault.UserControls
             catch (Exception ex) { Log.Ignored(ex); }
         }
 
+        private void InviteFriend_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ClipboardHelper.SetText(SanctuaryService.InviteUrl);
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Invitation link copied: send it to your friend");
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
         private void ActivityItem_Click(object? sender, RoutedEventArgs e)
         {
             if ((sender as Control)?.DataContext is ActivityFeedItem item)

@@ -1,6 +1,7 @@
 namespace GameVault.Uploader
 {
     /// <summary>
+    /// GET  /invite                               the page to send to a new player (download, sign in)
     /// GET  /status                               uploader version, free space
     /// GET  /uploads/{name}                       bytes received so far, whether the file exists
     /// PUT  /uploads/{name}?offset=N&amp;total=T  appends a chunk (at most 64 MB) at offset N
@@ -18,6 +19,9 @@ namespace GameVault.Uploader
     {
         public static void MapUploadEndpoints(this WebApplication app)
         {
+            // The page sent to a new player: download and sign in
+            app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
+
             app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled }));
 
             // The web page signs in with the GameVault account through here: same origin, nothing to allow on the server

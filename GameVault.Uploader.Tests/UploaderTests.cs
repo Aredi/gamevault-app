@@ -246,6 +246,10 @@ namespace GameVault.Uploader.Tests
             Assert.Contains("Publier un jeu", page);
             Assert.Contains("app.js", page);
             Assert.Equal(HttpStatusCode.OK, (await Client(null).GetAsync("/app.js")).StatusCode);
+            // The invitation, without signing in
+            string invite = await Client(null).GetStringAsync("/invite");
+            Assert.Contains("Rejoins SanctuaryVault", invite);
+            Assert.Contains("releases/latest/download/GameVault-win-Setup.exe", invite);
 
             var bad = await Client(null).PostAsJsonAsync("/auth/login", new { username = "admin", password = "wrong" });
             Assert.Equal(HttpStatusCode.Unauthorized, bad.StatusCode);

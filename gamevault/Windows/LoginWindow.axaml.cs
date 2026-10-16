@@ -30,7 +30,7 @@ namespace gamevault.Windows
     // (WPF picked up changes on plain objects through bindings, Avalonia needs INotifyPropertyChanged).
     internal class LoginUser : ViewModelBase
     {
-        private string serverUrl;
+        private string serverUrl = SanctuaryService.GameVaultUrl;
         private string username;
         private string password;
         private string repeatPassword;
