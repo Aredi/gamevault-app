@@ -429,6 +429,11 @@ namespace gamevault.UserControls
 
 
         /// <summary>"What to play tonight?": a game proposed among the library, with filters.</summary>
+        private void AskForGame_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            MainWindowViewModel.Instance.OpenPopup(new GameRequestsUserControl(uiSearch.Text?.Trim() ?? ""));
+        }
         private void RandomGame_Click(object sender, RoutedEventArgs e)
         {
             e.Handled = true;

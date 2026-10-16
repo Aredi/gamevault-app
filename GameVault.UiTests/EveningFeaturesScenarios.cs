@@ -184,6 +184,29 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AGameNotFound_IsAskedFor_AndTheRequestIsListed()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            try
+            {
+                var popup = new GameRequestsUserControl("Outer Wilds");
+                MainWindowViewModel.Instance.OpenPopup(popup);
+                await popup.SendAsync();
+
+                Assert.Contains("Outer Wilds", session.Server.GameRequests);
+                var listed = popup.FindControl<ItemsControl>("uiRequests")!.ItemsSource!.Cast<GameRequestItem>();
+                Assert.Contains(listed, r => r.Game == "Outer Wilds" && r.StatusText == gamevault.Localization.Loc.T("Waiting"));
+                Assert.Equal("", popup.FindControl<TextBox>("uiGame")!.Text);
+            }
+            finally
+            {
+                MainWindowViewModel.Instance.ClosePopup();
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task SaveHistory_ListsTheCloudSaves_NewestAsTheCurrentOne()
         {
             var session = await TestSession.GetAsync();

@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.GameRequestsUserControl"
+             Width="620" Focusable="True">
+    <!-- Ask for a game: the request goes to the RomM-ComM bot, with the ones made in Discord -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="22,18,22,22" Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Path Data="{StaticResource IconAddSimple}" Fill="{DynamicResource Brush.Accent}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center" />
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'Ask for a game'}" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                       Text="{l:T 'The administrators receive it with the requests made on Discord. You see here when the game is added.'}" />
+
+            <StackPanel x:Name="uiForm" Spacing="10">
+                <TextBox x:Name="uiGame" Watermark="{l:T 'Name of the game'}" MaxLength="200" KeyDown="Game_KeyDown" />
+                <TextBox x:Name="uiDetails" Watermark="{l:T 'Details (optional): version, language, link...'}" MaxLength="1000" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Button x:Name="uiSend" Classes="action" Click="Send_Click" Content="{l:T 'Send the request'}" />
+                    <TextBlock x:Name="uiStatus" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="13" MaxWidth="400" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock x:Name="uiUnavailable" Classes="muted" IsVisible="False" TextWrapping="Wrap"
+                       Text="{l:T 'Game requests are not available on this server.'}" />
+
+            <StackPanel x:Name="uiMine" Spacing="6" IsVisible="False">
+                <TextBlock Classes="muted" FontSize="11" FontWeight="Bold" LetterSpacing="1.2" Margin="0,8,0,0" Text="{l:T 'MY REQUESTS'}" />
+                <ScrollViewer MaxHeight="260" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="uiRequests">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="10" Background="{DynamicResource Brush.Surface}" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="{Binding Game}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Notes}" Classes="muted" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding HasNotes}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding StatusText}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,0,0"
+                                                   Foreground="{DynamicResource Brush.Muted}" Classes.done="{Binding IsDone}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+    <UserControl.Styles>
+        <Style Selector="TextBlock.done">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        </Style>
+    </UserControl.Styles>
+</UserControl>

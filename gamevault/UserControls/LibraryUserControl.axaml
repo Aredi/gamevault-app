@@ -125,6 +125,9 @@
                             </ToggleButton>
                         </StackPanel>
                     </Border>
+                    <Button Classes="round small" ToolTip.Tip="{l:T 'Ask for a game'}" Click="AskForGame_Click">
+                        <Path Data="{StaticResource IconAddSimple}" Width="15" Height="15" />
+                    </Button>
                     <Button Classes="round small" ToolTip.Tip="{l:T 'What to play tonight?'}" Click="RandomGame_Click">
                         <Path Data="{StaticResource IconLibraryDices}" Width="18" Height="18" />
                     </Button>
@@ -454,6 +457,7 @@
                     <StackPanel HorizontalAlignment="Center" IsVisible="{Binding ShowNoGamesFound}" Spacing="6" Margin="0,10">
                         <Image Source="/Resources/Images/library_NoGameFound.png" Height="170" />
                         <TextBlock Classes="sectionTitle" Text="{l:T 'No Games found'}" HorizontalAlignment="Center" />
+                        <Button Classes="action" HorizontalAlignment="Center" Margin="0,6" Click="AskForGame_Click" Content="{l:T 'Ask for this game'}" />
                         <Button Classes="link" HorizontalAlignment="Center" FontSize="12" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#games-not-appearing-in-the-installations--servers-list" Click="Hyperlink_RequestNavigate">
                             <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />
                         </Button>

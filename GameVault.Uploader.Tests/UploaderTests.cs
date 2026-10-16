@@ -53,6 +53,22 @@ namespace GameVault.Uploader.Tests
         }
     }
 
+    /// <summary>The RomM-ComM bot's requests API: keeps what it receives, answers with the requester's list.</summary>
+    internal sealed class FakeRequestsBot : HttpMessageHandler
+    {
+        public readonly List<string> Received = new();
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.Headers.Authorization?.Parameter != "bot-key")
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            Received.Add($"{request.Method} {request.RequestUri!.PathAndQuery} {(request.Content == null ? "" : await request.Content.ReadAsStringAsync(cancellationToken))}");
+            return request.Method == HttpMethod.Post
+                ? new HttpResponseMessage(HttpStatusCode.Created) { Content = JsonContent.Create(new { result = "created", request_id = 12 }) }
+                : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { new { id = 12, game_name = "Hades", status = "pending" } }) };
+        }
+    }
+
     public sealed class UploaderTests : IDisposable
     {
         private readonly string files = Path.Combine(Path.GetTempPath(), $"gv-uploader-{Guid.NewGuid():N}");
@@ -60,6 +76,7 @@ namespace GameVault.Uploader.Tests
         private readonly string saves = Path.Combine(Path.GetTempPath(), $"gv-saves-{Guid.NewGuid():N}");
         private readonly string remote = Path.Combine(Path.GetTempPath(), $"gv-remote-{Guid.NewGuid():N}");
         private readonly FakeGameVault gameVault = new();
+        private readonly FakeRequestsBot bot = new();
         private readonly WebApplicationFactory<Program> factory;
 
         public UploaderTests()
@@ -82,10 +99,13 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("PROFILES_DIRECTORY", profiles);
                 host.UseSetting("SAVEFILES_DIRECTORY", saves);
                 host.UseSetting("REMOTE_INSTALLS_DIRECTORY", remote);
+                host.UseSetting("ROMM_COMM_URL", "http://romm-sync.test:8095");
+                host.UseSetting("ROMM_COMM_API_KEY", "bot-key");
                 host.ConfigureServices(services =>
                 {
                     services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
                     services.AddHttpClient<GameVaultProxy>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
+                    services.AddHttpClient<GameRequestsProxy>().ConfigurePrimaryHttpMessageHandler(() => bot);
                 });
             });
         }
@@ -223,6 +243,24 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.RequestEntityTooLarge, (await Client("user").PutAsync("/profiles/2", new StringContent(huge))).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await Client("user").GetAsync("/profiles/2")).StatusCode);
             Assert.Empty(Directory.GetFiles(profiles, "*.json"));
+        }
+
+        [Fact]
+        public async Task GameRequests_GoToTheBot_WithThePlayerTheServiceChecked()
+        {
+            var player = Client("user");
+            var asked = await player.PostAsJsonAsync("/game-requests", new { game = " Hades ", details = "GOG" });
+            Assert.Equal(HttpStatusCode.Created, asked.StatusCode);
+            // The requester is the signed-in player, whatever the page says
+            Assert.Contains("\"requester\":{\"id\":2,\"name\":\"player\"}", bot.Received[0]);
+            Assert.Contains("\"game\":\"Hades\"", bot.Received[0]);
+
+            using JsonDocument mine = JsonDocument.Parse(await player.GetStringAsync("/game-requests"));
+            Assert.Equal("Hades", mine.RootElement[0].GetProperty("game_name").GetString());
+            Assert.StartsWith("GET /api/requests?requester_id=2&requester_name=player", bot.Received[1]);
+
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/game-requests", new { game = "" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/game-requests")).StatusCode);
         }
 
         [Fact]

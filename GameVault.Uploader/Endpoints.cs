@@ -11,6 +11,7 @@ namespace GameVault.Uploader
     /// PUT  /profiles/{userId}                    saves it (the player themselves, or an administrator)
     /// GET  /remote-installs                      the games the signed-in player asked to install on their PC
     /// POST /remote-installs, DELETE /remote-installs/{gameId}   asks for one / takes it (the client) or drops it
+    /// GET  /game-requests, POST /game-requests   the signed-in player's game requests / asks for a game (RomM-ComM bot)
     /// GET  /savefiles/{gameId}                   the cloud saves the server keeps for the signed-in player
     /// GET  /savefiles/{gameId}/{name}            one of them (to restore an older save)
     /// POST /auth/login, POST /auth/refresh       the GameVault sign-in for the web page (forwarded to the server)
@@ -24,7 +25,34 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled }));
+
+            // Game requests, kept by the RomM-ComM bot with the ones made in Discord
+            app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!requests.Enabled)
+                    return Results.Json(new { error = "Game requests are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                var answer = await requests.ListAsync(check.Id, check.User, ct);
+                return Results.Content(answer.Body, "application/json", statusCode: answer.Status);
+            });
+
+            app.MapPost("/game-requests", async (GameRequest asked, HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!requests.Enabled)
+                    return Results.Json(new { error = "Game requests are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                string game = (asked.Game ?? "").Trim();
+                if (game.Length is 0 or > 200)
+                    return Results.Json(new { error = "Enter the name of the game." }, statusCode: StatusCodes.Status400BadRequest);
+                string? details = asked.Details?.Trim() is { Length: > 0 } d ? d[..Math.Min(d.Length, 1000)] : null;
+                var answer = await requests.AskAsync(check.Id, check.User, game, details, ct);
+                return Results.Content(answer.Body, "application/json", statusCode: answer.Status);
+            });
 
             // "Install on my PC": the web page adds, the player's client takes (each player sees only their own list)
             app.MapGet("/remote-installs", async (HttpRequest request, AdminCheck users, RemoteInstallStore remote, CancellationToken ct) =>
@@ -212,4 +240,5 @@ namespace GameVault.Uploader
 
     public sealed record LoginRequest(string? Username, string? Password);
     public sealed record RemoteInstallRequest(int GameId, string? Title);
+    public sealed record GameRequest(string? Game, string? Details);
 }

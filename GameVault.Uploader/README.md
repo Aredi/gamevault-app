@@ -22,6 +22,8 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `PROFILES_DIRECTORY` | `/data/profiles` | Players' profiles (mount `/data` as a volume to keep them) |
 | `SAVEFILES_DIRECTORY` | `/savefiles` | The GameVault server's savefiles volume, read-only: older cloud saves can be restored |
 | `REMOTE_INSTALLS_DIRECTORY` | `/data/remote` | Games the players asked to install on their PC from the web page |
+| `ROMM_COMM_URL` | - | Requests API of the [RomM-ComM](https://github.com/idio-sync/romm-comm) Discord bot (e.g. `http://romm-sync:8095`): game requests are off without it |
+| `ROMM_COMM_API_KEY` | - | The bot's `REQUESTS_API_KEY` |
 
 ## Web page
 
@@ -59,6 +61,15 @@ The file is sent in chunks and an interrupted upload continues where it stopped.
 | `POST /remote-installs` | asks for one (`{"gameId": 5, "title": "..."}`, at most 20 waiting) |
 | `DELETE /remote-installs/{gameId}` | takes it (the client) or drops it |
 | `GET /invite` | the page to send to a new player (public) |
+| `GET /game-requests` | the signed-in player's game requests and their status (from the bot) |
+| `POST /game-requests` | asks for a game (`{"game": "Hades", "details": "..."}`), passed to the bot with the player |
+
+## Game requests
+
+The client's **Library → Ask for a game** (also offered when a search finds nothing) sends the request here; the
+service passes it, with the player it checked, to the RomM-ComM Discord bot. Requests made in Discord and in
+SanctuaryVault are then in one list (`/request_admin`), duplicates are merged, and the new request is announced in
+the bot's channel. The player sees in the client when the request is fulfilled or refused.
 
 ## Profiles
 

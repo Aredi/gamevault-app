@@ -10,6 +10,9 @@ services:
     environment:
       # The GameVault server as seen from this container (it checks that the user is an administrator)
       GAMEVAULT_URL: http://gamevault-backend:8080
+      # Optional: game requests go to the RomM-ComM Discord bot (its REQUESTS_API_KEY), with the ones made in Discord
+      # ROMM_COMM_URL: http://romm-sync:8095
+      # ROMM_COMM_API_KEY: change-me
     volumes:
       # The same folder the GameVault server has as /files
       - /path/to/your/games:/files

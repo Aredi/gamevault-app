@@ -20,6 +20,13 @@ builder.Services.AddHttpClient<GameVaultProxy>(client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+builder.Services.AddHttpClient<GameRequestsProxy>(client =>
+{
+    if (!string.IsNullOrEmpty(options.RommCommUrl))
+        client.BaseAddress = new Uri(options.RommCommUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 var app = builder.Build();
 // The web page (wwwroot): publish a game from a browser, without the client
 app.UseDefaultFiles();

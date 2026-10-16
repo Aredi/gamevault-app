@@ -14,6 +14,10 @@ namespace GameVault.Uploader
         public string SavefilesDirectory { get; init; } = "/savefiles";
         /// <summary>REMOTE_INSTALLS_DIRECTORY: the games each player asked to install on their PC (a volume, e.g. /data/remote).</summary>
         public string RemoteInstallsDirectory { get; init; } = "/data/remote";
+        /// <summary>ROMM_COMM_URL: the requests API of the RomM-ComM Discord bot (e.g. http://romm-sync:8095); game requests are off without it.</summary>
+        public string? RommCommUrl { get; init; }
+        /// <summary>ROMM_COMM_API_KEY: the bot's REQUESTS_API_KEY.</summary>
+        public string? RommCommApiKey { get; init; }
 
         public static UploaderOptions From(IConfiguration configuration)
         {
@@ -21,7 +25,7 @@ namespace GameVault.Uploader
             string files = configuration["FILES_DIRECTORY"] ?? "/files";
             if (!Directory.Exists(files))
                 throw new InvalidOperationException($"FILES_DIRECTORY '{files}' does not exist: mount the games folder of the GameVault server there.");
-            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote" };
+            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote", RommCommUrl = configuration["ROMM_COMM_URL"], RommCommApiKey = configuration["ROMM_COMM_API_KEY"] };
         }
     }
 }
