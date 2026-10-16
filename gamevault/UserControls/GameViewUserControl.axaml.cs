@@ -62,6 +62,8 @@ namespace gamevault.UserControls
             Loaded += (_, _) => ObserveInstallState(true);
             InitLayout();
             Unloaded += (_, _) => ObserveInstallState(false);
+            Loaded += (_, _) => ActivityService.Instance.Changed += ActivityChanged;
+            Unloaded += (_, _) => ActivityService.Instance.Changed -= ActivityChanged;
             KeyDown += ReloadGameView_Click;
             uiChipsScroll.AddHandler(PointerWheelChangedEvent, (s, e) =>
             {
@@ -85,8 +87,7 @@ namespace gamevault.UserControls
                     {
                         string result = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games/{gameID}");
                         ViewModel.Game = JsonSerializer.Deserialize<Game>(result);
-                        ViewModel.UserProgresses = ViewModel.Game.Progresses.Where(p => p.User.ID != LoginManager.Instance.GetCurrentUser().ID).ToArray();
-                        ViewModel.CurrentUserProgress = ViewModel.Game.Progresses.FirstOrDefault(progress => progress.User.ID == LoginManager.Instance.GetCurrentUser()?.ID) ?? new Progress { MinutesPlayed = 0, State = State.UNPLAYED.ToString() };
+                        ShowProgresses();
                     }
                     catch (Exception ex) { Log.Ignored(ex); }
                 }
@@ -110,6 +111,29 @@ namespace gamevault.UserControls
                 });
             }
         }
+        /// <summary>The friends who played the game: those playing it right now first, then the most recent.</summary>
+        private void ShowProgresses()
+        {
+            Game? game = ViewModel.Game;
+            if (game?.Progresses == null)
+                return;
+            int me = LoginManager.Instance.GetCurrentUser()?.ID ?? -1;
+            foreach (Progress progress in game.Progresses)
+                progress.PlayingNow = ActivityService.Instance.Of(progress.User?.ID ?? -1) is { IsPlaying: true } activity && activity.GameId == game.ID;
+            ViewModel.UserProgresses = game.Progresses
+                .Where(p => p.User != null && p.User.ID != me && (p.PlayingNow || p.MinutesPlayed > 0))
+                .OrderByDescending(p => p.PlayingNow)
+                .ThenByDescending(p => p.LastPlayedAt)
+                .ToArray();
+            ViewModel.CurrentUserProgress = game.Progresses.FirstOrDefault(p => p.User?.ID == me) ?? new Progress { MinutesPlayed = 0, State = State.UNPLAYED.ToString() };
+        }
+
+        private void ActivityChanged() => Dispatcher.UIThread.Post(() =>
+        {
+            if (ViewModel.UserProgresses != null)
+                ShowProgresses();
+        });
+
         private async void ReloadGameView_Click(object? sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
@@ -129,8 +153,7 @@ namespace gamevault.UserControls
             {
                 string result = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games/{gameID}");
                 ViewModel.Game = JsonSerializer.Deserialize<Game>(result);
-                ViewModel.UserProgresses = ViewModel.Game.Progresses.Where(p => p.User.ID != LoginManager.Instance.GetCurrentUser().ID).ToArray();
-                ViewModel.CurrentUserProgress = ViewModel.Game.Progresses.FirstOrDefault(progress => progress.User.ID == LoginManager.Instance.GetCurrentUser()?.ID) ?? new Progress { MinutesPlayed = 0, State = State.UNPLAYED.ToString() };
+                ShowProgresses();
             }
             catch (Exception ex) { Log.Ignored(ex); }
             ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);

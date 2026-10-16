@@ -39,6 +39,9 @@ namespace gamevault.Models
         public Game? Game { get; set; }
         [JsonPropertyName("user")]
         public User? User { get; set; }
+        /// <summary>Filled by the game page: this player is playing the game right now.</summary>
+        [JsonIgnore]
+        public bool PlayingNow { get; set; }
 
     }
 

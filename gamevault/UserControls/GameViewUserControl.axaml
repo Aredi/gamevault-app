@@ -453,7 +453,7 @@
                             </StackPanel>
 
                             <StackPanel Spacing="10" IsVisible="{Binding HasOtherPlayers}">
-                                <TextBlock Classes="sectionTitle" Text="{l:T 'Activities'}" />
+                                <TextBlock Classes="sectionTitle" Text="{l:T 'Your friends played it'}" />
                                 <ItemsControl ItemsSource="{Binding UserProgresses}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -464,7 +464,8 @@
                                                     </Border>
                                                     <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Spacing="1">
                                                         <TextBlock Text="{Binding User.Username}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding State, Converter={StaticResource gameStateDescConv}}" Foreground="{Binding State, Converter={StaticResource gameStateColorConv}}" FontSize="12" />
+                                                        <TextBlock Text="{l:T 'Playing now'}" Foreground="{DynamicResource Brush.Accent}" FontSize="12" FontWeight="SemiBold" IsVisible="{Binding PlayingNow}" />
+                                                        <TextBlock Text="{Binding State, Converter={StaticResource gameStateDescConv}}" Foreground="{Binding State, Converter={StaticResource gameStateColorConv}}" FontSize="12" IsVisible="{Binding !PlayingNow}" />
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
                                                         <TextBlock Text="{Binding MinutesPlayed, Converter={StaticResource timeConv}}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right" />

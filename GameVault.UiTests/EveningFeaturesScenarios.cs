@@ -127,6 +127,41 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task GamePage_ShowsTheFriendsWhoPlayedIt_ThoseOnItNowFirst()
+        {
+            var session = await TestSession.GetAsync();
+            Game game = NewGame(9735, "Friends Fest");
+            User Player(int id, string name) => new() { ID = id, Username = name, Role = PERMISSION_ROLE.USER, Activated = true };
+            game.Progresses = new List<Progress>
+            {
+                new() { ID = 1, User = Player(2, "Zoé"), MinutesPlayed = 90, State = "COMPLETED", LastPlayedAt = DateTime.UtcNow.AddDays(-2) },
+                new() { ID = 2, User = Player(3, "Léo"), MinutesPlayed = 30, State = "PLAYING", LastPlayedAt = DateTime.UtcNow.AddDays(-1) },
+                new() { ID = 3, User = Player(4, "Max"), MinutesPlayed = 0, State = "UNPLAYED" },
+            };
+            session.Server.AddGame(game, new byte[16]);
+            ActivityService.Instance.Apply(new[] { new PlayerActivity { UserId = 2, State = "PLAYING", GameId = 9735 } }, replaceAll: true);
+            try
+            {
+                var page = new GameViewUserControl(game, true);
+                MainWindowViewModel.Instance.SetActiveControl(page);
+                var model = (GameViewViewModel)page.DataContext!;
+                await TestSession.WaitUntil(() => model.UserProgresses != null, TimeSpan.FromSeconds(30), "the players of the game");
+
+                // Zoé plays it now, then the most recent; Max never played it
+                Assert.Equal(new[] { "Zoé", "Léo" }, model.UserProgresses!.Select(p => p.User!.Username));
+                Assert.True(model.UserProgresses![0].PlayingNow);
+
+                // She stops: the most recent first
+                ActivityService.Instance.Apply(Array.Empty<PlayerActivity>(), replaceAll: true);
+                await TestSession.WaitUntil(() => model.UserProgresses![0].User!.Username == "Léo", TimeSpan.FromSeconds(10), "the order to follow the activity");
+            }
+            finally
+            {
+                ActivityService.Instance.Apply(Array.Empty<PlayerActivity>(), replaceAll: true);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task SaveHistory_ListsTheCloudSaves_NewestAsTheCurrentOne()
         {
             var session = await TestSession.GetAsync();
