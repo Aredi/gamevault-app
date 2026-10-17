@@ -57,6 +57,18 @@ namespace GameVault.Uploader
             return games;
         }
 
+        /// <summary>One game of the server, null when there is none (the game asked from the GameVault web page).</summary>
+        public async Task<GameSummary?> GetGameAsync(string authorization, int id, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"api/games/{id}");
+            request.Headers.TryAddWithoutValidation("Authorization", authorization);
+            Forwarded answer = await SendAsync(request, cancellationToken);
+            if (answer.Status != 200)
+                return null;
+            using JsonDocument game = JsonDocument.Parse(answer.Body);
+            return new GameSummary(id, game.RootElement.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "", null, null);
+        }
+
         private async Task<Forwarded> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             try

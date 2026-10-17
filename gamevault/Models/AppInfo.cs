@@ -86,6 +86,8 @@ namespace gamevault.Models
         LastSeenGameId,
         //Status of each game request last seen (id -> status), to tell when one is added or refused
         GameRequestStatuses,
+        //This PC for "Install on my PC" (profileconfig): the id the web page asks for
+        RemoteDeviceId,
         //Download queue
         MaxConcurrentDownloads,
         //Interface language (profileconfig): "", "en", "fr"

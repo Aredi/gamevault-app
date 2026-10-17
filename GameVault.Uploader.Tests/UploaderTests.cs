@@ -27,6 +27,8 @@ namespace GameVault.Uploader.Tests
                 return Task.FromResult(request.Headers.Authorization?.Parameter == "refresh-admin"
                     ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { access_token = "admin", refresh_token = "refresh-admin" }) }
                     : new HttpResponseMessage(HttpStatusCode.Unauthorized));
+            if (path.EndsWith("/api/games/6"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 6, title = "Prey" }) });
             if (path.EndsWith("/api/games") && request.Headers.Authorization?.Parameter == "admin")
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -264,23 +266,63 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
-        public async Task RemoteInstalls_AreKeptPerPlayer_UntilTheirPCTakesThem()
+        public async Task RemoteInstalls_GoToThePCTheyAreAskedFor_AndKeepTheirOutcome()
         {
             var player = Client("user");
-            Assert.Equal(HttpStatusCode.Created, (await player.PostAsJsonAsync("/remote-installs", new { gameId = 6, title = "Prey" })).StatusCode);
-            // Asked twice: kept once
-            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/remote-installs", new { gameId = 6, title = "Prey" })).StatusCode);
-            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/remote-installs", new { gameId = 0, title = "" })).StatusCode);
+            // Two PCs of the player are open
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/remote/devices", new { id = "salon-0001", name = "PC-SALON" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/remote/devices", new { id = "bureau-0001", name = "PC-BUREAU" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/remote/devices", new { id = "../x", name = "bad" })).StatusCode);
+            using (JsonDocument devices = JsonDocument.Parse(await player.GetStringAsync("/remote/devices")))
+            {
+                Assert.Equal(new[] { "PC-BUREAU", "PC-SALON" }, devices.RootElement.EnumerateArray().Select(d => d.GetProperty("name").GetString()).Order());
+                Assert.All(devices.RootElement.EnumerateArray(), d => Assert.True(d.GetProperty("online").GetBoolean()));
+            }
 
-            using (JsonDocument list = JsonDocument.Parse(await player.GetStringAsync("/remote-installs")))
-                Assert.Equal(6, Assert.Single(list.RootElement.EnumerateArray()).GetProperty("gameId").GetInt32());
-            // Another player does not see it
-            Assert.Equal("[]", await Client("admin").GetStringAsync("/remote-installs"));
-            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/remote-installs")).StatusCode);
+            Assert.Equal(HttpStatusCode.Created, (await player.PostAsJsonAsync("/remote/installs", new { gameId = 6, title = "Prey", deviceId = "salon-0001" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/remote/installs", new { gameId = 6, title = "Prey", deviceId = "salon-0001" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/remote/installs", new { gameId = 6, title = "Prey", deviceId = "unknown-0001" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/remote/installs", new { gameId = 0, title = "", deviceId = "salon-0001" })).StatusCode);
 
-            // The PC takes it
-            Assert.Equal(HttpStatusCode.NoContent, (await player.DeleteAsync("/remote-installs/6")).StatusCode);
-            Assert.Equal("[]", await player.GetStringAsync("/remote-installs"));
+            // Only the PC it was asked for takes it; another player sees nothing
+            Assert.Equal("[]", await player.GetStringAsync("/remote/installs?device=bureau-0001"));
+            string id;
+            using (JsonDocument mine = JsonDocument.Parse(await player.GetStringAsync("/remote/installs?device=salon-0001")))
+                id = Assert.Single(mine.RootElement.EnumerateArray()).GetProperty("id").GetString()!;
+            Assert.Equal("[]", await Client("admin").GetStringAsync("/remote/installs"));
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/remote/installs")).StatusCode);
+
+            // The PC says it failed: no longer to take, still shown with the reason
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PutAsJsonAsync($"/remote/installs/{id}", new { status = "done" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync($"/remote/installs/{id}", new { status = "failed", message = "Not enough space" })).StatusCode);
+            Assert.Equal("[]", await player.GetStringAsync("/remote/installs?device=salon-0001"));
+            using (JsonDocument all = JsonDocument.Parse(await player.GetStringAsync("/remote/installs")))
+            {
+                JsonElement entry = Assert.Single(all.RootElement.EnumerateArray());
+                Assert.Equal(("failed", "Not enough space", "PC-SALON"), (entry.GetProperty("status").GetString(), entry.GetProperty("message").GetString(), entry.GetProperty("deviceName").GetString()));
+            }
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").PutAsJsonAsync($"/remote/installs/{id}", new { status = "started" })).StatusCode);
+
+            // Asked again: a new request; dropped by the player
+            Assert.Equal(HttpStatusCode.Created, (await player.PostAsJsonAsync("/remote/installs", new { gameId = 6, title = "Prey", deviceId = "salon-0001" })).StatusCode);
+            using (JsonDocument again = JsonDocument.Parse(await player.GetStringAsync("/remote/installs")))
+                id = Assert.Single(again.RootElement.EnumerateArray()).GetProperty("id").GetString()!;
+            Assert.Equal(HttpStatusCode.NoContent, (await player.DeleteAsync($"/remote/installs/{id}")).StatusCode);
+            Assert.Equal("[]", await player.GetStringAsync("/remote/installs"));
+        }
+
+        [Fact]
+        public async Task TheWebPage_IsAlsoServedUnderTheGameVaultSite()
+        {
+            var noRedirect = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var moved = await noRedirect.GetAsync("/sanctuary?install=6");
+            Assert.Equal(HttpStatusCode.Redirect, moved.StatusCode);
+            Assert.Equal("/sanctuary/?install=6", moved.Headers.Location!.OriginalString);
+            Assert.Contains("app.js", await Client(null).GetStringAsync("/sanctuary/"));
+            Assert.Equal(HttpStatusCode.OK, (await Client(null).GetAsync("/sanctuary/inject.js")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Client(null).GetAsync("/sanctuary/status")).StatusCode);
+            // The game asked from a game page of the GameVault site
+            Assert.Contains("\"Prey\"", await Client("user").GetStringAsync("/sanctuary/games/6"));
         }
 
         [Fact]

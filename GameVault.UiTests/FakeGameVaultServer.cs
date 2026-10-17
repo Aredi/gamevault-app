@@ -47,8 +47,10 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<int, string> Profiles { get; } = new();
         /// <summary>The SanctuaryVault service part: the signed-in player's cloud saves per game (file name → content), any order.</summary>
         public ConcurrentDictionary<int, ConcurrentDictionary<string, byte[]>> SaveVersions { get; } = new();
-        /// <summary>"Install on my PC" asked from the web page (the signed-in player's list): game id, title.</summary>
-        public ConcurrentDictionary<int, string> RemoteInstalls { get; } = new();
+        /// <summary>"Install on my PC": the PCs that said they are open (id, name) and the requests (by request id).</summary>
+        public ConcurrentDictionary<string, string> RemoteDevices { get; } = new();
+        public ConcurrentDictionary<string, RemoteInstall> RemoteInstalls { get; } = new();
+        public sealed record RemoteInstall(int GameId, string Title, string DeviceId, string Status = "pending", string? Message = null);
         /// <summary>Game requests sent through the service (to the RomM-ComM bot): name of the game.</summary>
         public ConcurrentQueue<string> GameRequests { get; } = new();
         /// <summary>Status the bot gives a request (pending when not set): game, status.</summary>
@@ -171,11 +173,26 @@ namespace GameVault.UiTests
                 }
                 else if (path == "/game-requests")
                     await Json(response, GameRequests.Select((g, i) => new { id = i + 1, game_name = g, status = GameRequestStatuses.GetValueOrDefault(g, "pending") }).ToArray());
-                else if (path == "/remote-installs")
-                    await Json(response, RemoteInstalls.Select(r => new { gameId = r.Key, title = r.Value }).ToArray());
-                else if ((match = Regex.Match(path, @"^/remote-installs/(\d+)$")).Success && request.HttpMethod == "DELETE")
+                else if (path == "/remote/devices" && request.HttpMethod == "POST")
                 {
-                    RemoteInstalls.TryRemove(int.Parse(match.Groups[1].Value), out _);
+                    using JsonDocument device = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    RemoteDevices[device.RootElement.GetProperty("id").GetString()!] = device.RootElement.GetProperty("name").GetString()!;
+                    response.StatusCode = 204;
+                }
+                else if (path == "/remote/installs")
+                {
+                    string? device = request.QueryString["device"];
+                    await Json(response, RemoteInstalls.Where(r => r.Value.DeviceId == device && r.Value.Status == "pending")
+                        .Select(r => new { id = r.Key, gameId = r.Value.GameId, title = r.Value.Title }).ToArray());
+                }
+                else if ((match = Regex.Match(path, @"^/remote/installs/(\w+)$")).Success && request.HttpMethod == "PUT" && RemoteInstalls.TryGetValue(match.Groups[1].Value, out var asked))
+                {
+                    using JsonDocument report = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    RemoteInstalls[match.Groups[1].Value] = asked with
+                    {
+                        Status = report.RootElement.GetProperty("status").GetString()!,
+                        Message = report.RootElement.TryGetProperty("message", out var said) && said.ValueKind == JsonValueKind.String ? said.GetString() : null,
+                    };
                     response.StatusCode = 204;
                 }
                 else if (path == "/api/status")

@@ -238,13 +238,16 @@ namespace gamevault.UserControls
         }
         /// <param name="unattended">Asked from elsewhere (remote install): nobody answers questions, the last
         /// install location is used and a game already downloaded stays as it is.</param>
-        public async Task TryStartDownload(Game game, bool playWhenInstalled = false, bool unattended = false)
+        /// <returns>Null when the download was added, else why not (also shown in the app bar).</returns>
+        public async Task<string?> TryStartDownload(Game game, bool playWhenInstalled = false, bool unattended = false)
         {
-            if (SettingsViewModel.Instance.RootDirectories.Count == 0)
+            static string Fail(string message)
             {
-                MainWindowViewModel.Instance.AppBarText = Loc.T("No Root Directory configured! Go to ⚙️Settings->Data");
-                return;
+                MainWindowViewModel.Instance.AppBarText = message;
+                return message;
             }
+            if (SettingsViewModel.Instance.RootDirectories.Count == 0)
+                return Fail(Loc.T("No Root Directory configured! Go to ⚙️Settings->Data"));
             string selectedDirectory;
             if (unattended)
             {
@@ -257,45 +260,34 @@ namespace gamevault.UserControls
                 selectedDirectory = await installLocationPicker.SelectInstallLocation();
             }
             if (selectedDirectory == string.Empty)
-                return;
+                return Loc.T("No install location was chosen");
 
             if (!Directory.Exists(selectedDirectory))
-            {
-                MainWindowViewModel.Instance.AppBarText = Loc.T("Selected directory does not exist");
-                return;
-            }
+                return Fail(Loc.T("Selected directory does not exist"));
             if (LoginManager.Instance.IsLoggedIn() == false)
-            {
-                MainWindowViewModel.Instance.AppBarText = Loc.T("You are not logged in or offline");
-                return;
-            }
+                return Fail(Loc.T("You are not logged in or offline"));
             if (IsAlreadyDownloading(game.ID))
-            {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is already in the download queue", game.Title);
-                return;
-            }
-            if (unattended ? DownloadsViewModel.Instance.DownloadedGames.Any(g => g.GetGameId() == game.ID) : await IsAlreadyDownloaded(game.ID))
-            {
-                return;
-            }
-            if (IsEnoughDriveSpaceAvailable(Convert.ToInt64(game.Size), selectedDirectory))
-            {
-                GameDownloadUserControl? oldDownloadEntry = DownloadsViewModel.Instance.DownloadedGames.Where(g => g.GetGameId() == game.ID).FirstOrDefault();
-                if (oldDownloadEntry != null)
-                {
-                    DownloadQueue.Remove(oldDownloadEntry);
-                    DownloadsViewModel.Instance.DownloadedGames.Remove(oldDownloadEntry);
-                }
-                DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, selectedDirectory, true) { PlayWhenInstalled = playWhenInstalled });
-                MainWindowViewModel.Instance.AppBarText = playWhenInstalled
-                    ? Loc.F("'{0}' is downloaded, installed and started for you", game.Title)
-                    : Loc.F("'{0}' has been added to the download queue", game.Title);
-            }
-            else
+                return Fail(Loc.F("'{0}' is already in the download queue", game.Title));
+            if (unattended && DownloadsViewModel.Instance.DownloadedGames.Any(g => g.GetGameId() == game.ID))
+                return Fail(Loc.F("'{0}' is already downloaded on this PC", game.Title));
+            if (!unattended && await IsAlreadyDownloaded(game.ID))
+                return Loc.T("The game was already downloaded");
+            if (!IsEnoughDriveSpaceAvailable(Convert.ToInt64(game.Size), selectedDirectory))
             {
                 string? driveName = PlatformInfo.GetDriveForPath(selectedDirectory)?.Name ?? Path.GetPathRoot(selectedDirectory);
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough space available for drive {0}", driveName);
+                return Fail(Loc.F("Not enough space available for drive {0}", driveName));
             }
+            GameDownloadUserControl? oldDownloadEntry = DownloadsViewModel.Instance.DownloadedGames.Where(g => g.GetGameId() == game.ID).FirstOrDefault();
+            if (oldDownloadEntry != null)
+            {
+                DownloadQueue.Remove(oldDownloadEntry);
+                DownloadsViewModel.Instance.DownloadedGames.Remove(oldDownloadEntry);
+            }
+            DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, selectedDirectory, true) { PlayWhenInstalled = playWhenInstalled });
+            MainWindowViewModel.Instance.AppBarText = playWhenInstalled
+                ? Loc.F("'{0}' is downloaded, installed and started for you", game.Title)
+                : Loc.F("'{0}' has been added to the download queue", game.Title);
+            return null;
         }
         private async Task<bool> IsAlreadyDownloaded(int id)
         {

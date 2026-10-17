@@ -162,20 +162,30 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
-        public async Task AGameAskedFromTheWebPage_IsDownloadedWithoutAQuestion_AndTakenOffTheList()
+        public async Task AGameAskedFromTheWebPage_IsDownloadedOnTheChosenPC_AndTheOutcomeIsTold()
         {
             var session = await TestSession.GetAsync();
-            Game game = NewGame(9736, "Remote Rally");
+            Game game = NewGame(9736, "Remote Rally"), other = NewGame(9737, "Other PC Racer");
             session.Server.AddGame(game, new byte[16]);
-            session.Server.RemoteInstalls[9736] = "Remote Rally";
+            session.Server.AddGame(other, new byte[16]);
+            string thisPc = RemoteInstalls.DeviceId();
+            session.Server.RemoteInstalls["a1"] = new(9736, "Remote Rally", thisPc);
+            session.Server.RemoteInstalls["b2"] = new(9737, "Other PC Racer", "other-pc-0001");
+            session.Server.RemoteInstalls["c3"] = new(99999, "Gone Game", thisPc);
             SanctuaryService.Current = session.Server.Url;
             try
             {
                 await RemoteInstalls.CheckAsync();
 
+                Assert.Equal(Environment.MachineName, session.Server.RemoteDevices[thisPc]);// shown on the page to choose it
                 await TestSession.WaitUntil(() => DownloadsViewModel.Instance.DownloadedGames.Any(d => d.GetGameId() == 9736), TimeSpan.FromSeconds(30), "the download asked from the web page");
-                Assert.Empty(session.Server.RemoteInstalls);
                 Assert.Null(MainWindowViewModel.Instance.Popup);// no install location question
+                Assert.Equal("started", session.Server.RemoteInstalls["a1"].Status);
+                // A game no longer on the server: the page says why
+                Assert.Equal(("failed", gamevault.Localization.Loc.T("This game is no longer on the server")), (session.Server.RemoteInstalls["c3"].Status, session.Server.RemoteInstalls["c3"].Message));
+                // Asked for another PC: left to it
+                Assert.Equal("pending", session.Server.RemoteInstalls["b2"].Status);
+                Assert.DoesNotContain(DownloadsViewModel.Instance.DownloadedGames, d => d.GetGameId() == 9737);
             }
             finally
             {

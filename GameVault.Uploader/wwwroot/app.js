@@ -23,11 +23,17 @@ const tokens = {
   },
 };
 
-async function refreshTokens() {
-  if (!tokens.refresh) return false;
-  const response = await fetch("auth/refresh", { method: "POST", headers: { Authorization: "Bearer " + tokens.refresh } });
+// Under the GameVault site (gamevault.example.com/sanctuary/), its web page keeps its sign-in here: the same one is used
+const SITE_REFRESH = "app_refresh_token";
+
+async function refreshTokens(refresh = tokens.refresh) {
+  if (!refresh) return false;
+  const response = await fetch("auth/refresh", { method: "POST", headers: { Authorization: "Bearer " + refresh } });
   if (!response.ok) return false;
-  tokens.set(await response.json());
+  const pair = await response.json();
+  // Renewed for both pages: the GameVault one must still find a valid sign-in
+  if (localStorage.getItem(SITE_REFRESH) === refresh && pair.refresh_token) localStorage.setItem(SITE_REFRESH, pair.refresh_token);
+  tokens.set(pair);
   return true;
 }
 
@@ -313,56 +319,101 @@ function remoteStatus(text, kind = "") {
   show("remoteStatus", !!text);
 }
 
+function ago(date) {
+  const minutes = Math.round((Date.now() - new Date(date)) / 60000);
+  if (minutes < 60) return `il y a ${Math.max(minutes, 1)} min`;
+  if (minutes < 48 * 60) return `il y a ${Math.round(minutes / 60)} h`;
+  return `il y a ${Math.round(minutes / 1440)} jours`;
+}
+
+function remoteOutcome(entry) {
+  const pc = entry.deviceName;
+  if (entry.status === "started") return `Téléchargement lancé sur ${pc}`;
+  if (entry.status === "failed") return `Pas installé sur ${pc} : ${entry.message || "erreur inconnue"}`;
+  const device = remoteDevices.find(d => d.id === entry.deviceId);
+  return device && !device.online ? `En attente : ${pc} est fermé, ça partira à son ouverture` : `En attente de ${pc}…`;
+}
+
+let remoteDevices = [];
 async function loadRemote() {
-  const response = await api("remote-installs");
-  if (!response.ok) { show("remote", false); return; }
-  const waiting = await response.json();
+  const [devices, installs] = await Promise.all([api("remote/devices"), api("remote/installs")]);
+  if (!devices.ok || !installs.ok) { show("remote", false); return; }
+  remoteDevices = await devices.json();
+  const select = $("remoteDevice");
+  const chosen = select.value || localStorage.getItem("sv.device");
+  select.replaceChildren(...remoteDevices.map(d => new Option(d.online ? `${d.name} — ouvert` : `${d.name} — fermé (vu ${ago(d.lastSeen)})`, d.id)));
+  if (remoteDevices.some(d => d.id === chosen)) select.value = chosen;
+  show("remoteDeviceField", remoteDevices.length > 0);
+  show("remoteNoDevice", remoteDevices.length === 0);
+
+  const entries = await installs.json();
   const list = $("remoteList");
   list.replaceChildren();
-  for (const entry of waiting) {
+  for (const entry of entries) {
     const button = document.createElement("button");
     button.className = "match";
     button.title = "Retirer de la liste";
     button.textContent = entry.title || "Jeu " + entry.gameId;
     const small = document.createElement("small");
-    small.textContent = "Demandé le " + new Date(entry.requestedAt).toLocaleString("fr-FR") + " · ✕ retirer";
+    small.textContent = `${remoteOutcome(entry)} · demandé ${ago(entry.requestedAt)} · ✕ retirer`;
     button.append(small);
-    button.onclick = async () => { await api("remote-installs/" + entry.gameId, { method: "DELETE" }); await loadRemote(); };
+    button.onclick = async () => { await api("remote/installs/" + entry.id, { method: "DELETE" }); await loadRemote(); };
     list.append(button);
   }
-  show("remoteEmpty", waiting.length === 0);
+  show("remoteEmpty", entries.length === 0);
   show("remote");
+}
+
+/** Buttons for games to install: from a search, or the game opened on the GameVault site. */
+function showRemoteChoices(games) {
+  const results = $("remoteResults");
+  results.replaceChildren();
+  for (const game of games) {
+    const button = document.createElement("button");
+    button.className = "match";
+    button.textContent = game.title;
+    const small = document.createElement("small");
+    small.textContent = [game.version, game.year].filter(Boolean).join(" · ") || "Installer sur ce PC";
+    button.append(small);
+    button.onclick = () => askRemote(game);
+    results.append(button);
+  }
+}
+
+async function askRemote(game) {
+  const deviceId = $("remoteDevice").value;
+  const device = remoteDevices.find(d => d.id === deviceId);
+  if (!device) { remoteStatus("Choisis d’abord un de tes PC.", "error"); return; }
+  const added = await api("remote/installs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: game.id, title: game.title, deviceId }) });
+  if (!added.ok) { remoteStatus(await errorOf(added), "error"); return; }
+  localStorage.setItem("sv.device", deviceId);
+  remoteStatus(device.online
+    ? `« ${game.title} » part sur ${device.name} : le téléchargement démarre dans la minute.`
+    : `« ${game.title} » se téléchargera sur ${device.name} dès que SanctuaryVault y sera ouvert.`, "ok");
+  $("remoteSearch").value = "";
+  $("remoteResults").replaceChildren();
+  await loadRemote();
 }
 
 let remoteSearchGeneration = 0;
 async function searchRemote() {
   const generation = ++remoteSearchGeneration;
   const text = $("remoteSearch").value.trim();
-  const results = $("remoteResults");
-  if (text.length < 2) { results.replaceChildren(); return; }
+  if (text.length < 2) { $("remoteResults").replaceChildren(); return; }
   const response = await api("games?search=" + encodeURIComponent(text));
   if (!response.ok || generation !== remoteSearchGeneration) return;
-  results.replaceChildren();
-  for (const game of await response.json()) {
-    const button = document.createElement("button");
-    button.className = "match";
-    button.textContent = game.title;
-    const small = document.createElement("small");
-    small.textContent = [game.version, game.year].filter(Boolean).join(" · ") || "Installer sur mon PC";
-    button.append(small);
-    button.onclick = async () => {
-      const added = await api("remote-installs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: game.id, title: game.title }) });
-      if (added.ok) {
-        remoteStatus(`« ${game.title} » se téléchargera sur ton PC dès que SanctuaryVault y sera ouvert.`, "ok");
-        $("remoteSearch").value = "";
-        results.replaceChildren();
-        await loadRemote();
-      } else {
-        remoteStatus(await errorOf(added), "error");
-      }
-    };
-    results.append(button);
-  }
+  showRemoteChoices(await response.json());
+}
+
+/** Opened from a game's page of the GameVault site (its "Install on my PC" button): that game is offered. */
+async function offerAskedGame() {
+  const id = Number(new URLSearchParams(location.search).get("install"));
+  if (!id) return;
+  const response = await api("games/" + id);
+  if (!response.ok) return;
+  showRemoteChoices([await response.json()]);
+  remoteStatus("Choisis le PC puis clique sur le jeu.");
+  $("remote").scrollIntoView();
 }
 
 // ---- Screens ----
@@ -373,7 +424,7 @@ function signOut() {
 }
 
 async function start() {
-  if (!tokens.access) { signOut(); return; }
+  if (!tokens.access && !await refreshTokens(localStorage.getItem(SITE_REFRESH))) { signOut(); return; }
   try {
     const response = await api("me");
     if (!response.ok) { signOut(); return; }
@@ -382,8 +433,12 @@ async function start() {
     show("who"); show("login", false);
     show("publish", me.admin);
     await loadRemote();
+    await offerAskedGame();
   } catch { signOut(); }
 }
+
+// The requests' outcomes and the open PCs change: shown again while the page is in view
+setInterval(() => { if (!document.hidden && !$("remote").hidden && !uploading) loadRemote().catch(() => {}); }, 15000);
 
 $("loginForm").addEventListener("submit", async event => {
   event.preventDefault();

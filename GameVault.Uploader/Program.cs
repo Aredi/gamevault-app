@@ -28,7 +28,19 @@ builder.Services.AddHttpClient<GameRequestsProxy>(client =>
 });
 
 var app = builder.Build();
-// The web page (wwwroot): publish a game from a browser, without the client
+// Also served under the GameVault site (gamevault.example.com/sanctuary/ -> this service): same origin as the
+// GameVault web page, whose sign-in the page then uses. The page's links are relative, so it needs the final slash.
+app.UsePathBase("/sanctuary");
+app.Use(async (context, next) =>
+{
+    if (context.Request.PathBase.HasValue && !context.Request.Path.HasValue)
+    {
+        context.Response.Redirect(context.Request.PathBase + "/" + context.Request.QueryString);
+        return;
+    }
+    await next();
+});
+// The web page (wwwroot): install a game on my PC, publish a game from a browser
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapUploadEndpoints();

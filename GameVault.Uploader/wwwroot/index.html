@@ -30,12 +30,14 @@
     <!-- Install on my PC: the player's client takes the games from here -->
     <section id="remote" class="card" hidden>
       <h1>Installer sur mon PC</h1>
-      <p class="muted">Choisis un jeu : il se télécharge sur ton PC dès que SanctuaryVault y est ouvert, même si tu n’es pas devant.</p>
+      <p class="muted">Choisis un de tes PC et un jeu : il s’y télécharge dès que SanctuaryVault y est ouvert, même si tu n’es pas devant.</p>
+      <label id="remoteDeviceField">PC<select id="remoteDevice"></select></label>
+      <p id="remoteNoDevice" class="muted" hidden>Aucun PC pour l’instant : ouvre SanctuaryVault (version 1.25 ou plus récente) sur ton PC, il apparaîtra ici dans la minute.</p>
       <label>Jeu<input id="remoteSearch" placeholder="Rechercher un jeu…" autocomplete="off"></label>
       <div id="remoteResults" class="matchList"></div>
       <p id="remoteStatus" class="status" hidden></p>
-      <h2>En attente de ton PC</h2>
-      <p id="remoteEmpty" class="muted">Aucun jeu en attente.</p>
+      <h2>Mes demandes</h2>
+      <p id="remoteEmpty" class="muted">Aucune demande.</p>
       <div id="remoteList" class="matchList"></div>
     </section>
 

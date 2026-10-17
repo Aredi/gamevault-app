@@ -30,9 +30,44 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 Open the service's address in a browser (e.g. https://gamevaultupload.example.com) and sign in with a GameVault
 account.
 
-**Install on my PC** (every player): search a game of the server and ask for it; the player's SanctuaryVault
-client reads the list every minute while it is open, downloads the game without asking (last install location)
-and takes it off the list.
+**Install on my PC** (every player): choose one of your PCs and a game. Each SanctuaryVault client (1.25 or later)
+says every minute that it is open, so the page lists the player's PCs (open or not). The chosen PC takes the game,
+downloads it without asking (last install location) and says whether it started or why not; the request stays on
+the page with that outcome for 3 days.
+
+### Under the GameVault site
+
+The page can also be served under the GameVault web page's own address (`https://gamevault.example.com/sanctuary/`):
+it then uses that page's sign-in, Plex or Authentik included, with nothing to type. In Nginx Proxy Manager, on the
+proxy host of the GameVault server, tab **Advanced** (replace the address by the one of this service):
+
+```nginx
+# The SanctuaryVault page under the GameVault site
+location /sanctuary/ {
+    proxy_pass http://192.168.1.10:7477;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 80m;
+}
+```
+
+Optionally, an **Install on my PC** button on each game page of the GameVault web page: the proxy adds
+`/sanctuary/inject.js` to its pages. The server sends them compressed, which the proxy can not change, hence the
+`Accept-Encoding` line (replace the address by the one of the GameVault server):
+
+```nginx
+# The GameVault pages (not its API nor its files) with the SanctuaryVault button
+location ~ ^/(?!api/|assets/|sanctuary) {
+    proxy_pass http://192.168.1.10:7476;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Accept-Encoding "";
+    sub_filter '</head>' '<script src="/sanctuary/inject.js"></script></head>';
+    sub_filter_once on;
+}
+```
 
 **Publish a game** without the client: sign in with an administrator account of the GameVault server, drop an archive, check the title, version,
 year and type (the games already on the server are offered, to publish a new version of one), then **Publier**.
@@ -57,9 +92,13 @@ The file is sent in chunks and an interrupted upload continues where it stopped.
 | `GET /me`, `GET /games?search=` | the signed-in user, the games already on the server |
 | `GET /savefiles/{gameId}` | the cloud saves the server keeps for the signed-in player (newest first) |
 | `GET /savefiles/{gameId}/{name}` | one of them, to restore an older save |
-| `GET /remote-installs` | the games the signed-in player asked to install on their PC |
-| `POST /remote-installs` | asks for one (`{"gameId": 5, "title": "..."}`, at most 20 waiting) |
-| `DELETE /remote-installs/{gameId}` | takes it (the client) or drops it |
+| `POST /remote/devices` | a client of the signed-in player says it is open (`{"id": "...", "name": "PC-SALON"}`) |
+| `GET /remote/devices` | the player's PCs, with `online` (seen in the last 3 minutes) |
+| `GET /remote/installs[?device=ID]` | the player's "install on my PC" requests, or the ones that PC still has to take |
+| `POST /remote/installs` | asks a PC for a game (`{"gameId": 5, "title": "...", "deviceId": "..."}`, at most 20 waiting) |
+| `PUT /remote/installs/{id}` | the PC says what became of it (`{"status": "started" or "failed", "message": "..."}`) |
+| `DELETE /remote/installs/{id}` | the player drops it |
+| `GET /games/{id}` | one game of the server (the game opened on the GameVault site) |
 | `GET /invite` | the page to send to a new player (public) |
 | `GET /game-requests` | the signed-in player's game requests and their status (from the bot) |
 | `POST /game-requests` | asks for a game (`{"game": "Hades", "details": "..."}`), passed to the bot with the player |
