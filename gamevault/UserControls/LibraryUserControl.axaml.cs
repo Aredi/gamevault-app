@@ -544,6 +544,17 @@ namespace gamevault.UserControls
                 ViewModel.GameCards[index] = null;
                 ViewModel.GameCards[index] = gameToRefreshParam;
             }
+            // The showcase keeps its own copies of the games (recently added, collections, banner): a new cover shows there too
+            for (int i = 0; i < ViewModel.RecentGames.Count; i++)
+                if (ViewModel.RecentGames[i].ID == gameToRefreshParam.ID)
+                    ViewModel.RecentGames[i] = gameToRefreshParam;
+            for (int i = 0; i < ViewModel.CollectionRows.Count; i++)
+            {
+                CollectionRow row = ViewModel.CollectionRows[i];
+                if (row.Games.Any(g => g.ID == gameToRefreshParam.ID))
+                    ViewModel.CollectionRows[i] = new CollectionRow { Name = row.Name, Count = row.Count, Games = row.Games.Select(g => g.ID == gameToRefreshParam.ID ? gameToRefreshParam : g).ToList() };
+            }
+            RebuildHero();
         }
 
 

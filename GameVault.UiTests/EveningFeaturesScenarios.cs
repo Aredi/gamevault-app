@@ -217,6 +217,27 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public void ANewCover_ShowsInRecentlyAdded_Too()
+        {
+            var library = MainWindowViewModel.Instance.Library;
+            var recent = library.Model.RecentGames;
+            Game before = NewGame(9751, "Cover Quest");
+            recent.Insert(0, before);
+            try
+            {
+                Game after = NewGame(9751, "Cover Quest");
+                after.Metadata!.Cover = new Media { ID = 6016 };
+                library.RefreshGame(after);
+                Assert.Equal(6016, recent.Single(g => g.ID == 9751).Metadata!.Cover!.ID);
+            }
+            finally
+            {
+                foreach (Game game in recent.Where(g => g.ID == 9751).ToList())
+                    recent.Remove(game);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task ARequestAdded_IsTold_OnlyOnce()
         {
             var session = await TestSession.GetAsync();
