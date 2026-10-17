@@ -1,6 +1,10 @@
 using gamevault.Localization;
+using gamevault.Models;
+using gamevault.ViewModels;
+using GameVault.Core;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -37,6 +41,55 @@ namespace gamevault.Helper
     /// <summary>Game requests, through the SanctuaryVault service which passes them to the RomM-ComM bot.</summary>
     internal static class GameRequestsService
     {
+        private static Timer? timer;
+        private static readonly SemaphoreSlim checking = new(1, 1);
+
+        /// <summary>Tells the player when one of their requests is added or refused.</summary>
+        public static void Start()
+        {
+            timer ??= new Timer(async _ => await CheckAsync(), null, TimeSpan.FromSeconds(40), TimeSpan.FromMinutes(5));
+        }
+
+        /// <summary>
+        /// Compares the statuses with the ones seen last time (stored per profile, so a request handled while GameVault
+        /// was closed is told too) and notifies the requests that became added or refused.
+        /// </summary>
+        public static async Task CheckAsync()
+        {
+            if (!LoginManager.Instance.IsLoggedIn() || !await checking.WaitAsync(0))
+                return;
+            try
+            {
+                var requests = await ListAsync();
+                if (requests == null)
+                    return;
+                string configFile = LoginManager.Instance.GetUserProfile().UserConfigFile;
+                var known = Preferences.Get<Dictionary<int, string>>(AppConfigKey.GameRequestStatuses, configFile);
+                Preferences.Set(AppConfigKey.GameRequestStatuses, requests.ToDictionary(r => r.Id, r => r.Status), configFile);
+                if (known == null)
+                    return;// first check of this profile: the past requests are not told again
+                foreach (GameRequestItem request in requests)
+                {
+                    if (known.TryGetValue(request.Id, out string? before) && before == request.Status)
+                        continue;
+                    string? title = request.Status switch
+                    {
+                        "fulfilled" => Loc.F("'{0}' is now on SanctuaryVault", request.Game),
+                        "reject" => Loc.F("Your request for '{0}' was refused", request.Game),
+                        _ => null,
+                    };
+                    if (title == null)
+                        continue;
+                    string details = request.HasNotes ? request.Notes! : Loc.T("Ask for a game");
+                    ToastMessageHelper.CreateToastMessage(title, details);
+                    MainWindowViewModel.Instance.AppBarText = title;
+                    Log.Info(title);
+                }
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            finally { checking.Release(); }
+        }
+
         /// <summary>The signed-in player's requests, newest first; null when the server has no requests.</summary>
         public static async Task<List<GameRequestItem>?> ListAsync()
         {

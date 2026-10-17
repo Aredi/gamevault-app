@@ -51,6 +51,8 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<int, string> RemoteInstalls { get; } = new();
         /// <summary>Game requests sent through the service (to the RomM-ComM bot): name of the game.</summary>
         public ConcurrentQueue<string> GameRequests { get; } = new();
+        /// <summary>Status the bot gives a request (pending when not set): game, status.</summary>
+        public ConcurrentDictionary<string, string> GameRequestStatuses { get; } = new();
         /// <summary>The mappings received (PUT /api/games/{id}): game, provider, provider id.</summary>
         public ConcurrentQueue<(int GameId, string Slug, string ProviderId)> Mappings { get; } = new();
         /// <summary>Downloads ignore the Range header and always send the whole file with 200.</summary>
@@ -168,7 +170,7 @@ namespace GameVault.UiTests
                     await Json(response, new { result = merged ? "merged" : "created" });
                 }
                 else if (path == "/game-requests")
-                    await Json(response, GameRequests.Select((g, i) => new { id = i + 1, game_name = g, status = "pending" }).ToArray());
+                    await Json(response, GameRequests.Select((g, i) => new { id = i + 1, game_name = g, status = GameRequestStatuses.GetValueOrDefault(g, "pending") }).ToArray());
                 else if (path == "/remote-installs")
                     await Json(response, RemoteInstalls.Select(r => new { gameId = r.Key, title = r.Value }).ToArray());
                 else if ((match = Regex.Match(path, @"^/remote-installs/(\d+)$")).Success && request.HttpMethod == "DELETE")

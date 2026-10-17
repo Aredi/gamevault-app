@@ -207,6 +207,33 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task ARequestAdded_IsTold_OnlyOnce()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            string configFile = LoginManager.Instance.GetUserProfile().UserConfigFile;
+            Preferences.Set(AppConfigKey.GameRequestStatuses, "", configFile);
+            try
+            {
+                session.Server.GameRequests.Enqueue("Hollow Knight Silksong");
+                await GameRequestsService.CheckAsync();// first check: nothing is told
+                MainWindowViewModel.Instance.AppBarText = "";
+
+                session.Server.GameRequestStatuses["Hollow Knight Silksong"] = "fulfilled";
+                await GameRequestsService.CheckAsync();
+                Assert.Equal(gamevault.Localization.Loc.F("'{0}' is now on SanctuaryVault", "Hollow Knight Silksong"), MainWindowViewModel.Instance.AppBarText);
+
+                MainWindowViewModel.Instance.AppBarText = "";
+                await GameRequestsService.CheckAsync();
+                Assert.Equal("", MainWindowViewModel.Instance.AppBarText);
+            }
+            finally
+            {
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task SaveHistory_ListsTheCloudSaves_NewestAsTheCurrentOne()
         {
             var session = await TestSession.GetAsync();

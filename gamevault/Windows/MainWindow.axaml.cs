@@ -62,6 +62,9 @@ namespace gamevault.Windows
             // Games asked from the web page ("Install on my PC")
             if (PipeServiceHandler.Instance != null)
                 RemoteInstalls.Start();
+            // Requests of the player that were added or refused
+            if (PipeServiceHandler.Instance != null)
+                GameRequestsService.Start();
             // Who is online and what they play (not in the tests: no desktop session there)
             if (PipeServiceHandler.Instance != null)
                 _ = ActivityService.Instance.StartAsync();

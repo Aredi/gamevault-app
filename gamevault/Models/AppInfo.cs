@@ -84,6 +84,8 @@ namespace gamevault.Models
         //New game notifications
         NotifyNewGames,
         LastSeenGameId,
+        //Status of each game request last seen (id -> status), to tell when one is added or refused
+        GameRequestStatuses,
         //Download queue
         MaxConcurrentDownloads,
         //Interface language (profileconfig): "", "en", "fr"
