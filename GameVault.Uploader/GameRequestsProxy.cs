@@ -23,7 +23,8 @@ namespace GameVault.Uploader
             {
                 game,
                 details,
-                platform = "PC",
+                // RomM's platform for the GameVault games folder (roms/win): a game published there fulfils the request
+                platform = "Windows",
                 source = "SanctuaryVault",
                 requester = new { id = userId, name = username },
             });
