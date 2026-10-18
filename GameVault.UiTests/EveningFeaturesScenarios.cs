@@ -74,6 +74,8 @@ namespace GameVault.UiTests
             Install(session, played, 1000);
             Install(session, fresh, 1000);
             InstallViewModel.Instance.PlayRecords[9721] = new PlayRecord(9721, DateTime.UtcNow.AddDays(-3), 120);
+            // Also on the server: the library reloading its play records in the background must not forget it
+            session.Server.Progresses.Enqueue(new Progress { ID = 97210, Game = played, User = gamevault.Helper.LoginManager.Instance.GetCurrentUser(), MinutesPlayed = 120, LastPlayedAt = DateTime.UtcNow.AddDays(-3) });
             try
             {
                 var tonight = new TonightUserControl();

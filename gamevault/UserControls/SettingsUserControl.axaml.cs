@@ -327,107 +327,11 @@ namespace gamevault.UserControls
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
-        private void OpenCommunityThemeRepository_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                PlatformInfo.OpenUrl("https://github.com/Phalcode/gamevault-community-themes");
-            }
-            catch (Exception ignored) { Log.Ignored(ignored); }
-        }
         private async void ReloadThemeList_Click(object sender, RoutedEventArgs e)
         {
             ((Control)sender).IsEnabled = false;
             LoadThemes();
             await Task.Delay(500);
-            ((Control)sender).IsEnabled = true;
-        }
-        private async Task<List<JsonElement>> LoadCommunityThemesHeader()
-        {
-            string jsonResponse = await WebHelper.BaseGetAsync("https://api.github.com/repos/phalcode/gamevault-community-themes/contents/v1");
-            return JsonSerializer.Deserialize<List<JsonElement>>(jsonResponse, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        }
-        private async Task<ThemeItem> LoadThemeItemFromUrl(string url)
-        {
-            try
-            {
-                string result = await WebHelper.BaseGetAsync(url);
-                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(result));
-                return CreateThemeItem(url, ThemeManager.Parse(stream));
-            }
-            catch { return null; }
-        }
-        private async Task LoadCommunityThemes()
-        {
-            try
-            {
-                List<JsonElement> fetchedList = await LoadCommunityThemesHeader();
-                foreach (var entry in fetchedList)
-                {
-                    if (entry.TryGetProperty("name", out JsonElement nameElement) && nameElement.GetString()?.First() != '_' && entry.TryGetProperty("download_url", out JsonElement downloadUrlElement))
-                    {
-                        ThemeItem theme = await LoadThemeItemFromUrl(downloadUrlElement.GetString()!);
-                        if (theme != null)
-                        {
-                            ViewModel.CommunityThemes.Add(theme);
-                        }
-                    }
-                }
-            }
-            catch (Exception ignored) { Log.Ignored(ignored); }
-        }
-        private async void CommunityThemes_DropDownOpened(object? sender, EventArgs e)
-        {
-            if (ViewModel.CommunityThemes == null)
-            {
-                ViewModel.CommunityThemes = new ObservableCollection<ThemeItem>();
-                await LoadCommunityThemes();
-            }
-        }
-        private async void ReloadCommunityThemeList_Click(object sender, RoutedEventArgs e)
-        {
-            if (ViewModel.CommunityThemes == null)
-            {
-                ViewModel.CommunityThemes = new ObservableCollection<ThemeItem>();
-            }
-            else
-            {
-                ViewModel.CommunityThemes.Clear();
-            }
-            ((Control)sender).IsEnabled = false;
-            await LoadCommunityThemes();
-            ((Control)sender).IsEnabled = true;
-        }
-        private async void InstallCommunityTheme_Click(object sender, RoutedEventArgs e)
-        {
-            if (uiCBCommunityThemes.SelectedItem == null)
-            {
-                MainWindowViewModel.Instance.AppBarText = Loc.T("No Theme selected");
-                return;
-            }
-            ((Control)sender).IsEnabled = false;
-            try
-            {
-                ThemeItem theme = (ThemeItem)uiCBCommunityThemes.SelectedItem;
-                Directory.CreateDirectory(LoginManager.Instance.GetUserProfile().ThemesLoadDir);
-                string safeName = string.Concat(theme.DisplayName.Split(Path.GetInvalidFileNameChars()));
-                string installationPath = Path.Combine(LoginManager.Instance.GetUserProfile().ThemesLoadDir, safeName + ".xaml");
-                string result = await WebHelper.BaseGetAsync(theme.Path);
-                File.WriteAllText(installationPath, result);
-                LoadThemes();
-                try
-                {
-                    int installedThemeIndex = ViewModel.Themes.IndexOf(ViewModel.Themes.First(t => t.DisplayName == theme.DisplayName));
-                    uiCbTheme.SelectedIndex = installedThemeIndex;
-                }
-                catch (Exception ignored) { Log.Ignored(ignored); }
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully installed {0}", theme.DisplayName);
-            }
-            catch (Exception ex)
-            {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
-                ((Control)sender).IsEnabled = true;
-            }
             ((Control)sender).IsEnabled = true;
         }
         private void UninstallTheme_Click(object sender, RoutedEventArgs e)

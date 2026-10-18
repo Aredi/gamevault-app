@@ -122,31 +122,6 @@
                                 <local:IconButton Text="{l:T 'Uninstall Theme'}" Kind="Danger" IsEnabled="{Binding IsCommunityThemeSelected}" FontSize="15" Icon="{StaticResource IconTrash}" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="10,0,0,0" Click="UninstallTheme_Click" />
                                 <local:IconButton Text="{l:T 'Open Theme Folder'}" FontSize="15" Icon="{StaticResource IconGameSettingsFolder}" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="10,0,0,0" Click="OpenThemeFolder_Click" />
                             </WrapPanel>
-                            <TextBlock Text="{l:T 'Community Themes'}" Margin="10,10,0,0" FontSize="14" />
-                            <WrapPanel Orientation="Horizontal" Margin="10,5,0,0">
-                                <Grid>
-                                    <ComboBox x:Name="uiCBCommunityThemes" ItemsSource="{Binding CommunityThemes}" Width="520" DropDownOpened="CommunityThemes_DropDownOpened">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Width="470" ToolTip.Tip="{Binding Description}">
-                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" />
-                                                    <TextBlock Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding Author, StringFormat={l:T 'Author: {0}'}}" FontSize="10" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
-                                    <TextBlock IsHitTestVisible="False" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{l:T 'Click to Load'}"
-                                               IsVisible="{Binding CommunityThemes, Converter={x:Static ObjectConverters.IsNull}}" />
-                                </Grid>
-                                <Button Classes="wrapper" Height="25" Width="25" Margin="20,0,10,0" ToolTip.Tip="{l:T 'Reload Theme List'}" Click="ReloadCommunityThemeList_Click">
-                                    <Grid Classes="hover" Background="Transparent">
-                                        <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(1.51)" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Grid>
-                                </Button>
-                                <local:IconButton Text="{l:T 'Install Theme'}" Height="40" FontSize="15" Icon="{StaticResource IconGameSettingsInstallation}" IconMargin="0,0,10,0" MinWidth="175" Margin="10,0,0,0" Click="InstallCommunityTheme_Click" />
-                                <local:IconButton Text="{l:T 'Open Repository'}" Height="40" FontSize="15" Icon="{StaticResource IconGameSettingsGithub}" IconMargin="0,0,10,0" MinWidth="175" Margin="10,0,0,0" Click="OpenCommunityThemeRepository_Click" />
-                            </WrapPanel>
                         </StackPanel>
                         <StackPanel Classes="section">
                             <TextBlock Classes="h1" Text="{l:T 'Library'}" />

@@ -54,7 +54,6 @@ namespace gamevault.ViewModels
         private long m_DownloadLimitUIValue { get; set; }
         private string[] ignoreList { get; set; }
         private ObservableCollection<ThemeItem> themes { get; set; }
-        private ObservableCollection<ThemeItem> communityThemes { get; set; }
         private bool showMappedTitle { get; set; }
         private bool syncSteamShortcuts { get; set; }
         private bool syncDiscordPresence { get; set; }
@@ -513,11 +512,6 @@ namespace gamevault.ViewModels
         {
             get { return themes; }
             set { themes = value; OnPropertyChanged(); }
-        }
-        public ObservableCollection<ThemeItem> CommunityThemes
-        {
-            get { return communityThemes; }
-            set { communityThemes = value; OnPropertyChanged(); }
         }
 
         public bool UsePrimaryCloudSaveManifest
