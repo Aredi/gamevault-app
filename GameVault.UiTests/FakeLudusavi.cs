@@ -18,6 +18,7 @@ namespace GameVault.UiTests
             File.WriteAllText(script, """
                 #!/bin/sh
                 # ludusavi --config DIR <command> ...
+                config="$2"
                 shift 2
                 command="$1"; shift
                 saves="$HOME/saves"
@@ -31,6 +32,11 @@ namespace GameVault.UiTests
                     else
                       # backup --force --format zip --path DIR TITLE
                       target="$5"; title="$6"
+                      # A test can slow the backup down and see which configuration it used
+                      if [ -e "$saves/$title/backup-slow" ]; then
+                        sleep 1
+                        cp "$config/config.yaml" "$saves/$title/used-config.yaml"
+                      fi
                       mkdir -p "$target/$title"
                       echo "name: $title" > "$target/$title/mapping.yaml"
                       cp "$saves/$title/save.dat" "$target/$title/save.dat"

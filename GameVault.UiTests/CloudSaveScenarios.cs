@@ -131,5 +131,23 @@ namespace GameVault.UiTests
             Assert.Equal(gamevault.Helper.Integrations.CloudSaveStatus.KeptCloud, await upload);
             Assert.Contains(OtherComputer, session.Server.Saves[game.ID].FileName);
         }
+
+        [AvaloniaFact]
+        public async Task OpeningAGamePage_DuringABackup_DoesNotChangeTheConfigurationOfTheBackup()
+        {
+            if (!OperatingSystem.IsLinux())
+                return;
+            var (session, game, _) = await InstalledGameWithLocalSave(406, "Saved Game F", "this computer");
+            string folder = Path.GetDirectoryName(FakeLudusavi.SaveFile("Saved Game F"))!;
+            File.WriteAllText(Path.Combine(folder, "backup-slow"), "");
+
+            Task<string> upload = gamevault.Helper.Integrations.SaveGameHelper.Instance.BackupSaveGame(game.ID, force: true);
+            await Task.Delay(300);
+            // A game page opens: it searches the game in Ludusavi, with the configuration of no installation
+            await gamevault.Helper.Integrations.SaveGameHelper.Instance.SearchForLudusaviGameTitle("Other Game");
+
+            Assert.Equal(gamevault.Helper.Integrations.CloudSaveStatus.BackupSuccess, await upload);
+            Assert.Contains(Path.GetFileName(session.InstallFolder(game).TrimEnd('/')), File.ReadAllText(Path.Combine(folder, "used-config.yaml")));
+        }
     }
 }

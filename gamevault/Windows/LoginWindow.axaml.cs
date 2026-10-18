@@ -118,11 +118,8 @@ namespace gamevault.Windows
             {
                 ViewModel.UserProfiles.Add(userProfile);
             }
-            if (ViewModel.UserProfiles.Count == 0)
-            {
-                CreateDemoUser();
-            }
-            ViewModel.LoginStepIndex = (int)LoginStep.ChooseProfile;
+            // No profile yet: straight to the server address
+            ViewModel.LoginStepIndex = ViewModel.UserProfiles.Count == 0 ? (int)LoginStep.SignInOrSignUp : (int)LoginStep.ChooseProfile;
         }
         private void NewProfile_Click(object sender, RoutedEventArgs e)
         {
@@ -529,30 +526,7 @@ namespace gamevault.Windows
                 ViewModel.AppBarText = ex.Message;
             }
         }
-        private void CreateDemoUser()
-        {
-            try
-            {
-                string demoServerUrl = "https://demo.gamevau.lt";
-                string demoUsername = "demo";
-                string demoPassword = "demodemo";
-
-                UserProfile demoProfile = ProfileManager.CreateUserProfile(WebHelper.RemoveSpecialCharactersFromUrl(demoServerUrl));
-                demoProfile.Name = demoUsername;
-                demoProfile.ServerUrl = demoServerUrl;
-
-                ViewModel.UserProfiles.Add(demoProfile);
-
-                Preferences.Set(AppConfigKey.ServerUrl, demoServerUrl, demoProfile.UserConfigFile, true);
-                Preferences.Set(AppConfigKey.Username, demoUsername, demoProfile.UserConfigFile);
-                Preferences.Set(AppConfigKey.Password, demoPassword, demoProfile.UserConfigFile, true);
-            }
-            catch (Exception ex)
-            {
-                ViewModel.AppBarText = Loc.F("Failed to create demo user: {0}", ex.Message);
-            }
-        }
-
+        /// <summary>Earlier versions created a profile for the demo server of the original GameVault.</summary>
         private void RemoveDemoUserIfExists()
         {
             try

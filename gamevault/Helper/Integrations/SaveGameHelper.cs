@@ -67,6 +67,25 @@ namespace gamevault.Helper.Integrations
         {
             zipHelper = new SevenZipHelper();
         }
+        private readonly System.Threading.SemaphoreSlim ludusaviConfig = new(1, 1);
+        private static string ConfigFile => Path.Combine(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "config.yaml");
+        /// <summary>
+        /// Runs Ludusavi with the configuration of one installation. All games share config.yaml (Ludusavi keeps its
+        /// manifest next to it), so a game closing while another game's page opens must not swap it in between.
+        /// </summary>
+        private async Task<T> WithConfig<T>(string installationDir, Func<Task<T>> steps)
+        {
+            await ludusaviConfig.WaitAsync();
+            try
+            {
+                PrepareConfigFile(installationDir, ConfigFile);
+                return await steps();
+            }
+            finally
+            {
+                ludusaviConfig.Release();
+            }
+        }
         /// <param name="force">The user asked for the cloud save: no conflict check (a local copy is still kept).</param>
         internal async Task<string> RestoreBackup(int gameId, string installationDir, bool force = false)
         {
@@ -87,7 +106,7 @@ namespace gamevault.Helper.Integrations
                 if (serverSave != null && !serverSave.InstallationId.Equals(installationId, StringComparison.OrdinalIgnoreCase))
                 {
                     ludusaviTitle = await LudusaviTitleOf(gameId);
-                    localChange = ludusaviTitle == "" ? null : await GetLocalSaveLastChange(ludusaviTitle);
+                    localChange = ludusaviTitle == "" ? null : await GetLocalSaveLastChange(ludusaviTitle, installationDir);
                     if (!force && SaveSync.BeforePlaying(serverSave, installationId, ReadLastSync(installationDir), localChange) == SaveSyncAction.Conflict)
                     {
                         string choice = await AskConflict(gameId, serverSave, localChange!.Value);
@@ -111,11 +130,11 @@ namespace gamevault.Helper.Integrations
                         if (ludusaviTitle == "")
                         {
                             ludusaviTitle = await LudusaviTitleOf(gameId);
-                            localChange = ludusaviTitle == "" ? null : await GetLocalSaveLastChange(ludusaviTitle);
+                            localChange = ludusaviTitle == "" ? null : await GetLocalSaveLastChange(ludusaviTitle, installationDir);
                         }
                         // Whatever happens, the save that is replaced can be taken back
                         if (ludusaviTitle != "" && localChange != null)
-                            await KeepLocalCopy(gameId, ludusaviTitle);
+                            await KeepLocalCopy(gameId, ludusaviTitle, installationDir);
                         await RestoreArchiveAsync(async archive =>
                         {
                             using Stream contentStream = await response.Content.ReadAsStreamAsync();
@@ -173,23 +192,26 @@ namespace gamevault.Helper.Integrations
                     throw new Exception(Loc.T("no savegame extracted"));
 
                 extractFolder = Path.GetDirectoryName(Path.GetDirectoryName(mappingFile[0]));
-                PrepareConfigFile(installationDir, Path.Combine(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "config.yaml"));
-                Process process = new Process();
-                ProcessShepherd.Instance.AddProcess(process);
-                process.StartInfo = CreateProcessHeader();
-                process.StartInfo.ArgumentList.Add("--config");
-                process.StartInfo.ArgumentList.Add(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir);
-                process.StartInfo.ArgumentList.Add("restore");
-                process.StartInfo.ArgumentList.Add("--force");
-                process.StartInfo.ArgumentList.Add("--path");
-                process.StartInfo.ArgumentList.Add(extractFolder);
-                process.Start();
-                // Awaited: the restore runs while the UI waits to start the game
-                await process.WaitForExitAsync();
-                ProcessShepherd.Instance.RemoveProcess(process);
+                int exitCode = await WithConfig(installationDir, async () =>
+                {
+                    Process process = new Process();
+                    ProcessShepherd.Instance.AddProcess(process);
+                    process.StartInfo = CreateProcessHeader();
+                    process.StartInfo.ArgumentList.Add("--config");
+                    process.StartInfo.ArgumentList.Add(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir);
+                    process.StartInfo.ArgumentList.Add("restore");
+                    process.StartInfo.ArgumentList.Add("--force");
+                    process.StartInfo.ArgumentList.Add("--path");
+                    process.StartInfo.ArgumentList.Add(extractFolder);
+                    process.Start();
+                    // Awaited: the restore runs while the UI waits to start the game
+                    await process.WaitForExitAsync();
+                    ProcessShepherd.Instance.RemoveProcess(process);
+                    return process.ExitCode;
+                });
                 // A failed restore must not count as a sync: the old local save would then replace the cloud one without asking
-                if (process.ExitCode != 0)
-                    throw new Exception(Loc.F("Ludusavi could not restore the save (exit code {0})", process.ExitCode));
+                if (exitCode != 0)
+                    throw new Exception(Loc.F("Ludusavi could not restore the save (exit code {0})", exitCode));
                 WriteLastSync(installationDir);
             }
             finally
@@ -212,8 +234,8 @@ namespace gamevault.Helper.Integrations
             try
             {
                 string ludusaviTitle = await LudusaviTitleOf(gameId);
-                if (ludusaviTitle != "" && await GetLocalSaveLastChange(ludusaviTitle) != null)
-                    await KeepLocalCopy(gameId, ludusaviTitle);
+                if (ludusaviTitle != "" && await GetLocalSaveLastChange(ludusaviTitle, installationDir) != null)
+                    await KeepLocalCopy(gameId, ludusaviTitle, installationDir);
                 await RestoreArchiveAsync(archive => SaveHistoryService.DownloadAsync(gameId, versionName, archive), installationDir);
                 await BackupSaveGame(gameId, force: true);
                 return CloudSaveStatus.RestoreSuccess;
@@ -238,19 +260,22 @@ namespace gamevault.Helper.Integrations
         }
 
         /// <summary>When the save files of the game on this computer last changed (Ludusavi knows where they are).</summary>
-        private async Task<DateTime?> GetLocalSaveLastChange(string ludusaviTitle)
+        private async Task<DateTime?> GetLocalSaveLastChange(string ludusaviTitle, string installationDir)
         {
             try
             {
-                var info = CreateProcessHeader(true);
-                foreach (string arg in new[] { "--config", LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "backup", "--preview", "--api", ludusaviTitle })
-                    info.ArgumentList.Add(arg);
-                using Process process = Process.Start(info)!;
-                Task<string> output = process.StandardOutput.ReadToEndAsync();
-                Task<string> errors = process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-                await errors;
-                return SaveSync.LastChange(SaveSync.SaveFilesFromLudusaviPreview(await output));
+                return await WithConfig(installationDir, async () =>
+                {
+                    var info = CreateProcessHeader(true);
+                    foreach (string arg in new[] { "--config", LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "backup", "--preview", "--api", ludusaviTitle })
+                        info.ArgumentList.Add(arg);
+                    using Process process = Process.Start(info)!;
+                    Task<string> output = process.StandardOutput.ReadToEndAsync();
+                    Task<string> errors = process.StandardError.ReadToEndAsync();
+                    await process.WaitForExitAsync();
+                    await errors;
+                    return SaveSync.LastChange(SaveSync.SaveFilesFromLudusaviPreview(await output));
+                });
             }
             catch (Exception ex)
             {
@@ -314,14 +339,14 @@ namespace gamevault.Helper.Integrations
         }
 
         /// <summary>A copy of the local save before it is replaced (Save history, the last 5 per game).</summary>
-        private async Task KeepLocalCopy(int gameId, string ludusaviTitle)
+        private async Task KeepLocalCopy(int gameId, string ludusaviTitle, string installationDir)
         {
             try
             {
                 string history = Path.Combine(LoginManager.Instance.GetUserProfile().RootDir, "SaveHistory", gameId.ToString());
                 string target = Path.Combine(history, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture));
                 Directory.CreateDirectory(target);
-                await CreateBackup(ludusaviTitle, target);
+                await WithConfig(installationDir, async () => { await CreateBackup(ludusaviTitle, target); return true; });
                 foreach (string old in Directory.GetDirectories(history).OrderByDescending(d => d, StringComparer.Ordinal).Skip(5))
                     Directory.Delete(old, true);
             }
@@ -425,16 +450,20 @@ namespace gamevault.Helper.Integrations
             string installationDir = installedGame?.Value ?? "";
             if (gameMetadataTitle != "" && installationDir != "")
             {
-                PrepareConfigFile(installedGame?.Value!, Path.Combine(LoginManager.Instance.GetUserProfile().CloudSaveConfigDir, "config.yaml"));
-                string title = await SearchForLudusaviGameTitle(gameMetadataTitle);
-                if (string.IsNullOrEmpty(title))
-                    return CloudSaveStatus.BackupFailed;
-
                 string tempFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Directory.CreateDirectory(tempFolder);
                 try
                 {
-                    await CreateBackup(title, tempFolder);
+                    bool found = await WithConfig(installationDir, async () =>
+                    {
+                        string title = await FindLudusaviTitle(gameMetadataTitle);
+                        if (string.IsNullOrEmpty(title))
+                            return false;
+                        await CreateBackup(title, tempFolder);
+                        return true;
+                    });
+                    if (!found)
+                        return CloudSaveStatus.BackupFailed;
                     string archive = Path.Combine(tempFolder, "backup.zip");
                     if (Directory.GetFiles(tempFolder, "mapping.yaml", SearchOption.AllDirectories).Length == 0)
                         return CloudSaveStatus.BackupCreationFailed;
@@ -455,7 +484,7 @@ namespace gamevault.Helper.Integrations
             }
             return CloudSaveStatus.BackupFailed;
         }
-        public void PrepareConfigFile(string installationPath, string yamlPath)
+        private void PrepareConfigFile(string installationPath, string yamlPath)
         {
             // Backups store the user folder as G:\gamevault\currentuser so they can be restored on any machine.
             // Windows games on Linux keep their saves in the Wine prefix, so that is the "user folder" there.
@@ -541,7 +570,9 @@ namespace gamevault.Helper.Integrations
             File.WriteAllText(yamlPath, result);
         }
 
-        internal async Task<string> SearchForLudusaviGameTitle(string title)
+        /// <summary>The Ludusavi name of a game (the configuration of no installation is enough to search).</summary>
+        internal Task<string> SearchForLudusaviGameTitle(string title) => WithConfig("", () => FindLudusaviTitle(title));
+        private async Task<string> FindLudusaviTitle(string title)
         {
             return await Task.Run<string>(() =>
             {

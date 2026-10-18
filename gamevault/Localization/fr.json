@@ -283,7 +283,6 @@
   "Extraction Failed": "Échec de l'extraction",
   "Extraction cancelled": "Extraction annulée",
   "Failed to Mount ISO": "Impossible de monter l'ISO",
-  "Failed to create demo user: {0}": "Impossible de créer l'utilisateur de démonstration : {0}",
   "Failed to load Library": "Impossible de charger la bibliothèque",
   "Failed to load image: {0}": "Impossible de charger l'image : {0}",
   "Failed to load next Page": "Impossible de charger la page suivante",
