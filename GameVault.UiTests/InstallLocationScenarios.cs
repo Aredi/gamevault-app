@@ -93,6 +93,19 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AFolderLeftByAnUnfinishedMove_IsDeleted_WhenTheLibraryLoads()
+        {
+            var session = await TestSession.GetAsync();
+            string leftover = Path.Combine(session.LibraryRoot, "GameVault", "Installations", GameVault.Core.Storage.InstallationMover.WorkPrefix + "(174)Old Copy");
+            Directory.CreateDirectory(Path.Combine(leftover, "data"));
+            File.WriteAllText(Path.Combine(leftover, "data", "big.pak"), "x");
+
+            await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();
+
+            Assert.False(Directory.Exists(leftover));
+        }
+
+        [AvaloniaFact]
         public async Task DoNotAskAgain_InstallsInTheChosenFolder_WithoutAsking()
         {
             var session = await TestSession.GetAsync();

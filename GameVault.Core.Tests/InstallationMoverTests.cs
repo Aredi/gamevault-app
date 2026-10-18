@@ -75,6 +75,35 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public async Task CopyThenSwap_TooLittleRoomOnTheOtherDisk_CopiesNothing()
+        {
+            string game = MakeGame();
+            string installations = Path.Combine(root, "b", "GameVault", "Installations");
+            Directory.CreateDirectory(installations);
+
+            var error = await Assert.ThrowsAsync<NotEnoughSpaceException>(() =>
+                InstallationMover.CopyThenSwapAsync(game, installations, "(42)Celeste", null, CancellationToken.None, _ => 1000));
+
+            Assert.Equal(3007, error.Needed);
+            AssertGameAt(game);
+            Assert.Empty(Directory.GetDirectories(installations));
+        }
+
+        [Fact]
+        public void RemoveLeftovers_DeletesWorkFoldersOnly()
+        {
+            string game = MakeGame();
+            string leftover = Path.Combine(Path.GetDirectoryName(game)!, InstallationMover.WorkPrefix + "(7)Old");
+            Directory.CreateDirectory(Path.Combine(leftover, "data"));
+            File.WriteAllText(Path.Combine(leftover, "data", "big.pak"), "x");
+
+            InstallationMover.RemoveLeftovers(new[] { Path.Combine(root, "a"), Path.Combine(root, "unplugged") });
+
+            Assert.False(Directory.Exists(leftover));
+            AssertGameAt(game);
+        }
+
+        [Fact]
         public async Task MoveAsync_GameAlreadyInTheTarget_ChangesNothing()
         {
             string game = MakeGame();

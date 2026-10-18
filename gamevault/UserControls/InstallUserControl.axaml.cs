@@ -118,7 +118,8 @@ namespace gamevault.UserControls
             {
                 if (SettingsViewModel.Instance.RootDirectories.Count > 0)
                 {
-
+                    try { GameMover.RemoveLeftovers(); }
+                    catch (Exception ex) { Log.Ignored(ex); }
 
                     List<string> allDirectoriesFromRootDirectories = new List<string>();
                     foreach (DirectoryEntry dirEntry in SettingsViewModel.Instance.RootDirectories)

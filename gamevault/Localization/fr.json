@@ -1081,5 +1081,6 @@
   "Moving '{0}'… {1}%": "Déplacement de '{0}'… {1} %",
   "'{0}' has been moved to {1}": "'{0}' a été déplacé vers {1}",
   "'{0}' could not be moved: {1}": "'{0}' n'a pas pu être déplacé : {1}",
-  "'{0}' is being moved: wait until it is finished": "'{0}' est en cours de déplacement : attendez la fin"
+  "'{0}' is being moved: wait until it is finished": "'{0}' est en cours de déplacement : attendez la fin",
+  "Not enough room to move '{0}': {1} needed, {2} free": "Pas assez de place pour déplacer '{0}' : {1} nécessaires, {2} libres"
 }

@@ -1,12 +1,15 @@
 using GameVault.Core;
 using GameVault.Core.Storage;
+using gamevault.Converter;
 using gamevault.Helper.Integrations;
+using gamevault.Helper.Platform;
 using gamevault.Localization;
 using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,6 +23,13 @@ namespace gamevault.Helper
 
         /// <summary>Playing or updating a game being moved would use files that are going away.</summary>
         public static bool IsMoving(int gameId) => moving.Contains(gameId);
+
+        /// <summary>The folders left over by earlier moves are deleted, unless a move is copying one right now.</summary>
+        public static void RemoveLeftovers()
+        {
+            if (moving.Count == 0)
+                InstallationMover.RemoveLeftovers(SettingsViewModel.Instance.RootDirectories.Select(r => r.Uri).ToList());
+        }
 
         /// <summary>Asks where to, then moves the game. False when nothing was moved.</summary>
         public static async Task<bool> MoveAsync(Game game)
@@ -68,10 +78,15 @@ namespace gamevault.Helper
                     MainWindowViewModel.Instance.AppBarText = Loc.F("Moving '{0}'… {1}%", game.Title, percent);
                 });
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Moving '{0}'… {1}%", game.Title, 0);
-                string moved = await Task.Run(() => InstallationMover.MoveAsync(installation, root, progress));
+                string moved = await Task.Run(() => InstallationMover.MoveAsync(installation, root, progress, freeSpace: d => PlatformInfo.GetDriveForPath(d)?.AvailableFreeSpace));
                 Relocate(game, installation, moved);
                 MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' has been moved to {1}", game.Title, root);
                 return true;
+            }
+            catch (NotEnoughSpaceException ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough room to move '{0}': {1} needed, {2} free", game.Title, Size(ex.Needed), Size(ex.Free));
+                return false;
             }
             catch (Exception ex)
             {
@@ -84,6 +99,8 @@ namespace gamevault.Helper
                 moving.Remove(game.ID);
             }
         }
+
+        private static string Size(long bytes) => new GameSizeConverter().Convert(bytes, typeof(string), null, CultureInfo.CurrentCulture) as string ?? "";
 
         /// <summary>The chosen program is stored with its full path, and the library points to the new folder.</summary>
         private static void Relocate(Game game, string from, string to)
