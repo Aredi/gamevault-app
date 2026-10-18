@@ -88,6 +88,30 @@
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Padding" Value="0,0,22,0" />
         </Style>
+        <Style Selector="Button.heroLink">
+            <Setter Property="Background" Value="{DynamicResource Brush.Background}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+            <Setter Property="Opacity" Value="0.85" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="Margin" Value="0,0,8,6" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Button.heroLink:pointerover">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Button.heroLink TextBlock">
+            <Setter Property="TextDecorations" Value="Underline" />
+        </Style>
         <Style Selector="Button.thumb">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="0" />
@@ -246,12 +270,15 @@
                                 </Button>
                             </WrapPanel>
                             <!-- Play started a launcher, an error or nothing: the player picks the program of the game -->
-                            <Button Classes="link" HorizontalAlignment="Left" Click="ChooseExecutable_Click" IsVisible="{Binding IsInstalled}">
-                                <TextBlock Text="{l:T 'The wrong program starts? Choose another one'}" FontSize="13" TextDecorations="Underline" />
-                            </Button>
-                            <Button Classes="link" HorizontalAlignment="Left" Click="MoveGame_Click" IsVisible="{Binding IsInstalled}">
-                                <TextBlock Text="{l:T 'Move the game to another disk or folder'}" FontSize="13" TextDecorations="Underline" />
-                            </Button>
+                            <!-- On a pill: readable whatever the colors of the artwork behind -->
+                            <WrapPanel IsVisible="{Binding IsInstalled}">
+                                <Button Classes="heroLink" Click="ChooseExecutable_Click">
+                                    <TextBlock Text="{l:T 'The wrong program starts? Choose another one'}" />
+                                </Button>
+                                <Button Classes="heroLink" Click="MoveGame_Click">
+                                    <TextBlock Text="{l:T 'Move the game to another disk or folder'}" />
+                                </Button>
+                            </WrapPanel>
                         </StackPanel>
                     </Grid>
 
