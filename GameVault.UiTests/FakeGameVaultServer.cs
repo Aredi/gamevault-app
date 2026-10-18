@@ -196,7 +196,7 @@ namespace GameVault.UiTests
                     response.StatusCode = 204;
                 }
                 else if (path == "/api/status")
-                    await Json(response, new { status = "HEALTHY" });
+                    await Json(response, new { status = "HEALTHY", registration_enabled = true, required_registration_fields = Array.Empty<string>(), available_authentication_methods = new[] { "basic" } });
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)/download$")).Success)
                     await Download(context, int.Parse(match.Groups[1].Value));
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)$")).Success && request.HttpMethod == "PUT" && games.TryGetValue(int.Parse(match.Groups[1].Value), out var mapped))

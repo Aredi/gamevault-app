@@ -192,7 +192,7 @@
                     <TextBlock Text="{l:T 'Sign Up'}" FontSize="30" HorizontalAlignment="Center" />
                     <TextBlock Classes="label" Text="{l:T 'Specify Your Server URL'}" />
                     <Panel>
-                        <TextBox Text="{Binding SignupUser.ServerUrl}" TextChanged="ServerUrlInput_TextChanged" KeyDown="UserRegistrationTextBox_KeyDown" />
+                        <TextBox Text="{Binding SignupUser.ServerUrl}" Tag="signup" TextChanged="ServerUrlInput_TextChanged" KeyDown="UserRegistrationTextBox_KeyDown" />
                         <Path Data="{StaticResource IconCheck}" Fill="Green" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding SignUpServerInfo.IsAvailable}" />
                         <Path Data="{StaticResource IconErrorCircle}" Fill="IndianRed" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
                               IsVisible="{Binding SignUpServerInfo.HasError}" ToolTip.Tip="{Binding SignUpServerInfo.ErrorMessage}" />

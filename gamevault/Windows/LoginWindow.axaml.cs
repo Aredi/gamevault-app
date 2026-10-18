@@ -131,10 +131,12 @@ namespace gamevault.Windows
         private void SignIn_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.LoginStepIndex = (int)LoginStep.SignIn;
+            _ = CheckServerAsync(true, ViewModel.LoginUser.ServerUrl);
         }
         private void SignUp_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.LoginStepIndex = (int)LoginStep.SignUp;
+            _ = CheckServerAsync(false, ViewModel.SignupUser.ServerUrl);
         }
 
         private void Back_Click(object sender, RoutedEventArgs e)
@@ -142,39 +144,48 @@ namespace gamevault.Windows
             int loginStep = (int)(LoginStep)((Control)sender).Tag!;
             ViewModel.LoginStepIndex = loginStep;
         }
-        private async void ServerUrlInput_Tick(object sender, EventArgs e)
+        private bool timerChecksLogin;
+        private int serverChecks;
+        private void ServerUrlInput_Tick(object? sender, EventArgs e)
         {
-            try
+            InputTimer.Stop();
+            _ = CheckServerAsync(timerChecksLogin, InputTimer.Data);
+        }
+        /// <summary>
+        /// Asks the server what it offers, for the sign in or the sign up page. The URL is filled in before the page is
+        /// shown, so the page also checks it when opened; only the answer for the last URL asked counts.
+        /// </summary>
+        private async Task CheckServerAsync(bool login, string? url)
+        {
+            int check = ++serverChecks;
+            BindableServerInfo info;
+            if (string.IsNullOrWhiteSpace(url))
+                info = new BindableServerInfo();
+            else
             {
-                InputTimer.Stop();
-                string result = await WebHelper.BaseGetAsync($"{ValidateUriScheme(InputTimer?.Data)}/api/status");
-                ServerInfo serverInfo = JsonSerializer.Deserialize<ServerInfo>(result);
-                if (ViewModel.LoginStepIndex == (int)LoginStep.SignIn)
+                try
                 {
-                    ViewModel.LoginServerInfo = new BindableServerInfo(serverInfo);
+                    string result = await WebHelper.BaseGetAsync($"{ValidateUriScheme(url.Trim())}/api/status");
+                    info = new BindableServerInfo(JsonSerializer.Deserialize<ServerInfo>(result));
                 }
-                else if (ViewModel.LoginStepIndex == (int)LoginStep.SignUp)
+                catch (Exception ex)
                 {
-                    ViewModel.SignUpServerInfo = new BindableServerInfo(serverInfo);
+                    string message = WebExceptionHelper.TryGetServerMessage(ex);
+                    info = new BindableServerInfo(message == "" ? "Could not connect to server" : message);
                 }
             }
-            catch (Exception ex)
-            {
-                string message = WebExceptionHelper.TryGetServerMessage(ex);
-                if (ViewModel.LoginStepIndex == (int)LoginStep.SignIn)
-                {
-                    ViewModel.LoginServerInfo = new BindableServerInfo(message == "" ? "Could not connect to server" : message);
-                }
-                else if (ViewModel.LoginStepIndex == (int)LoginStep.SignUp)
-                {
-                    ViewModel.SignUpServerInfo = new BindableServerInfo(message == "" ? "Could not connect to server" : message);
-                }
-            }
+            if (check != serverChecks)
+                return;
+            if (login)
+                ViewModel.LoginServerInfo = info;
+            else
+                ViewModel.SignUpServerInfo = info;
         }
         private void ServerUrlInput_TextChanged(object? sender, TextChangedEventArgs e)
         {
             InputTimer.Stop();
-            InputTimer.Data = ((TextBox)sender).Text;
+            timerChecksLogin = ((Control)sender!).Tag as string != "signup";
+            InputTimer.Data = ((TextBox)sender!).Text;
             InputTimer.Start();
         }
         private UserProfile SetupUserProfile(LoginUser user)
