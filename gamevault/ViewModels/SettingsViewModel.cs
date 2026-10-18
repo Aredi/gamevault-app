@@ -55,7 +55,6 @@ namespace gamevault.ViewModels
         private string[] ignoreList { get; set; }
         private ObservableCollection<ThemeItem> themes { get; set; }
         private bool showMappedTitle { get; set; }
-        private bool syncSteamShortcuts { get; set; }
         private bool syncDiscordPresence { get; set; }
         private bool cloudSaves { get; set; }
         private bool isCommunityThemeSelected { get; set; }
@@ -108,7 +107,6 @@ namespace gamevault.ViewModels
             string analyticsPreference = Preferences.Get(AppConfigKey.SendAnonymousAnalytics, userConfigFile);
             sendAnonymousAnalytics = analyticsPreference == "1"; OnPropertyChanged(nameof(SendAnonymousAnalytics));
 
-            syncSteamShortcuts = Preferences.Get(AppConfigKey.SyncSteamShortcuts, userConfigFile) == "1"; OnPropertyChanged(nameof(SyncSteamShortcuts));
             syncDiscordPresence = Preferences.Get(AppConfigKey.SyncDiscordPresence, userConfigFile) == "1"; OnPropertyChanged(nameof(SyncDiscordPresence));
             cloudSaves = Preferences.Get(AppConfigKey.CloudSaves, userConfigFile) == "1"; OnPropertyChanged(nameof(CloudSaves));
 
@@ -475,14 +473,6 @@ namespace gamevault.ViewModels
                 return showMappedTitle;
             }
             set { showMappedTitle = value; Preferences.Set(AppConfigKey.ShowMappedTitle, showMappedTitle ? "1" : "0", userConfigFile); OnPropertyChanged(); }
-        }
-        public bool SyncSteamShortcuts
-        {
-            get
-            {
-                return syncSteamShortcuts;
-            }
-            set { syncSteamShortcuts = value; Preferences.Set(AppConfigKey.SyncSteamShortcuts, syncSteamShortcuts ? "1" : "0", userConfigFile); OnPropertyChanged(); }
         }
         public bool SyncDiscordPresence
         {

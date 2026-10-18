@@ -42,7 +42,6 @@ namespace gamevault.Models
         SendAnonymousAnalytics,
         LastCommunitySortBy,
         ForcedInstallationType,
-        SyncSteamShortcuts,
         SyncDiscordPresence,
         CloudSaves,
         //DevMode

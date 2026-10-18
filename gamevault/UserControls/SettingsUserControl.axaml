@@ -322,20 +322,6 @@
                             <Rectangle Classes="integrationBar" />
                             <StackPanel Margin="10,0,0,0">
                                 <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource IconGameSettingsSteam}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
-                                    <Button Classes="link" Margin="5,0,0,0" Tag="https://gamevau.lt/docs/gamevault-plus/integrations/steam" Click="Hyperlink_RequestNavigate">
-                                        <TextBlock Text="Steam" FontSize="20" FontWeight="Bold" />
-                                    </Button>
-                                </StackPanel>
-                                <TextBlock Text="{l:T 'SanctuaryVault offers seamless integration with Steam through the Steam Sync Integration. When enabled, all your installed games are automatically synced to your Steam Library and appear as Non-Steam Games. Launching these games via Steam will route them through SanctuaryVault, ensuring all your custom launch options are preserved.'}" FontSize="15" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" />
-                                <ToggleSwitch x:Name="uiSteamSync" Content="{l:T 'Sync (You have to restart the steam client to see the changes)'}" Margin="0,10,0,0" IsChecked="{Binding SyncSteamShortcuts}" />
-                                <local:IconButton Text="{l:T 'Restore Backup'}" Kind="Danger" FontSize="15" Icon="{DynamicResource IconReload}" IconMargin="0,0,5,2" MinWidth="150" Height="30" HorizontalAlignment="Left" Margin="0,10,0,0" Click="RestoreSteamShortcutBackup_Click" />
-                            </StackPanel>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
-                            <Rectangle Classes="integrationBar" />
-                            <StackPanel Margin="10,0,0,0">
-                                <StackPanel Orientation="Horizontal">
                                     <Path Data="{StaticResource IconGameSettingsDiscord}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
                                     <Button Classes="link" Margin="5,0,0,0" Tag="https://gamevau.lt/docs/gamevault-plus/integrations/discord" Click="Hyperlink_RequestNavigate">
                                         <TextBlock Text="Discord" FontSize="20" FontWeight="Bold" />
@@ -505,7 +491,7 @@
                             <SelectableTextBlock x:Name="uiDetectedTools" Text="{Binding DetectedCompatibilityTools}" FontFamily="monospace" FontSize="13" TextWrapping="Wrap" />
                         </Border>
                         <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
-                                   Text="{l:T 'Saves of Windows games running in the prefix are included in cloud saves automatically. Steam shortcuts start the games through SanctuaryVault.'}" />
+                                   Text="{l:T 'Saves of Windows games running in the prefix are included in cloud saves automatically.'}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

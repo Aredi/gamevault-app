@@ -524,13 +524,10 @@ namespace gamevault.UserControls
             Preferences.Set(AppConfigKey.InstalledGamesOpen, uiInstalledGames.IsChecked == true ? "1" : "0", LoginManager.Instance.GetUserProfile().UserConfigFile);
         }
 
-        private async Task Collection_Updated(int oldCount, int newCount)
+        private Task Collection_Updated(int oldCount, int newCount)
         {
             ApplyFilter();
-            if (oldCount >= 0 && oldCount != newCount && SettingsViewModel.Instance.SyncSteamShortcuts)//Make sure that a game has really been added or removed
-            {
-                await SteamHelper.SyncGamesWithSteamShortcuts(InstallViewModel.Instance.InstalledGames.ToDictionary(pair => pair.Key, pair => pair.Value));
-            }
+            return Task.CompletedTask;
         }
     }
 }
