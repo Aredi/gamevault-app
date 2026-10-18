@@ -238,6 +238,9 @@
                             <Button Classes="link" HorizontalAlignment="Left" Click="ChooseExecutable_Click" IsVisible="{Binding IsInstalled}">
                                 <TextBlock Text="{l:T 'The wrong program starts? Choose another one'}" FontSize="13" TextDecorations="Underline" />
                             </Button>
+                            <Button Classes="link" HorizontalAlignment="Left" Click="MoveGame_Click" IsVisible="{Binding IsInstalled}">
+                                <TextBlock Text="{l:T 'Move the game to another disk or folder'}" FontSize="13" TextDecorations="Underline" />
+                            </Button>
                         </StackPanel>
                     </Grid>
 

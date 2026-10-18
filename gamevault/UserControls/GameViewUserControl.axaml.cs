@@ -489,6 +489,11 @@ namespace gamevault.UserControls
                 return;
             MainWindowViewModel.Instance.OpenPopup(new ChooseExecutableUserControl(ViewModel.Game, installed.Value));
         }
+        private async void MoveGame_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel?.Game != null)
+                await GameMover.MoveAsync(ViewModel.Game);
+        }
         private void SaveHistory_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel?.Game == null)

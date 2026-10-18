@@ -24,21 +24,30 @@ namespace gamevault.UserControls
     {
         private readonly TaskCompletionSource<string> ResultTaskSource = new();
         private readonly long requiredBytes;
+        /// <summary>Moving an installed game: its installation directory, else null.</summary>
+        private readonly string? movingFrom;
 
         public InstallLocationUserControl() : this(0) { }
 
         /// <param name="requiredBytes">The size of the game: folders without that much room can not be chosen.</param>
-        public InstallLocationUserControl(long requiredBytes)
+        /// <param name="movingFrom">The installation of a game to move instead of a game to install.</param>
+        public InstallLocationUserControl(long requiredBytes, string? movingFrom = null)
         {
             InitializeComponent();
             this.requiredBytes = requiredBytes;
+            this.movingFrom = movingFrom;
+            if (movingFrom != null)
+            {
+                uiTitle.Text = Loc.T("Where should the game be moved?");
+                uiDontAsk.IsVisible = false;
+            }
             uiNeeded.Text = requiredBytes > 0 ? Loc.F("The game needs {0}", Size(requiredBytes)) : "";
             uiNeeded.IsVisible = requiredBytes > 0;
             Load();
             // Attached rather than Loaded: started without a visible window (command line), nobody can answer
             AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(() =>
             {
-                if (App.Instance.MainWindow.IsVisible == false && Rows.Count > 0)
+                if (App.Instance.MainWindow.IsVisible == false && Rows.Count > 0 && movingFrom == null)
                     Choose(DefaultLocation());
                 else
                     Focus();
@@ -63,6 +72,7 @@ namespace gamevault.UserControls
         {
             string last = Preferences.Get(AppConfigKey.LastSelectedRootDirectory, LoginManager.Instance.GetUserProfile().UserConfigFile);
             var rows = new List<InstallLocationRow>();
+            string? currentDrive = movingFrom == null ? null : DriveName(movingFrom);
             foreach (DirectoryEntry root in SettingsViewModel.Instance.RootDirectories)
             {
                 long? free = null;
@@ -71,13 +81,31 @@ namespace gamevault.UserControls
                 bool exists = Directory.Exists(root.Uri);
                 string details = !exists ? Loc.T("Not found (disk unplugged?)")
                     : free == null ? "" : Loc.F("{0} free", Size(free.Value));
-                bool hasRoom = exists && (free == null || requiredBytes <= 0 || free.Value >= requiredBytes);
+                // A move on the same disk takes no room
+                bool sameDisk = currentDrive != null && DriveName(root.Uri) == currentDrive;
+                bool hasRoom = exists && (sameDisk || free == null || requiredBytes <= 0 || free.Value >= requiredBytes);
                 if (exists && !hasRoom)
                     details += " · " + Loc.T("not enough room");
-                rows.Add(new InstallLocationRow(root.Uri, details, root.Uri == last, hasRoom));
+                if (movingFrom != null && IsCurrentLocation(root.Uri))
+                {
+                    details = Loc.T("The game is here");
+                    hasRoom = false;
+                }
+                rows.Add(new InstallLocationRow(root.Uri, details, movingFrom == null && root.Uri == last, hasRoom, movingFrom == null ? Loc.T("Install here") : Loc.T("Move here")));
             }
             uiLocations.ItemsSource = rows;
         }
+
+        private static string? DriveName(string path)
+        {
+            try { return PlatformInfo.GetDriveForPath(path)?.Name; }
+            catch (Exception ex) { Log.Ignored(ex); return null; }
+        }
+
+        private bool IsCurrentLocation(string root) => string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(root, "GameVault", "Installations"))),
+            Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(movingFrom!))),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
         /// <summary>Without asking: the last install location if it is still a root directory, else the first one.</summary>
         public static string DefaultLocation()
@@ -91,7 +119,7 @@ namespace gamevault.UserControls
 
         private void Choose(string directory)
         {
-            if (directory != string.Empty)
+            if (directory != string.Empty && movingFrom == null)
             {
                 Preferences.Set(AppConfigKey.LastSelectedRootDirectory, directory, LoginManager.Instance.GetUserProfile().UserConfigFile);
                 if (uiDontAsk.IsChecked == true)
@@ -119,7 +147,8 @@ namespace gamevault.UserControls
         {
             try
             {
-                if (requiredBytes > 0 && PlatformInfo.GetDriveForPath(directory)?.AvailableFreeSpace < requiredBytes)
+                if (requiredBytes > 0 && PlatformInfo.GetDriveForPath(directory)?.AvailableFreeSpace < requiredBytes
+                    && (movingFrom == null || DriveName(directory) != DriveName(movingFrom)))
                 {
                     MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough space available for drive {0}", PlatformInfo.GetDriveForPath(directory)?.Name);
                     return;
@@ -140,17 +169,19 @@ namespace gamevault.UserControls
 
     internal sealed class InstallLocationRow
     {
-        public InstallLocationRow(string path, string details, bool isLast, bool hasRoom)
+        public InstallLocationRow(string path, string details, bool isLast, bool hasRoom, string action)
         {
             Path = path;
             Details = details;
             IsLast = isLast;
             HasRoom = hasRoom;
+            Action = action;
         }
 
         public string Path { get; }
         public string Details { get; }
         public bool IsLast { get; }
         public bool HasRoom { get; }
+        public string Action { get; }
     }
 }

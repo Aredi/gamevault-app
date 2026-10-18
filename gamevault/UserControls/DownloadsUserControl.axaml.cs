@@ -252,6 +252,8 @@ namespace gamevault.UserControls
                 return Fail(Loc.T("Selected directory does not exist"));
             if (LoginManager.Instance.IsLoggedIn() == false)
                 return Fail(Loc.T("You are not logged in or offline"));
+            if (GameMover.IsMoving(game.ID))
+                return Fail(Loc.F("'{0}' is being moved: wait until it is finished", game.Title));
             if (IsAlreadyDownloading(game.ID))
                 return Fail(Loc.F("'{0}' is already in the download queue", game.Title));
             if (unattended && DownloadsViewModel.Instance.DownloadedGames.Any(g => g.GetGameId() == game.ID))

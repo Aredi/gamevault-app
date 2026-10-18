@@ -50,6 +50,49 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AnInstalledGame_IsMovedToAnotherDisk_AndStillStarts()
+        {
+            var session = await TestSession.GetAsync();
+            string otherDisk = Path.Combine(IsolatedHome.Root, "move-disk");
+            Directory.CreateDirectory(otherDisk);
+            Game game = session.Server.AddGame(173, "Mover", GameType.LINUX_PORTABLE, TestSession.LinuxGameArchive(1000), "Mover (L_P).tar.gz");
+            try
+            {
+                Assert.Null(await MainWindowViewModel.Instance.Downloads.TryStartDownload(game));
+                await TestSession.WaitUntil(() => InstallViewModel.Instance.InstalledGames.Any(g => g.Key.ID == game.ID), TimeSpan.FromSeconds(90), "the game to be installed");
+                string before = session.InstallFolder(game);
+                await gamevault.UserControls.InstallUserControl.PlayGame(game.ID);// the program is chosen and stored with its full path
+                await TestSession.WaitUntil(() => File.Exists(Path.Combine(before, "Files", "started")), TimeSpan.FromSeconds(20), "the game to start");
+                await SettingsViewModel.Instance.AddRootDirectoryAsync(otherDisk);
+
+                Task<bool> move = gamevault.Helper.GameMover.MoveAsync(game);
+                var question = await Asked();
+                // The folder the game is in can not be chosen
+                Assert.Contains(question.Rows, r => r.Path == session.LibraryRoot && !r.HasRoom);
+                Button? MoveHere() => Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(question).OfType<Button>()
+                    .FirstOrDefault(b => b.DataContext is InstallLocationRow row && row.Path == otherDisk);
+                await TestSession.WaitUntil(() => MoveHere() != null, TimeSpan.FromSeconds(10), "the Move here button");
+                MoveHere()!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+
+                Assert.True(await move);
+                string after = Path.Combine(otherDisk, "GameVault", "Installations", Path.GetFileName(before));
+                Assert.False(Directory.Exists(before));
+                Assert.Equal(after, InstallViewModel.Instance.InstalledGames.Single(g => g.Key.ID == game.ID).Value);
+                Assert.StartsWith(after + Path.DirectorySeparatorChar, Preferences.Get(AppConfigKey.Executable, Path.Combine(after, "gamevault-exec")));
+                File.Delete(Path.Combine(after, "Files", "started"));
+                await gamevault.UserControls.InstallUserControl.PlayGame(game.ID);
+                await TestSession.WaitUntil(() => File.Exists(Path.Combine(after, "Files", "started")), TimeSpan.FromSeconds(20), "the moved game to start");
+            }
+            finally
+            {
+                var added = SettingsViewModel.Instance.RootDirectories.FirstOrDefault(r => r.Uri == otherDisk);
+                if (added != null)
+                    SettingsViewModel.Instance.RootDirectories.Remove(added);
+                Preferences.Set(AppConfigKey.RootDirectories, session.LibraryRoot, gamevault.Helper.LoginManager.Instance.GetUserProfile().UserConfigFile);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task DoNotAskAgain_InstallsInTheChosenFolder_WithoutAsking()
         {
             var session = await TestSession.GetAsync();

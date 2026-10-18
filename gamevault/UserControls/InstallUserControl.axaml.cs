@@ -431,6 +431,11 @@ namespace gamevault.UserControls
             {
                 path = result.Value;
             }
+            if (GameMover.IsMoving(gameId))
+            {
+                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is being moved: wait until it is finished", result.Key.Title);
+                return;
+            }
             if (!Directory.Exists(path))
             {
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Can not find part of '{0}'", path);

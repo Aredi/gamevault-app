@@ -118,7 +118,13 @@ namespace gamevault.Helper
                 catch (Exception ex) { Log.Ignored(ex); }
             }
         }
-        private List<int> FindRunningGamesWindows(Dictionary<int, string> foundGames)
+        /// <summary>A program of the game installed in <paramref name="installation"/> is running.</summary>
+        internal static bool IsRunning(int gameId, string installation)
+        {
+            var game = new Dictionary<int, string> { { gameId, installation } };
+            return (OperatingSystem.IsWindows() ? FindRunningGamesWindows(game) : FindRunningGamesLinux(game)).Count > 0;
+        }
+        private static List<int> FindRunningGamesWindows(Dictionary<int, string> foundGames)
         {
             List<int> gamesToCountUp = new List<int>();
             var processes = Process.GetProcesses().Where(x => x.MainWindowHandle != IntPtr.Zero).ToArray();
@@ -163,7 +169,7 @@ namespace gamevault.Helper
         /// A process belongs to a game if its executable, its working directory or one of its arguments
         /// (Wine passes the .exe, possibly as a Z:\ path) is inside the installation directory.
         /// </summary>
-        private List<int> FindRunningGamesLinux(Dictionary<int, string> foundGames)
+        private static List<int> FindRunningGamesLinux(Dictionary<int, string> foundGames)
         {
             List<int> gamesToCountUp = new List<int>();
             int ownPid = Environment.ProcessId;
@@ -316,7 +322,7 @@ namespace gamevault.Helper
             }
             return new string[0];
         }
-        private bool ContainsValueFromIgnoreList(string value)
+        private static bool ContainsValueFromIgnoreList(string value)
         {
             // An empty name would match every entry
             if (string.IsNullOrWhiteSpace(value))

@@ -182,8 +182,17 @@ namespace gamevault.UserControls
             if (Directory.Exists(ViewModel.Directory))
                 PlatformInfo.OpenFolder(ViewModel.Directory);
         }
+        private async void MoveGame_Click(object sender, RoutedEventArgs e)
+        {
+            await GameMover.MoveAsync(ViewModel.Game);
+        }
         private async void Uninstall_Click(object sender, RoutedEventArgs e)
         {
+            if (GameMover.IsMoving(ViewModel.Game.ID))
+            {
+                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is already being moved", ViewModel.Game.Title);
+                return;
+            }
             ((Control)sender).IsEnabled = false;
             await UninstallGame();
             ((Control)sender).IsEnabled = true;

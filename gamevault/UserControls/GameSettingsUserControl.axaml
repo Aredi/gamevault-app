@@ -148,6 +148,8 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <local:IconButton Kind="Danger" Text="{l:T 'Uninstall Game'}" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" MinWidth="150" Height="33" FontSize="15" Click="Uninstall_Click" />
                             <local:IconButton Text="{l:T 'Open Directory'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" MinWidth="150" Height="33" FontSize="15" Click="OpenDirectory_Click" />
+                            <local:IconButton Text="{l:T 'Move to another folder'}" Icon="{DynamicResource IconHardDrive}" IconMargin="0,0,5,2" MinWidth="150" Height="33" FontSize="15" Click="MoveGame_Click"
+                                              ToolTip.Tip="{l:T 'To another disk for example. Saves and settings stay.'}" />
                         </StackPanel>
                         <TextBlock Classes="section" Text="{l:T 'Disk Usage:'}" Margin="0,20,0,0" />
                         <TextBlock Text="{Binding DiskSize}" FontSize="15" FontWeight="Bold" Margin="0,5,0,0" />

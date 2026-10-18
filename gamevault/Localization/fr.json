@@ -1068,5 +1068,18 @@
   "Not found (disk unplugged?)": "Introuvable (disque débranché ?)",
   "{0} free": "{0} libres",
   "not enough room": "pas assez de place",
-  "Ask where to install each game": "Demander où installer chaque jeu"
+  "Ask where to install each game": "Demander où installer chaque jeu",
+  "Where should the game be moved?": "Où déplacer le jeu ?",
+  "The game is here": "Le jeu est ici",
+  "Move here": "Déplacer ici",
+  "Move to another folder": "Déplacer vers un autre dossier",
+  "To another disk for example. Saves and settings stay.": "Vers un autre disque par exemple. Les sauvegardes et réglages sont conservés.",
+  "Move the game to another disk or folder": "Déplacer le jeu vers un autre disque ou dossier",
+  "'{0}' is already being moved": "'{0}' est déjà en cours de déplacement",
+  "'{0}' is being downloaded: move it once the download is finished": "'{0}' est en cours de téléchargement : déplacez-le une fois le téléchargement terminé",
+  "Close '{0}' before moving it": "Fermez '{0}' avant de le déplacer",
+  "Moving '{0}'… {1}%": "Déplacement de '{0}'… {1} %",
+  "'{0}' has been moved to {1}": "'{0}' a été déplacé vers {1}",
+  "'{0}' could not be moved: {1}": "'{0}' n'a pas pu être déplacé : {1}",
+  "'{0}' is being moved: wait until it is finished": "'{0}' est en cours de déplacement : attendez la fin"
 }
