@@ -83,6 +83,8 @@ namespace gamevault.Models
         GameWinetricksApplied,
         //New game notifications
         NotifyNewGames,
+        //"0": games go to the last game folder without asking where
+        AskInstallLocation,
         LastSeenGameId,
         //Status of each game request last seen (id -> status), to tell when one is added or refused
         GameRequestStatuses,

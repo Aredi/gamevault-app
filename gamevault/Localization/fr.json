@@ -1057,5 +1057,16 @@
   "{0} is now started by Play": "{0} est maintenant lancé par Jouer",
   "in the main folder": "dans le dossier principal",
   "The wrong program starts? Choose another one": "Ce n'est pas le bon programme qui se lance ? Choisis-en un autre",
-  "In use": "Utilisé"
+  "In use": "Utilisé",
+  "Where should the game be installed?": "Où installer le jeu ?",
+  "Choose one of your game folders, or another folder (another disk for example). SanctuaryVault creates a GameVault folder in it.": "Choisis un de tes dossiers de jeux, ou un autre dossier (un autre disque par exemple). SanctuaryVault y crée un dossier GameVault.",
+  "Last used": "Dernier utilisé",
+  "Install here": "Installer ici",
+  "Another folder…": "Autre dossier…",
+  "Do not ask again (can be changed in Settings → Data)": "Ne plus demander (modifiable dans Paramètres → Données)",
+  "The game needs {0}": "Le jeu a besoin de {0}",
+  "Not found (disk unplugged?)": "Introuvable (disque débranché ?)",
+  "{0} free": "{0} libres",
+  "not enough room": "pas assez de place",
+  "Ask where to install each game": "Demander où installer chaque jeu"
 }

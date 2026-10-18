@@ -91,6 +91,7 @@ namespace gamevault.ViewModels
             //Setting the private members to avoid writing to the user config file over and over again
             m_BackgroundStart = (Preferences.Get(AppConfigKey.BackgroundStart, userConfigFile) == "1"); OnPropertyChanged(nameof(BackgroundStart));
             notifyNewGames = Preferences.Get(AppConfigKey.NotifyNewGames, userConfigFile) != "0"; OnPropertyChanged(nameof(NotifyNewGames));
+            askInstallLocation = Preferences.Get(AppConfigKey.AskInstallLocation, userConfigFile) != "0"; OnPropertyChanged(nameof(AskInstallLocation));
             maxConcurrentDownloads = int.TryParse(Preferences.Get(AppConfigKey.MaxConcurrentDownloads, userConfigFile), out int maxDownloads) ? Math.Clamp(maxDownloads, 0, 10) : 0;
             downloadConnections = int.TryParse(Preferences.Get(AppConfigKey.DownloadConnections, userConfigFile), out int connections) ? Math.Clamp(connections, 1, 8) : 4;
             OnPropertyChanged(nameof(DownloadConnectionsIndex));
@@ -305,6 +306,24 @@ namespace gamevault.ViewModels
         {
             get => notifyNewGames;
             set { notifyNewGames = value; Preferences.Set(AppConfigKey.NotifyNewGames, value ? "1" : "0", userConfigFile); OnPropertyChanged(); }
+        }
+        private bool askInstallLocation = true;
+        /// <summary>Each install asks where the game goes (a game folder or a new one); else the last one is used.</summary>
+        public bool AskInstallLocation
+        {
+            get => askInstallLocation;
+            set { askInstallLocation = value; Preferences.Set(AppConfigKey.AskInstallLocation, value ? "1" : "0", userConfigFile); OnPropertyChanged(); }
+        }
+        /// <summary>A new game folder: saved, then the games already in it are found.</summary>
+        public async Task AddRootDirectoryAsync(string directory)
+        {
+            if (!RootDirectories.Any(r => string.Equals(r.Uri, directory, PlatformInfo.IsWindows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)))
+            {
+                RootDirectories.Add(new DirectoryEntry() { Uri = directory });
+                Preferences.Set(AppConfigKey.RootDirectories, string.Join(";", RootDirectories.Select(entry => entry.Uri)), userConfigFile);
+            }
+            await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();
+            await MainWindowViewModel.Instance.Downloads.RestoreDownloadedGames();
         }
         public bool BackgroundStart
         {
@@ -555,6 +574,7 @@ namespace gamevault.ViewModels
             catch (Exception)
             {
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Access to the path {0} is denied", selectedPath);
+                return "";
             }
             return selectedPath;
         }

@@ -90,6 +90,8 @@ namespace GameVault.UiTests
             Preferences.Set(AppConfigKey.Username, "admin", profile.UserConfigFile);
             Preferences.Set(AppConfigKey.Password, "admin-password", profile.UserConfigFile, true);
             Preferences.Set(AppConfigKey.RootDirectories, LibraryRoot, profile.UserConfigFile);
+            // The scenarios install without being asked where (InstallLocationScenarios asks)
+            Preferences.Set(AppConfigKey.AskInstallLocation, "0", profile.UserConfigFile);
 
             LoginState state = await LoginManager.Instance.Login(profile, "admin", "admin-password");
             Assert.True(state == LoginState.Success, $"Login: {state} {LoginManager.Instance.GetServerLoginResponseMessage()} | requests: {string.Join(", ", Server.Requests)}");

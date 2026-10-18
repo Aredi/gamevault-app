@@ -1,92 +1,84 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using GameVault.Core;
+using gamevault.Converter;
 using gamevault.Helper;
-using gamevault.Helper.Platform;
 using gamevault.Helper.Integrations;
+using gamevault.Helper.Platform;
+using gamevault.Localization;
 using gamevault.Models;
 using gamevault.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace gamevault.UserControls
 {
-    /// <summary>
-    /// Interaction logic for InstallLocationUserControl.xaml
-    /// </summary>
+    /// <summary>Asks where a game is installed: one of the game folders (with their free space), or a new one.</summary>
     public partial class InstallLocationUserControl : UserControl
     {
-        private TaskCompletionSource<string> ResultTaskSource;
-        public Dictionary<DirectoryEntry, string> RootDirectories { get; set; }
-        private bool loaded = false;
-        public InstallLocationUserControl()
+        private readonly TaskCompletionSource<string> ResultTaskSource = new();
+        private readonly long requiredBytes;
+
+        public InstallLocationUserControl() : this(0) { }
+
+        /// <param name="requiredBytes">The size of the game: folders without that much room can not be chosen.</param>
+        public InstallLocationUserControl(long requiredBytes)
         {
             InitializeComponent();
-            ResultTaskSource = new TaskCompletionSource<string>();
-            RootDirectories = new Dictionary<DirectoryEntry, string>();
-            PrepareInstallLocationSelection();
-            this.DataContext = this;
-            // Attached rather than Loaded: the control may be hidden when there is a single root directory.
-            AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(UserControl_Loaded, DispatcherPriority.Loaded);
+            this.requiredBytes = requiredBytes;
+            uiNeeded.Text = requiredBytes > 0 ? Loc.F("The game needs {0}", Size(requiredBytes)) : "";
+            uiNeeded.IsVisible = requiredBytes > 0;
+            Load();
+            // Attached rather than Loaded: started without a visible window (command line), nobody can answer
+            AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(() =>
+            {
+                if (App.Instance.MainWindow.IsVisible == false && Rows.Count > 0)
+                    Choose(DefaultLocation());
+                else
+                    Focus();
+            }, DispatcherPriority.Loaded);
             // Closed another way (Escape closes popups): the download that waits for the answer is not started
             DetachedFromVisualTree += (_, _) => ResultTaskSource.TrySetResult(string.Empty);
-        }
-        private void UserControl_Loaded()
-        {
-            if (loaded) return;
-            loaded = true;
-            string lastSelectedRootDirectory = Preferences.Get(AppConfigKey.LastSelectedRootDirectory, LoginManager.Instance.GetUserProfile().UserConfigFile);
-            if (AutoConfirmIfWindowIsHiddenOrOnlyOneEntry(lastSelectedRootDirectory))
-                return;
-
-            if (Directory.Exists(lastSelectedRootDirectory))
+            KeyDown += (_, e) =>
             {
-                int index = RootDirectories.ToList().FindIndex(x => x.Key.Uri == lastSelectedRootDirectory);
-                if (index != -1)
+                if (e.Key == Key.Escape)
                 {
-                    ToggleButtonGroupBehavior.CheckToggleButtonByIndex("RootDirectorySelection", this, index);
-                    return;
+                    e.Handled = true;
+                    Choose(string.Empty);
                 }
-            }
-            ToggleButtonGroupBehavior.CheckToggleButtonByIndex("RootDirectorySelection", this, 0);//Default pre selects the first entry             
+            };
         }
-        private void PrepareInstallLocationSelection()
-        {
-            foreach (DirectoryEntry rootDir in SettingsViewModel.Instance.RootDirectories)
-            {
-                // The most specific mount point containing the directory (on Linux every path starts with "/")
-                DriveInfo? drive = PlatformInfo.GetDriveForPath(rootDir.Uri);
-                if (drive != null && !RootDirectories.ContainsKey(rootDir))
-                {
-                    long freeSpace = 0;
-                    try { freeSpace = drive.AvailableFreeSpace; } catch (Exception ex) { Log.Ignored(ex); }
-                    RootDirectories.Add(rootDir, FormatBytes(freeSpace));
-                }
-            }
-            if (RootDirectories.Count <= 1)
-            {
-                this.IsVisible = false;
-            }
-        }
-        private string FormatBytes(long bytes)
-        {
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB", "PB" };
-            int counter = 0;
-            decimal number = bytes;
 
-            while (Math.Round(number / 1024) >= 1)
-            {
-                number = number / 1024;
-                counter++;
-            }
+        internal IReadOnlyList<InstallLocationRow> Rows => uiLocations.ItemsSource as IReadOnlyList<InstallLocationRow> ?? Array.Empty<InstallLocationRow>();
 
-            return $"{number:n1} {suffixes[counter]}";
+        private static string Size(long bytes) => new GameSizeConverter().Convert(bytes, typeof(string), null, CultureInfo.CurrentCulture) as string ?? "";
+
+        private void Load()
+        {
+            string last = Preferences.Get(AppConfigKey.LastSelectedRootDirectory, LoginManager.Instance.GetUserProfile().UserConfigFile);
+            var rows = new List<InstallLocationRow>();
+            foreach (DirectoryEntry root in SettingsViewModel.Instance.RootDirectories)
+            {
+                long? free = null;
+                try { free = PlatformInfo.GetDriveForPath(root.Uri)?.AvailableFreeSpace; }
+                catch (Exception ex) { Log.Ignored(ex); }
+                bool exists = Directory.Exists(root.Uri);
+                string details = !exists ? Loc.T("Not found (disk unplugged?)")
+                    : free == null ? "" : Loc.F("{0} free", Size(free.Value));
+                bool hasRoom = exists && (free == null || requiredBytes <= 0 || free.Value >= requiredBytes);
+                if (exists && !hasRoom)
+                    details += " · " + Loc.T("not enough room");
+                rows.Add(new InstallLocationRow(root.Uri, details, root.Uri == last, hasRoom));
+            }
+            uiLocations.ItemsSource = rows;
         }
+
         /// <summary>Without asking: the last install location if it is still a root directory, else the first one.</summary>
         public static string DefaultLocation()
         {
@@ -94,64 +86,71 @@ namespace gamevault.UserControls
             var roots = SettingsViewModel.Instance.RootDirectories;
             return roots.Any(r => r.Uri == last) && Directory.Exists(last) ? last : roots.FirstOrDefault()?.Uri ?? string.Empty;
         }
-        public Task<string> SelectInstallLocation()
+
+        public Task<string> SelectInstallLocation() => ResultTaskSource.Task;
+
+        private void Choose(string directory)
         {
-            return ResultTaskSource.Task;
-        }
-        private void Close_Click(object sender, RoutedEventArgs e)
-        {
-            ResultTaskSource.TrySetResult(string.Empty);
+            if (directory != string.Empty)
+            {
+                Preferences.Set(AppConfigKey.LastSelectedRootDirectory, directory, LoginManager.Instance.GetUserProfile().UserConfigFile);
+                if (uiDontAsk.IsChecked == true)
+                    SettingsViewModel.Instance.AskInstallLocation = false;
+            }
+            ResultTaskSource.TrySetResult(directory);
             MainWindowViewModel.Instance.ClosePopup();
         }
 
-        private void Install_Click(object sender, RoutedEventArgs e)
+        private void Install_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is InstallLocationRow row)
+                Choose(row.Path);
+        }
+
+        private async void OtherFolder_Click(object? sender, RoutedEventArgs e)
+        {
+            string directory = await SettingsViewModel.Instance.SelectDownloadPath();
+            if (directory != "")
+                await UseNewFolderAsync(directory);
+        }
+
+        /// <summary>The folder becomes a game folder, and the game is installed in it.</summary>
+        internal async Task UseNewFolderAsync(string directory)
         {
             try
             {
-                ToggleButton selectedButton = ToggleButtonGroupBehavior.GetCheckedToggleButton("RootDirectorySelection", this);
-                if (selectedButton == null)
+                if (requiredBytes > 0 && PlatformInfo.GetDriveForPath(directory)?.AvailableFreeSpace < requiredBytes)
+                {
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough space available for drive {0}", PlatformInfo.GetDriveForPath(directory)?.Name);
                     return;
+                }
+                IsEnabled = false;
+                await SettingsViewModel.Instance.AddRootDirectoryAsync(directory);
+                Choose(directory);
+            }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                IsEnabled = true;
+            }
+        }
 
-                var dataContext = (KeyValuePair<DirectoryEntry, string>)selectedButton.DataContext!;
-                if (selectedButton != null && selectedButton.Content != null)
-                {
-                    Preferences.Set(AppConfigKey.LastSelectedRootDirectory, dataContext.Key.Uri, LoginManager.Instance.GetUserProfile().UserConfigFile);
-                    ResultTaskSource.TrySetResult(dataContext.Key.Uri);
-                    MainWindowViewModel.Instance.ClosePopup();
-                }
-            }
-            catch (Exception ex) { Log.Ignored(ex); }
-        }
-        private bool AutoConfirmIfWindowIsHiddenOrOnlyOneEntry(string lastSelectedRootDirectory)
+        private void Close_Click(object? sender, RoutedEventArgs e) => Choose(string.Empty);
+    }
+
+    internal sealed class InstallLocationRow
+    {
+        public InstallLocationRow(string path, string details, bool isLast, bool hasRoom)
         {
-            if (App.Instance.MainWindow.IsVisible == false && RootDirectories.Any())//possible if called by CLI
-            {
-                if (Directory.Exists(lastSelectedRootDirectory))
-                {
-                    ResultTaskSource.TrySetResult(lastSelectedRootDirectory);
-                    MainWindowViewModel.Instance.ClosePopup();
-                }
-                else
-                {
-                    ResultTaskSource.TrySetResult(RootDirectories.ElementAt(0).Key.Uri);
-                    MainWindowViewModel.Instance.ClosePopup();
-                }
-                return true;
-            }
-            else if (RootDirectories.Count == 1)
-            {
-                ResultTaskSource.TrySetResult(RootDirectories.ElementAt(0).Key.Uri);
-                MainWindowViewModel.Instance.ClosePopup();
-                return true;
-            }
-            return false;
+            Path = path;
+            Details = details;
+            IsLast = isLast;
+            HasRoom = hasRoom;
         }
-        private void DirectorySettings_Click(object sender, RoutedEventArgs e)
-        {
-            ResultTaskSource.TrySetResult(string.Empty);
-            MainWindowViewModel.Instance.ClosePopup();
-            MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
-            MainWindowViewModel.Instance.Settings.SetTabIndex(3);
-        }
+
+        public string Path { get; }
+        public string Details { get; }
+        public bool IsLast { get; }
+        public bool HasRoom { get; }
     }
 }

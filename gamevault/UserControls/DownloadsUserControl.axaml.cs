@@ -230,16 +230,18 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = message;
                 return message;
             }
-            if (SettingsViewModel.Instance.RootDirectories.Count == 0)
+            bool ask = !unattended && (SettingsViewModel.Instance.AskInstallLocation || SettingsViewModel.Instance.RootDirectories.Count == 0);
+            if (!ask && SettingsViewModel.Instance.RootDirectories.Count == 0)
                 return Fail(Loc.T("No Root Directory configured! Go to ⚙️Settings->Data"));
             string selectedDirectory;
-            if (unattended)
+            if (!ask)
             {
                 selectedDirectory = InstallLocationUserControl.DefaultLocation();
             }
             else
             {
-                var installLocationPicker = new InstallLocationUserControl();
+                long.TryParse(game.Size, out long size);
+                var installLocationPicker = new InstallLocationUserControl(size);
                 MainWindowViewModel.Instance.OpenPopup(installLocationPicker);
                 selectedDirectory = await installLocationPicker.SelectInstallLocation();
             }

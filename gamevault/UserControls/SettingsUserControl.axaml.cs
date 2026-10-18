@@ -543,11 +543,7 @@ namespace gamevault.UserControls
                 string selectedDirectory = await SettingsViewModel.Instance.SelectDownloadPath();
                 if (Directory.Exists(selectedDirectory))
                 {
-                    ViewModel.RootDirectories.Add(new DirectoryEntry() { Uri = selectedDirectory });
-                    string result = string.Join(";", ViewModel.RootDirectories.Select(entry => entry.Uri));
-                    Preferences.Set(AppConfigKey.RootDirectories, result, LoginManager.Instance.GetUserProfile().UserConfigFile);
-                    await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();
-                    await MainWindowViewModel.Instance.Downloads.RestoreDownloadedGames();
+                    await ViewModel.AddRootDirectoryAsync(selectedDirectory);
                     if (InstallViewModel.Instance.InstalledGamesDuplicates.Any())
                     {
                         await ShowInstalledGameDuplicates();
