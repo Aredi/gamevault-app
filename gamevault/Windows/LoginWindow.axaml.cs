@@ -348,6 +348,13 @@ namespace gamevault.Windows
                     ViewModel.LoginStepIndex = (int)LoginStep.ChooseProfile;
                     ViewModel.AppBarText = LoginManager.Instance.GetServerLoginResponseMessage();
                 }
+                else if (state == LoginState.Unauthorized && !isLoggedInWithSSO)
+                {
+                    // The server is there but refuses the saved password (removed when logging out, or changed):
+                    // asked again instead of opening the library offline
+                    OpenProfileEdit(profile);
+                    ViewModel.AppBarText = Loc.T("Wrong or missing password: type it, save, then choose your profile again.");
+                }
                 else
                 {
                     try
@@ -461,15 +468,18 @@ namespace gamevault.Windows
             {
                 if (sender is MenuItem menuItem)
                 {
-                    UserProfile profileToEdit = (UserProfile)menuItem.DataContext!;
-                    ViewModel.EditUser = new LoginUser() { ID = profileToEdit.RootDir, ServerUrl = profileToEdit.ServerUrl, Username = profileToEdit.Name, Password = Preferences.Get(AppConfigKey.Password, profileToEdit.UserConfigFile, true) };
-                    ViewModel.LoginStepIndex = (int)LoginStep.EditProfile;
+                    OpenProfileEdit((UserProfile)menuItem.DataContext!);
                 }
             }
             catch (Exception ex)
             {
                 ViewModel.AppBarText = ex.Message;
             }
+        }
+        private void OpenProfileEdit(UserProfile profileToEdit)
+        {
+            ViewModel.EditUser = new LoginUser() { ID = profileToEdit.RootDir, ServerUrl = profileToEdit.ServerUrl, Username = profileToEdit.Name, Password = Preferences.Get(AppConfigKey.Password, profileToEdit.UserConfigFile, true) };
+            ViewModel.LoginStepIndex = (int)LoginStep.EditProfile;
         }
 
         private async void DeleteUserProfile_Click(object sender, RoutedEventArgs e)

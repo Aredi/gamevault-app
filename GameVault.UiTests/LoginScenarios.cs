@@ -2,7 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using gamevault.Helper;
 using gamevault.Localization;
+using gamevault.Models;
 using gamevault.ViewModels;
 using gamevault.Windows;
 
@@ -47,6 +49,42 @@ namespace GameVault.UiTests
                 }
             }
             finally { window.Close(); }
+        }
+
+        [AvaloniaFact]
+        public async Task AProfileWithoutItsPassword_AsksForIt_InsteadOfOpeningOffline()
+        {
+            var session = await TestSession.GetAsync();
+            UserProfile me = LoginManager.Instance.GetUserProfile();
+            // Logging out removes the saved password; the profile was connected before
+            UserProfile profile = ProfileManager.CreateUserProfile("loggedout");
+            profile.Name = "admin";
+            profile.ServerUrl = session.Server.Url;
+            Preferences.Set(AppConfigKey.ServerUrl, session.Server.Url, profile.UserConfigFile, true);
+            Preferences.Set(AppConfigKey.Username, "admin", profile.UserConfigFile);
+            Preferences.Set(AppConfigKey.UserID, "1", profile.UserConfigFile);
+            var window = new LoginWindow(skipBootTasks: true);
+            var model = (LoginWindowViewModel)window.DataContext!;
+            window.Show();
+            try
+            {
+                model.UserProfiles.Add(profile);
+                model.LoginStepIndex = (int)LoginStep.ChooseProfile;
+                Layout(window);
+                window.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("profile") && b.DataContext == profile)
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await TestSession.WaitUntil(() => model.LoginStepIndex == (int)LoginStep.EditProfile, TimeSpan.FromSeconds(10), $"the password asked (step {model.LoginStepIndex}, {LoginManager.Instance.GetState()}, {model.AppBarText}, {string.Join(" ", session.Server.Requests.Where(r => !r.Contains("refresh") && !r.Contains("/api/games") && !r.Contains("news")))})");
+                Assert.Equal("admin", model.EditUser.Username);
+                Assert.Equal(Loc.T("Wrong or missing password: type it, save, then choose your profile again."), model.AppBarText);
+            }
+            finally
+            {
+                window.Close();
+                ProfileManager.DeleteUserProfile(profile);
+                // The failed sign in replaced the credentials of the session
+                await LoginManager.Instance.Login(me, "admin", "admin-password");
+                LoginManager.Instance.SetUserProfile(me);
+            }
         }
     }
 }

@@ -130,6 +130,7 @@
   "Can not execute '{0}'": "Impossible d'exécuter '{0}'",
   "Can not find part of '{0}'": "Impossible de trouver une partie de '{0}'",
   "Can not load user profile in offline mode": "Impossible de charger le profil utilisateur hors ligne",
+  "Wrong or missing password: type it, save, then choose your profile again.": "Mot de passe incorrect ou manquant : tape-le, enregistre, puis choisis à nouveau ton profil.",
   "Cancel": "Annuler",
   "Cancel Download": "Annuler le téléchargement",
   "Cannot open game": "Impossible d'ouvrir le jeu",

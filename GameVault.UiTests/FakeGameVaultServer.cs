@@ -112,6 +112,15 @@ namespace GameVault.UiTests
             }
         }
 
+        private static bool HasPassword(HttpListenerRequest request)
+        {
+            string? header = request.Headers["Authorization"];
+            if (header == null || !header.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+                return false;
+            string[] credentials = Encoding.UTF8.GetString(Convert.FromBase64String(header[6..].Trim())).Split(':', 2);
+            return credentials.Length == 2 && credentials[1] != "";
+        }
+
         private async Task Handle(HttpListenerContext context)
         {
             var request = context.Request;
@@ -121,7 +130,9 @@ namespace GameVault.UiTests
             try
             {
                 Match match;
-                if (path == "/api/auth/basic/login")
+                if (path == "/api/auth/basic/login" && !HasPassword(request))
+                    response.StatusCode = 401;// as the real server, which refuses an empty password at once
+                else if (path == "/api/auth/basic/login")
                     await Json(response, new { id = "1", access_token = "access", refresh_token = "refresh" });
                 else if (path == "/api/auth/refresh")
                     await Json(response, new { id = "1", access_token = "access", refresh_token = "refresh" });
@@ -196,7 +207,7 @@ namespace GameVault.UiTests
                     response.StatusCode = 204;
                 }
                 else if (path == "/api/status")
-                    await Json(response, new { status = "HEALTHY", registration_enabled = true, required_registration_fields = Array.Empty<string>(), available_authentication_methods = new[] { "basic" } });
+                    await Json(response, new { status = "HEALTHY", version = "17.0.1", registration_enabled = true, required_registration_fields = Array.Empty<string>(), available_authentication_methods = new[] { "basic" } });
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)/download$")).Success)
                     await Download(context, int.Parse(match.Groups[1].Value));
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)$")).Success && request.HttpMethod == "PUT" && games.TryGetValue(int.Parse(match.Groups[1].Value), out var mapped))
