@@ -350,7 +350,7 @@ namespace gamevault.UserControls
                 if (downloadRetryTimer.Data != "error")
                 {
                     if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
-                        ToastMessageHelper.CreateToastMessage(Loc.T("Download Failed"), ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata.Cover?.ID}"));
+                        ToastMessageHelper.CreateToastMessage(Loc.T("Download Failed"), ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game.ID}.{ViewModel.Game.Metadata?.Cover?.ID}"));
                 }
                 StartRetryTimer();
                 DownloadQueue.Advance();
@@ -613,7 +613,7 @@ namespace gamevault.UserControls
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-ExecutionPolicy Bypass -NoProfile -Command \"$diskImage = Mount-DiskImage -ImagePath '{ISOPath}' -PassThru; ($diskImage | Get-Volume).DriveLetter\"",
+                Arguments = $"-ExecutionPolicy Bypass -NoProfile -Command \"$diskImage = Mount-DiskImage -ImagePath {PowerShellQuote(ISOPath)} -PassThru; ($diskImage | Get-Volume).DriveLetter\"",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
@@ -633,6 +633,23 @@ namespace gamevault.UserControls
                 Log.Ignored(ex);
                 return string.Empty;
             }
+        }
+
+        /// <summary>
+        /// A PowerShell string of the path: a quote in a title ("Assassin's Creed") would end it, and the rest would run as
+        /// commands. PowerShell also takes the typographic quotes (’) as quotes. Double quotes would end the -Command
+        /// argument, they can not be in a Windows path.
+        /// </summary>
+        internal static string PowerShellQuote(string text)
+        {
+            var quoted = new System.Text.StringBuilder("'");
+            foreach (char c in text)
+            {
+                quoted.Append(c);
+                if (c is '\'' or '\u2018' or '\u2019' or '\u201A' or '\u201B')
+                    quoted.Append(c);
+            }
+            return quoted.Append('\'').ToString();
         }
 
         /// <summary>

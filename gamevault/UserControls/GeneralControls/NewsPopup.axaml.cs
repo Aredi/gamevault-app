@@ -19,6 +19,8 @@ namespace gamevault.UserControls
         public NewsPopup()
         {
             InitializeComponent();
+            MarkdownLinks.KeepSafe(uiAnnouncementText);
+            MarkdownLinks.KeepSafe(uiGameVaultNews);
             Loaded += UserControl_Loaded;
             KeyDown += (_, e) =>
             {

@@ -357,10 +357,10 @@
                             </StackPanel>
                             <TabControl Classes="page" Padding="0,8,0,0" Margin="0,8,0,0">
                                 <TabItem Header="{l:T 'Description'}">
-                                    <md:MarkdownScrollViewer Markdown="{Binding DescriptionMarkdown}" TextElement.FontSize="15" MaxHeight="560" />
+                                    <md:MarkdownScrollViewer x:Name="uiDescription" Markdown="{Binding DescriptionMarkdown}" TextElement.FontSize="15" MaxHeight="560" />
                                 </TabItem>
                                 <TabItem Header="{l:T 'Notes'}">
-                                    <md:MarkdownScrollViewer Markdown="{Binding NotesMarkdown}" TextElement.FontSize="15" MaxHeight="560" />
+                                    <md:MarkdownScrollViewer x:Name="uiNotes" Markdown="{Binding NotesMarkdown}" TextElement.FontSize="15" MaxHeight="560" />
                                 </TabItem>
                                 <TabItem Header="{l:T 'Tags'}">
                                     <ItemsControl ItemsSource="{Binding Game.Metadata.Tags}" Margin="0,6,0,0">

@@ -115,9 +115,19 @@ public class Preferences
     private static void WriteLines(string file, List<string> lines)
     {
         string temp = file + ".tmp";
-        File.WriteAllLines(temp, lines);
-        if (!OperatingSystem.IsWindows())
-            File.SetUnixFileMode(temp, File.GetUnixFileMode(file));
+        if (OperatingSystem.IsWindows())
+        {
+            File.WriteAllLines(temp, lines);
+        }
+        else
+        {
+            // Created with the permissions of the file (600 for secrets): never readable by others, even for a moment
+            File.Delete(temp);
+            var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, UnixCreateMode = File.GetUnixFileMode(file) };
+            using (var writer = new StreamWriter(new FileStream(temp, options)))
+                foreach (string line in lines)
+                    writer.WriteLine(line);
+        }
         File.Move(temp, file, true);
     }
 

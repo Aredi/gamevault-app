@@ -284,11 +284,8 @@ namespace gamevault.UserControls
                 if (result == MessageDialogResult.Affirmative)
                 {
                     await WebHelper.DeleteAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/progresses/user/{ViewModel?.CurrentShownUser?.ID}/game/{dataContext?.Game.ID}");
-                    //ToDo: Dirty but i dont want to use ObservableCollection only for this one action
-                    List<Progress> copy = ViewModel.UserProgresses;
-                    copy.Remove(dataContext);
-                    ViewModel.UserProgresses = null;
-                    ViewModel.UserProgresses = copy;
+                    // A new list: the page shows it again (null would break the figures computed from it)
+                    ViewModel.UserProgresses = ViewModel.UserProgresses.Where(p => p != dataContext).ToList();
 
                     MainWindowViewModel.Instance.AppBarText = Loc.T("Successfully deleted progress");
                 }

@@ -17,7 +17,7 @@ namespace gamevault.Converter
                 double size = double.Parse(value.ToString());
                 if (size == 0)
                 {
-                    return "Unlimited";
+                    return gamevault.Localization.Loc.T("Unlimited");
                 }
                 
                 if (size >= 1000000)

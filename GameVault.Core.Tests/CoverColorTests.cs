@@ -25,6 +25,16 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void TwoHuesAroundAnEmptyOne_GiveTheirColor_NotBlack()
+        {
+            // Orange (bucket 15-30°) and pink red (345-360°) as much: the empty red bucket between them wins
+            byte[] image = Pixels(255, 96, 0, 100).Concat(Pixels(255, 0, 64, 100)).ToArray();
+            Rgb? color = CoverColor.Dominant(image);
+            Assert.NotNull(color);
+            Assert.True(color.Value.R > 200, color.ToString());
+        }
+
+        [Fact]
         public void GreyCovers_AndTransparentPixels_HaveNoColor()
         {
             byte[] grey = Pixels(20, 20, 20, 200).Concat(Pixels(128, 128, 128, 200)).Concat(Pixels(250, 250, 250, 200)).ToArray();

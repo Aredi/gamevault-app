@@ -231,17 +231,14 @@ namespace gamevault.Helper
                     string shortcutFile = Path.Combine(shortcutsDirectory, "shortcuts.vdf");
                     List<string> steamGridImageIDsToRemove = null;
                     Dictionary<Game, uint> steamGridGamesToAdd = new Dictionary<Game, uint>();
-                    if (File.Exists(shortcutFile))
+                    if (File.Exists(shortcutFile) && new FileInfo(shortcutFile).Length > 0)
                     {
-                        try
-                        {
-                            //Try catch here, because if something goes wrong, the file is corrupted and will be overwritten in a clean way by the new games
-                            shortcutFileMap = VdfUtilities.ReadVdf(File.ReadAllBytes(Path.Combine(shortcutsDirectory, "shortcuts.vdf")));
-                            shortcutFileMap = TrimFirstOffsetEntry(shortcutFileMap);//Making sure to have a clean game list
-                            shortcutFileMap = RemoveUninstalledGames(shortcutFileMap, games, out steamGridImageIDsToRemove);//Checks for gamevault games and compares them to the current installed game list. Extracts also the steam grid image ids for clean removal later on
-                            games = TrimExistingGames(games, shortcutFileMap);//No need for double entries. So they will be removed
-                        }
-                        catch (Exception ignored) { Log.Ignored(ignored); }
+                        // A file that can not be read is left alone: written again, it would lose the user's other
+                        // non-Steam games (the backup is only the first state seen)
+                        shortcutFileMap = VdfUtilities.ReadVdf(File.ReadAllBytes(shortcutFile));
+                        shortcutFileMap = TrimFirstOffsetEntry(shortcutFileMap);//Making sure to have a clean game list
+                        shortcutFileMap = RemoveUninstalledGames(shortcutFileMap, games, out steamGridImageIDsToRemove);//Checks for gamevault games and compares them to the current installed game list. Extracts also the steam grid image ids for clean removal later on
+                        games = TrimExistingGames(games, shortcutFileMap);//No need for double entries. So they will be removed
                     }
                     else
                     {
@@ -527,6 +524,9 @@ namespace gamevault.Helper
             {
                 throw new Exception(Loc.T("Couldn't find logged in user"));
             }
+            // A single account without "MostRecent": its 64-bit id is still to be turned into the userdata folder name
+            if (ulong.TryParse(steamid, out ulong id64) && id64 > 76561197960265728UL)
+                steamid = (id64 - 76561197960265728UL).ToString();
 
             return steamid;
         }

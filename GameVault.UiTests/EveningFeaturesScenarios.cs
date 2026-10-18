@@ -217,23 +217,35 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
-        public void ANewCover_ShowsInRecentlyAdded_Too()
+        public async Task ANewCover_ShowsInRecentlyAdded_Too()
         {
+            await TestSession.GetAsync();
             var library = MainWindowViewModel.Instance.Library;
             var recent = library.Model.RecentGames;
             Game before = NewGame(9751, "Cover Quest");
             recent.Insert(0, before);
+            // The banner shows the installed games first: set aside, it shows the recently added ones
+            var installed = InstallViewModel.Instance.InstalledGames;
+            var aside = installed.ToList();
+            installed.Clear();
             try
             {
+                library.RefreshGame(before);// the banner is built with it
+                Assert.Contains(library.Model.HeroItems, h => ReferenceEquals(h.Game, before));
                 Game after = NewGame(9751, "Cover Quest");
                 after.Metadata!.Cover = new Media { ID = 6016 };
                 library.RefreshGame(after);
                 Assert.Equal(6016, recent.Single(g => g.ID == 9751).Metadata!.Cover!.ID);
+                // The banner too: same game, same line, but the new cover
+                Assert.Contains(library.Model.HeroItems, h => ReferenceEquals(h.Game, after));
+                Assert.DoesNotContain(library.Model.HeroItems, h => ReferenceEquals(h.Game, before));
             }
             finally
             {
                 foreach (Game game in recent.Where(g => g.ID == 9751).ToList())
                     recent.Remove(game);
+                foreach (var install in aside)
+                    installed.Add(install);
             }
         }
 

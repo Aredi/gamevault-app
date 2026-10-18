@@ -122,36 +122,37 @@ namespace gamevault.Helper
         {
             List<int> gamesToCountUp = new List<int>();
             var processes = Process.GetProcesses().Where(x => x.MainWindowHandle != IntPtr.Zero).ToArray();
-            for (int x = 0; x < processes.Length; x++)
+            // The executable names of each game, read once per minute and only if a process hides its path
+            Dictionary<int, HashSet<string>>? executableNames = null;
+            HashSet<string> ExecutablesOf(KeyValuePair<int, string> game)
             {
-                for (int y = 0; y < foundGames.Count; y++)
+                executableNames ??= new Dictionary<int, HashSet<string>>();
+                if (!executableNames.TryGetValue(game.Key, out HashSet<string>? names))
                 {
                     try
                     {
-                        if (processes[x].MainModule.FileName.Contains(foundGames.ElementAt(y).Value))
-                        {
-                            if (!ContainsValueFromIgnoreList(Path.GetFileNameWithoutExtension(processes[x].MainModule.FileName)) && !gamesToCountUp.Contains(foundGames.ElementAt(y).Key))
-                            {
-                                gamesToCountUp.Add(foundGames.ElementAt(y).Key);
-                            }
-                        }
+                        names = Directory.GetFiles(game.Value, "*.EXE", new EnumerationOptions { RecurseSubdirectories = true, MatchCasing = MatchCasing.CaseInsensitive, IgnoreInaccessible = true })
+                            .Select(Path.GetFileNameWithoutExtension).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
                     }
-                    catch
-                    {
-                        string[] allExecutables = Directory.GetFiles(foundGames.ElementAt(y).Value, "*.EXE", new EnumerationOptions { RecurseSubdirectories = true, MatchCasing = MatchCasing.CaseInsensitive });
-
-                        foreach (string executable in allExecutables)
-                        {
-                            if (Path.GetFileNameWithoutExtension(executable) == processes[x].ProcessName)
-                            {
-                                if (!ContainsValueFromIgnoreList(processes[x].ProcessName) && !gamesToCountUp.Contains(foundGames.ElementAt(y).Key))
-                                {
-                                    gamesToCountUp.Add(foundGames.ElementAt(y).Key);
-                                }
-                                break;
-                            }
-                        }
-                    }
+                    catch (Exception ex) { Log.Ignored(ex); names = new HashSet<string>(); }
+                    executableNames[game.Key] = names;
+                }
+                return names;
+            }
+            foreach (Process process in processes)
+            {
+                string? path = null;
+                try { path = process.MainModule?.FileName; }
+                catch { }// processes of an administrator, anti-cheats: only their name can be read
+                foreach (var game in foundGames)
+                {
+                    if (gamesToCountUp.Contains(game.Key))
+                        continue;
+                    bool belongs = path != null
+                        ? path.Contains(game.Value)
+                        : ExecutablesOf(game).Contains(process.ProcessName);
+                    if (belongs && !ContainsValueFromIgnoreList(path != null ? Path.GetFileNameWithoutExtension(path) : process.ProcessName))
+                        gamesToCountUp.Add(game.Key);
                 }
             }
             return gamesToCountUp;
@@ -258,9 +259,14 @@ namespace gamevault.Helper
                 catch (Exception ignored) { Log.Ignored(ignored); }
             }
         }
+        private readonly System.Threading.SemaphoreSlim sendingOffline = new(1, 1);
         private async Task SendOfflineProgess()
         {
-            if (LoginManager.Instance.IsLoggedIn())
+            if (!LoginManager.Instance.IsLoggedIn())
+                return;
+            // The minute timer and the return online may both send: each time is counted once
+            await sendingOffline.WaitAsync();
+            try
             {
                 foreach (string key in GetAllOfflineCacheKeys())
                 {
@@ -273,6 +279,10 @@ namespace gamevault.Helper
                     }
                     catch (Exception ignored) { Log.Ignored(ignored); }
                 }
+            }
+            finally
+            {
+                sendingOffline.Release();
             }
         }
         private int GetGameIdByDirectory(string dir)

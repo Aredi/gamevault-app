@@ -2,6 +2,7 @@ using GameVault.Core;
 using gamevault.Helper.Platform;
 using System;
 using System.IO;
+using System.Linq;
 
 namespace gamevault.Helper
 {
@@ -95,6 +96,10 @@ namespace gamevault.Helper
 
         public static string Create(string name, string exec, string comment = "", string? icon = null, string extra = "")
         {
+            // Game titles come from the server: a line break in one would add keys (another Exec) to the file
+            static string Line(string value) => new string(value.Where(c => !char.IsControl(c)).ToArray());
+            name = Line(name);
+            comment = Line(comment);
             return "[Desktop Entry]\n" +
                    "Type=Application\n" +
                    $"Name={name}\n" +

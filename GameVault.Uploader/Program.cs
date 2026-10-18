@@ -33,6 +33,9 @@ var app = builder.Build();
 app.UsePathBase("/sanctuary");
 app.Use(async (context, next) =>
 {
+    // The page signs in with the GameVault account: no other site may show it in a frame (to make a player click)
+    context.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     if (context.Request.PathBase.HasValue && !context.Request.Path.HasValue)
     {
         context.Response.Redirect(context.Request.PathBase + "/" + context.Request.QueryString);

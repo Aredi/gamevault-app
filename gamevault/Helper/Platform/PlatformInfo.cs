@@ -92,26 +92,55 @@ namespace gamevault.Helper.Platform
                 .FirstOrDefault();
         }
 
+        /// <summary>An address of a web page: links from the server (a game's website, a description) can be anything.</summary>
+        public static bool IsWebAddress(string? url) =>
+            Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+        /// <summary>
+        /// Opens a web page in the browser. Only http(s): the shell would also start a program or a file
+        /// ("C:\...\x.exe", "file://", a network share) given as a link.
+        /// </summary>
         public static void OpenUrl(string url)
         {
-            try
+            if (!IsWebAddress(url))
             {
-                if (IsLinux)
-                {
-                    Process.Start(new ProcessStartInfo("xdg-open") { ArgumentList = { url }, UseShellExecute = false });
-                }
-                else
-                {
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-                }
+                GameVault.Core.Log.Info($"Not opened, not a web address: {url}");
+                return;
             }
-            catch (Exception ex) { GameVault.Core.Log.Error(ex, $"Could not open {url}"); }
+            Open(url);
         }
 
         /// <summary>
         /// Opens a folder in the file manager.
         /// </summary>
-        public static void OpenFolder(string path) => OpenUrl(path);
+        public static void OpenFolder(string path)
+        {
+            if (!Directory.Exists(path))
+                return;
+            if (IsWindows)
+            {
+                try { Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { path }, UseShellExecute = false }); }
+                catch (Exception ex) { GameVault.Core.Log.Error(ex, $"Could not open {path}"); }
+                return;
+            }
+            Open(path);
+        }
+
+        private static void Open(string target)
+        {
+            try
+            {
+                if (IsLinux)
+                {
+                    Process.Start(new ProcessStartInfo("xdg-open") { ArgumentList = { target }, UseShellExecute = false });
+                }
+                else
+                {
+                    Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+                }
+            }
+            catch (Exception ex) { GameVault.Core.Log.Error(ex, $"Could not open {target}"); }
+        }
 
         public static void MakeExecutable(string file)
         {

@@ -147,12 +147,12 @@ namespace gamevault
             try
             {
                 var menu = new NativeMenu();
-                menu.Items.Add(CreateTrayItem("Library", () => NavigateFromTray(MainControl.Library)));
-                menu.Items.Add(CreateTrayItem("Downloads", () => NavigateFromTray(MainControl.Downloads)));
-                menu.Items.Add(CreateTrayItem("Community", () => NavigateFromTray(MainControl.Community)));
-                menu.Items.Add(CreateTrayItem("Settings", () => NavigateFromTray(MainControl.Settings)));
+                menu.Items.Add(CreateTrayItem(Loc.T("Library"), () => NavigateFromTray(MainControl.Library)));
+                menu.Items.Add(CreateTrayItem(Loc.T("Downloads"), () => NavigateFromTray(MainControl.Downloads)));
+                menu.Items.Add(CreateTrayItem(Loc.T("Community"), () => NavigateFromTray(MainControl.Community)));
+                menu.Items.Add(CreateTrayItem(Loc.T("Settings"), () => NavigateFromTray(MainControl.Settings)));
                 menu.Items.Add(new NativeMenuItemSeparator());
-                menu.Items.Add(CreateTrayItem("Exit", async () => await ExitApp()));
+                menu.Items.Add(CreateTrayItem(Loc.T("Exit"), async () => await ExitApp()));
 
                 trayIcon = new TrayIcon
                 {

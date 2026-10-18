@@ -51,6 +51,8 @@ namespace gamevault.UserControls
         public GameViewUserControl(Game game, bool reloadGameObject = true)
         {
             InitializeComponent();
+            MarkdownLinks.KeepSafe(uiDescription);
+            MarkdownLinks.KeepSafe(uiNotes);
             ViewModel = new GameViewViewModel();
             if (false == reloadGameObject)
             {

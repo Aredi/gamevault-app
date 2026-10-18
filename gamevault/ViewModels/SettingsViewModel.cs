@@ -112,11 +112,9 @@ namespace gamevault.ViewModels
             syncDiscordPresence = Preferences.Get(AppConfigKey.SyncDiscordPresence, userConfigFile) == "1"; OnPropertyChanged(nameof(SyncDiscordPresence));
             cloudSaves = Preferences.Get(AppConfigKey.CloudSaves, userConfigFile) == "1"; OnPropertyChanged(nameof(CloudSaves));
 
+            // Also set when it is off: the settings of the profile signed in before must not stay
             string autoInstallPortableStr = Preferences.Get(AppConfigKey.AutoInstallPortable, userConfigFile);
-            if (string.IsNullOrWhiteSpace(autoInstallPortableStr) || autoInstallPortableStr == "1")
-            {
-                autoInstallPortable = true; OnPropertyChanged(nameof(AutoInstallPortable));
-            }
+            autoInstallPortable = string.IsNullOrWhiteSpace(autoInstallPortableStr) || autoInstallPortableStr == "1"; OnPropertyChanged(nameof(AutoInstallPortable));
 
             string libstartupStr = Preferences.Get(AppConfigKey.LibStartup, userConfigFile);
             if (libstartupStr == string.Empty)

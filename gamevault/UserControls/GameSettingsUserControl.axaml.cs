@@ -1102,6 +1102,9 @@ namespace gamevault.UserControls
                     ((GameViewUserControl)MainWindowViewModel.Instance.ActiveControl).RefreshGame(ViewModel.Game);
                 }
                 MainWindowViewModel.Instance.Downloads.RefreshGame(ViewModel.Game);
+                // The library and the installed games show the new title and details too
+                InstallViewModel.Instance.RefreshGame(ViewModel.Game);
+                MainWindowViewModel.Instance.Library.RefreshGame(ViewModel.Game);
             }
             this.IsEnabled = true;
             this.Focus();

@@ -75,7 +75,7 @@ namespace gamevault.Windows
                 try { await SaveGameHelper.Instance.UploadPendingSaveGamesAsync(); }
                 catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
             });
-            LoginManager.Instance.BackOnline += async (_, _) =>
+            backOnline = async (_, _) =>
             {
                 // Everything that waited for the server: library, offline play time and savegames, new games
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
@@ -91,7 +91,10 @@ namespace gamevault.Windows
                 await SaveGameHelper.Instance.UploadPendingSaveGamesAsync();
                 await NewGamesNotifier.CheckAsync();
             };
+            LoginManager.Instance.BackOnline += backOnline;
         }
+        /// <summary>Removed when the window closes: the next sign-in makes a new window, with its own.</summary>
+        private EventHandler? backOnline;
 
         private void Navigation_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
@@ -205,10 +208,11 @@ namespace gamevault.Windows
             catch (Exception ex) { Log.Ignored(ex); }
         }
 
+        private DispatcherTimer? newsTimer;
         private void InitNewsTimer()
         {
             // Games are added at any time: look again every quarter of an hour
-            DispatcherTimer newsTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
+            newsTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
             newsTimer.Tick += async (s, e) => await RefreshNewsBadge();
             newsTimer.Start();
         }
@@ -387,7 +391,11 @@ namespace gamevault.Windows
         public void Dispose()
         {
             GameTimeTracker?.Stop();
-            MainWindowViewModel.Instance.Downloads.CancelAllDownloads();
+            newsTimer?.Stop();
+            if (backOnline != null)
+                LoginManager.Instance.BackOnline -= backOnline;
+            // Paused like when the app is closed: cancelling would delete the downloaded archives and the partial downloads
+            MainWindowViewModel.Instance.Downloads.PauseAllDownloads();
             InstallViewModel.Instance.InstalledGames.Clear();
             DownloadsViewModel.Instance.DownloadedGames.Clear();
             ProcessShepherd.Instance.KillAllChildProcesses();

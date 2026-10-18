@@ -74,8 +74,13 @@ namespace GameVault.Core.Media
                     best = i;
                 }
             }
-            double sum = score[best];
-            return new Rgb((byte)Math.Round(red[best] / sum), (byte)Math.Round(green[best] / sum), (byte)Math.Round(blue[best] / sum));
+            // The chosen bucket may be empty itself (its neighbours chose it): the color of the three
+            int before = (best + HueBuckets - 1) % HueBuckets, after = (best + 1) % HueBuckets;
+            double sum = score[best] + score[before] + score[after];
+            return new Rgb(
+                (byte)Math.Round((red[best] + red[before] + red[after]) / sum),
+                (byte)Math.Round((green[best] + green[before] + green[after]) / sum),
+                (byte)Math.Round((blue[best] + blue[before] + blue[after]) / sum));
         }
 
         /// <summary>

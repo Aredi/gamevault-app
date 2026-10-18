@@ -182,9 +182,8 @@ namespace gamevault.UserControls
         {
             try
             {
-                string full = Path.GetFullPath(directory);
-                return DriveInfo.GetDrives().Where(d => full.StartsWith(d.Name, StringComparison.Ordinal))
-                    .OrderByDescending(d => d.Name.Length).FirstOrDefault()?.Name;
+                // "/mnt/pool" must not hold "/mnt/pool2/games"
+                return PlatformInfo.GetDriveForPath(directory)?.Name;
             }
             catch (Exception ex)
             {

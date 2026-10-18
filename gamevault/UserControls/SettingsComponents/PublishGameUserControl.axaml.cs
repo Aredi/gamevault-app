@@ -364,7 +364,9 @@ namespace gamevault.UserControls.SettingsComponents
             {
                 if (!ViewModel.IsArchiveSource)
                 {
-                    temporary = Path.Combine(Path.GetTempPath(), "gamevault-publish", Guid.NewGuid().ToString("N"));
+                    // Next to the library rather than in /tmp: on Linux /tmp is often in memory, too small for a game
+                    string? library = SettingsViewModel.Instance.RootDirectories.Select(r => r.Uri).FirstOrDefault(Directory.Exists);
+                    temporary = Path.Combine(library != null ? Path.Combine(library, "GameVault") : Path.GetTempPath(), "gamevault-publish", Guid.NewGuid().ToString("N"));
                     Directory.CreateDirectory(temporary);
                     archive = Path.Combine(temporary, ViewModel.FileName);
                     ViewModel.Status = Loc.F("Creating {0}... (large games take a while)", ViewModel.FileName);

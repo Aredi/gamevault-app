@@ -33,6 +33,8 @@ namespace gamevault.UserControls
             this.DataContext = this;
             // Attached rather than Loaded: the control may be hidden when there is a single root directory.
             AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(UserControl_Loaded, DispatcherPriority.Loaded);
+            // Closed another way (Escape closes popups): the download that waits for the answer is not started
+            DetachedFromVisualTree += (_, _) => ResultTaskSource.TrySetResult(string.Empty);
         }
         private void UserControl_Loaded()
         {
@@ -98,8 +100,8 @@ namespace gamevault.UserControls
         }
         private void Close_Click(object sender, RoutedEventArgs e)
         {
-            MainWindowViewModel.Instance.ClosePopup();
             ResultTaskSource.TrySetResult(string.Empty);
+            MainWindowViewModel.Instance.ClosePopup();
         }
 
         private void Install_Click(object sender, RoutedEventArgs e)
@@ -114,8 +116,8 @@ namespace gamevault.UserControls
                 if (selectedButton != null && selectedButton.Content != null)
                 {
                     Preferences.Set(AppConfigKey.LastSelectedRootDirectory, dataContext.Key.Uri, LoginManager.Instance.GetUserProfile().UserConfigFile);
-                    MainWindowViewModel.Instance.ClosePopup();
                     ResultTaskSource.TrySetResult(dataContext.Key.Uri);
+                    MainWindowViewModel.Instance.ClosePopup();
                 }
             }
             catch (Exception ex) { Log.Ignored(ex); }
@@ -126,28 +128,28 @@ namespace gamevault.UserControls
             {
                 if (Directory.Exists(lastSelectedRootDirectory))
                 {
-                    MainWindowViewModel.Instance.ClosePopup();
                     ResultTaskSource.TrySetResult(lastSelectedRootDirectory);
+                    MainWindowViewModel.Instance.ClosePopup();
                 }
                 else
                 {
-                    MainWindowViewModel.Instance.ClosePopup();
                     ResultTaskSource.TrySetResult(RootDirectories.ElementAt(0).Key.Uri);
+                    MainWindowViewModel.Instance.ClosePopup();
                 }
                 return true;
             }
             else if (RootDirectories.Count == 1)
             {
-                MainWindowViewModel.Instance.ClosePopup();
                 ResultTaskSource.TrySetResult(RootDirectories.ElementAt(0).Key.Uri);
+                MainWindowViewModel.Instance.ClosePopup();
                 return true;
             }
             return false;
         }
         private void DirectorySettings_Click(object sender, RoutedEventArgs e)
         {
-            MainWindowViewModel.Instance.ClosePopup();
             ResultTaskSource.TrySetResult(string.Empty);
+            MainWindowViewModel.Instance.ClosePopup();
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Settings);
             MainWindowViewModel.Instance.Settings.SetTabIndex(3);
         }

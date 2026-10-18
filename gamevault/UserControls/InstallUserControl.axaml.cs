@@ -189,8 +189,10 @@ namespace gamevault.UserControls
                     }
                     catch (Exception ex)
                     {
+                        // The server answered with an error (restarting...): the installed games stay shown from the cache
                         MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
-                        return null;
+                        try { return GetGamesFromOfflineCache(foundGames).ToArray(); }
+                        catch (Exception cacheError) { Log.Ignored(cacheError); return null; }
                     }
                 }
                 return null;
@@ -287,24 +289,28 @@ namespace gamevault.UserControls
 
         public void AddSystemFileWatcher(string path)
         {
-            if (m_FileWatcherList.Where(x => x.Path == path).Count() > 0)
-                return;
-            FileSystemWatcher watcher;
-            watcher = new FileSystemWatcher();
-            watcher.Path = path;
-            //watcher.NotifyFilter = NotifyFilters.LastAccess | NotifyFilters.LastWrite
-            //                      | NotifyFilters.FileName | NotifyFilters.DirectoryName;
-            watcher.Filter = "*.*";
-            watcher.Created += new FileSystemEventHandler(OnCreated);
-            watcher.EnableRaisingEvents = true;
-            //watcher.IncludeSubdirectories = true;
-            m_FileWatcherList.Add(watcher);
+            // Called from the UI and from the restore running in the background
+            lock (m_FileWatcherList)
+            {
+                if (m_FileWatcherList.Any(x => x.Path == path))
+                    return;
+                var watcher = new FileSystemWatcher();
+                watcher.Path = path;
+                watcher.Filter = "*.*";
+                watcher.Created += new FileSystemEventHandler(OnCreated);
+                watcher.EnableRaisingEvents = true;
+                m_FileWatcherList.Add(watcher);
+            }
         }
         private async void OnCreated(object sender, FileSystemEventArgs e)
         {
-            string dir = ((FileSystemWatcher)sender).Path;
-            ((FileSystemWatcher)sender).Created -= new FileSystemEventHandler(OnCreated);
-            m_FileWatcherList.Remove((FileSystemWatcher)sender);
+            var watcher = (FileSystemWatcher)sender;
+            string dir = watcher.Path;
+            watcher.Created -= new FileSystemEventHandler(OnCreated);
+            // Its work is done: the folder is watched by the system until the watcher is disposed
+            lock (m_FileWatcherList)
+                m_FileWatcherList.Remove(watcher);
+            watcher.Dispose();
             int id = GetGameIdByDirectory(dir);
             if (id == -1)
                 return;

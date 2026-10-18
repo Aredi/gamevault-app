@@ -43,8 +43,8 @@ namespace gamevault.Localization
         }
 
         /// <summary>The translation of <paramref name="english"/>.</summary>
-        public static string T(string english) =>
-            texts.TryGetValue(english, out string? translated) && !string.IsNullOrEmpty(translated) ? translated : english;
+        public static string T(string? english) =>
+            english == null ? "" : texts.TryGetValue(english, out string? translated) && !string.IsNullOrEmpty(translated) ? translated : english;
 
         /// <summary>The translation of a format text ("'{0}' is installed") filled with <paramref name="values"/>.</summary>
         public static string F(string englishFormat, params object?[] values)

@@ -122,22 +122,13 @@ namespace gamevault.UserControls
                 return;
 
             var validGameIds = new HashSet<int>(games.Keys.Select(g => g.ID));
-            // Remove controls not in the dictionary, unless they're downloading
+            // Remove the controls whose files are gone, but not the ones running or waiting in the queue: a queued
+            // download has no file yet, and a running one keeps running (a root directory was added, space was freed)
             for (int i = DownloadsViewModel.Instance.DownloadedGames.Count - 1; i >= 0; i--)
             {
                 var control = DownloadsViewModel.Instance.DownloadedGames[i];
-                int gameId = control.GetGameId();
-
-                bool existsInDict = validGameIds.Contains(gameId);
-                
-                if (control.IsDownloading())
-                {
-                    control.PauseDownload();
-                }
-                if (!existsInDict)
-                {
+                if (!validGameIds.Contains(control.GetGameId()) && !control.IsBusy() && !DownloadQueue.IsWaiting(control))
                     DownloadsViewModel.Instance.DownloadedGames.RemoveAt(i);
-                }
             }
             var existingIds = new HashSet<int>(DownloadsViewModel.Instance.DownloadedGames.Select(c => c.GetGameId()));
 
@@ -165,13 +156,6 @@ namespace gamevault.UserControls
         {
             foreach (var download in DownloadsViewModel.Instance.DownloadedGames.ToList())
                 download.PauseDownload();
-        }
-        public void CancelAllDownloads()
-        {
-            foreach (var download in DownloadsViewModel.Instance.DownloadedGames)
-            {
-                download.CancelDownload();
-            }
         }
 
         /// <summary>

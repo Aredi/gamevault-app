@@ -261,7 +261,8 @@ namespace gamevault.UserControls
                 items.Add(new HeroItem { Game = game, Eyebrow = Loc.T("NEW ON THE SERVER"), Info = info });
             }
 
-            if (items.Select(i => i.Game.ID).SequenceEqual(ViewModel.HeroItems.Select(i => i.Game.ID))
+            // The same games: rebuilt only when a game was replaced (new cover...) or its line changed
+            if (items.Select(i => i.Game).SequenceEqual(ViewModel.HeroItems.Select(i => i.Game))
                 && items.Select(i => i.Info).SequenceEqual(ViewModel.HeroItems.Select(i => i.Info)))
                 return;
             ViewModel.HeroItems.Clear();
@@ -299,8 +300,6 @@ namespace gamevault.UserControls
                 ViewModel.HeroIndex = (ViewModel.HeroIndex + ViewModel.HeroItems.Count - 1) % ViewModel.HeroItems.Count;
             heroTimer.Stop();
             heroTimer.Start();
-            hoverAmbient.Tick += HoverAmbient_Tick;
-            ambientTween.Tick += AmbientTween_Tick;
         }
 
         private void HeroNext_Click(object? sender, RoutedEventArgs e)
@@ -309,8 +308,6 @@ namespace gamevault.UserControls
                 ViewModel.HeroIndex = (ViewModel.HeroIndex + 1) % ViewModel.HeroItems.Count;
             heroTimer.Stop();
             heroTimer.Start();
-            hoverAmbient.Tick += HoverAmbient_Tick;
-            ambientTween.Tick += AmbientTween_Tick;
         }
 
         private void HeroDetails_Click(object? sender, RoutedEventArgs e)
