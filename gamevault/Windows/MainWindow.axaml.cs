@@ -394,6 +394,7 @@ namespace gamevault.Windows
             App.HideToSystemTray = false;
             App.Instance.ResetToDefaultTheme();
             LoginManager.Instance.StopOnlineTimer();
+            LoginManager.Instance.SignOut();
             if (PipeServiceHandler.Instance != null)
                 PipeServiceHandler.Instance.IsReadyForCommands = false;
             _ = ActivityService.Instance.StopAsync();

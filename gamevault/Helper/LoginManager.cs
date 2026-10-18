@@ -66,6 +66,11 @@ namespace gamevault.Helper
         }
         /// <summary>Raised when the server can be reached again after offline mode.</summary>
         public event EventHandler? BackOnline;
+        /// <summary>Back to the sign-in window: the background checks (remote installs, requests...) wait for the next sign-in.</summary>
+        public void SignOut()
+        {
+            m_User = null;
+        }
         public void SwitchToOfflineMode()
         {
             MainWindowViewModel.Instance.IsOffline = true;

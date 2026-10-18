@@ -134,6 +134,8 @@ namespace GameVault.UiTests
                     response.StatusCode = 401;// as the real server, which refuses an empty password at once
                 else if (path == "/api/auth/basic/login")
                     await Json(response, new { id = "1", access_token = "access", refresh_token = "refresh" });
+                else if (path == "/api/auth/refresh" && request.Headers["Authorization"] == "Bearer expired")
+                    response.StatusCode = 401;
                 else if (path == "/api/auth/refresh")
                     await Json(response, new { id = "1", access_token = "access", refresh_token = "refresh" });
                 else if (path == "/api/users/me")

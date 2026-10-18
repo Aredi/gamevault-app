@@ -52,6 +52,18 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task ASessionThatRanOut_SignsInAgainWithTheSavedPassword()
+        {
+            var session = await TestSession.GetAsync();
+            var client = new SSOHttpClient { ServerUrl = session.Server.Url, UserName = "admin", Password = "admin-password" };
+            // A PC woken up after days: the access token is old and the server no longer renews the session
+            client.InjectTokens("old", "expired");
+            using var response = await client.GetAsync($"{session.Server.Url}/api/users/me");
+            Assert.True(response.IsSuccessStatusCode);
+            Assert.Equal("refresh", client.GetRefreshToken());
+        }
+
+        [AvaloniaFact]
         public async Task AProfileWithoutItsPassword_AsksForIt_InsteadOfOpeningOffline()
         {
             var session = await TestSession.GetAsync();

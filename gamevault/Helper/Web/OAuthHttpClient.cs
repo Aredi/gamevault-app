@@ -65,6 +65,8 @@ namespace gamevault.Helper
 
             _accessToken = json?.AccessToken;
             _refreshToken = json?.RefreshToken;
+            // Without it the new token counts as expired and is refreshed at once
+            nextTokenRefresh = GetNextTokenRefresh(_accessToken);
             return true;
         }
 
@@ -104,7 +106,12 @@ namespace gamevault.Helper
             if (string.IsNullOrEmpty(_accessToken))
                 await LoginBasicAuthAsync(UserName, Password);
             if (IsTokenExpired() && !await RefreshTokenAsync())
-                throw new InvalidOperationException(Loc.T("Failed to refresh token."));
+            {
+                // The session ran out (a PC asleep for days): signed in again with the saved password
+                if (string.IsNullOrEmpty(Password))
+                    throw new InvalidOperationException(Loc.T("Failed to refresh token."));
+                await LoginBasicAuthAsync(UserName, Password);
+            }
         }
 
         private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, List<RequestHeader>? additionalHeaders = null, HttpCompletionOption option = HttpCompletionOption.ResponseContentRead)
@@ -162,7 +169,7 @@ namespace gamevault.Helper
         }
         private DateTimeOffset GetNextTokenRefresh(string token)
         {
-            var parts = token.Split('.');
+            var parts = (token ?? "").Split('.');
             if (parts.Length != 3) return DateTimeOffset.UtcNow;
 
             var payload = parts[1];

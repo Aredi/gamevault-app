@@ -48,6 +48,9 @@ namespace GameVault.Uploader
             }
             using (response)
             {
+                // A server error is not a refused sign-in: the page and the clients must not sign the player out
+                if ((int)response.StatusCode >= 500)
+                    return new Result(false, StatusCodes.Status502BadGateway, "The GameVault server could not check the user.");
                 if (!response.IsSuccessStatusCode)
                     return new Result(false, StatusCodes.Status401Unauthorized, "GameVault did not accept this sign-in.");
                 using JsonDocument user = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
