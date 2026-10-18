@@ -105,7 +105,18 @@
         <ScrollViewer x:Name="uiPageScroll" Classes="page" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Panel>
                 <!-- Artwork across the top, fading into the page and tinted with the game color -->
-                <Panel x:Name="uiHeroArt" Height="520" VerticalAlignment="Top" ClipToBounds="True">
+                <Panel x:Name="uiHeroArt" Height="620" VerticalAlignment="Top" ClipToBounds="True">
+                    <!-- The lower part fades out (eased): no edge between the artwork and the page -->
+                    <Panel.OpacityMask>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                            <GradientStop Color="Black" Offset="0" />
+                            <GradientStop Color="Black" Offset="0.45" />
+                            <GradientStop Color="#C0000000" Offset="0.62" />
+                            <GradientStop Color="#70000000" Offset="0.76" />
+                            <GradientStop Color="#28000000" Offset="0.88" />
+                            <GradientStop Color="Transparent" Offset="1" />
+                        </LinearGradientBrush>
+                    </Panel.OpacityMask>
                     <local:CacheImage x:Name="uiBackground" Data="{Binding Game}" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill"
                                       Effect="{Binding #uiBackground.IsShowingFallback, Converter={StaticResource blurWhenConv}, ConverterParameter=40}" />
                     <Border>
