@@ -77,15 +77,6 @@ namespace gamevault.ViewModels
             set { activityVersion = value; OnPropertyChanged(); }
         }
 
-        private List<ActivityFeedItem> recentActivity = new();
-        /// <summary>What the players played lately, newest first.</summary>
-        public List<ActivityFeedItem> RecentActivity
-        {
-            get => recentActivity;
-            set { recentActivity = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasRecentActivity)); }
-        }
-        public bool HasRecentActivity => RecentActivity.Count > 0;
-
         public bool ShareActivity
         {
             get => gamevault.Helper.ActivityService.ShareMine;

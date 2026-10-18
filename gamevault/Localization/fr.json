@@ -1030,7 +1030,6 @@
   "Only the games not played for 3 months": "Seulement les jeux pas lancés depuis 3 mois",
   "Played {0} · {1}": "Joué {0} · {1}",
   "Playing {0}": "Joue à {0}",
-  "RECENT ACTIVITY": "ACTIVITÉ RÉCENTE",
   "Restore the save of {0}?": "Restaurer la sauvegarde du {0} ?",
   "Restoring an older save first keeps a copy of the current one on this computer, then makes the restored save the current cloud save.": "Restaurer une ancienne sauvegarde conserve d'abord une copie de l'actuelle sur cet ordinateur, puis en fait la sauvegarde cloud actuelle.",
   "SET ASIDE FOR A WHILE": "MIS DE CÔTÉ DEPUIS UN MOMENT",
@@ -1081,5 +1080,8 @@
   "'{0}' has been moved to {1}": "'{0}' a été déplacé vers {1}",
   "'{0}' could not be moved: {1}": "'{0}' n'a pas pu être déplacé : {1}",
   "'{0}' is being moved: wait until it is finished": "'{0}' est en cours de déplacement : attendez la fin",
-  "Not enough room to move '{0}': {1} needed, {2} free": "Pas assez de place pour déplacer '{0}' : {1} nécessaires, {2} libres"
+  "Not enough room to move '{0}': {1} needed, {2} free": "Pas assez de place pour déplacer '{0}' : {1} nécessaires, {2} libres",
+  "Recent activity": "Activité récente",
+  "The games the players of the server played lately": "Les jeux auxquels les joueurs du serveur ont joué dernièrement",
+  "Nobody played lately": "Personne n'a joué dernièrement"
 }

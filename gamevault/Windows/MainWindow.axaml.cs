@@ -27,7 +27,6 @@ namespace gamevault.Windows
         {
             InitializeComponent();
             this.DataContext = MainWindowViewModel.Instance;
-            uiGithubShortcut.Tag = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}";
             InitSidebar();
             InitPopupLayer();
             Opened += MainWindow_Loaded;
@@ -116,6 +115,9 @@ namespace gamevault.Windows
                     break;
                 case MainControl.Community:
                     MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Community;
+                    break;
+                case MainControl.Activity:
+                    MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Activity;
                     break;
                 case MainControl.AdminConsole:
                     MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.AdminConsole;
@@ -332,16 +334,6 @@ namespace gamevault.Windows
         {
             try { return new Uri(SettingsViewModel.Instance.ServerUrl).Host; }
             catch { return ""; }
-        }
-        private void Link_Click(object? sender, RoutedEventArgs e)
-        {
-            try
-            {
-                string? url = (string?)((Control)sender!).Tag;
-                if (Uri.IsWellFormedUriString(url, UriKind.Absolute))
-                    PlatformInfo.OpenUrl(url!);
-            }
-            catch (Exception ignored) { Log.Ignored(ignored); }
         }
         #endregion
 

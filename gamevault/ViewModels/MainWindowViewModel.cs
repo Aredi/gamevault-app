@@ -16,8 +16,9 @@ namespace gamevault.ViewModels
         Library = 0,
         Downloads = 1,
         Community = 2,
-        Settings = 3,
-        AdminConsole = 4
+        Activity = 3,
+        Settings = 4,
+        AdminConsole = 5
     }
     internal class MainWindowViewModel : ViewModelBase
     {
@@ -27,6 +28,7 @@ namespace gamevault.ViewModels
             m_Downloads = new DownloadsUserControl();
             m_Library = new LibraryUserControl();
             m_Community = new CommunityUserControl();
+            m_Activity = new ActivityUserControl();
             m_AdminConsole = new AdminConsoleUserControl();
         }
         #region Singleton
@@ -114,6 +116,7 @@ namespace gamevault.ViewModels
         private DownloadsUserControl m_Downloads { get; set; }
         private LibraryUserControl m_Library { get; set; }
         private CommunityUserControl m_Community { get; set; }
+        private ActivityUserControl m_Activity { get; set; }
         private AdminConsoleUserControl m_AdminConsole { get; set; }
         #endregion
         public MainControl LastMainControl { get; set; }
@@ -182,6 +185,7 @@ namespace gamevault.ViewModels
             get { return m_Community; }
             private set { m_Community = value; }
         }
+        internal ActivityUserControl Activity => m_Activity;
         internal AdminConsoleUserControl AdminConsole
         {
             get { return m_AdminConsole; }

@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.ActivityUserControl"
+             Focusable="True">
+    <!-- What the players of the server played lately: a page of its own, under Community -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
+            <TextBlock Classes="pageTitle" Text="{l:T 'Recent activity'}" />
+            <TextBlock Classes="muted" FontSize="13" Margin="0,0,0,16" Text="{l:T 'The games the players of the server played lately'}" />
+            <ItemsControl x:Name="uiItems">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Classes="wrapper" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,6" Cursor="Hand" Click="Item_Click">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Width="40" Height="60" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                    <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" DecodeWidthOverride="120" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="3" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Text}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding When}" Classes="muted" FontSize="12" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock x:Name="uiEmpty" IsVisible="False" Classes="muted" FontSize="13" Margin="0,20" Text="{l:T 'Nobody played lately'}" />
+            <local:ProgressRing x:Name="uiLoading" IsActive="False" IsVisible="False" Width="32" Height="32" HorizontalAlignment="Left" Margin="10,20" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
