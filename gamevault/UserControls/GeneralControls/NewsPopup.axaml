@@ -41,23 +41,12 @@
     <Border Background="{DynamicResource Brush.Background}" CornerRadius="18" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" ClipToBounds="True">
         <Grid RowDefinitions="Auto,*" MaxHeight="860">
             <!-- Header -->
-            <Grid Margin="26,22,18,12" ColumnDefinitions="*,Auto,Auto">
+            <Grid Margin="26,22,18,12" ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="2">
                     <TextBlock Classes="pageTitle" FontSize="24" Text="{l:T 'News'}" />
                     <TextBlock x:Name="uiServerName" Classes="muted" FontSize="13" />
                 </StackPanel>
-                <Border Grid.Column="1" Background="{DynamicResource Brush.Surface}" CornerRadius="10" Padding="3" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1"
-                        VerticalAlignment="Center" Margin="0,0,10,0">
-                    <StackPanel Orientation="Horizontal" Spacing="2">
-                        <ToggleButton x:Name="uiTabServer" Classes="segment" Width="NaN" Padding="12,0" IsChecked="True" Click="TabServer_Click">
-                            <TextBlock Text="{l:T 'Server'}" FontSize="13" FontWeight="SemiBold" />
-                        </ToggleButton>
-                        <ToggleButton x:Name="uiTabProject" Classes="segment" Width="NaN" Padding="12,0" Click="TabProject_Click">
-                            <TextBlock Text="{l:T 'GameVault project'}" FontSize="13" FontWeight="SemiBold" />
-                        </ToggleButton>
-                    </StackPanel>
-                </Border>
-                <Button Grid.Column="2" Classes="round small" Click="OnClose" ToolTip.Tip="{l:T 'Close'}" VerticalAlignment="Center">
+                <Button Grid.Column="1" Classes="round small" Click="OnClose" ToolTip.Tip="{l:T 'Close'}" VerticalAlignment="Center">
                     <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
                 </Button>
             </Grid>
@@ -119,9 +108,6 @@
                     <local:ProgressRing x:Name="uiLoading" IsActive="True" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,30" />
                 </StackPanel>
             </ScrollViewer>
-
-            <!-- The original project's news -->
-            <md:MarkdownScrollViewer x:Name="uiGameVaultNews" Grid.Row="1" IsVisible="False" Margin="26,0,22,22" TextElement.FontSize="14" />
         </Grid>
     </Border>
 </UserControl>

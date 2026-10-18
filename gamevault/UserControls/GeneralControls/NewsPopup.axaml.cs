@@ -9,18 +9,14 @@ using System;
 namespace gamevault.UserControls
 {
     /// <summary>
-    /// The server's news (games added lately, new versions, the administrator's message), and the original project's
-    /// news in a second tab.
+    /// The server's news: games added lately, new versions, the administrator's message.
     /// </summary>
     public partial class NewsPopup : UserControl
     {
-        private bool projectNewsLoaded;
-
         public NewsPopup()
         {
             InitializeComponent();
             MarkdownLinks.KeepSafe(uiAnnouncementText);
-            MarkdownLinks.KeepSafe(uiGameVaultNews);
             Loaded += UserControl_Loaded;
             KeyDown += (_, e) =>
             {
@@ -50,26 +46,6 @@ namespace gamevault.UserControls
             catch (Exception ex) { Log.Ignored(ex); }
             uiLoading.IsActive = false;
             uiLoading.IsVisible = false;
-        }
-
-        private void TabServer_Click(object? sender, RoutedEventArgs e) => ShowTab(project: false);
-
-        private async void TabProject_Click(object? sender, RoutedEventArgs e)
-        {
-            ShowTab(project: true);
-            if (projectNewsLoaded)
-                return;
-            projectNewsLoaded = true;
-            try { uiGameVaultNews.Markdown = await WebHelper.GetAsync("https://gamevau.lt/news.md"); }
-            catch (Exception ex) { Log.Ignored(ex); }
-        }
-
-        private void ShowTab(bool project)
-        {
-            uiTabServer.IsChecked = !project;
-            uiTabProject.IsChecked = project;
-            uiServerPanel.IsVisible = !project;
-            uiGameVaultNews.IsVisible = project;
         }
 
         private void Item_Click(object? sender, RoutedEventArgs e)
