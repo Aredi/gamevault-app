@@ -136,5 +136,34 @@ namespace GameVault.UiTests
             Assert.True(GameSettingsUserControl.TryPrepareLaunchExecutable(scripted, "Scripted"));
             Assert.EndsWith("start.bat", Preferences.Get(AppConfigKey.Executable, Path.Combine(scripted, "gamevault-exec")));
         }
+
+        [AvaloniaFact]
+        public async Task TheWrongProgramStarts_ThePlayerPicksAnotherOne_AndItStarts()
+        {
+            if (!OperatingSystem.IsLinux())
+                return;
+            var session = await TestSession.GetAsync();
+            Game game = session.Server.AddGame(152, "Pick Program", GameType.LINUX_PORTABLE, TestSession.LinuxGameArchive(1000), "Pick Program (L_P).tar.gz");
+            await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+            string files = Path.Combine(session.InstallFolder(game), "Files");
+            await TestSession.WaitUntil(() => File.Exists(Path.Combine(files, "start.sh"))
+                && InstallViewModel.Instance.InstalledGames.Any(g => g.Key.ID == game.ID), TimeSpan.FromSeconds(90), "the game to be installed");
+            // The wrong program was chosen
+            File.WriteAllText(Path.Combine(files, "uninstall.sh"), "#!/bin/sh\n");
+            string settings = Path.Combine(session.InstallFolder(game), "gamevault-exec");
+            if (!File.Exists(settings))
+                File.Create(settings).Close();
+            Preferences.Set(AppConfigKey.Executable, Path.Combine(files, "uninstall.sh"), settings);
+
+            var popup = new ChooseExecutableUserControl(game, session.InstallFolder(game));
+            Assert.Equal("start.sh", popup.Rows[0].Name);
+            Assert.True(popup.Rows[0].IsRecommended);
+            Assert.True(popup.Rows.Single(r => r.Name == "uninstall.sh").IsCurrent);
+
+            await popup.PlayWith(popup.Rows[0]);
+
+            Assert.Equal(Path.Combine(files, "start.sh"), Preferences.Get(AppConfigKey.Executable, settings));
+            await TestSession.WaitUntil(() => File.Exists(Path.Combine(files, "started")), TimeSpan.FromSeconds(30), "the game to start");
+        }
     }
 }

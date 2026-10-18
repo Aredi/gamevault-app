@@ -480,6 +480,15 @@ namespace gamevault.UserControls
             }
             ((Control)sender).IsEnabled = true;
         }
+        private void ChooseExecutable_Click(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel?.Game == null)
+                return;
+            var installed = InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key?.ID == ViewModel.Game.ID);
+            if (installed.Value == null)
+                return;
+            MainWindowViewModel.Instance.OpenPopup(new ChooseExecutableUserControl(ViewModel.Game, installed.Value));
+        }
         private void SaveHistory_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel?.Game == null)

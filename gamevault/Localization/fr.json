@@ -1048,5 +1048,14 @@
   "{0} matching game": "{0} jeu correspondant",
   "{0} matching games": "{0} jeux correspondants",
   "Installed games": "Installés",
-  "Sign in with Plex / your account (SSO)": "Se connecter avec Plex / votre compte (SSO)"
+  "Sign in with Plex / your account (SSO)": "Se connecter avec Plex / votre compte (SSO)",
+  "Which program starts the game?": "Quel programme lance le jeu ?",
+  "If clicking Play opens a launcher, an error or nothing, try another program of the game. The first ones are the most likely. Your choice is kept for the next times.": "Si Jouer ouvre un launcher, une erreur ou rien du tout, essaie un autre programme du jeu. Les premiers de la liste sont les plus probables. Ton choix est gardé pour les fois suivantes.",
+  "Recommended": "Recommandé",
+  "Play with this one": "Jouer avec celui-ci",
+  "No program was found in the folder of the game.": "Aucun programme n'a été trouvé dans le dossier du jeu.",
+  "{0} is now started by Play": "{0} est maintenant lancé par Jouer",
+  "in the main folder": "dans le dossier principal",
+  "The wrong program starts? Choose another one": "Ce n'est pas le bon programme qui se lance ? Choisis-en un autre",
+  "In use": "Utilisé"
 }

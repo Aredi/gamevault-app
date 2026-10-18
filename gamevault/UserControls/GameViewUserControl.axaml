@@ -234,6 +234,10 @@
                                     <Path Data="{StaticResource IconInstalledGamesSettings}" Width="18" Height="18" />
                                 </Button>
                             </WrapPanel>
+                            <!-- Play started a launcher, an error or nothing: the player picks the program of the game -->
+                            <Button Classes="link" HorizontalAlignment="Left" Click="ChooseExecutable_Click" IsVisible="{Binding IsInstalled}">
+                                <TextBlock Text="{l:T 'The wrong program starts? Choose another one'}" FontSize="13" TextDecorations="Underline" />
+                            </Button>
                         </StackPanel>
                     </Grid>
 

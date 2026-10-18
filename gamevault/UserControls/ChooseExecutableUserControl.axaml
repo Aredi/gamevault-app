@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.ChooseExecutableUserControl"
+             Width="720" Focusable="True">
+    <!-- The wrong program starts when clicking Play: the player picks another one, most likely first -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <Grid RowDefinitions="Auto,Auto,*" Margin="22,18,22,20">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="4">
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'Which program starts the game?'}" />
+                    <TextBlock x:Name="uiGame" Classes="muted" FontSize="13" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="round small" VerticalAlignment="Top" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+            <TextBlock Grid.Row="1" Classes="muted" FontSize="12.5" TextWrapping="Wrap" Margin="0,10,0,12"
+                       Text="{l:T 'If clicking Play opens a launcher, an error or nothing, try another program of the game. The first ones are the most likely. Your choice is kept for the next times.'}" />
+            <Panel Grid.Row="2" MinHeight="160" MaxHeight="460">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="uiExecutables">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,6,8" Padding="14,10" CornerRadius="12" Background="{DynamicResource Brush.Background2}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="3" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" />
+                                                <Border CornerRadius="8" Padding="8,1" Background="{DynamicResource Brush.Accent}" IsVisible="{Binding IsCurrent}" VerticalAlignment="Center">
+                                                    <TextBlock Text="{l:T 'In use'}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                                                </Border>
+                                                <Border CornerRadius="8" Padding="8,1" BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1" IsVisible="{Binding IsRecommended}" VerticalAlignment="Center">
+                                                    <TextBlock Text="{l:T 'Recommended'}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Accent}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Details}" Classes="muted" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="Play_Click" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <Path Data="{StaticResource IconPlay}" Width="14" Height="14" />
+                                                <TextBlock Text="{l:T 'Play with this one'}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <TextBlock x:Name="uiMessage" Classes="muted" FontSize="14" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False"
+                           Text="{l:T 'No program was found in the folder of the game.'}" />
+            </Panel>
+        </Grid>
+    </Border>
+</UserControl>
