@@ -420,8 +420,26 @@ namespace gamevault.UserControls
                 }
             }
         }
-        public static bool TryPrepareLaunchExecutable(string directory)
+        public static bool TryPrepareLaunchExecutable(string directory, string? title = null)
         {
+            // The most likely main executable (as when publishing), not a crash reporter or a redistributable found first
+            try
+            {
+                var ignored = SettingsViewModel.Instance.IgnoreList ?? Array.Empty<string>();
+                var ranked = GameVault.Core.Publishing.ExecutableFinder.Rank(directory, title ?? "", ignored);
+                if (ranked.Count == 0)
+                    ranked = GameVault.Core.Publishing.ExecutableFinder.Rank(directory, title ?? "", ignored, linux: true);
+                var best = ranked.FirstOrDefault(c => c.Score > -50);
+                if (best != null)
+                {
+                    if (!File.Exists(Path.Combine(directory, "gamevault-exec")))
+                        File.Create(Path.Combine(directory, "gamevault-exec")).Close();
+                    Preferences.Set(AppConfigKey.Executable, Path.GetFullPath(Path.Combine(directory, best.RelativePath)), Path.Combine(directory, "gamevault-exec"));
+                    return true;
+                }
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            // e.g. a game started by a .bat
             foreach (string entry in Directory.GetFiles(directory, "*", SearchOption.AllDirectories))
             {
                 string fileType = Path.GetExtension(entry).TrimStart('.');

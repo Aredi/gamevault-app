@@ -1170,7 +1170,7 @@ namespace gamevault.UserControls
 
                 if (!File.Exists(Preferences.Get(AppConfigKey.Executable, Path.Combine(game.Value, "gamevault-exec"))))
                 {
-                    if (!GameSettingsUserControl.TryPrepareLaunchExecutable(game.Value))
+                    if (!GameSettingsUserControl.TryPrepareLaunchExecutable(game.Value, game.Key.Metadata?.Title ?? game.Key.Title))
                     {
                         MainWindowViewModel.Instance.AppBarText = Loc.T("Can not create shortcut. No valid Executable found");
                         return;

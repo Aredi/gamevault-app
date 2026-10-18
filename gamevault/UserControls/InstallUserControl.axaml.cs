@@ -450,7 +450,7 @@ namespace gamevault.UserControls
             string parameter = Preferences.Get(AppConfigKey.LaunchParameter, Path.Combine(path, "gamevault-exec"));
             if (savedExecutable == string.Empty)
             {
-                if (GameSettingsUserControl.TryPrepareLaunchExecutable(path))
+                if (GameSettingsUserControl.TryPrepareLaunchExecutable(path, result.Key?.Metadata?.Title ?? result.Key?.Title))
                 {
                     savedExecutable = Preferences.Get(AppConfigKey.Executable, Path.Combine(path, "gamevault-exec"));
                 }

@@ -109,5 +109,32 @@ namespace GameVault.UiTests
                 SettingsViewModel.Instance.Init();
             }
         }
+
+        [AvaloniaFact]
+        public async Task TheFirstPlay_StartsTheGame_NotTheFirstExecutableFound()
+        {
+            await TestSession.GetAsync();
+            string dir = Path.Combine(IsolatedHome.Root, "first-play", "(150) Hades (W_P)");
+            void Make(string relative, int size)
+            {
+                string file = Path.Combine(dir, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                File.WriteAllBytes(file, new byte[size]);
+            }
+            Make("_CommonRedist/DirectX/DXSETUP.exe", 1000);
+            Make("Hades/x64/CrashHandler.exe", 2000);
+            Make("Hades/x64/Hades.exe", 1000);
+            Make("Hades/x64/Launcher.exe", 3000);
+
+            Assert.True(GameSettingsUserControl.TryPrepareLaunchExecutable(dir, "Hades"));
+            Assert.Equal(Path.Combine(dir, "Hades", "x64", "Hades.exe"), Preferences.Get(AppConfigKey.Executable, Path.Combine(dir, "gamevault-exec")));
+
+            // Started by a script only: still found
+            string scripted = Path.Combine(IsolatedHome.Root, "first-play", "(151) Scripted (W_P)");
+            Directory.CreateDirectory(scripted);
+            File.WriteAllText(Path.Combine(scripted, "start.bat"), "");
+            Assert.True(GameSettingsUserControl.TryPrepareLaunchExecutable(scripted, "Scripted"));
+            Assert.EndsWith("start.bat", Preferences.Get(AppConfigKey.Executable, Path.Combine(scripted, "gamevault-exec")));
+        }
     }
 }
