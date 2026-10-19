@@ -1,6 +1,7 @@
 using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -96,6 +97,48 @@ namespace gamevault.UserControls
             await Search();
             // After the first search: it clears the image queue, the rows below must not lose their covers
             await LoadShowcase();
+            _ = PrepareCardsAhead();
+        }
+
+        private bool cardsPrepared;
+
+        /// <summary>
+        /// A card takes about 10 ms to create, so each new row stalled the first scroll of the library. The cards
+        /// the grid will need are created ahead, one at a time while the page is idle, and handed to its pool of
+        /// reusable cards: scrolling then only fills them with games.
+        /// </summary>
+        private async Task PrepareCardsAhead()
+        {
+            if (cardsPrepared || uiServerGamesItemsControl.ItemTemplate is not IDataTemplate template)
+                return;
+            cardsPrepared = true;
+            await Task.Delay(500);// after the first covers
+            var grid = uiServerGamesItemsControl;
+            // Not shown yet (another page is open): done on the next load
+            if (grid.Bounds.Width == 0 || uiMainScrollBar.Viewport.Height == 0)
+            {
+                cardsPrepared = false;
+                return;
+            }
+            RecyclePool? pool = RecyclePool.GetPoolInstance(template);
+            if (pool == null)
+            {
+                pool = new RecyclePool();
+                RecyclePool.SetPoolInstance(template, pool);
+            }
+            // The grid keeps about three windows of cards: the visible one and one above and below it
+            int columns = Math.Max(1, (int)(grid.Bounds.Width / ((UniformGridLayout)grid.Layout!).MinItemWidth));
+            int rows = (int)Math.Ceiling(3 * uiMainScrollBar.Viewport.Height / 330) + 2;
+            for (int missing = columns * rows - grid.Children.Count; missing > 0; missing--)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    Control card = template.Build(null)!;
+                    card.DataContext = null;// as the grid leaves the cards it keeps for later
+                    grid.Children.Add(card);
+                    pool.PutElement(card, "", grid);
+                }, DispatcherPriority.Background);
+            }
         }
         public void ShowLibraryError()
         {

@@ -175,32 +175,32 @@ namespace gamevault.UserControls
         internal async Task SetImageFileAsync(string path)
         {
             int generation = ++loadGeneration;
-            if (GifHelper.IsGif(path))
-            {
-                byte[] data = await File.ReadAllBytesAsync(path);
-                if (generation == loadGeneration)
-                    SetGif(new MemoryStream(data));
-                return;
-            }
             bool computeAccent = ComputeAccent;
             int? decodeWidth = DecodeWidth;// read on the UI thread
-            // Already in memory (scrolling back): shown at once, without a fade
+            // Already in memory (scrolling back): shown at once, without a fade. GIFs are never kept there.
             if (DecodedImages.TryGet(path, decodeWidth) is Bitmap known)
             {
                 SetImage(known, fade: false);
                 AccentColor = computeAccent ? CoverColors.Get(known, path) : null;
                 return;
             }
-            (Bitmap bitmap, Color? accent) = await Task.Run(() =>
+            // The file is opened off the UI thread: a row of cards appearing while scrolling would wait for the disk
+            (Bitmap? bitmap, Color? accent, byte[]? gif) = await Task.Run(() =>
             {
+                if (GifHelper.IsGif(path))
+                    return (null, null, File.ReadAllBytes(path));
                 Bitmap decoded = DecodedImages.Load(path, decodeWidth);
-                return (decoded, computeAccent ? CoverColors.Get(decoded, path) : null);
+                return (decoded, computeAccent ? CoverColors.Get(decoded, path) : (Color?)null, (byte[]?)null);
             });
-            if (generation == loadGeneration)
+            if (generation != loadGeneration)
+                return;
+            if (gif != null)
             {
-                SetImage(bitmap);
-                AccentColor = accent;
+                SetGif(new MemoryStream(gif));
+                return;
             }
+            SetImage(bitmap);
+            AccentColor = accent;
         }
 
         /// <summary>The "no cover" image is shown: the real one is missing or could not be read.</summary>

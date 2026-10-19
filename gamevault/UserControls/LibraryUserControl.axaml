@@ -25,6 +25,46 @@
         <conv:GameTimeConverter x:Key="timeConv" />
         <conv:PlayInfoConverter x:Key="playInfoConv" />
         <conv:EarlyAccessConverter x:Key="earlyAccessConv" />
+        <!-- The actions shown while a card is hovered: built on its first hover only, as they cost almost half of a card -->
+        <DataTemplate x:Key="cardHoverActions">
+            <Panel Classes="hoverOnly">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" Spacing="4">
+                    <Border Classes="badge" Padding="4">
+                        <ToggleButton Classes="icon bookmark" Width="20" Height="20" ToolTip.Tip="{l:T 'Bookmark'}"
+                                      IsChecked="{Binding BookmarkedUsers, Converter={StaticResource containsCurrentUserConv}, Mode=OneWay}" Click="CardBookmark_Click" />
+                    </Border>
+                    <Button Classes="round small" Width="28" Height="28" CornerRadius="7" Click="CardSettings_Click" ToolTip.Tip="{l:T 'Game Settings'}"
+                            IsVisible="{Binding Title, Converter={StaticResource libCardsPermVisConv}}">
+                        <Path Data="{StaticResource IconInstalledGamesSettings}" Width="13" Height="13" />
+                    </Button>
+                </StackPanel>
+                <Button Classes="round" Width="46" Height="46" CornerRadius="23" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10"
+                        Foreground="White" Background="{Binding $parent[Button].Tag, Converter={StaticResource accentBrushConv}}"
+                        Click="CardQuickAction_Click" IsVisible="{Binding $parent[local:LibraryUserControl].DataContext.IsGalleryMode}">
+                    <ToolTip.Tip>
+                        <TextBlock Text="{Binding Size, Converter={StaticResource sizeConv}, StringFormat={l:T 'Play, or download ({0})'}}" />
+                    </ToolTip.Tip>
+                    <Panel>
+                        <Path Data="{StaticResource IconPlay}" Width="20" Height="20" Margin="2,0,0,0">
+                            <Path.IsVisible>
+                                <MultiBinding Converter="{StaticResource installedConv}">
+                                    <Binding />
+                                    <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                </MultiBinding>
+                            </Path.IsVisible>
+                        </Path>
+                        <Path Data="{StaticResource IconArrowDown}" Width="18" Height="18">
+                            <Path.IsVisible>
+                                <MultiBinding Converter="{StaticResource installedConv}" ConverterParameter="invert">
+                                    <Binding />
+                                    <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
+                                </MultiBinding>
+                            </Path.IsVisible>
+                        </Path>
+                    </Panel>
+                </Button>
+            </Panel>
+        </DataTemplate>
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="WrapPanel.chips > :is(Control)">
@@ -483,7 +523,7 @@
                         <ItemsRepeater.ItemTemplate>
                             <DataTemplate>
                                 <Button Classes="gameCard" Margin="8,8,8,0" VerticalAlignment="Top" Click="GameCard_Clicked" DoubleTapped="GameCard_DoubleTapped"
-                                        PointerEntered="GameCard_PointerEntered">
+                                        PointerEntered="GameCard_PointerEntered" Tag="{Binding #cover.AccentColor}">
                                     <StackPanel Spacing="8">
                                         <local:AspectBox Ratio="1.5">
                                             <Panel Classes="lift">
@@ -535,44 +575,6 @@
                                                     </Border>
                                                 </StackPanel>
 
-                                                <!-- Actions while hovered -->
-                                                <Panel Classes="hoverOnly">
-                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="8" Spacing="4">
-                                                        <Border Classes="badge" Padding="4">
-                                                            <ToggleButton Classes="icon bookmark" Width="20" Height="20" ToolTip.Tip="{l:T 'Bookmark'}"
-                                                                          IsChecked="{Binding BookmarkedUsers, Converter={StaticResource containsCurrentUserConv}, Mode=OneWay}" Click="CardBookmark_Click" />
-                                                        </Border>
-                                                        <Button Classes="round small" Width="28" Height="28" CornerRadius="7" Click="CardSettings_Click" ToolTip.Tip="{l:T 'Game Settings'}"
-                                                                IsVisible="{Binding Title, Converter={StaticResource libCardsPermVisConv}}">
-                                                            <Path Data="{StaticResource IconInstalledGamesSettings}" Width="13" Height="13" />
-                                                        </Button>
-                                                    </StackPanel>
-                                                    <Button Classes="round" Width="46" Height="46" CornerRadius="23" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10"
-                                                            Foreground="White" Background="{Binding #cover.AccentColor, Converter={StaticResource accentBrushConv}}"
-                                                            Click="CardQuickAction_Click" IsVisible="{Binding $parent[local:LibraryUserControl].DataContext.IsGalleryMode}">
-                                                        <ToolTip.Tip>
-                                                            <TextBlock Text="{Binding Size, Converter={StaticResource sizeConv}, StringFormat={l:T 'Play, or download ({0})'}}" />
-                                                        </ToolTip.Tip>
-                                                        <Panel>
-                                                            <Path Data="{StaticResource IconPlay}" Width="20" Height="20" Margin="2,0,0,0">
-                                                                <Path.IsVisible>
-                                                                    <MultiBinding Converter="{StaticResource installedConv}">
-                                                                        <Binding />
-                                                                        <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
-                                                                    </MultiBinding>
-                                                                </Path.IsVisible>
-                                                            </Path>
-                                                            <Path Data="{StaticResource IconArrowDown}" Width="18" Height="18">
-                                                                <Path.IsVisible>
-                                                                    <MultiBinding Converter="{StaticResource installedConv}" ConverterParameter="invert">
-                                                                        <Binding />
-                                                                        <Binding Source="{x:Static vm:InstallViewModel.Instance}" Path="InstalledGames.Count" />
-                                                                    </MultiBinding>
-                                                                </Path.IsVisible>
-                                                            </Path>
-                                                        </Panel>
-                                                    </Button>
-                                                </Panel>
                                             </Panel>
                                         </local:AspectBox>
                                         <StackPanel Spacing="2" IsVisible="{Binding $parent[local:LibraryUserControl].DataContext.IsGalleryMode}">

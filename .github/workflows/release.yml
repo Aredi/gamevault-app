@@ -26,7 +26,7 @@ jobs:
         with:
           dotnet-version: '10.x'
       - name: Publish
-        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime linux-x64 --self-contained true -p:Version=${{ github.ref_name }} --output publish/GameVault
+        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime linux-x64 --self-contained true -p:PublishReadyToRun=true -p:Version=${{ github.ref_name }} --output publish/GameVault
       - name: Bundle Ludusavi (cloud saves)
         run: |
           gh release download --repo mtkennerly/ludusavi --pattern '*-linux.tar.gz' --output ludusavi.tar.gz
@@ -60,7 +60,7 @@ jobs:
         with:
           dotnet-version: '10.x'
       - name: Publish
-        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime win-x64 --self-contained true -p:Version=${{ github.ref_name }} --output publish/GameVault
+        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishReadyToRun=true -p:Version=${{ github.ref_name }} --output publish/GameVault
       - name: Bundle Ludusavi (cloud saves)
         shell: bash
         run: |

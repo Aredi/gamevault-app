@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Headless;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using gamevault.Models;
 using gamevault.ViewModels;
 
@@ -69,6 +71,44 @@ namespace GameVault.UiTests
 
             library.FindControl<TextBox>("uiSearch")!.Text = "";
             await TestSession.WaitUntil(() => library.Model.GameCards.Count > 1, TimeSpan.FromSeconds(10), "the whole library again");
+        }
+
+        /// <summary>
+        /// Cards are created ahead while the page is idle, so scrolling down does not create any; their hover
+        /// actions only exist once the pointer comes over them.
+        /// </summary>
+        [AvaloniaFact]
+        public async Task TheCards_AreReadyBeforeScrolling_AndGetTheirActionsOnHover()
+        {
+            var session = await TestSession.GetAsync();
+            for (int i = 0; i < 60; i++)
+                session.Server.AddGame(1180 + i, $"Ready Card Game {i:00}", GameType.LINUX_PORTABLE, Array.Empty<byte>(), $"Ready Card Game {i:00} (L_P).tar.gz");
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+            var library = MainWindowViewModel.Instance.Library;
+            await library.LoadLibrary();
+            var grid = library.FindControl<ItemsRepeater>("uiServerGamesItemsControl")!;
+            var scroll = library.FindControl<ScrollViewer>("uiMainScrollBar")!;
+            await TestSession.WaitUntil(() => grid.Children.Count > 20 && grid.Children.Count(c => c.DataContext is Game) < grid.Children.Count, TimeSpan.FromSeconds(10), "cards made ahead");
+            await Task.Delay(300);
+            Dispatcher.UIThread.RunJobs();
+            int prepared = grid.Children.Count;
+
+            for (int y = 0; y < 1500; y += 100)
+            {
+                scroll.Offset = new Avalonia.Vector(0, y);
+                Dispatcher.UIThread.RunJobs();
+            }
+            Assert.Equal(prepared, grid.Children.Count);
+
+            var card = grid.Children.First(c => c.DataContext is Game && c.TranslatePoint(new Avalonia.Point(0, 0), scroll) is { } p && p.Y > 0 && p.Y < scroll.Viewport.Height - 300);
+            Assert.DoesNotContain(card.GetVisualDescendants(), v => v is Panel p && p.Classes.Contains("hoverOnly"));
+            var center = card.TranslatePoint(new Avalonia.Point(card.Bounds.Width / 2, 60), session.Window)!.Value;
+            session.Window.MouseMove(center);
+            Dispatcher.UIThread.RunJobs();
+            var actions = card.GetVisualDescendants().OfType<Panel>().Single(p => p.Classes.Contains("hoverOnly"));
+            Assert.Contains(actions.GetVisualDescendants(), v => v is Avalonia.Controls.Primitives.ToggleButton t && t.Classes.Contains("bookmark") && t.IsChecked == false);
+            Assert.Contains(actions.GetVisualDescendants(), v => v is Button b && b.Width == 46 && b.Background is Avalonia.Media.ISolidColorBrush);
+            session.Window.MouseMove(new Avalonia.Point(1, 1));
         }
     }
 }

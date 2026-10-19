@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -358,11 +359,19 @@ namespace gamevault.UserControls
         /// <summary>The top of the page takes the color of a game the pointer rests on (not of every card crossed while scrolling).</summary>
         private void GameCard_PointerEntered(object? sender, PointerEventArgs e)
         {
+            AddHoverActions((Control)sender!);
             if (ViewModel.IsShelfMode)
                 return;
             hoveredCover = ((Control)sender!).GetVisualDescendants().OfType<CacheImage>().FirstOrDefault();
             hoverAmbient.Stop();
             hoverAmbient.Start();
+        }
+
+        internal void AddHoverActions(Control card)
+        {
+            var lift = card.GetVisualDescendants().OfType<Panel>().FirstOrDefault(p => p.Classes.Contains("lift"));
+            if (lift != null && !lift.Children.Any(c => c.Classes.Contains("hoverOnly")))
+                lift.Children.Add(((IDataTemplate)Resources["cardHoverActions"]!).Build(null)!);
         }
 
         private void HoverAmbient_Tick(object? sender, EventArgs e)
