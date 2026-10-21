@@ -24,10 +24,7 @@ namespace gamevault.Helper
     {
         public static RetroArchLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "retroarch"), PlatformInfo.IsWindows);
         private static readonly SemaphoreSlim preparing = new(1, 1);
-        /// <summary>One set for all the emulators: RetroArch keeps the saves of every core in the player's folder.</summary>
-        private const string SavesSet = "retroarch";
-
-        private static string Player => LoginManager.Instance.GetCurrentUser()?.ID.ToString() ?? "0";
+        internal static string Player => LoginManager.Instance.GetCurrentUser()?.ID.ToString() ?? "0";
 
         public sealed class MissingBiosException(string message) : Exception(message);
 
@@ -76,37 +73,6 @@ namespace gamevault.Helper
             }
             if (!Directory.EnumerateFiles(folder).Any(f => !Path.GetFileName(f).StartsWith('.')))
                 throw new MissingBiosException(Loc.F("{0} needs a BIOS: an administrator adds it in RomM, in the Firmware of the platform.", platform.Name));
-        }
-
-        public const string SavesSetName = SavesSet;
-
-        public static Task<List<RetroService.SavesVersion>> SavesHistoryAsync() => RetroService.SavesHistoryAsync(SavesSet);
-
-        /// <summary>
-        /// An older version of the saves back in place (this PC's go to a backup first), then sent as the current ones
-        /// so the other PCs take it too.
-        /// </summary>
-        /// <returns>The backup of this PC's saves, when there were some.</returns>
-        public static async Task<string?> RestoreSavesAsync(RetroService.SavesVersion version)
-        {
-            byte[] zip = await RetroService.DownloadSavesVersionAsync(SavesSet, version.Name);
-            RetroSaveSync saves = CloudSaves();
-            string? backup = await Task.Run(() => saves.Unpack(new MemoryStream(zip)));
-            string packed = Path.Combine(Layout.Directory, $".saves-{Player}.zip");
-            try
-            {
-                await Task.Run(() =>
-                {
-                    using FileStream target = File.Create(packed);
-                    saves.Pack(target);
-                });
-                long savedAt;
-                await using (FileStream source = File.OpenRead(packed))
-                    savedAt = await RetroService.UploadSavesAsync(SavesSet, source);
-                saves.Remember(savedAt);
-            }
-            finally { File.Delete(packed); }
-            return backup;
         }
 
         /// <summary>Back to RetroArch's own settings: the core options and controls changed in its menu go.</summary>
@@ -160,62 +126,6 @@ namespace gamevault.Helper
             foreach (string folder in Layout.Folders(player))
                 Directory.CreateDirectory(folder);
             File.WriteAllText(Layout.ConfigFile, Layout.Config(player));
-        }
-
-        private static RetroSaveSync CloudSaves() => new(Layout.SavesDirectory(Player), Layout.SaveBackupsDirectory(Player));
-
-        /// <summary>Before a game: the player's saves from another PC, when they are newer. Without network, the ones here.</summary>
-        /// <returns>Where this PC's own saves were kept when they had changed too; null otherwise.</returns>
-        public static async Task<string?> TakeCloudSavesAsync(Action<string> status)
-        {
-            // The same switch as the library's cloud saves (Settings)
-            if (!SettingsViewModel.Instance.CloudSaves)
-                return null;
-            RetroSaveSync saves = CloudSaves();
-            try
-            {
-                if (await RetroService.SavesInfoAsync(SavesSet) is not long savedAt || !saves.IsOlderThan(savedAt))
-                    return null;
-                status(Loc.T("Getting the saves from the other PCs..."));
-                byte[] zip = await RetroService.DownloadSavesAsync(SavesSet);
-                return await Task.Run(() =>
-                {
-                    bool changedHere = saves.ChangedSinceSync;
-                    string? backup = saves.Unpack(new MemoryStream(zip));
-                    saves.Remember(savedAt);
-                    return changedHere ? backup : null;
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.Ignored(ex);
-                return null;
-            }
-        }
-
-        /// <summary>After a game: the saves go to the service when they changed. Without network, after a next game.</summary>
-        public static async Task SendCloudSavesAsync()
-        {
-            if (!SettingsViewModel.Instance.CloudSaves)
-                return;
-            RetroSaveSync saves = CloudSaves();
-            string zip = Path.Combine(Layout.Directory, $".saves-{Player}.zip");
-            try
-            {
-                if (!await Task.Run(() => saves.ChangedSinceSync))
-                    return;
-                await Task.Run(() =>
-                {
-                    using FileStream target = File.Create(zip);
-                    saves.Pack(target);
-                });
-                long savedAt;
-                await using (FileStream source = File.OpenRead(zip))
-                    savedAt = await RetroService.UploadSavesAsync(SavesSet, source);
-                saves.Remember(savedAt);
-            }
-            catch (Exception ex) { Log.Ignored(ex); }
-            finally { File.Delete(zip); }
         }
 
         private static async Task DownloadAsync(string url, string file, Action<double> progress)

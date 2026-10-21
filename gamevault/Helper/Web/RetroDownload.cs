@@ -25,6 +25,8 @@ namespace gamevault.Helper
 
         public RetroGame Game { get; }
         public string Folder { get; }
+        /// <summary>"Install &amp; Play": started once ready.</summary>
+        public bool PlayWhenDone { get; set; }
 
         private HttpClientDownloadWithProgress? client;
         private DownloadSpeedCalculator speed = new();
@@ -233,6 +235,8 @@ namespace gamevault.Helper
                 IsDone = true;
                 State = Loc.T("Ready to play");
                 Toast(Loc.T("Download Complete"));
+                if (PlayWhenDone)
+                    await RetroPlay.PlayAsync(Game);
             }
             catch (RetroArchManager.MissingBiosException ex)
             {
@@ -273,8 +277,9 @@ namespace gamevault.Helper
             });
         }
 
-        private static string Size(double bytes, int unit = 1024) =>
-            new Converter.GameSizeConverter().Convert(bytes.ToString(System.Globalization.CultureInfo.InvariantCulture), typeof(string), unit, System.Globalization.CultureInfo.CurrentCulture) as string ?? "";
+        /// <summary>A whole number of bytes: the converter reads its value back with the current culture ("8388608.5" is no number in French).</summary>
+        internal static string Size(double bytes, int unit = 1024) =>
+            new Converter.GameSizeConverter().Convert((long)Math.Round(bytes), typeof(string), unit, System.Globalization.CultureInfo.CurrentCulture) as string ?? "";
 
         /// <summary>The downloaded file made playable, then what the platform needs.</summary>
         private async Task PrepareAsync()
@@ -335,10 +340,11 @@ namespace gamevault.Helper
         }
 
         /// <returns>Null when it is in the Downloads page (added, or already there), else why not.</returns>
-        public static async Task<string?> StartAsync(RetroGame game)
+        public static async Task<string?> StartAsync(RetroGame game, bool playWhenDone = false)
         {
             if (Find(game) is RetroDownload existing)
             {
+                existing.PlayWhenDone |= playWhenDone;
                 if (existing.IsFailed)
                     existing.Retry();
                 else if (existing.IsPaused)
@@ -366,7 +372,7 @@ namespace gamevault.Helper
             }
             else
                 root = UserControls.InstallLocationUserControl.DefaultLocation();
-            var download = new RetroDownload(game, RetroService.Folder(game, root));
+            var download = new RetroDownload(game, RetroService.Folder(game, root)) { PlayWhenDone = playWhenDone };
             download.WriteInfo();
             DownloadsViewModel.Instance.RetroDownloads.Add(download);
             DownloadQueue.Enqueue(download);

@@ -20,7 +20,6 @@ namespace gamevault.UserControls.SettingsComponents
     public partial class RetroSettingsUserControl : UserControl
     {
         internal sealed record BiosRow(string Platform, string State);
-        internal sealed record VersionRow(RetroService.SavesVersion Version, string When, string SizeText);
 
         /// <summary>The platforms by name (offline, RomM's names are not known).</summary>
         private static readonly Dictionary<string, string> Names = new()
@@ -28,8 +27,6 @@ namespace gamevault.UserControls.SettingsComponents
             ["nes"] = "NES", ["snes"] = "Super Nintendo", ["gba"] = "Game Boy Advance", ["nds"] = "Nintendo DS", ["ngc"] = "GameCube", ["wii"] = "Wii",
             ["psx"] = "PlayStation", ["ps2"] = "PlayStation 2", ["neogeoaes"] = "Neo Geo", ["3ds"] = "Nintendo 3DS",
         };
-
-        internal IReadOnlyList<VersionRow> Versions => uiHistory.ItemsSource as IReadOnlyList<VersionRow> ?? Array.Empty<VersionRow>();
 
         public RetroSettingsUserControl()
         {
@@ -57,26 +54,8 @@ namespace gamevault.UserControls.SettingsComponents
             }).ToList();
 
             uiSavesState.Text = SettingsViewModel.Instance.CloudSaves
-                ? Loc.T("Sent to the SanctuaryVault service after each game and taken back on your other PCs, as the cloud saves of the library.")
+                ? Loc.T("Each game's saves go to the SanctuaryVault service after it is played and come back on your other PCs, as the cloud saves of the library.")
                 : Loc.T("Kept on this PC only: the cloud saves are off (Settings > Data).");
-            await LoadHistoryAsync();
-        }
-
-        private async Task LoadHistoryAsync()
-        {
-            uiHistoryState.Text = Loc.T("Loading...");
-            try
-            {
-                var versions = await RetroArchManager.SavesHistoryAsync();
-                uiHistory.ItemsSource = versions.Select(v => new VersionRow(v,
-                    DateTimeOffset.FromUnixTimeMilliseconds(v.SavedAt).LocalDateTime.ToString("f", CultureInfo.CurrentCulture), StorageCleanup.FormatSize(v.Size))).ToList();
-                uiHistoryState.Text = versions.Count == 0 ? Loc.T("No older version yet.") : "";
-            }
-            catch (Exception ex)
-            {
-                uiHistory.ItemsSource = null;
-                uiHistoryState.Text = WebExceptionHelper.TryGetServerMessage(ex);
-            }
         }
 
         private async void OpenMenu_Click(object? sender, RoutedEventArgs e)
@@ -117,28 +96,6 @@ namespace gamevault.UserControls.SettingsComponents
         {
             Directory.CreateDirectory(RetroArchManager.SaveBackupsFolder);
             PlatformInfo.OpenFolder(RetroArchManager.SaveBackupsFolder);
-        }
-
-        private async void Restore_Click(object? sender, RoutedEventArgs e)
-        {
-            if ((sender as Control)?.DataContext is not VersionRow row)
-                return;
-            if (!await DialogService.ConfirmAsync(Loc.F("Put back the saves of {0}? The ones of this PC are kept in a backup.", row.When), Loc.T("Saves")))
-                return;
-            await RestoreAsync(row);
-        }
-
-        internal async Task RestoreAsync(VersionRow row)
-        {
-            try
-            {
-                string? backup = await RetroArchManager.RestoreSavesAsync(row.Version);
-                MainWindowViewModel.Instance.AppBarText = backup != null
-                    ? Loc.F("The saves of {0} are back; the ones of this PC are kept in {1}", row.When, backup)
-                    : Loc.F("The saves of {0} are back", row.When);
-            }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
-            await LoadHistoryAsync();
         }
     }
 }

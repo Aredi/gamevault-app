@@ -56,9 +56,9 @@ namespace GameVault.UiTests
         public static readonly byte[] RetroRom = Encoding.ASCII.GetBytes("NES\x1A-test-rom");
         /// <summary>A PS1 game in two files, as RomM zips them.</summary>
         public static readonly byte[] RetroCdGame = Zip(("Castlevania.cue", "FILE \"Castlevania.bin\" BINARY"), ("Castlevania.bin", "track"));
-        /// <summary>The player's retro saves: (zip, when saved).</summary>
-        public (byte[] Zip, long SavedAt)? RetroSaves { get; set; }
-        /// <summary>Older versions of the retro saves: name → (when saved, zip).</summary>
+        /// <summary>The player's retro saves, per game ("nes-40"): (zip, when saved).</summary>
+        public ConcurrentDictionary<string, (byte[] Zip, long SavedAt)> RetroSaves { get; } = new();
+        /// <summary>Older versions of the retro saves: "nes-40-1000.zip" → (when saved, zip).</summary>
         public ConcurrentDictionary<string, (long SavedAt, byte[] Zip)> RetroSavesHistory { get; } = new();
         /// <summary>The retro plays sent (JSON), and the time kept per game key ("nes:40").</summary>
         public ConcurrentQueue<string> RetroPlaysSent { get; } = new();
@@ -207,27 +207,32 @@ namespace GameVault.UiTests
                     await Json(response, RetroMinutes.Select(m => new { userId = 2, username = "Mario", romId = int.Parse(m.Key.Split(':')[1]), platform = m.Key.Split(':')[0], platformName = "NES", name = "Zelda", cover = (string?)null, minutes = m.Value, lastPlayed = DateTime.UtcNow }));
                 else if ((match = Regex.Match(path, @"^/retro/players/(\d+)$")).Success)
                     await Json(response, new { plays = RetroMinutes.Select(m => new { romId = int.Parse(m.Key.Split(':')[1]), platform = m.Key.Split(':')[0], platformName = "NES", name = "Zelda", minutes = m.Value, lastPlayed = DateTime.UtcNow }) });
+                else if ((match = Regex.Match(path, @"^/retro/games/([a-z0-9]+)/(\d+)/players$")).Success)
+                    await Json(response, RetroMinutes.Where(m => m.Key == $"{match.Groups[1].Value}:{match.Groups[2].Value}")
+                        .Select(m => new { userId = 2, username = "Mario", minutes = m.Value, lastPlayed = DateTime.UtcNow }));
                 else if (path == "/retro/latest")
                     await Json(response, RetroLatest);
-                else if (path == "/retro/saves/retroarch/history")
-                    await Json(response, RetroSavesHistory.Select(v => new { name = v.Key, savedAt = v.Value.SavedAt, size = v.Value.Zip.Length }).OrderByDescending(v => v.savedAt));
-                else if ((match = Regex.Match(path, @"^/retro/saves/retroarch/history/([^/]+)$")).Success && RetroSavesHistory.TryGetValue(Uri.UnescapeDataString(match.Groups[1].Value), out var version))
+                else if ((match = Regex.Match(path, @"^/retro/saves/([a-z0-9-]+)/history$")).Success)
+                    await Json(response, RetroSavesHistory.Where(v => v.Key.StartsWith(match.Groups[1].Value + "-")).Select(v => new { name = v.Key, savedAt = v.Value.SavedAt, size = v.Value.Zip.Length }).OrderByDescending(v => v.savedAt));
+                else if ((match = Regex.Match(path, @"^/retro/saves/([a-z0-9-]+)/history/([^/]+)$")).Success && RetroSavesHistory.TryGetValue(Uri.UnescapeDataString(match.Groups[2].Value), out var version))
                     await response.OutputStream.WriteAsync(version.Zip);
-                else if (path == "/retro/saves/retroarch/info")
+                else if ((match = Regex.Match(path, @"^/retro/saves/([a-z0-9-]+)/info$")).Success)
                 {
-                    if (RetroSaves is { } saves)
+                    if (RetroSaves.TryGetValue(match.Groups[1].Value, out var saves))
                         await Json(response, new { savedAt = saves.SavedAt });
                     else
                         response.StatusCode = 404;
                 }
-                else if (path == "/retro/saves/retroarch" && request.HttpMethod == "PUT")
+                else if ((match = Regex.Match(path, @"^/retro/saves/([a-z0-9-]+)$")).Success && request.HttpMethod == "PUT")
                 {
                     var body = new MemoryStream();
                     await request.InputStream.CopyToAsync(body);
-                    RetroSaves = (body.ToArray(), (RetroSaves?.SavedAt ?? 0) + 1000);
-                    await Json(response, new { savedAt = RetroSaves.Value.SavedAt });
+                    string set = match.Groups[1].Value;
+                    long savedAt = (RetroSaves.TryGetValue(set, out var before) ? before.SavedAt : 0) + 1000;
+                    RetroSaves[set] = (body.ToArray(), savedAt);
+                    await Json(response, new { savedAt });
                 }
-                else if (path == "/retro/saves/retroarch" && RetroSaves is { } current)
+                else if ((match = Regex.Match(path, @"^/retro/saves/([a-z0-9-]+)$")).Success && RetroSaves.TryGetValue(match.Groups[1].Value, out var current))
                     await response.OutputStream.WriteAsync(current.Zip);
                 else if (path == "/retro/platforms/3/games")
                     await Json(response, new[] { new { id = 40, name = "Zelda", fileName = "Zelda (E).nes", size = RetroRom.LongLength, cover = (string?)null, summary = "A sword" } });

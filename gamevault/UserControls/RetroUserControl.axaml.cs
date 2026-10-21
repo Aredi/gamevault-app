@@ -155,6 +155,8 @@ namespace gamevault.UserControls
                 ViewModel.Collection = 0;
             }
             Select(game);
+            // As the library's games opened from the search or the activity: their page
+            OpenGame(game);
         }
 
         private void Select(RetroGame game)
@@ -165,8 +167,8 @@ namespace gamevault.UserControls
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => uiGames.GetOrCreateElement(index).BringIntoView());
         }
 
-        /// <summary>As the library's shelf: the arrows move the selection, Enter plays or installs, Escape closes the details.</summary>
-        private async void Page_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+        /// <summary>As the library's shelf: the arrows move the selection, Enter opens the game's page, Escape closes the details.</summary>
+        private void Page_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
         {
             if (e.Source is Avalonia.Visual source && (source is TextBox || source.FindAncestorOfType<ComboBox>(includeSelf: true) != null || source is ComboBoxItem))
                 return;
@@ -183,10 +185,7 @@ namespace gamevault.UserControls
             if (e.Key == Avalonia.Input.Key.Enter && selected != null)
             {
                 e.Handled = true;
-                if (selected.Installed)
-                    await PlayAsync(selected);
-                else
-                    await InstallAsync(selected);
+                OpenGame(selected);
                 return;
             }
             int columns = Math.Max(1, (int)(uiGames.Bounds.Width / ((UniformGridLayout)uiGames.Layout!).MinItemWidth));
@@ -222,15 +221,19 @@ namespace gamevault.UserControls
             Focus();
         }
 
-        /// <summary>As in the library: a double click plays, or installs.</summary>
-        private async void GameCard_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+        /// <summary>As the library's shelf: a double click opens the game's page.</summary>
+        private void GameCard_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
         {
-            if (GameOf(sender) is not RetroGame game)
-                return;
-            if (game.Installed)
-                await PlayAsync(game);
-            else
-                await InstallAsync(game);
+            if (GameOf(sender) is RetroGame game)
+                OpenGame(game);
+        }
+
+        internal static void OpenGame(RetroGame game) => MainWindowViewModel.Instance.SetActiveControl(new RetroGameViewUserControl(game));
+
+        private void OpenGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if (GameOf(sender) is RetroGame game)
+                OpenGame(game);
         }
 
         private void CloseDetails_Click(object? sender, RoutedEventArgs e) => ViewModel.SelectedGame = null;
@@ -261,25 +264,7 @@ namespace gamevault.UserControls
         /// Into the Downloads page and its queue, as the library's games: the download goes on whatever page is shown,
         /// and the game is made playable (unpacked, RetroArch, core, BIOS) when it is complete.
         /// </summary>
-        internal async Task InstallAsync(RetroGame game)
-        {
-            if (game.Busy)
-                return;
-            try
-            {
-                game.Status = Loc.T("Checking the game...");
-                string? refused = await RetroDownloads.StartAsync(game);
-                if (refused != null)
-                    game.Status = refused;
-                else
-                    MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is in the downloads", game.Name);
-            }
-            catch (Exception ex)
-            {
-                Log.Ignored(ex);
-                game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
-            }
-        }
+        internal Task InstallAsync(RetroGame game) => RetroPlay.InstallAsync(game);
 
         private async void Play_Click(object? sender, RoutedEventArgs e)
         {
@@ -287,47 +272,7 @@ namespace gamevault.UserControls
                 await PlayAsync(game);
         }
 
-        internal async Task PlayAsync(RetroGame game)
-        {
-            if (game.Busy || game.RomFile is not string rom)
-                return;
-            game.Busy = true;
-            try
-            {
-                await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
-                if (await RetroArchManager.TakeCloudSavesAsync(text => game.Status = text) is string kept)
-                    MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);
-                var process = RetroArchManager.Launch(game.Platform.System.Core, rom);
-                game.Status = Loc.T("Playing: Select+Start to quit");
-                DiscordHelper.Instance.RetroStarted(game);
-                _ = WhenClosedAsync(process, game);
-            }
-            catch (RetroArchManager.MissingBiosException ex)
-            {
-                game.Status = ex.Message;
-                game.Busy = false;
-            }
-            catch (Exception ex)
-            {
-                Log.Ignored(ex);
-                game.Status = Loc.F("Failed: {0}", ex.Message);
-                game.Busy = false;
-            }
-        }
-
-        /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then the saves go to the cloud.</summary>
-        private static async Task WhenClosedAsync(System.Diagnostics.Process process, RetroGame game)
-        {
-            DateTime started = DateTime.UtcNow;
-            await process.WaitForExitAsync();
-            DiscordHelper.Instance.RetroStopped();
-            // Counted as the library's games: the minutes of the session, on the profile and in the activity
-            await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
-            game.Status = Loc.T("Sending the saves...");
-            await RetroArchManager.SendCloudSavesAsync();
-            game.Status = "";
-            game.Busy = false;
-        }
+        internal Task PlayAsync(RetroGame game) => RetroPlay.PlayAsync(game);
 
         private async void Menu_Click(object? sender, RoutedEventArgs e)
         {

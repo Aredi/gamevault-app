@@ -361,7 +361,7 @@ namespace gamevault.UserControls
         private async void RetroPlay_Click(object? sender, RoutedEventArgs e)
         {
             if (RetroOf(sender) is RetroDownload download)
-                await MainWindowViewModel.Instance.Retro.PlayAsync(download.Game);
+                await RetroPlay.PlayAsync(download.Game);
         }
 
         private void Storage_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => MainWindowViewModel.Instance.OpenPopup(new StorageUserControl());

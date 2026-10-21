@@ -244,6 +244,24 @@ namespace gamevault.Helper
             [JsonPropertyName("lastPlayed")] public DateTime LastPlayed { get; set; }
         }
 
+        internal sealed class GamePlayer
+        {
+            [JsonPropertyName("userId")] public int UserId { get; set; }
+            [JsonPropertyName("username")] public string Username { get; set; } = "";
+            [JsonPropertyName("minutes")] public int Minutes { get; set; }
+            [JsonPropertyName("lastPlayed")] public DateTime LastPlayed { get; set; }
+        }
+
+        /// <summary>The players who played a game, the last one first.</summary>
+        public static async Task<List<GamePlayer>> PlayersOfAsync(RetroGame game)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/games/{game.Platform.Slug}/{game.Id}/players");
+            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
+                return new();
+            return JsonSerializer.Deserialize<List<GamePlayer>>(await response.Content.ReadAsStringAsync()) ?? new();
+        }
+
         /// <summary>The retro games all the players played lately.</summary>
         public static async Task<List<ActivityEntry>> ActivityAsync()
         {

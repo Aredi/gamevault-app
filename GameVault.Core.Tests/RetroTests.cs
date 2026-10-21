@@ -68,48 +68,78 @@ namespace GameVault.Core.Tests
             Assert.Equal(0x42, main[^1]);
         }
 
-        [Fact]
-        public void Saves_GoUpWhenChanged_AndComeDownWhenNewer_KeepingABackup()
-        {
-            string pc1 = Path.Combine(root, "pc1"), pc2 = Path.Combine(root, "pc2");
-            Directory.CreateDirectory(Path.Combine(pc1, "mGBA"));
-            File.WriteAllText(Path.Combine(pc1, "mGBA", "zelda.srm"), "pc1 save");
-            Directory.CreateDirectory(Path.Combine(pc1, "dolphin-emu", "User", "Cache"));
-            File.WriteAllText(Path.Combine(pc1, "dolphin-emu", "User", "Cache", "big.cache"), "rebuilt by Dolphin");
-            var first = new RetroSaveSync(pc1, Path.Combine(root, "backups1"));
-            Assert.True(first.ChangedSinceSync);
+        private RetroGameSaves Saves(string pc, string set = "nes-40", string stem = "Zelda (E)") =>
+            new(Path.Combine(root, pc, "saves"), Path.Combine(root, pc, "states"), Path.Combine(root, pc, "backups"), set, stem);
 
+        private string Write(string pc, string relative, string text)
+        {
+            string file = Path.Combine(root, pc, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, text);
+            return file;
+        }
+
+        [Fact]
+        public void AGamesSaves_AreItsNamedFiles_AndWhatItWroteWhileRunning()
+        {
+            var zelda = Saves("pc1");
+            Write("pc1", "saves/Mesen/Zelda (E).srm", "zelda");
+            Write("pc1", "states/Mesen/Zelda (E).state1", "state");
+            Write("pc1", "saves/Mesen/Metroid.srm", "another game");
+            Write("pc1", "saves/dolphin-emu/User/Cache/big.cache", "rebuilt by Dolphin");
+            // A memory card the game writes while it runs: its saves too, from then on
+            var before = zelda.Snapshot();
+            Write("pc1", "saves/pcsx2/memcards/Mcd001.ps2", "card");
+            zelda.Track(before);
+
+            var zip = new MemoryStream();
+            zelda.Pack(zip);
+            using var archive = new ZipArchive(new MemoryStream(zip.ToArray()));
+            Assert.Equal(new[] { "saves/Mesen/Zelda (E).srm", "saves/pcsx2/memcards/Mcd001.ps2", "states/Mesen/Zelda (E).state1" }, archive.Entries.Select(e => e.FullName).Order());
+            Assert.False(Saves("pc1", "nes-41", "Metroid").Files().Any(f => f.Contains("Mcd001")));
+        }
+
+        [Fact]
+        public void AGamesSaves_GoUpWhenChanged_AndComeDownWhenNewer_KeepingABackup()
+        {
+            var first = Saves("pc1");
+            Write("pc1", "saves/Mesen/Zelda (E).srm", "pc1 save");
+            Assert.True(first.ChangedSinceSync);
             var server = new MemoryStream();
             first.Pack(server);
             first.Remember(1000);
             Assert.False(first.ChangedSinceSync);
-            using (var zip = new ZipArchive(new MemoryStream(server.ToArray())))
-                Assert.Equal(new[] { "mGBA/zelda.srm" }, zip.Entries.Select(e => e.FullName));
 
             // The other PC played without network: its save is kept aside, the server's is taken
-            Directory.CreateDirectory(Path.Combine(pc2, "mGBA"));
-            File.WriteAllText(Path.Combine(pc2, "mGBA", "zelda.srm"), "pc2 save");
-            var second = new RetroSaveSync(pc2, Path.Combine(root, "backups2"));
+            Write("pc2", "saves/Mesen/Zelda (E).srm", "pc2 save");
+            Write("pc2", "saves/Mesen/Metroid.srm", "not this game");
+            var second = Saves("pc2");
             Assert.True(second.IsOlderThan(1000));
             string? backup = second.Unpack(new MemoryStream(server.ToArray()));
             second.Remember(1000);
-            Assert.Equal("pc1 save", File.ReadAllText(Path.Combine(pc2, "mGBA", "zelda.srm")));
+            Assert.Equal("pc1 save", File.ReadAllText(Path.Combine(root, "pc2", "saves", "Mesen", "Zelda (E).srm")));
+            Assert.Equal("not this game", File.ReadAllText(Path.Combine(root, "pc2", "saves", "Mesen", "Metroid.srm")));
             using (var kept = ZipFile.OpenRead(backup!))
-                Assert.Equal("pc2 save", new StreamReader(kept.GetEntry("mGBA/zelda.srm")!.Open()).ReadToEnd());
+                Assert.Equal("pc2 save", new StreamReader(kept.GetEntry("saves/Mesen/Zelda (E).srm")!.Open()).ReadToEnd());
             Assert.False(second.IsOlderThan(1000));
             Assert.False(second.ChangedSinceSync);
         }
 
         [Fact]
-        public void ASavesZip_DoesNotWriteOutsideTheSavesFolder()
+        public void ASavesZip_DoesNotWriteOutsideTheSavesFolders()
         {
             var stream = new MemoryStream();
             using (var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
-            using (var writer = new StreamWriter(zip.CreateEntry("../outside.txt").Open()))
-                writer.Write("no");
+            {
+                using (var writer = new StreamWriter(zip.CreateEntry("saves/../../outside.txt").Open()))
+                    writer.Write("no");
+                using (var writer = new StreamWriter(zip.CreateEntry("elsewhere/file.txt").Open()))
+                    writer.Write("no");
+            }
             stream.Position = 0;
-            new RetroSaveSync(Path.Combine(root, "saves"), Path.Combine(root, "backups")).Unpack(stream);
+            Saves("pc1").Unpack(stream);
             Assert.False(File.Exists(Path.Combine(root, "outside.txt")));
+            Assert.False(Directory.Exists(Path.Combine(root, "pc1", "elsewhere")));
         }
 
         [Fact]

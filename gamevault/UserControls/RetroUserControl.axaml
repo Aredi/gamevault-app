@@ -185,6 +185,7 @@
                                     </StackPanel>
                                 </Button>
                                 <ToggleButton Classes="icon bookmark" Margin="0,0,8,8" Width="40" Height="40" IsChecked="{Binding IsFavorite}" ToolTip.Tip="{l:T 'Bookmark'}" />
+                                <Button Classes="ghost" Margin="0,0,8,8" Content="{l:T 'Game page'}" Click="OpenGame_Click" Background="{DynamicResource Brush.Surface3}" />
                                 <Button Classes="ghost" Margin="0,0,8,8" Click="Collections_Click" Content="{l:T 'Collections'}" Background="{DynamicResource Brush.Surface3}" />
                                 <Button Classes="ghost" Margin="0,0,8,8" Click="Manual_Click" IsVisible="{Binding HasManual}" Content="{l:T 'Manual'}"
                                         Background="{DynamicResource Brush.Surface3}" />

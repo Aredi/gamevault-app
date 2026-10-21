@@ -11,6 +11,19 @@ namespace GameVault.UiTests
     public class RetroScenarios
     {
         [Fact]
+        public void TheDownloadSpeed_IsShownInFrench()
+        {
+            var culture = System.Globalization.CultureInfo.CurrentCulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("fr-FR");
+                // A speed is not a whole number of bytes: it was shown "ERR/s"
+                Assert.Equal("8,39 " + gamevault.Localization.Loc.T("MB"), RetroDownload.Size(8388608.5 / 1000 * 1000, 1000));
+            }
+            finally { System.Globalization.CultureInfo.CurrentCulture = culture; }
+        }
+
+        [Fact]
         public async Task SevenZipProgress_IsRead_ThoughItIsRedrawnWithBackspaces()
         {
             // As 7-Zip writes it: no new line until the end
@@ -21,32 +34,38 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
-        public async Task RetroSaves_FollowThePlayer_FromPcToPc()
+        public async Task AGamesSaves_FollowThePlayer_FromPcToPc()
         {
             var session = await TestSession.GetAsync();
             SanctuaryService.Current = session.Server.Url;
             string saves = RetroArchManager.Layout.SavesDirectory(gamevault.Helper.LoginManager.Instance.GetCurrentUser()!.ID.ToString());
             SettingsViewModel.Instance.CloudSaves = true;
+            var zelda = new RetroGame { Id = 40, Name = "Zelda", FileName = "Zelda (E).nes", Platform = new RetroPlatform { Slug = "nes", Name = "NES" } };
             try
             {
-                // Another PC sent a save: it comes here before a game
-                session.Server.RetroSaves = (FakeGameVaultServer.Zip(("mGBA/zelda.srm", "from the other PC")), 5000);
-                Assert.Null(await RetroArchManager.TakeCloudSavesAsync(_ => { }));
-                Assert.Equal("from the other PC", File.ReadAllText(Path.Combine(saves, "mGBA", "zelda.srm")));
+                // Another PC sent this game's save: it comes here before the game, the others' saves stay
+                Directory.CreateDirectory(Path.Combine(saves, "Mesen"));
+                File.WriteAllText(Path.Combine(saves, "Mesen", "Metroid.srm"), "another game");
+                session.Server.RetroSaves["nes-40"] = (FakeGameVaultServer.Zip(("saves/Mesen/Zelda (E).srm", "from the other PC")), 5000);
+                Assert.Null(await RetroCloudSaves.TakeAsync(zelda, _ => { }));
+                Assert.Equal("from the other PC", File.ReadAllText(Path.Combine(saves, "Mesen", "Zelda (E).srm")));
 
-                // Played here: the changed saves go up after the game, and only then
-                File.WriteAllText(Path.Combine(saves, "mGBA", "zelda.srm"), "played here");
-                await RetroArchManager.SendCloudSavesAsync();
-                Assert.Equal(6000, session.Server.RetroSaves!.Value.SavedAt);
-                using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(session.Server.RetroSaves.Value.Zip)))
-                    Assert.Equal("played here", new StreamReader(zip.GetEntry("mGBA/zelda.srm")!.Open()).ReadToEnd());
-                await RetroArchManager.SendCloudSavesAsync();
-                Assert.Equal(6000, session.Server.RetroSaves!.Value.SavedAt);
+                // Played here: the changed saves go up after the game, and only then; the other game is not in them
+                File.WriteAllText(Path.Combine(saves, "Mesen", "Zelda (E).srm"), "played here");
+                await RetroCloudSaves.SendAsync(zelda);
+                Assert.Equal(6000, session.Server.RetroSaves["nes-40"].SavedAt);
+                using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(session.Server.RetroSaves["nes-40"].Zip)))
+                    Assert.Equal(new[] { "saves/Mesen/Zelda (E).srm" }, zip.Entries.Select(e => e.FullName));
+                await RetroCloudSaves.SendAsync(zelda);
+                Assert.Equal(6000, session.Server.RetroSaves["nes-40"].SavedAt);
+                // "Upload" on the game's page sends anyway
+                await RetroCloudSaves.SendAsync(zelda, force: true);
+                Assert.Equal(7000, session.Server.RetroSaves["nes-40"].SavedAt);
             }
             finally
             {
                 SanctuaryService.Current = SanctuaryService.Url;
-                session.Server.RetroSaves = null;
+                session.Server.RetroSaves.Clear();
                 Directory.Delete(RetroArchManager.Layout.Directory, true);
             }
         }

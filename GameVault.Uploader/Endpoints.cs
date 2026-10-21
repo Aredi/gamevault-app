@@ -122,6 +122,11 @@ namespace GameVault.Uploader
                     players.SetFavorites(check.Id, check.User, favorites);
                     return Results.NoContent();
                 }));
+            app.MapGet("/retro/games/{platform}/{romId:int}/players", (string platform, int romId, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+                AsRetroPlayerAsync(request, users, players, ct, _ => Results.Json(players.PlayersOf($"{platform}:{romId}").Select(a => new
+                {
+                    userId = a.UserId, username = a.Username, minutes = a.Play.Minutes, lastPlayed = a.Play.LastPlayed,
+                }))));
             app.MapGet("/retro/activity", (HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, _ => Results.Json(players.Recent(30).Select(a => new
                 {

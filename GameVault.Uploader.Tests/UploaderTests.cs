@@ -449,6 +449,10 @@ namespace GameVault.Uploader.Tests
                 Assert.Equal(("player", "Zelda", 30), (recent.GetProperty("username").GetString(), recent.GetProperty("name").GetString(), recent.GetProperty("minutes").GetInt32()));
             }
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/activity")).StatusCode);
+            // Who played a game: its page shows them
+            using (JsonDocument who = JsonDocument.Parse(await admin.GetStringAsync("/retro/games/nes/40/players")))
+                Assert.Equal(("player", 30), (Assert.Single(who.RootElement.EnumerateArray()).GetProperty("username").GetString(), who.RootElement[0].GetProperty("minutes").GetInt32()));
+            Assert.Equal("[]", await admin.GetStringAsync("/retro/games/nes/41/players"));
 
             // The newest games of RomM, for the notification
             using (JsonDocument latest = JsonDocument.Parse(await player.GetStringAsync("/retro/latest")))

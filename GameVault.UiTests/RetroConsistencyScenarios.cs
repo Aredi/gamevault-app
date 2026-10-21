@@ -42,7 +42,7 @@ namespace GameVault.UiTests
             DownloadsViewModel.Instance.RetroDownloads.Clear();
             session.Server.RetroMinutes.Clear();
             session.Server.RetroFavorites = "[]";
-            session.Server.RetroSaves = null;
+            session.Server.RetroSaves.Clear();
             session.Server.RetroSavesHistory.Clear();
             File.Delete(Path.Combine(Path.GetDirectoryName(LoginManager.Instance.GetUserProfile().CollectionsFile)!, "retro-collections.json"));
             try { Directory.Delete(RetroArchManager.Layout.Directory, true); } catch { }
@@ -146,32 +146,40 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
-        public async Task AnOlderVersionOfTheSaves_IsRestored_AndTheCloudSwitchIsHeeded()
+        public async Task TheGamesPage_ShowsItsFriends_AndRestoresAnOlderVersionOfItsSaves()
         {
-            var session = await TestSession.GetAsync();
-            SanctuaryService.Current = session.Server.Url;
-            string saves = RetroArchManager.SavesFolder;
+            var (session, page, zelda) = await InstallZeldaAsync();
             bool cloud = SettingsViewModel.Instance.CloudSaves;
+            string saves = RetroArchManager.SavesFolder;
             try
             {
-                Directory.CreateDirectory(Path.Combine(saves, "mGBA"));
-                File.WriteAllText(Path.Combine(saves, "mGBA", "zelda.srm"), "today");
+                await RetroLibrary.RecordPlayAsync(zelda, 42);
+                Directory.CreateDirectory(Path.Combine(saves, "Mesen"));
+                File.WriteAllText(Path.Combine(saves, "Mesen", "Zelda (E).srm"), "today");
 
-                // Cloud saves off: nothing taken from the service
+                // Cloud saves off: nothing taken from the service before the game
                 SettingsViewModel.Instance.CloudSaves = false;
-                session.Server.RetroSaves = (FakeGameVaultServer.Zip(("mGBA/zelda.srm", "other PC")), 9000);
-                Assert.Null(await RetroArchManager.TakeCloudSavesAsync(_ => { }));
-                Assert.Equal("today", File.ReadAllText(Path.Combine(saves, "mGBA", "zelda.srm")));
+                session.Server.RetroSaves["nes-40"] = (FakeGameVaultServer.Zip(("saves/Mesen/Zelda (E).srm", "other PC")), 9000);
+                Assert.Null(await RetroCloudSaves.TakeAsync(zelda, _ => { }));
+                Assert.Equal("today", File.ReadAllText(Path.Combine(saves, "Mesen", "Zelda (E).srm")));
 
-                // Settings > Retro: an older version put back, and sent as the current one
-                session.Server.RetroSavesHistory["retroarch-1000.zip"] = (1000, FakeGameVaultServer.Zip(("mGBA/zelda.srm", "last week")));
-                var settings = new RetroSettingsUserControl();
-                await settings.RefreshAsync();
-                await settings.RestoreAsync(Assert.Single(settings.Versions));
-                Assert.Equal("last week", File.ReadAllText(Path.Combine(saves, "mGBA", "zelda.srm")));
-                using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(session.Server.RetroSaves!.Value.Zip)))
-                    Assert.Equal("last week", new StreamReader(zip.GetEntry("mGBA/zelda.srm")!.Open()).ReadToEnd());
-                Assert.Single(Directory.GetFiles(RetroArchManager.SaveBackupsFolder, "saves-*.zip"));
+                // The game's page: its friends, its saves
+                var view = new RetroGameViewUserControl(zelda);
+                await view.LoadAsync();
+                RetroPlayerRow friend = Assert.Single(view.ViewModel.Players);
+                Assert.Equal("Mario", friend.Username);
+                Assert.Contains("1", view.ViewModel.SavesText);
+
+                // Its history: an older version put back, and sent as the current one
+                session.Server.RetroSavesHistory["nes-40-1000.zip"] = (1000, FakeGameVaultServer.Zip(("saves/Mesen/Zelda (E).srm", "last week")));
+                var history = new RetroSaveHistoryUserControl(zelda, null);
+                await history.LoadAsync();
+                Assert.Equal(new[] { true, false }, history.Rows.Select(r => r.IsCurrent));
+                await history.RestoreAsync(history.Rows[1]);
+                Assert.Equal("last week", File.ReadAllText(Path.Combine(saves, "Mesen", "Zelda (E).srm")));
+                using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(session.Server.RetroSaves["nes-40"].Zip)))
+                    Assert.Equal("last week", new StreamReader(zip.GetEntry("saves/Mesen/Zelda (E).srm")!.Open()).ReadToEnd());
+                Assert.Single(Directory.GetFiles(RetroArchManager.SaveBackupsFolder, "nes-40-*.zip"));
             }
             finally
             {

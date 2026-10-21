@@ -102,6 +102,9 @@ namespace GameVault.Uploader
             }
         }
 
+        /// <summary>Who played a game, the last one first (the game's page shows the friends who played it).</summary>
+        public List<Activity> PlayersOf(string key) => Recent(int.MaxValue).Where(a => a.Play.Key == key).ToList();
+
         /// <summary>The games the players played lately, newest first.</summary>
         public List<Activity> Recent(int count)
         {
