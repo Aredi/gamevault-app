@@ -154,6 +154,7 @@ namespace gamevault.Windows
             }
             await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();
             await MainWindowViewModel.Instance.Downloads.RestoreDownloadedGames();
+            RetroDownloads.Restore();
             LoginManager.Instance.InitOnlineTimer();
             MainWindowViewModel.Instance.UserAvatar = LoginManager.Instance.GetCurrentUser();
 
@@ -393,6 +394,7 @@ namespace gamevault.Windows
             MainWindowViewModel.Instance.Downloads.PauseAllDownloads();
             InstallViewModel.Instance.InstalledGames.Clear();
             DownloadsViewModel.Instance.DownloadedGames.Clear();
+            DownloadsViewModel.Instance.RetroDownloads.Clear();
             ProcessShepherd.Instance.KillAllChildProcesses();
             App.HideToSystemTray = false;
             App.Instance.ResetToDefaultTheme();

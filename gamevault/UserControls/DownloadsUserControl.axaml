@@ -7,6 +7,9 @@
     <UserControl.Resources>
         <conv:CountConverter x:Key="countConv" />
         <conv:GreaterThanConverter x:Key="greaterThanConv" />
+        <conv:AccentBrushConverter x:Key="accentBrushConv" />
+        <conv:BoolToValueConverter x:Key="pauseTextConv" TrueValue="Resume" FalseValue="Pause" />
+        <conv:BoolToValueConverter x:Key="pauseIconConv" TrueValue="{StaticResource IconPlay}" FalseValue="{StaticResource IconPause}" />
     </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="Border.counter">
@@ -21,14 +24,26 @@
             <Setter Property="FontSize" Value="13" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+        <!-- The retro downloads: drawn as the library's download cards -->
+        <Style Selector="ProgressBar.download">
+            <Setter Property="MinHeight" Value="6" />
+            <Setter Property="Height" Value="6" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Line}" />
+        </Style>
+        <Style Selector="TextBlock.info">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
     </UserControl.Styles>
     <Grid RowDefinitions="Auto,*">
         <!-- Header: title, what is going on, delete everything -->
         <Grid Grid.Row="0" Margin="28,20,28,16" ColumnDefinitions="Auto,*,Auto">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                 <TextBlock Classes="pageTitle" Text="{l:T 'Downloads'}" />
-                <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Margin="0,4,0,0" Text="{Binding DownloadedGames.Count, Converter={StaticResource countConv}, ConverterParameter='{}{0} game|{0} games'}"
-                           IsVisible="{Binding DownloadedGames.Count, Converter={StaticResource greaterThanConv}, ConverterParameter=0}" />
+                <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Margin="0,4,0,0" Text="{Binding TotalCount, Converter={StaticResource countConv}, ConverterParameter='{}{0} game|{0} games'}"
+                           IsVisible="{Binding TotalCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="28,0,0,0" VerticalAlignment="Center">
                 <Border Classes="counter" IsVisible="{Binding ActiveCount, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
@@ -69,7 +84,7 @@
 
         <!-- Nothing yet -->
         <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="0,0,0,80"
-                    IsVisible="{Binding DownloadedGames.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}}">
+                    IsVisible="{Binding IsEmpty}">
             <Border Width="72" Height="72" CornerRadius="36" Background="{DynamicResource Brush.Surface}" HorizontalAlignment="Center">
                 <Path Data="{StaticResource IconArrowDown}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="28" Height="28" />
             </Border>
@@ -78,7 +93,91 @@
         </StackPanel>
 
         <ScrollViewer Grid.Row="1" Classes="page" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding DownloadedGames}" Margin="28,0,28,28" MaxWidth="1180" HorizontalAlignment="Stretch" />
+            <StackPanel Margin="28,0,28,28" MaxWidth="1180" HorizontalAlignment="Stretch">
+                <ItemsControl ItemsSource="{Binding DownloadedGames}" />
+                <ItemsControl ItemsSource="{Binding RetroDownloads}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="16" ClipToBounds="True" Margin="0,0,0,14">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="16">
+                                    <Border Width="92" CornerRadius="10" ClipToBounds="True" VerticalAlignment="Top" Background="{DynamicResource Brush.Surface3}" BoxShadow="0 10 24 -10 #B3000000">
+                                        <local:AspectBox Ratio="{Binding Game.Platform.System.CoverRatio}">
+                                            <Image Source="{Binding Game.CoverImage}" Stretch="UniformToFill" />
+                                        </local:AspectBox>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" Margin="20,2,16,0" Spacing="10" VerticalAlignment="Top">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock FontFamily="{StaticResource Font.Display}" FontWeight="Bold" FontSize="19" TextTrimming="CharacterEllipsis" Text="{Binding Game.Name}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Path Data="{StaticResource IconNavRetro}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="14" Height="14" VerticalAlignment="Center" />
+                                                <TextBlock Classes="info" Text="{Binding Game.Platform.Name}" />
+                                                <TextBlock Classes="info" Text="·" />
+                                                <TextBlock Classes="info" Text="{Binding Game.SizeText}" />
+                                                <TextBlock Classes="info" Text="·" IsVisible="{Binding State, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                <TextBlock Classes="info" Text="{Binding State}" MaxWidth="420" ToolTip.Tip="{Binding State}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <!-- Download in progress -->
+                                        <StackPanel Spacing="6" IsVisible="{Binding IsActive}">
+                                            <ProgressBar Classes="download" Minimum="0" Maximum="100" Value="{Binding Progress}"
+                                                         Foreground="{Binding Game.Accent, Converter={StaticResource accentBrushConv}}" />
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Classes="info" Text="{Binding Info}" />
+                                                <TextBlock Grid.Column="1" Classes="info" FontWeight="Bold" Text="{Binding Progress, StringFormat='{}{0} %'}" Margin="12,0,0,0" />
+                                            </Grid>
+                                        </StackPanel>
+                                        <!-- Made playable: unpacking, RetroArch, core, BIOS -->
+                                        <ProgressBar Classes="download" IsIndeterminate="True" IsVisible="{Binding IsPreparing}"
+                                                     Foreground="{Binding Game.Accent, Converter={StaticResource accentBrushConv}}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="7" IsVisible="{Binding IsDone}">
+                                            <Path Data="{StaticResource IconTick}" Fill="{DynamicResource Brush.Success}" Stretch="Uniform" Width="12" Height="12" VerticalAlignment="Center" />
+                                            <TextBlock Text="{l:T 'Installed'}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Actions -->
+                                    <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Top" MinWidth="150">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                            <Button Classes="round small" Click="RetroOpenFolder_Click" ToolTip.Tip="{l:T 'Open Directory'}">
+                                                <Path Data="{StaticResource IconGameSettingsFolder}" Width="14" Height="14" />
+                                            </Button>
+                                            <Button Classes="round small" Click="RetroCancel_Click" ToolTip.Tip="{l:T 'Cancel Download'}" IsVisible="{Binding !IsDone}">
+                                                <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="IndianRed" />
+                                            </Button>
+                                        </StackPanel>
+                                        <Button Classes="ghost small" HorizontalAlignment="Stretch" IsVisible="{Binding CanPause}" Click="RetroPauseResume_Click" Background="{DynamicResource Brush.Surface3}">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <Path Data="{Binding IsPaused, Converter={StaticResource pauseIconConv}}" Width="12" Height="12" />
+                                                <TextBlock VerticalAlignment="Center" Text="{Binding IsPaused, Converter={StaticResource pauseTextConv}}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Classes="action small" HorizontalAlignment="Stretch" IsVisible="{Binding IsQueued}" Click="RetroStartNow_Click" Content="{l:T 'Start now'}"
+                                                ToolTip.Tip="{l:T 'Start this download now, regardless of the queue and the schedule'}"
+                                                Background="{Binding Game.Accent, Converter={StaticResource accentBrushConv}}" />
+                                        <Button Classes="action small" HorizontalAlignment="Stretch" IsVisible="{Binding IsFailed}" Click="RetroRetry_Click"
+                                                Background="{Binding Game.Accent, Converter={StaticResource accentBrushConv}}">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <Path Data="{StaticResource IconReload}" Width="12" Height="12" />
+                                                <TextBlock VerticalAlignment="Center" Text="{l:T 'Retry'}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Classes="action small" HorizontalAlignment="Stretch" IsVisible="{Binding IsDone}" Click="RetroPlay_Click"
+                                                Background="{Binding Game.Accent, Converter={StaticResource accentBrushConv}}">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <Path Data="{StaticResource IconPlay}" Width="12" Height="12" />
+                                                <TextBlock VerticalAlignment="Center" Text="{l:T 'Play'}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Classes="ghost small" HorizontalAlignment="Stretch" IsVisible="{Binding IsDone}" Click="RetroDismiss_Click" Content="{l:T 'Remove from the list'}"
+                                                Background="{DynamicResource Brush.Surface3}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </ScrollViewer>
     </Grid>
 </UserControl>

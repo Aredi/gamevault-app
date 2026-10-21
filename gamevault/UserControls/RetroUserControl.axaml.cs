@@ -135,74 +135,28 @@ namespace gamevault.UserControls
                 await InstallAsync(game);
         }
 
-        /// <summary>The game's file, then RetroArch and the core when this PC has them not yet.</summary>
+        /// <summary>
+        /// Into the Downloads page and its queue, as the library's games: the download goes on whatever page is shown,
+        /// and the game is made playable (unpacked, RetroArch, core, BIOS) when it is complete.
+        /// </summary>
         internal async Task InstallAsync(RetroGame game)
         {
             if (game.Busy)
                 return;
-            if ((SettingsViewModel.Instance.RootDirectories?.Count ?? 0) == 0)
-            {
-                MainWindowViewModel.Instance.AppBarText = Loc.T("No Root Directory configured! Go to ⚙️Settings->Data");
-                return;
-            }
-            game.Busy = true;
             try
             {
-                bool cia = string.Equals(Path.GetExtension(game.FileName), ".cia", StringComparison.OrdinalIgnoreCase);
-                // Most 3DS packages are encrypted, which Azahar can not play: told before gigabytes come down
-                if (cia)
-                {
-                    game.Status = Loc.T("Checking the game...");
-                    if (CiaReader.Inspect(await RetroService.ReadStartAsync(game, CiaReader.HeaderBytes), game.Size).Verdict != CiaReader.Verdict.Playable)
-                    {
-                        game.Status = Loc.T("This 3DS game is encrypted: Azahar can not play it. A decrypted copy is needed in RomM.");
-                        return;
-                    }
-                }
-                string folder = RetroService.Folder(game, InstallLocationUserControl.DefaultLocation());
-                Directory.CreateDirectory(folder);
-                string metadata = Path.Combine(folder, RetroService.DownloadMetadata);
-                var download = new HttpClientDownloadWithProgress(RetroService.ContentUrl(game), folder, game.FileName);
-                download.ProgressChanged += (_, _, _, percentage, _) => game.Status = Loc.F("Downloading... {0:0}%", percentage ?? 0);
-                // A download stopped half way goes on from where it was
-                await download.StartDownload(tryResume: File.Exists(metadata));
-                File.Delete(metadata);
-                string downloaded = Directory.EnumerateFiles(folder).OrderByDescending(File.GetLastWriteTimeUtc).First();
-                if (game.Multi && string.Equals(Path.GetExtension(downloaded), ".zip", StringComparison.OrdinalIgnoreCase))
-                {
-                    // A game in several files (a CD and its tracks): RomM sends them zipped
-                    var sevenZip = new SevenZipHelper();
-                    sevenZip.Process += (_, e) => game.Status = Loc.F("Unpacking... {0}%", e.PercentageDone);
-                    game.Status = Loc.F("Unpacking... {0}%", 0);
-                    if (await sevenZip.ExtractArchive(downloaded, folder) != 0)
-                        throw new IOException(sevenZip.LastError);
-                    File.Delete(downloaded);
-                }
-                else if (cia)
-                {
-                    game.Status = Loc.T("Preparing the 3DS game...");
-                    byte[] start = new byte[CiaReader.HeaderBytes];
-                    int read;
-                    await using (FileStream file = File.OpenRead(downloaded))
-                        read = await file.ReadAsync(start);
-                    await CiaReader.ExtractAsync(downloaded, CiaReader.Inspect(start.AsSpan(0, read), new FileInfo(downloaded).Length));
-                }
-                await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
-                game.Refresh();
-                game.Status = game.Installed ? "" : Loc.T("None of this game's files can be started by the emulator.");
-            }
-            catch (RetroArchManager.MissingBiosException ex)
-            {
-                // The game is there: the BIOS comes when an administrator adds it, and Play fetches it
-                game.Refresh();
-                game.Status = ex.Message;
+                game.Status = Loc.T("Checking the game...");
+                string? refused = await RetroDownloads.StartAsync(game);
+                if (refused != null)
+                    game.Status = refused;
+                else
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is in the downloads", game.Name);
             }
             catch (Exception ex)
             {
                 Log.Ignored(ex);
                 game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
-            finally { game.Busy = false; }
         }
 
         private async void Play_Click(object? sender, RoutedEventArgs e)
@@ -211,7 +165,7 @@ namespace gamevault.UserControls
                 await PlayAsync(game);
         }
 
-        private async Task PlayAsync(RetroGame game)
+        internal async Task PlayAsync(RetroGame game)
         {
             if (game.Busy || game.RomFile is not string rom)
                 return;

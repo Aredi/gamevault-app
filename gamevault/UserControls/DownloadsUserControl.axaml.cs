@@ -156,6 +156,8 @@ namespace gamevault.UserControls
         {
             foreach (var download in DownloadsViewModel.Instance.DownloadedGames.ToList())
                 download.PauseDownload();
+            foreach (var download in DownloadsViewModel.Instance.RetroDownloads.ToList())
+                download.Pause(advance: false);
         }
 
         /// <summary>
@@ -322,6 +324,44 @@ namespace gamevault.UserControls
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
             }
+        }
+
+        private static RetroDownload? RetroOf(object? sender) => (sender as Control)?.DataContext as RetroDownload;
+
+        private void RetroOpenFolder_Click(object? sender, RoutedEventArgs e)
+        {
+            if (RetroOf(sender) is RetroDownload download)
+                PlatformInfo.OpenFolder(download.Folder);
+        }
+
+        private async void RetroCancel_Click(object? sender, RoutedEventArgs e)
+        {
+            if (RetroOf(sender) is not RetroDownload download)
+                return;
+            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Are you sure you want to delete '{0}' ?", download.Game.Name), "",
+                MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
+            if (result == MessageDialogResult.Affirmative)
+                download.Cancel();
+        }
+
+        private void RetroPauseResume_Click(object? sender, RoutedEventArgs e)
+        {
+            if (RetroOf(sender) is not RetroDownload download)
+                return;
+            if (download.IsPaused)
+                download.Resume();
+            else
+                download.Pause();
+        }
+
+        private void RetroStartNow_Click(object? sender, RoutedEventArgs e) => RetroOf(sender)?.StartNow();
+        private void RetroRetry_Click(object? sender, RoutedEventArgs e) => RetroOf(sender)?.Retry();
+        private void RetroDismiss_Click(object? sender, RoutedEventArgs e) => RetroOf(sender)?.Dismiss();
+
+        private async void RetroPlay_Click(object? sender, RoutedEventArgs e)
+        {
+            if (RetroOf(sender) is RetroDownload download)
+                await MainWindowViewModel.Instance.Retro.PlayAsync(download.Game);
         }
 
         private void Storage_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => MainWindowViewModel.Instance.OpenPopup(new StorageUserControl());

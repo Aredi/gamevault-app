@@ -22,7 +22,17 @@ namespace gamevault.ViewModels
 
         private List<RetroGame> allGames = new();
         /// <summary>The selected platform's games, as the service sent them.</summary>
-        public List<RetroGame> AllGames { get => allGames; set { allGames = value; ApplyFilter(); } }
+        public List<RetroGame> AllGames
+        {
+            get => allGames;
+            set
+            {
+                allGames = value;
+                // The cards show the downloads already going on (started before a reload or a change of page)
+                RetroDownloads.Attach(allGames);
+                ApplyFilter();
+            }
+        }
 
         private List<RetroGame> games = new();
         public List<RetroGame> Games { get => games; private set { games = value; OnPropertyChanged(); OnPropertyChanged(nameof(CountText)); } }

@@ -210,7 +210,7 @@ namespace gamevault
 
         public async Task ExitApp()
         {
-            if (DownloadsViewModel.Instance.DownloadedGames.Any(g => g.IsDownloading()))
+            if (DownloadsViewModel.Instance.DownloadedGames.Any(g => g.IsDownloading()) || DownloadsViewModel.Instance.RetroDownloads.Any(d => d.IsDownloading()))
             {
                 ShowMainWindow();
                 MessageDialogResult result = await MainWindow.ShowMessageAsync(Loc.T("Downloads are still running in the background, are you sure you want to exit the app anyway?\nThey are paused and can be resumed at the next start."), "",

@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace gamevault.UserControls
 {
-    public partial class GameDownloadUserControl : UserControl
+    public partial class GameDownloadUserControl : UserControl, IQueuedDownload
     {
         private DownloadSpeedCalculator downloadSpeedCalc { get; set; }
         private GameDownloadViewModel ViewModel { get; set; }

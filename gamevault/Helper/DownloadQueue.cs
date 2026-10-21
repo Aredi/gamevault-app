@@ -9,6 +9,17 @@ using System.Linq;
 
 namespace gamevault.Helper
 {
+    /// <summary>What the queue starts and pauses: a game of the library (its download card) or a retro game.</summary>
+    internal interface IQueuedDownload
+    {
+        bool IsDownloading();
+        /// <summary>Started with "Start now" or resumed by the user: not limited by the queue and the schedule.</summary>
+        bool BypassesQueue { get; }
+        void StartFromQueue();
+        void PauseForSchedule();
+        void SetQueuedState(string state);
+    }
+
     /// <summary>
     /// Starts downloads in the order they were requested, respecting the maximum number of simultaneous
     /// downloads and the download schedule (Settings → Installation). Downloads still running when the
@@ -16,12 +27,12 @@ namespace gamevault.Helper
     /// </summary>
     internal static class DownloadQueue
     {
-        private static readonly List<GameDownloadUserControl> waiting = new();
+        private static readonly List<IQueuedDownload> waiting = new();
         private static DispatcherTimer? timer;
 
-        public static bool IsWaiting(GameDownloadUserControl download) => waiting.Contains(download);
+        public static bool IsWaiting(IQueuedDownload download) => waiting.Contains(download);
 
-        public static void Enqueue(GameDownloadUserControl download, bool atFront = false)
+        public static void Enqueue(IQueuedDownload download, bool atFront = false)
         {
             if (!waiting.Contains(download))
             {
@@ -41,13 +52,13 @@ namespace gamevault.Helper
         }
 
         /// <summary>Earlier (negative) or later in the queue.</summary>
-        public static void Move(GameDownloadUserControl download, int offset)
+        public static void Move(IQueuedDownload download, int offset)
         {
             if (GameVault.Core.Downloads.QueueOrder.Move(waiting, download, offset))
                 RefreshStates();
         }
 
-        public static void Remove(GameDownloadUserControl download)
+        public static void Remove(IQueuedDownload download)
         {
             if (waiting.Remove(download))
                 RefreshStates();
@@ -88,8 +99,8 @@ namespace gamevault.Helper
             catch (Exception ex) { Log.Error(ex, "Download queue"); }
         }
 
-        private static IEnumerable<GameDownloadUserControl> Running() =>
-            DownloadsViewModel.Instance.DownloadedGames.Where(d => d.IsDownloading());
+        private static IEnumerable<IQueuedDownload> Running() =>
+            DownloadsViewModel.Instance.DownloadedGames.Cast<IQueuedDownload>().Concat(DownloadsViewModel.Instance.RetroDownloads).Where(d => d.IsDownloading());
 
         private static void RefreshStates()
         {

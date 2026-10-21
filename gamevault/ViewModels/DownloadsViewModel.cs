@@ -48,6 +48,14 @@ namespace gamevault.ViewModels
             set { m_DownloadedGames = value; OnPropertyChanged(); }
         }
 
+        /// <summary>The retro games coming down (RomM), shown below the library's.</summary>
+        public ObservableCollection<Helper.RetroDownload> RetroDownloads { get; } = new();
+
+        private int totalCount;
+        /// <summary>Every game of the page, the library's and the retro ones.</summary>
+        public int TotalCount { get => totalCount; private set { if (totalCount != value) { totalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsEmpty)); } } }
+        public bool IsEmpty => TotalCount == 0;
+
         private DownloadsViewModel()
         {
             // The counters of the page header and the navigation bar
@@ -68,8 +76,9 @@ namespace gamevault.ViewModels
         {
             try
             {
-                ActiveCount = DownloadedGames.Count(d => d.IsBusy());
-                QueuedCount = DownloadedGames.Count(d => Helper.DownloadQueue.IsWaiting(d));
+                ActiveCount = DownloadedGames.Count(d => d.IsBusy()) + RetroDownloads.Count(d => d.IsRunning);
+                QueuedCount = DownloadedGames.Count(d => Helper.DownloadQueue.IsWaiting(d)) + RetroDownloads.Count(d => Helper.DownloadQueue.IsWaiting(d));
+                TotalCount = DownloadedGames.Count + RetroDownloads.Count;
                 ReadyCount = DownloadedGames.Count(d => d.IsReadyToInstall());
             }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }

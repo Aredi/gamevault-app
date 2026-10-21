@@ -3,6 +3,7 @@ using Avalonia.Headless.XUnit;
 using GameVault.Core.Retro;
 using gamevault.Helper;
 using gamevault.UserControls;
+using gamevault.ViewModels;
 
 namespace GameVault.UiTests
 {
@@ -71,8 +72,12 @@ namespace GameVault.UiTests
                 RetroGame zelda = Assert.Single(page.Shown);
                 Assert.Equal(("Zelda", "nes", false), (zelda.Name, zelda.Platform.Slug, zelda.Installed));
 
+                // Into the Downloads page, as the library's games, and played when it is complete
                 await page.InstallAsync(zelda);
-                Assert.True(zelda.Installed, zelda.Status);
+                RetroDownload download = Assert.Single(DownloadsViewModel.Instance.RetroDownloads);
+                await TestSession.WaitUntil(() => download.IsDone || download.IsFailed, TimeSpan.FromSeconds(20), "the NES download");
+                Assert.True(zelda.Installed, download.State);
+                Assert.True(File.Exists(Path.Combine(Path.GetDirectoryName(zelda.RomFile)!, RetroDownload.InfoFile)));
                 Assert.Equal(Path.Combine(session.LibraryRoot, "GameVault", "Retro", "nes", "40", "Zelda (E).nes"), zelda.RomFile);
                 Assert.Equal(FakeGameVaultServer.RetroRom, File.ReadAllBytes(zelda.RomFile!));
                 Assert.Contains("input_quit_gamepad_combo = \"4\"", File.ReadAllText(layout.ConfigFile));
@@ -83,7 +88,16 @@ namespace GameVault.UiTests
                 await TestSession.WaitUntil(() => page.Shown.Any(g => g.Name == "Castlevania"), TimeSpan.FromSeconds(10), "the PS1 games");
                 RetroGame castlevania = Assert.Single(page.Shown);
                 await page.InstallAsync(castlevania);
-                Assert.True(castlevania.Installed, castlevania.Status);
+                // The page reloads its games (another platform and back): the download is not forgotten
+                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
+                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "psx"));
+                RetroGame shownAgain = Assert.Single(page.Shown);
+                Assert.NotSame(castlevania, shownAgain);
+                RetroDownload cd = DownloadsViewModel.Instance.RetroDownloads.Single(d => d.Game.Name == "Castlevania");
+                await TestSession.WaitUntil(() => cd.IsDone || cd.IsFailed, TimeSpan.FromSeconds(20), "the PS1 download");
+                Assert.True(shownAgain.Installed, cd.State);
+                Assert.False(shownAgain.Busy);
+                Assert.Equal(2, DownloadsViewModel.Instance.RetroDownloads.Count);
                 Assert.Equal("Castlevania.cue", Path.GetFileName(castlevania.RomFile));
                 Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(castlevania.RomFile)!, "Castlevania.zip")));
                 Assert.Equal(new byte[] { 1, 2, 3, 4 }, File.ReadAllBytes(Path.Combine(layout.SystemDirectory, "scph5501.bin")));
@@ -91,6 +105,7 @@ namespace GameVault.UiTests
             finally
             {
                 SanctuaryService.Current = SanctuaryService.Url;
+                DownloadsViewModel.Instance.RetroDownloads.Clear();
                 Directory.Delete(layout.Directory, true);
                 Directory.Delete(Path.Combine(session.LibraryRoot, "GameVault", "Retro"), true);
             }
