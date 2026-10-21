@@ -74,7 +74,7 @@
                 </StackPanel>
             </Grid>
             <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                       Text="{l:T 'Played with RetroArch, installed and set up the first time. Select+Start quits the game, L3+R3 opens its menu. The saves follow you from PC to PC.'}" />
+                       Text="{l:T 'Select+Start quits the game, L3+R3 opens its menu. The saves follow you from PC to PC.'}" />
         </StackPanel>
 
         <!-- ===== Games ===== -->
