@@ -278,6 +278,10 @@ namespace GameVault.Uploader.Tests
                 Assert.Equal(new[] { "PC-BUREAU", "PC-SALON" }, devices.RootElement.EnumerateArray().Select(d => d.GetProperty("name").GetString()).Order());
                 Assert.All(devices.RootElement.EnumerateArray(), d => Assert.True(d.GetProperty("online").GetBoolean()));
             }
+            // The administrators see when the player last had the client open; the players do not
+            using (JsonDocument seen = JsonDocument.Parse(await Client("admin").GetStringAsync("/users/last-seen")))
+                Assert.True(DateTime.UtcNow - seen.RootElement.GetProperty("2").GetDateTime().ToUniversalTime() < TimeSpan.FromMinutes(1));
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.GetAsync("/users/last-seen")).StatusCode);
 
             Assert.Equal(HttpStatusCode.Created, (await player.PostAsJsonAsync("/remote/installs", new { gameId = 6, title = "Prey", deviceId = "salon-0001" })).StatusCode);
             Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/remote/installs", new { gameId = 6, title = "Prey", deviceId = "salon-0001" })).StatusCode);

@@ -96,6 +96,20 @@ namespace GameVault.Uploader
                 return Read(userId).Devices.OrderByDescending(d => d.Online).ThenByDescending(d => d.LastSeen).ToList();
         }
 
+        /// <summary>For the administrators: when each player's client was last open, by GameVault user id.</summary>
+        // shortcut: a player whose PCs said nothing for 30 days has none (the devices are forgotten), enough to tell who stopped playing
+        public Dictionary<int, DateTime> LastSeen()
+        {
+            var seen = new Dictionary<int, DateTime>();
+            if (!Enabled)
+                return seen;
+            lock (writing)
+                foreach (string file in Directory.EnumerateFiles(directory, "*.json"))
+                    if (int.TryParse(Path.GetFileNameWithoutExtension(file), out int userId) && Read(userId).Devices is { Count: > 0 } devices)
+                        seen[userId] = devices.Max(d => d.LastSeen);
+            return seen;
+        }
+
         /// <summary>Every request of the player, newest first; with a device, only the ones that PC still has to take.</summary>
         public List<Entry> List(int userId, string? deviceId = null)
         {

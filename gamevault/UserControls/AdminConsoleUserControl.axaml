@@ -89,7 +89,11 @@
                                             <Button Grid.Column="0" Classes="wrapper" Width="60" Height="60" Cursor="Hand" Click="ShowUser_Click">
                                                 <local:CacheImage ImageCacheType="UserAvatar" Data="{Binding}" Stretch="Fill" CornerRadius="5" />
                                             </Button>
-                                            <TextBlock Grid.Column="1" FontSize="22" Text="{Binding Username}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock FontSize="22" Text="{Binding Username}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock FontSize="13" Opacity="0.7" Text="{Binding LastSeenText}" TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding LastSeenText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            </StackPanel>
                                             <ToggleSwitch Grid.Column="2" OnContent="{l:T 'Activated'}" OffContent="{l:T 'Deactivated'}" IsChecked="{Binding Activated}" VerticalAlignment="Center" Click="Activated_Toggled" />
                                             <ComboBox Grid.Column="3" Width="140" VerticalAlignment="Center"
                                                       ItemsSource="{Binding $parent[UserControl].DataContext.PermissionRoleEnumTypes}"

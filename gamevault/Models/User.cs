@@ -47,5 +47,8 @@ namespace gamevault.Models
         public DateTime? CreatedAt { get; set; }
         [JsonPropertyName("birth_date")]
         public DateTime? BirthDate { get; set; }
+        /// <summary>When the player last had the client open (admin console), told by the SanctuaryVault service.</summary>
+        [JsonIgnore]
+        public string? LastSeenText { get; set; }
     }
 }

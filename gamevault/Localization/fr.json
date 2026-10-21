@@ -188,6 +188,8 @@
   "Create report": "Créer le rapport",
   "Created N/A": "Créé : N/D",
   "Created {0:dd.MM.yyyy}": "Créé le {0:dd.MM.yyyy}",
+  "Last seen in the client {0:dd/MM/yyyy HH:mm}": "Dernière connexion au client le {0:dd/MM/yyyy à HH:mm}",
+  "Not seen in the client for 30 days": "Aucune connexion au client depuis 30 jours",
   "Creating the report...": "Création du rapport...",
   "Creating {0}... (large games take a while)": "Création de {0}... (les gros jeux prennent un moment)",
   "Custom Ludusavi Manifests": "Manifestes Ludusavi personnalisés",

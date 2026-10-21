@@ -61,13 +61,33 @@ namespace gamevault.UserControls
             try
             {
                 string userList = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users");
-                ViewModel.Users = JsonSerializer.Deserialize<User[]>(userList);
+                User[]? users = JsonSerializer.Deserialize<User[]>(userList);
+                await AddLastSeenAsync(users);
+                ViewModel.Users = users;
             }
             catch (Exception ex)
             {
                 string msg = WebExceptionHelper.TryGetServerMessage(ex);
                 MainWindowViewModel.Instance.AppBarText = msg;
             }
+        }
+
+        /// <summary>Without the SanctuaryVault service the line stays hidden.</summary>
+        private static async Task AddLastSeenAsync(User[]? users)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{SanctuaryService.Current.TrimEnd('/')}/users/last-seen");
+                using HttpResponseMessage response = await WebHelper.SendLongAsync(request, System.Threading.CancellationToken.None);
+                if (users == null || !response.IsSuccessStatusCode)
+                    return;
+                var seen = JsonSerializer.Deserialize<Dictionary<int, DateTimeOffset>>(await response.Content.ReadAsStringAsync()) ?? new();
+                foreach (User user in users)
+                    user.LastSeenText = seen.TryGetValue(user.ID, out DateTimeOffset at)
+                        ? Loc.F("Last seen in the client {0:dd/MM/yyyy HH:mm}", at.LocalDateTime)
+                        : Loc.T("Not seen in the client for 30 days");
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
         }
 
         private async void PermissionRole_SelectionChanged(object? sender, SelectionChangedEventArgs e)

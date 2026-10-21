@@ -72,6 +72,15 @@ namespace GameVault.Uploader
                 AsPlayerAsync(request, users, remote, ct, id =>
                     Results.Json(remote.Devices(id).Select(d => new { id = d.Id, name = d.Name, lastSeen = d.LastSeen, online = d.Online }))));
 
+            // The administrators see when each player last had the client open
+            app.MapGet("/users/last-seen", async (HttpRequest request, AdminCheck admins, RemoteInstallStore remote, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return remote.Enabled ? Results.Json(remote.LastSeen()) : Results.Json(new { error = "Remote installs are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            });
+
             app.MapGet("/remote/installs", (string? device, HttpRequest request, AdminCheck users, RemoteInstallStore remote, CancellationToken ct) =>
                 AsPlayerAsync(request, users, remote, ct, id =>
                     Results.Json(remote.List(id, device).Select(e => new
