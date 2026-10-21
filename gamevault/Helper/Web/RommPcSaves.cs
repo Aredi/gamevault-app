@@ -1,7 +1,8 @@
-using GameVault.Core;
+using GameVault.Core.CloudSaves;
 using gamevault.Models;
 using gamevault.ViewModels;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,44 +10,44 @@ using System.Threading.Tasks;
 namespace gamevault.Helper
 {
     /// <summary>
-    /// The library's cloud saves in the player's RomM too, when their account is linked: the same archive as the one
-    /// sent to the GameVault server, on RomM's copy of the game. The server stays where the saves are taken from (its
-    /// conflicts and history); RomM's are taken when the server has none of the game and this PC neither.
+    /// The library's cloud saves in the player's RomM, when their account is linked and RomM has the game (RomM and
+    /// GameVault read the same folder): sent there only, taken from there, with RomM's history. Otherwise they stay
+    /// with the GameVault server. The archives are Ludusavi's, as the server's.
     /// </summary>
     internal static class RommPcSaves
     {
         /// <summary>A stable slot: RomM keeps its last 10 versions.</summary>
         internal const string Slot = "sanctuaryvault";
-        /// <summary>The library's saves are Ludusavi's archives.</summary>
         internal const string Emulator = "ludusavi";
 
         private static Game? GameOf(int gameId) => InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key?.ID == gameId).Key;
 
-        private static async Task<int?> RomOfAsync(Game? game) =>
-            RommAccount.IsLinked && !string.IsNullOrEmpty(game?.Path) ? await RommAccount.PcGameIdAsync(Path.GetFileName(game.Path)) : null;
+        /// <summary>RomM's copy of the game, where its saves go; null: they go to the GameVault server (no account linked, or RomM has not the game).</summary>
+        public static async Task<int?> RomAsync(int gameId) =>
+            RommAccount.IsLinked && GameOf(gameId)?.Path is { Length: > 0 } path ? await RommAccount.PcGameIdAsync(Path.GetFileName(path)) : null;
 
-        /// <summary>After the upload to the server: the same archive to RomM. A failure only goes to the log (the server has it).</summary>
-        public static async Task SendAsync(int gameId, string archive)
-        {
-            try
-            {
-                Game? game = GameOf(gameId);
-                if (await RomOfAsync(game) is int rom)
-                    await RommAccount.UploadSaveAsync(rom, Emulator, Slot, $"{Path.GetFileNameWithoutExtension(game!.Path)}.{Slot}.zip", await File.ReadAllBytesAsync(archive));
-            }
-            catch (Exception ex) { Log.Ignored(ex); }
-        }
+        /// <summary>The game's newest save in RomM; null when there is none yet.</summary>
+        public static async Task<RommSave?> LatestAsync(int rom) => (await RommAccount.SavesAsync(rom)).FirstOrDefault(s => s.Slot == Slot);
 
-        /// <summary>RomM's newest archive of the game; null without a linked account, the game in RomM or a save there.</summary>
-        public static async Task<byte[]?> LatestAsync(int gameId)
-        {
-            try
+        /// <summary>As the server's newest save, for the conflict rules: this installation's when this PC sent it or took it.</summary>
+        public static ServerSave AsServerSave(RommSave save, string installationId) =>
+            new(save.UpdatedAt, save.IsCurrentHere ? installationId : save.OriginDevice ?? "romm");
+
+        public static async Task UploadAsync(int gameId, int rom, string archive) =>
+            await RommAccount.UploadSaveAsync(rom, Emulator, Slot, $"{Path.GetFileNameWithoutExtension(GameOf(gameId)?.Path ?? gameId.ToString())}.zip", await File.ReadAllBytesAsync(archive));
+
+        /// <param name="saveId">A save of the history (its RomM id) or the newest.</param>
+        public static async Task DownloadAsync(int saveId, string target) =>
+            await File.WriteAllBytesAsync(target, await RommAccount.SaveContentAsync(new RommSave { Id = saveId }));
+
+        /// <summary>RomM's versions of the game, as the server's history (the newest first).</summary>
+        public static async Task<List<SaveVersion>> HistoryAsync(int rom, string thisInstallation) =>
+            (await RommAccount.SavesAsync(rom)).Where(s => s.Slot == Slot).Select(s => new SaveVersion
             {
-                if (await RomOfAsync(GameOf(gameId)) is int rom && (await RommAccount.SavesAsync(rom)).FirstOrDefault(s => s.Slot == Slot) is RommSave save)
-                    return await RommAccount.SaveContentAsync(save);
-            }
-            catch (Exception ex) { Log.Ignored(ex); }
-            return null;
-        }
+                Name = s.Id.ToString(),
+                SavedAt = new DateTimeOffset(s.UpdatedAt, TimeSpan.Zero).ToUnixTimeMilliseconds(),
+                Size = s.Size,
+                InstallationId = s.OriginDevice == RommAccount.DeviceId ? thisInstallation : s.OriginDevice ?? "",
+            }).ToList();
     }
 }

@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace gamevault.UserControls
 {
-    /// <summary>The cloud saves the server keeps for a game (the newest first); an older one can be restored.</summary>
+    /// <summary>The cloud saves the server (or the player's RomM) keeps for a game, the newest first; an older one can be restored.</summary>
     public partial class SaveHistoryUserControl : UserControl
     {
         private readonly Game game;
@@ -55,8 +55,11 @@ namespace gamevault.UserControls
             uiMessage.IsVisible = false;
             try
             {
-                List<SaveVersion>? versions = await SaveHistoryService.ListAsync(game.ID);
                 string thisComputer = InstallationIdOf(installationDirectory);
+                // In the player's RomM when it has the game, else the server's
+                int? rom = await RommPcSaves.RomAsync(game.ID);
+                uiGame.Text = rom != null ? $"{game.Metadata?.Title ?? game.Title} · {RetroCloudSaves.Destination}" : game.Metadata?.Title ?? game.Title;
+                List<SaveVersion>? versions = rom is int romId ? await RommPcSaves.HistoryAsync(romId, thisComputer) : await SaveHistoryService.ListAsync(game.ID);
                 uiVersions.ItemsSource = versions?.Select((v, i) => new SaveVersionRow(v, i == 0, v.InstallationId.Equals(thisComputer, StringComparison.OrdinalIgnoreCase))).ToList();
                 if (versions == null)
                     Message(Loc.T("The save history is not available on this server."));

@@ -66,7 +66,9 @@ namespace GameVault.UiTests
         public string RetroFavorites { get; set; } = "[]";
         /// <summary>RomM answers here too (its public address is this server's): the player's saves and the pairing.</summary>
         public bool RommLinkable { get; set; }
-        public sealed record RommSave(int Id, int RomId, string FileName, string? Slot, string? Emulator, DateTime UpdatedAt, byte[] Content);
+        public sealed record RommSave(int Id, int RomId, string FileName, string? Slot, string? Emulator, DateTime UpdatedAt, byte[] Content, string? Origin = null);
+        /// <summary>Which device sent or took which save (a save never changes: it is that device's current one).</summary>
+        public ConcurrentDictionary<(string Device, int Save), bool> RommSyncs { get; } = new();
         public ConcurrentQueue<RommSave> RommSaves { get; } = new();
         /// <summary>RomM's games: its Windows games are the library's files.</summary>
         public ConcurrentQueue<(int Id, string Platform, string FileName)> RommRoms { get; } = new();
@@ -75,10 +77,11 @@ namespace GameVault.UiTests
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
         public List<object> RetroLatest { get; } = new();
 
-        private static object RommJson(RommSave s) => new
+        private object RommJson(RommSave s) => new
         {
             id = s.Id, rom_id = s.RomId, file_name = s.FileName, slot = s.Slot, emulator = s.Emulator, file_size_bytes = s.Content.Length,
-            updated_at = s.UpdatedAt.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"), device_syncs = Array.Empty<object>(),
+            updated_at = s.UpdatedAt.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"), origin_device_id = s.Origin,
+            device_syncs = RommSyncs.Keys.Where(k => k.Save == s.Id).Select(k => new { device_id = k.Device, device_name = k.Device, is_current = true }).ToArray(),
         };
 
         /// <summary>The file of a multipart upload (RomM's saveFile).</summary>
@@ -293,8 +296,10 @@ namespace GameVault.UiTests
                     await request.InputStream.CopyToAsync(body);
                     var (fileName, content) = RommMultipartFile(body.ToArray(), request.ContentType!);
                     var saved = new RommSave(RommSaves.Count + 1, int.Parse(request.QueryString["rom_id"]!), fileName, request.QueryString["slot"], request.QueryString["emulator"],
-                        DateTime.UtcNow.AddSeconds(RommSaves.Count), content);
+                        DateTime.UtcNow.AddSeconds(RommSaves.Count), content, request.QueryString["device_id"]);
                     RommSaves.Enqueue(saved);
+                    if (request.QueryString["device_id"] is string sender)
+                        RommSyncs[(sender, saved.Id)] = true;
                     await Json(response, RommJson(saved));
                 }
                 else if (path == "/api/roms")
@@ -307,7 +312,11 @@ namespace GameVault.UiTests
                 else if (path == "/api/saves")
                     await Json(response, RommSaves.Where(s => s.RomId == int.Parse(request.QueryString["rom_id"]!)).Select(RommJson));
                 else if ((match = Regex.Match(path, @"^/api/saves/(\d+)/content$")).Success && RommSaves.FirstOrDefault(s => s.Id == int.Parse(match.Groups[1].Value)) is RommSave found)
+                {
+                    if (request.QueryString["device_id"] is string taker)
+                        RommSyncs[(taker, found.Id)] = true;
                     await response.OutputStream.WriteAsync(found.Content);
+                }
                 else if (path == "/status")
                     await Json(response, new { status = "OK", version = "1.0.0", freeSpace = 1L << 40, profiles = true, saveHistory = true, rommUrl = RommLinkable ? Url : null });
                 else if ((match = Regex.Match(path, @"^/savefiles/(\d+)$")).Success)

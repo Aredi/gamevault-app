@@ -28,6 +28,10 @@ namespace gamevault.Helper
         public DateTime UpdatedAt { get; init; }
         public long Size { get; init; }
         public string? Device { get; init; }
+        /// <summary>The RomM device that sent it.</summary>
+        public string? OriginDevice { get; init; }
+        /// <summary>This PC sent it or took it: it is this PC's save.</summary>
+        public bool IsCurrentHere { get; init; }
         public bool IsOurs => Slot is RetroCloudSaves.MainSlot or RetroCloudSaves.RestSlot;
 
         public static RommSave Read(JsonElement save) => new()
@@ -42,6 +46,10 @@ namespace gamevault.Helper
                 ? syncs.EnumerateArray().Where(s => s.TryGetProperty("is_current", out JsonElement current) && current.ValueKind == JsonValueKind.True)
                     .Select(s => s.GetProperty("device_name").GetString()).FirstOrDefault()
                 : null,
+            OriginDevice = save.TryGetProperty("origin_device_id", out JsonElement origin) && origin.ValueKind == JsonValueKind.String ? origin.GetString() : null,
+            IsCurrentHere = RommAccount.DeviceId.Length > 0 && save.TryGetProperty("device_syncs", out JsonElement mine) && mine.ValueKind == JsonValueKind.Array
+                && mine.EnumerateArray().Any(s => s.GetProperty("device_id").ToString() == RommAccount.DeviceId
+                    && s.TryGetProperty("is_current", out JsonElement current) && current.ValueKind == JsonValueKind.True),
         };
     }
 
@@ -156,10 +164,13 @@ namespace gamevault.Helper
         }
 
         #region Saves
+        /// <summary>RomM keeps which saves each device sent or took (the devices of the saves, and this PC's): told on each call.</summary>
+        private static string Device(char separator) => DeviceId.Length > 0 ? $"{separator}device_id={Uri.EscapeDataString(DeviceId)}" : "";
+
         /// <summary>The player's RomM saves of a game, the newest first.</summary>
         public static async Task<List<RommSave>> SavesAsync(int romId)
         {
-            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, $"/api/saves?rom_id={romId}");
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, $"/api/saves?rom_id={romId}{Device('&')}");
             response.EnsureSuccessStatusCode();
             using JsonDocument saves = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             return saves.RootElement.EnumerateArray().Select(RommSave.Read).OrderByDescending(s => s.UpdatedAt).ToList();
@@ -167,21 +178,24 @@ namespace gamevault.Helper
 
         public static async Task<byte[]> SaveContentAsync(RommSave save)
         {
-            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, $"/api/saves/{save.Id}/content");
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, $"/api/saves/{save.Id}/content{Device('?')}");
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsByteArrayAsync();
         }
 
         /// <param name="slot">A stable name: RomM pairs each new save with the previous one of the slot, and keeps the last 10.</param>
+        /// <remarks>
+        /// Sent over the slot's newest even when another device sent one since this PC took it (RomM refuses it
+        /// otherwise): the callers decided before (taken first, or asked), and the slot keeps the other one.
+        /// </remarks>
         public static async Task<RommSave> UploadSaveAsync(int romId, string emulator, string slot, string fileName, byte[] content)
         {
             var form = new MultipartFormDataContent();
             var file = new ByteArrayContent(content);
             file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
             form.Add(file, "saveFile", fileName);
-            string device = DeviceId.Length > 0 ? $"&device_id={Uri.EscapeDataString(DeviceId)}" : "";
             using HttpResponseMessage response = await SendAsync(HttpMethod.Post,
-                $"/api/saves?rom_id={romId}&emulator={Uri.EscapeDataString(emulator)}&slot={slot}{device}&autocleanup=true&autocleanup_limit=10", form);
+                $"/api/saves?rom_id={romId}&emulator={Uri.EscapeDataString(emulator)}&slot={slot}{Device('&')}&overwrite=true&autocleanup=true&autocleanup_limit=10", form);
             response.EnsureSuccessStatusCode();
             using JsonDocument saved = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             return RommSave.Read(saved.RootElement);

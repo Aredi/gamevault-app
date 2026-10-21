@@ -100,19 +100,11 @@ namespace gamevault.Helper.Integrations
 
                 string installationId = GetGameInstallationId(installationDir);
                 // Decided before the save is downloaded: the question may stay open for a while
-                ServerSave? serverSave = await GetServerSave(gameId);
+                // In the player's RomM when it has the game; while it has no save of it yet, the server's (of before) are taken
+                RommSave? romm = await RommPcSaves.RomAsync(gameId) is int rom ? await RommPcSaves.LatestAsync(rom) : null;
+                ServerSave? serverSave = romm != null ? RommPcSaves.AsServerSave(romm, installationId) : await GetServerSave(gameId);
                 string ludusaviTitle = "";
                 DateTime? localChange = null;
-                // None on the server: the player's RomM may have one (saves of before), taken where this PC has none
-                if (serverSave == null && await RommPcSaves.LatestAsync(gameId) is byte[] fromRomm)
-                {
-                    ludusaviTitle = await LudusaviTitleOf(gameId);
-                    if (ludusaviTitle != "" && await GetLocalSaveLastChange(ludusaviTitle, installationDir) == null)
-                    {
-                        await RestoreArchiveAsync(archive => File.WriteAllBytesAsync(archive, fromRomm), installationDir);
-                        return CloudSaveStatus.RestoreSuccess;
-                    }
-                }
                 if (serverSave != null && !serverSave.InstallationId.Equals(installationId, StringComparison.OrdinalIgnoreCase))
                 {
                     ludusaviTitle = await LudusaviTitleOf(gameId);
@@ -130,6 +122,20 @@ namespace gamevault.Helper.Integrations
                     }
                 }
 
+                if (romm != null)
+                {
+                    if (serverSave!.InstallationId.Equals(installationId, StringComparison.OrdinalIgnoreCase))
+                        return CloudSaveStatus.UpToDate;
+                    if (ludusaviTitle == "")
+                    {
+                        ludusaviTitle = await LudusaviTitleOf(gameId);
+                        localChange = ludusaviTitle == "" ? null : await GetLocalSaveLastChange(ludusaviTitle, installationDir);
+                    }
+                    if (ludusaviTitle != "" && localChange != null)
+                        await KeepLocalCopy(gameId, ludusaviTitle, installationDir);
+                    await RestoreArchiveAsync(archive => RommPcSaves.DownloadAsync(romm.Id, archive), installationDir);
+                    return CloudSaveStatus.RestoreSuccess;
+                }
                 using (HttpResponseMessage response = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/savefiles/user/{LoginManager.Instance.GetCurrentUser()!.ID}/game/{gameId}", null, HttpCompletionOption.ResponseHeadersRead))
                 {
                     response.EnsureSuccessStatusCode();
@@ -246,7 +252,9 @@ namespace gamevault.Helper.Integrations
                 string ludusaviTitle = await LudusaviTitleOf(gameId);
                 if (ludusaviTitle != "" && await GetLocalSaveLastChange(ludusaviTitle, installationDir) != null)
                     await KeepLocalCopy(gameId, ludusaviTitle, installationDir);
-                await RestoreArchiveAsync(archive => SaveHistoryService.DownloadAsync(gameId, versionName, archive), installationDir);
+                // A version of RomM's history is named by its id
+                await RestoreArchiveAsync(archive => RommAccount.IsLinked && int.TryParse(versionName, out int rommSave)
+                    ? RommPcSaves.DownloadAsync(rommSave, archive) : SaveHistoryService.DownloadAsync(gameId, versionName, archive), installationDir);
                 await BackupSaveGame(gameId, force: true);
                 return CloudSaveStatus.RestoreSuccess;
             }
@@ -336,9 +344,11 @@ namespace gamevault.Helper.Integrations
         }
 
         /// <summary>Another computer uploaded while this one played: asked before its save is replaced.</summary>
-        private async Task<bool> MayReplaceServerSave(int gameId, string installationDir)
+        private async Task<bool> MayReplaceServerSave(int gameId, string installationDir, int? rom)
         {
-            ServerSave? server = await GetServerSave(gameId);
+            ServerSave? server = rom is int romId
+                ? await RommPcSaves.LatestAsync(romId) is RommSave romm ? RommPcSaves.AsServerSave(romm, GetGameInstallationId(installationDir)) : null
+                : await GetServerSave(gameId);
             if (!SaveSync.ServerChangedMeanwhile(server, GetGameInstallationId(installationDir), ReadLastSync(installationDir)))
                 return true;
             MessageDialogResult result = await Ask(
@@ -479,14 +489,25 @@ namespace gamevault.Helper.Integrations
                         return CloudSaveStatus.BackupCreationFailed;
                     await zipHelper.PackArchive(tempFolder, archive);
 
-                    if (!force && !await MayReplaceServerSave(gameId, installationDir))
-                        return CloudSaveStatus.KeptCloud;
-                    bool success = await UploadSavegame(archive, gameId, installationDir);
-                    if (success)
+                    // To the player's RomM only when it has the game, else to the server only
+                    int? rom;
+                    bool mayReplace;
+                    try
                     {
-                        WriteLastSync(installationDir);
-                        await RommPcSaves.SendAsync(gameId, archive);
+                        rom = await RommPcSaves.RomAsync(gameId);
+                        mayReplace = force || await MayReplaceServerSave(gameId, installationDir, rom);
                     }
+                    catch (Exception ex)
+                    {
+                        // RomM out of reach: not sent elsewhere, the next game sends it
+                        Log.Error(ex, "RomM could not be reached for the cloud save");
+                        return CloudSaveStatus.BackupUploadFailed;
+                    }
+                    if (!mayReplace)
+                        return CloudSaveStatus.KeptCloud;
+                    bool success = await UploadSavegame(archive, gameId, installationDir, rom);
+                    if (success)
+                        WriteLastSync(installationDir);
                     return success ? CloudSaveStatus.BackupSuccess : CloudSaveStatus.BackupUploadFailed;
                 }
                 finally
@@ -651,10 +672,15 @@ namespace gamevault.Helper.Integrations
 
            });
         }
-        private async Task<bool> UploadSavegame(string saveFilePath, int gameId, string installationDir)
+        private async Task<bool> UploadSavegame(string saveFilePath, int gameId, string installationDir, int? rom)
         {
             try
             {
+                if (rom is int romId)
+                {
+                    await RommPcSaves.UploadAsync(gameId, romId, saveFilePath);
+                    return true;
+                }
                 string installationId = GetGameInstallationId(installationDir);
                 using (MemoryStream memoryStream = await FileToMemoryStreamAsync(saveFilePath))
                 {
