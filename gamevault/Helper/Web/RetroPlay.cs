@@ -1,4 +1,5 @@
 using GameVault.Core;
+using GameVault.Core.Retro;
 using gamevault.Localization;
 using gamevault.ViewModels;
 using System;
@@ -47,7 +48,7 @@ namespace gamevault.Helper
                 var before = saves.Snapshot();
                 Process process = RetroArchManager.Launch(game.Platform.System.Core, rom);
                 game.Status = Loc.T("Playing: Select+Start to quit");
-                DiscordHelper.Instance.RetroStarted(game);
+                DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
                 _ = WhenClosedAsync(process, game, before);
             }
             catch (RetroArchManager.MissingBiosException ex)

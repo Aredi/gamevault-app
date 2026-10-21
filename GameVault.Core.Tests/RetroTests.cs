@@ -14,6 +14,16 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void DiscordShows_TheSmallCoverOfRomm()
+        {
+            string? url = RetroSystems.PublicCoverUrl("https://romm.example.com/", "roms/7/235/cover/big.png");
+            Assert.Equal("https://romm.example.com/assets/romm/resources/roms/7/235/cover/small.png", url);
+            Assert.True(GameVault.Core.Integrations.DiscordActivity.IsPublicImage(url));
+            Assert.Null(RetroSystems.PublicCoverUrl(null, "roms/7/235/cover/big.png"));
+            Assert.Null(RetroSystems.PublicCoverUrl("https://romm.example.com", null));
+        }
+
+        [Fact]
         public void TheLaunchFile_IsTheBestExtensionOfTheSystem()
         {
             RetroSystem psx = RetroSystems.All["psx"];

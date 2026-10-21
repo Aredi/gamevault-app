@@ -63,10 +63,13 @@ namespace gamevault.Helper
 
         /// <summary>The retro game RetroArch runs (the game tracker does not see it): kept until it closes.</summary>
         private RetroGame? retroGame;
+        /// <summary>The game's cover on RomM (public), else SanctuaryVault's logo.</summary>
+        private string? retroCover;
 
-        internal void RetroStarted(RetroGame game)
+        internal void RetroStarted(RetroGame game, string? coverUrl)
         {
             retroGame = game;
+            retroCover = coverUrl;
             currentGameId = RetroPresence;
             sessionStartUtc = DateTime.UtcNow;
             minutesBeforeSession = game.MinutesPlayed;
@@ -88,14 +91,21 @@ namespace gamevault.Helper
                 return;
             try
             {
-                var activity = DiscordActivity.Create($"{retroGame.Name} ({retroGame.Platform.Name})", minutesBeforeSession, sessionStartUtc, DateTime.UtcNow, null,
+                var activity = DiscordActivity.Create($"{retroGame.Name} ({retroGame.Platform.Name})", minutesBeforeSession, sessionStartUtc, DateTime.UtcNow, retroCover,
                     minutes => Loc.F("{0} played in total", (string)new GameTimeConverter().Convert(minutes, typeof(string), null, CultureInfo.CurrentCulture)!));
                 Client()?.SetPresence(new RichPresence
                 {
                     Details = activity.Details,
                     State = activity.State,
                     Timestamps = new Timestamps(activity.SessionStartUtc),
-                    Assets = new Assets { LargeImageKey = activity.LargeImage, LargeImageText = activity.LargeImageText },
+                    Assets = new Assets
+                    {
+                        LargeImageKey = activity.LargeImage,
+                        LargeImageText = activity.LargeImageText,
+                        // As the library's games: the cover large, SanctuaryVault's logo small in its corner
+                        SmallImageKey = activity.LargeImage == DiscordActivity.LogoAsset ? null : DiscordActivity.LogoAsset,
+                        SmallImageText = "SanctuaryVault",
+                    },
                     Buttons = new[] { new Button { Label = "SanctuaryVault", Url = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}" } },
                 });
             }

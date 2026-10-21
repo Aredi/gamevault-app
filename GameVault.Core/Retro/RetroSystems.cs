@@ -28,6 +28,14 @@ namespace GameVault.Core.Retro
             new RetroSystem("3ds", "azahar", new[] { "cxi", "zcxi", "3ds", "cci", "zcci", "3dsx", "z3dsx", "app", "elf", "cia" }, CoverRatio: 0.89),
         }.ToDictionary(s => s.Slug);
 
+        /// <summary>
+        /// A game's cover as anyone reaches it (RomM serves its covers without a sign-in), for Discord's activity: the small
+        /// one, Discord shows it at 128 px. Null without RomM's public address or a cover.
+        /// </summary>
+        public static string? PublicCoverUrl(string? rommUrl, string? cover) =>
+            string.IsNullOrEmpty(rommUrl) || string.IsNullOrEmpty(cover) ? null
+                : $"{rommUrl.TrimEnd('/')}/assets/romm/resources/{cover.Replace("/cover/big.", "/cover/small.")}";
+
         /// <summary>The file to start in a game's folder; null when none has an extension the emulator knows.</summary>
         public static string? LaunchFile(RetroSystem system, IEnumerable<string> files)
         {
