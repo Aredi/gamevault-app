@@ -291,9 +291,9 @@ namespace gamevault.Helper
         private async Task PrepareAsync()
         {
             string downloaded = Directory.EnumerateFiles(Folder).Where(f => Path.GetFileName(f) != InfoFile).OrderByDescending(File.GetLastWriteTimeUtc).First();
-            if ((Game.Multi || Game.Platform.System.IsRpcs3) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z")
+            if ((Game.Multi || Game.Platform.System.IsStandalone) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z")
             {
-                // A game in several files (a CD and its tracks, a PS3 game's folder): RomM sends them zipped; a PS3 ISO may be zipped too
+                // A game in several files (a CD and its tracks, a PS3 game's folder): RomM sends them zipped; a PS3 ISO or a Switch card may be zipped too
                 var sevenZip = new SevenZipHelper();
                 sevenZip.Process += (_, e) => Preparing(Loc.F("Unpacking... {0}%", e.PercentageDone));
                 State = Loc.F("Unpacking... {0}%", 0);
@@ -363,6 +363,9 @@ namespace gamevault.Helper
             // A PS3 package is installed into the console with its licence: not done here, told before gigabytes come down
             if (game.Platform.System.IsRpcs3 && string.Equals(Path.GetExtension(game.FileName), ".pkg", StringComparison.OrdinalIgnoreCase))
                 return Loc.T("PS3 packages (.pkg) can not be played here: an ISO or the game's folder is needed in RomM.");
+            // A Switch update or DLC is installed into the console over its game: not done here
+            if (game.Platform.System.IsEden && RetroSystems.IsSwitchAddOn(game.FileName))
+                return Loc.T("This is an update or a DLC of a Switch game: Eden plays the game itself (.xci or .nsp).");
             // Most 3DS packages are encrypted, which Azahar can not play: told before gigabytes come down
             if (string.Equals(Path.GetExtension(game.FileName), ".cia", StringComparison.OrdinalIgnoreCase)
                 && CiaReader.Inspect(await RetroService.ReadStartAsync(game, CiaReader.HeaderBytes), game.Size).Verdict != CiaReader.Verdict.Playable)

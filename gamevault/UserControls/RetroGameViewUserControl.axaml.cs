@@ -152,8 +152,8 @@ namespace gamevault.UserControls
         {
             try
             {
-                if (ViewModel.Game.Platform.System.IsRpcs3)
-                    await Rpcs3Manager.OpenAsync(text => ViewModel.Game.Status = text);
+                if (StandaloneEmulator.Of(ViewModel.Game.Platform.System) is StandaloneEmulator emulator)
+                    await emulator.OpenAsync(text => ViewModel.Game.Status = text);
                 else
                     await RetroArchManager.OpenMenuAsync(text => ViewModel.Game.Status = text);
             }

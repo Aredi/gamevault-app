@@ -4,6 +4,7 @@ using GameVault.Core.Retro;
 using gamevault.Helper;
 using gamevault.UserControls;
 using gamevault.ViewModels;
+using System.Text;
 
 namespace GameVault.UiTests
 {
@@ -88,7 +89,7 @@ namespace GameVault.UiTests
                 await page.LoadPlatformsAsync();
                 await TestSession.WaitUntil(() => page.Shown.Any(), TimeSpan.FromSeconds(10), "the NES games");
 
-                Assert.Equal(new[] { "nes", "ps3", "psx" }, page.ViewModel.Platforms.Select(p => p.Slug).Order());
+                Assert.Equal(new[] { "nes", "ps3", "psx", "switch" }, page.ViewModel.Platforms.Select(p => p.Slug).Order());
                 RetroGame zelda = Assert.Single(page.Shown);
                 Assert.Equal(("Zelda", "nes", false), (zelda.Name, zelda.Platform.Slug, zelda.Installed));
 
@@ -137,10 +138,10 @@ namespace GameVault.UiTests
             var session = await TestSession.GetAsync();
             SanctuaryService.Current = session.Server.Url;
             // RPCS3 as if already downloaded (the test does not fetch 90 MB), its firmware not yet installed
-            Rpcs3Layout layout = Rpcs3Manager.Layout;
+            Rpcs3Layout layout = StandaloneEmulator.Rpcs3.Layout;
             Directory.CreateDirectory(Path.GetDirectoryName(layout.Executable)!);
             File.WriteAllText(layout.Executable, "");
-            File.WriteAllText(layout.VersionFile, Rpcs3Layout.Version);
+            File.WriteAllText(layout.VersionFile, layout.Version);
             try
             {
                 var page = new RetroUserControl();
@@ -164,7 +165,7 @@ namespace GameVault.UiTests
                 string folder = Path.Combine(session.LibraryRoot, "GameVault", "Retro", "ps3", "60", "Infamous");
                 Assert.Equal(Path.Combine(folder, "PS3_GAME", "USRDIR", "EBOOT.BIN"), infamous.RomFile);
                 Assert.Equal(new[] { "--no-gui", "--user-id", Rpcs3Layout.UserId(RetroArchManager.Player), folder }, layout.Arguments(RetroArchManager.Player, infamous.RomFile!));
-                Assert.Contains("infoBoxEnabledWelcome=false", File.ReadAllText(layout.GuiSettingsFiles.First()));
+                Assert.Contains("infoBoxEnabledWelcome=false", File.ReadAllText(layout.SettingsFiles.First()));
 
                 // Its saves are what it writes in the console's storage, for the player
                 var saves = RetroCloudSaves.Of(infamous);
@@ -182,6 +183,78 @@ namespace GameVault.UiTests
             }
             finally
             {
+                SanctuaryService.Current = SanctuaryService.Url;
+                DownloadsViewModel.Instance.RetroDownloads.Clear();
+                Directory.Delete(layout.Directory, true);
+                Directory.Delete(Path.Combine(session.LibraryRoot, "GameVault", "Retro"), true);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task ASwitchGame_IsUnpackedFromItsFolder_AndEdenGetsTheKeysAndFirmwareFromRomm_NothingToAnswer()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            // Eden as if already downloaded (the test does not fetch 70 MB), its keys and firmware not yet there
+            EdenLayout layout = StandaloneEmulator.Eden.Layout;
+            Directory.CreateDirectory(Path.GetDirectoryName(layout.Executable)!);
+            File.WriteAllText(layout.Executable, "");
+            File.WriteAllText(layout.VersionFile, layout.Version);
+            try
+            {
+                var page = new RetroUserControl();
+                await page.LoadPlatformsAsync();
+                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "switch"));
+                await TestSession.WaitUntil(() => page.Shown.Count() == 2, TimeSpan.FromSeconds(10), "the Switch games");
+
+                // A DLC is installed over its game: refused before its 10 GB come down
+                RetroGame dlc = page.Shown.Single(g => g.Name.Contains("DLC"));
+                await RetroPlay.InstallAsync(dlc);
+                Assert.Contains("DLC", dlc.Status);
+                Assert.Empty(DownloadsViewModel.Instance.RetroDownloads);
+
+                // The folder comes zipped and is unpacked; without the keys in RomM, the game waits for them
+                RetroGame game = page.Shown.Single(g => g.Name == "1-2-Switch");
+                await RetroPlay.InstallAsync(game);
+                RetroDownload download = Assert.Single(DownloadsViewModel.Instance.RetroDownloads);
+                await TestSession.WaitUntil(() => download.IsDone || download.IsFailed, TimeSpan.FromSeconds(20), "the Switch download");
+                Assert.True(game.Installed, download.State);
+                Assert.Contains("prod.keys", download.State);
+                Assert.Equal("1-2-Switch.xci", Path.GetFileName(game.RomFile));
+                Assert.Equal(new[] { "-u", "0", "-g", game.RomFile! }, layout.Arguments(RetroArchManager.Player, game.RomFile!));
+                // No question at its start: no update check, no "stop?", and its settings there before it first runs (no migration from yuzu)
+                Assert.Contains("check_for_updates=false", File.ReadAllText(layout.SettingsFiles.Single()));
+
+                // Once RomM has them: the keys in its keys folder, the firmware's .nca in the console's storage
+                session.Server.SwitchFirmware = (Encoding.ASCII.GetBytes("master_key_00 = 00"), FakeGameVaultServer.Zip(("0a1b.nca", "nca"), ("0c2d.cnmt.nca", "cnmt")));
+                await RetroArchManager.EnsureReadyAsync(game.Platform, _ => { });
+                Assert.True(layout.HasFirmware);
+                Assert.Equal("master_key_00 = 00", File.ReadAllText(Path.Combine(layout.KeysDirectory, "prod.keys")));
+                Assert.Equal(2, Directory.GetFiles(layout.FirmwareDirectory, "*.nca").Length);
+
+                // The player is the console's first user when the game starts (Eden itself is not run here)
+                Assert.ThrowsAny<Exception>(() => StandaloneEmulator.Eden.Launch(RetroArchManager.Player, game.RomFile!));
+                Assert.Equal(EdenLayout.UserId(RetroArchManager.Player), File.ReadAllBytes(layout.ProfilesFile)[0x10..0x20]);
+
+                // Its saves are what it writes in the player's user folder
+                var saves = RetroCloudSaves.Of(game);
+                var before = saves.Snapshot();
+                string save = Path.Combine(layout.SavesDirectory(RetroArchManager.Player), "01000320000CC000", "save.dat");
+                Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+                File.WriteAllText(save, "round 3");
+                saves.Track(before);
+                Assert.Contains(save, saves.Files());
+
+                // Uninstalled with the other emulators: the saves and the users stay
+                await RetroArchManager.UninstallAsync();
+                Assert.False(File.Exists(layout.Executable));
+                Assert.False(layout.HasFirmware);
+                Assert.True(File.Exists(save));
+                Assert.True(File.Exists(layout.ProfilesFile));
+            }
+            finally
+            {
+                session.Server.SwitchFirmware = null;
                 SanctuaryService.Current = SanctuaryService.Url;
                 DownloadsViewModel.Instance.RetroDownloads.Clear();
                 Directory.Delete(layout.Directory, true);

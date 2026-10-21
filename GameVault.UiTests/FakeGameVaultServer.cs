@@ -61,6 +61,10 @@ namespace GameVault.UiTests
         public byte[]? Ps3Firmware { get; set; }
         public static readonly byte[] Ps3FolderGame = Zip(("Infamous/PS3_DISC.SFB", "disc"), ("Infamous/PS3_GAME/PARAM.SFO", "sfo"), ("Infamous/PS3_GAME/USRDIR/EBOOT.BIN", "eboot"),
             ("Infamous/PS3_GAME/USRDIR/bin/EBOOT.BIN", "other"));
+        /// <summary>A Switch game card in its folder with its dump's files, as RomM zips it.</summary>
+        public static readonly byte[] SwitchFolderGame = Zip(("1-2-Switch.xci/1-2-Switch (Initial Data).bin", "data"), ("1-2-Switch.xci/1-2-Switch.xci", "xci"));
+        /// <summary>The Switch's keys and firmware (a zip of its .nca) in RomM; none when null.</summary>
+        public (byte[] Keys, byte[] Firmware)? SwitchFirmware { get; set; }
         /// <summary>The player's retro saves, per game ("nes-40"): (zip, when saved).</summary>
         public ConcurrentDictionary<string, (byte[] Zip, long SavedAt)> RetroSaves { get; } = new();
         /// <summary>Older versions of the retro saves: "nes-40-1000.zip" → (when saved, zip).</summary>
@@ -203,9 +207,29 @@ namespace GameVault.UiTests
                     await Json(response, Users.IsEmpty ? new[] { Admin } : Users.Values.OrderBy(u => u.ID).ToArray());
                 else if ((match = Regex.Match(path, @"^/api/users/(\d+)$")).Success && Users.TryGetValue(int.Parse(match.Groups[1].Value), out User? user))
                     await Json(response, user);
-                // RomM through the SanctuaryVault service: a NES game, and a platform the client has no emulator for
+                // RomM through the SanctuaryVault service: a NES game, and a platform the client has no emulator for (the PS4)
                 else if (path == "/retro/platforms")
-                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 19, slug = "psx", name = "PlayStation", count = 1 }, new { id = 21, slug = "ps3", name = "PlayStation 3", count = 2 }, new { id = 9, slug = "switch", name = "Switch", count = 4 } });
+                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 19, slug = "psx", name = "PlayStation", count = 1 }, new { id = 21, slug = "ps3", name = "PlayStation 3", count = 2 }, new { id = 9, slug = "switch", name = "Switch", count = 2 }, new { id = 30, slug = "ps4", name = "PlayStation 4", count = 4 } });
+                else if (path == "/retro/platforms/9/games")
+                    await Json(response, new[]
+                    {
+                        new { id = 70, name = "1-2-Switch", fileName = "1-2-Switch.xci", size = SwitchFolderGame.LongLength, multi = true },
+                        new { id = 71, name = "Assassin's Creed Brotherhood DLC", fileName = "Assassins Creed - Brotherhood [DLC][0100670014483001].nsp", size = 10434927777L, multi = false },
+                    });
+                else if (path == "/retro/games/70/content")
+                {
+                    response.ContentType = "application/zip";
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''1-2-Switch.xci.zip");
+                    response.ContentLength64 = SwitchFolderGame.LongLength;
+                    await response.OutputStream.WriteAsync(SwitchFolderGame);
+                }
+                else if (path == "/retro/platforms/9/firmware")
+                    await Json(response, SwitchFirmware is not var (keys, firmware) ? Array.Empty<object>()
+                        : new object[] { new { id = 10, fileName = "prod.keys", size = keys.LongLength }, new { id = 11, fileName = "Firmware 20.1.0.zip", size = firmware.LongLength } });
+                else if (path == "/retro/firmware/10/content" && SwitchFirmware is var (switchKeys, _))
+                    await response.OutputStream.WriteAsync(switchKeys);
+                else if (path == "/retro/firmware/11/content" && SwitchFirmware is var (_, switchFirmware))
+                    await response.OutputStream.WriteAsync(switchFirmware);
                 else if (path == "/retro/platforms/21/games")
                     await Json(response, new[]
                     {

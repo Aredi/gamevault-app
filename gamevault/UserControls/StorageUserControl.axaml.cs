@@ -81,7 +81,7 @@ namespace gamevault.UserControls
                 return all;
             });
             long emulatorSize = await Task.Run(RetroArchManager.InstalledSize);
-            emulator = emulatorSize > 0 ? new InstalledGameUsage(int.MinValue, Rpcs3Manager.Layout.IsInstalled ? "RetroArch · RPCS3" : "RetroArch", RetroArchManager.Layout.Directory, emulatorSize, 0, null, DateTime.UtcNow) : null;
+            emulator = emulatorSize > 0 ? new InstalledGameUsage(int.MinValue, string.Join(" · ", StandaloneEmulator.All.Where(e => e.Layout.IsInstalled).Select(e => e.Name).Prepend("RetroArch")), RetroArchManager.Layout.Directory, emulatorSize, 0, null, DateTime.UtcNow) : null;
             uiDrives.ItemsSource = DriveRow.For(games.Select(g => g.Usage).Concat(emulator != null ? new[] { emulator } : Array.Empty<InstalledGameUsage>()));
             uiLoading.IsVisible = false;
             Show();
@@ -133,7 +133,7 @@ namespace gamevault.UserControls
             if (row.Retro != null || row.IsEmulator)
             {
                 string question = row.IsEmulator
-                    ? Loc.T("Uninstall the emulators (RetroArch, its cores, RPCS3), the BIOS and the PS3 firmware? They come back at the next retro game; the saves are kept.")
+                    ? Loc.T("Uninstall the emulators (RetroArch, its cores, RPCS3, Eden), the BIOS and the consoles' firmware? They come back at the next retro game; the saves are kept.")
                     : Loc.F("Delete '{0}' from this PC? Its saves are kept.", row.Title);
                 if (!await DialogService.ConfirmAsync(question, Loc.T("Storage")))
                     return;

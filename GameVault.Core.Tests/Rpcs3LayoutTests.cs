@@ -44,7 +44,8 @@ namespace GameVault.Core.Tests
         public void ItsWindowSettings_GetTheClients_AndKeepTheOthers()
         {
             string existing = "[GameList]\nmarginFactor=0.09\n\n[main_window]\nlastExplorePathPUP=/tmp\ninfoBoxEnabledWelcome=true\n[Meta]\nattachCommandLine=false\n";
-            string merged = Rpcs3Layout.GuiSettings(existing);
+            var layout = new Rpcs3Layout(Root, windows: false);
+            string merged = layout.Settings(existing);
             Assert.Contains("marginFactor=0.09", merged);
             Assert.Contains("lastExplorePathPUP=/tmp", merged);
             Assert.Contains("infoBoxEnabledWelcome=false", merged);
@@ -52,8 +53,8 @@ namespace GameVault.Core.Tests
             Assert.Contains("checkUpdateStart=false", merged);
             // In their section, before the next one
             Assert.True(merged.IndexOf("checkUpdateStart", StringComparison.Ordinal) < merged.IndexOf("[Meta]", StringComparison.Ordinal));
-            Assert.Equal(merged, Rpcs3Layout.GuiSettings(merged));
-            Assert.StartsWith("[main_window]\ninfoBoxEnabledWelcome=false", Rpcs3Layout.GuiSettings(""));
+            Assert.Equal(merged, layout.Settings(merged));
+            Assert.StartsWith("[main_window]\ninfoBoxEnabledWelcome=false", layout.Settings(""));
         }
     }
 }

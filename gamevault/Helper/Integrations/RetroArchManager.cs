@@ -31,10 +31,10 @@ namespace gamevault.Helper
         /// <summary>RetroArch, then what the platform needs: its core, the core's data files and the BIOS.</summary>
         public static async Task EnsureReadyAsync(RetroPlatform platform, Action<string> status)
         {
-            // The PS3 is RPCS3's
-            if (platform.System.IsRpcs3)
+            // The PS3 is RPCS3's, the Switch Eden's
+            if (StandaloneEmulator.Of(platform.System) is StandaloneEmulator emulator)
             {
-                await Rpcs3Manager.EnsureReadyAsync(platform, status);
+                await emulator.EnsureReadyAsync(platform, status);
                 return;
             }
             await preparing.WaitAsync();
@@ -160,8 +160,8 @@ namespace gamevault.Helper
         /// <summary>RetroArch, its cores, their files and the BIOS: what goes with "Uninstall" (the saves stay).</summary>
         public static IEnumerable<string> InstalledParts => new[] { Layout.AppDirectory, Layout.CoresDirectory, Layout.SystemDirectory };
 
-        /// <summary>RetroArch and RPCS3, as one "emulators" line of the storage.</summary>
-        public static long InstalledSize() => InstalledParts.Where(Directory.Exists).Sum(GameVault.Core.Storage.StorageCleanup.DirectorySize) + Rpcs3Manager.InstalledSize();
+        /// <summary>RetroArch, RPCS3 and Eden, as one "emulators" line of the storage.</summary>
+        public static long InstalledSize() => InstalledParts.Where(Directory.Exists).Sum(GameVault.Core.Storage.StorageCleanup.DirectorySize) + StandaloneEmulator.All.Sum(e => e.InstalledSize());
 
         /// <summary>Taken again from the internet at the next game; the saves and their backups are kept.</summary>
         public static async Task UninstallAsync()
@@ -171,12 +171,13 @@ namespace gamevault.Helper
             {
                 foreach (string part in InstalledParts.Where(Directory.Exists))
                     Directory.Delete(part, true);
-                // RetroArch may never have been installed (only PS3 games played)
+                // RetroArch may never have been installed (only PS3 or Switch games played)
                 foreach (string file in new[] { Layout.VersionFile, Layout.ConfigFile }.Where(File.Exists))
                     File.Delete(file);
             }
             finally { preparing.Release(); }
-            await Rpcs3Manager.UninstallAsync();
+            foreach (StandaloneEmulator emulator in StandaloneEmulator.All)
+                await emulator.UninstallAsync();
         }
 
         public static Process Launch(string core, string rom) => Start(Layout.Arguments(core, rom));

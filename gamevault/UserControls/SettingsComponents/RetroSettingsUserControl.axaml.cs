@@ -35,8 +35,8 @@ namespace gamevault.UserControls.SettingsComponents
                 ? Loc.F("Version {0} installed · {1}", RetroArchLayout.Version, StorageCleanup.FormatSize(size))
                 : Loc.T("Not installed yet: it is installed with the first retro game.");
             uiUninstall.IsEnabled = size > 0;
-            var cores = RetroSystems.All.Values.Where(s => s.IsRpcs3 ? Rpcs3Manager.Layout.IsInstalled : File.Exists(layout.CoreFile(s.Core)))
-                .Select(s => s.IsRpcs3 ? $"{s.Name} (RPCS3)" : s.Name).Distinct().ToList();
+            var cores = RetroSystems.All.Values.Where(s => StandaloneEmulator.Of(s) is StandaloneEmulator emulator ? emulator.Layout.IsInstalled : File.Exists(layout.CoreFile(s.Core)))
+                .Select(s => StandaloneEmulator.Of(s) is StandaloneEmulator emulator ? $"{s.Name} ({emulator.Name})" : s.Name).Distinct().ToList();
             uiCores.Text = cores.Count > 0 ? Loc.F("Emulators installed for: {0}", string.Join(", ", cores)) : "";
 
             uiBios.ItemsSource = RetroSystems.All.Values.Where(s => s.FirmwareFolder != null).Select(system =>
@@ -45,9 +45,7 @@ namespace gamevault.UserControls.SettingsComponents
                 var files = Directory.Exists(folder) ? Directory.EnumerateFiles(folder).Select(Path.GetFileName).Where(f => !f!.StartsWith('.')).ToList() : new();
                 return new BiosRow(system.Name,
                     files.Count > 0 ? Loc.F("On this PC: {0}", string.Join(", ", files)) : Loc.T("Not on this PC yet: taken from RomM at the first game"));
-            }).Append(new BiosRow(RetroSystems.All["ps3"].Name, Rpcs3Manager.Layout.HasFirmware
-                    ? Loc.T("Firmware installed in RPCS3")
-                    : Loc.T("Not on this PC yet: PS3UPDAT.PUP is taken from RomM at the first game, RPCS3 asks to install it"))).ToList();
+            }).Concat(RetroSystems.All.Values.Where(s => s.IsStandalone).Select(s => new BiosRow(s.Name, StandaloneEmulator.Of(s)!.FirmwareState))).ToList();
 
             await RefreshRommAsync();
             uiSavesState.Text = SettingsViewModel.Instance.CloudSaves
@@ -126,7 +124,7 @@ namespace gamevault.UserControls.SettingsComponents
 
         private async void Uninstall_Click(object? sender, RoutedEventArgs e)
         {
-            if (!await DialogService.ConfirmAsync(Loc.T("Uninstall the emulators (RetroArch, its cores, RPCS3), the BIOS and the PS3 firmware? They come back at the next retro game; the saves are kept."), "RetroArch"))
+            if (!await DialogService.ConfirmAsync(Loc.T("Uninstall the emulators (RetroArch, its cores, RPCS3, Eden), the BIOS and the consoles' firmware? They come back at the next retro game; the saves are kept."), "RetroArch"))
                 return;
             try { await RetroArchManager.UninstallAsync(); }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }

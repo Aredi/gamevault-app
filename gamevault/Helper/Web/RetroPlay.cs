@@ -46,8 +46,9 @@ namespace gamevault.Helper
                     MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);
                 var saves = RetroCloudSaves.Of(game);
                 var before = saves.Snapshot();
-                Process process = game.Platform.System.IsRpcs3 ? Rpcs3Manager.Launch(RetroArchManager.Player, rom) : RetroArchManager.Launch(game.Platform.System.Core, rom);
-                game.Status = game.Platform.System.IsRpcs3 ? Loc.T("Playing: close the game's window to quit") : Loc.T("Playing: Select+Start to quit");
+                StandaloneEmulator? emulator = StandaloneEmulator.Of(game.Platform.System);
+                Process process = emulator != null ? emulator.Launch(RetroArchManager.Player, rom) : RetroArchManager.Launch(game.Platform.System.Core, rom);
+                game.Status = emulator != null ? Loc.T("Playing: close the game's window to quit") : Loc.T("Playing: Select+Start to quit");
                 DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
                 _ = WhenClosedAsync(process, game, before);
             }
