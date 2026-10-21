@@ -1,3 +1,5 @@
+using System;
+
 namespace gamevault.Helper
 {
     /// <summary>
@@ -14,7 +16,10 @@ namespace gamevault.Helper
         /// <summary>The page to send to a friend: download links and how to sign in.</summary>
         public const string InviteUrl = Url + "/invite";
 
-        /// <summary>The address used: <see cref="Url"/>, except in the tests (their fake server).</summary>
-        internal static string Current { get; set; } = Url;
+        /// <summary>
+        /// The address used: <see cref="Url"/>, except in the tests (their fake server) or when SANCTUARYVAULT_SERVICE_URL
+        /// names a test service (a branch tried before its release).
+        /// </summary>
+        internal static string Current { get; set; } = Environment.GetEnvironmentVariable("SANCTUARYVAULT_SERVICE_URL") is { Length: > 0 } test ? test.TrimEnd('/') : Url;
     }
 }
