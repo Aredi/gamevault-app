@@ -9,10 +9,12 @@
         <StackPanel Spacing="4" Margin="0,0,20,12">
             <TextBlock Classes="pageTitle" Text="{l:T 'Retro'}" />
             <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                       Text="{l:T 'The games of the other platforms, played with RetroArch: it is installed and set up the first time. Select+Start quits the game.'}" />
+                       Text="{l:T 'The games of the other platforms, played with RetroArch: it is installed and set up the first time. Select+Start quits the game, L3+R3 opens its menu. The saves follow you from PC to PC.'}" />
             <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,12,0,0">
                 <ComboBox x:Name="uiPlatforms" MinWidth="220" SelectionChanged="Platform_SelectionChanged" />
                 <TextBox x:Name="uiSearch" Width="260" Watermark="{l:T 'Search'}" TextChanged="Search_TextChanged" />
+                <Button x:Name="uiMenu" Classes="ghost" Content="{l:T 'RetroArch settings'}" Click="Menu_Click"
+                        ToolTip.Tip="{l:T 'RetroArch without a game: controls, picture, sound'}" />
             </StackPanel>
             <TextBlock x:Name="uiMessage" Classes="muted" FontSize="13" Margin="0,16" IsVisible="False" TextWrapping="Wrap" />
             <local:ProgressRing x:Name="uiLoading" IsActive="False" IsVisible="False" Width="32" Height="32" HorizontalAlignment="Left" Margin="10,16" />

@@ -13,10 +13,10 @@ namespace GameVault.Core.Tests
             Assert.Equal("/data/retroarch/RetroArch-Linux-x86_64/RetroArch-Linux-x86_64.AppImage", layout.Executable);
             Assert.Equal($"https://buildbot.libretro.com/stable/{RetroArchLayout.Version}/linux/x86_64/RetroArch.7z", layout.PackageUrl);
             Assert.Equal("https://buildbot.libretro.com/nightly/linux/x86_64/latest/mgba_libretro.so.zip", layout.CoreUrl("mgba"));
-            string config = layout.Config();
+            string config = layout.Config("12");
             Assert.Contains($"joypad_autoconfig_dir = \"{home}/autoconfig\"\n", config);
             Assert.Contains($"libretro_info_path = \"{home}/cores\"\n", config);
-            Assert.Contains("savefile_directory = \"/data/retroarch/saves\"\n", config);
+            Assert.Contains("savefile_directory = \"/data/retroarch/saves/12\"\n", config);
             Assert.Contains("input_quit_gamepad_combo = \"4\"\n", config);
             // The only menu theme unpacked
             Assert.Contains("menu_driver = \"ozone\"\n", config);
@@ -32,7 +32,7 @@ namespace GameVault.Core.Tests
 
             Assert.Equal(Path.Combine(app, "retroarch.exe"), layout.Executable);
             Assert.EndsWith("/windows/x86_64/latest/snes9x_libretro.dll.zip", layout.CoreUrl("snes9x"));
-            Assert.Contains($"libretro_info_path = \"{Path.Combine(app, "info")}\"\n", layout.Config());
+            Assert.Contains($"libretro_info_path = \"{Path.Combine(app, "info")}\"\n", layout.Config("1"));
         }
 
         [Fact]

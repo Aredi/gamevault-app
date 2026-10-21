@@ -13,7 +13,7 @@ services:
       # Optional: game requests go to the RomM-ComM Discord bot (its REQUESTS_API_KEY), with the ones made in Discord
       # ROMM_COMM_URL: http://romm-sync:8095
       # ROMM_COMM_API_KEY: change-me
-      # Optional: the games of the other platforms (NES, SNES, GBA, DS), from RomM, played in the client with RetroArch
+      # Optional: the games of the other platforms (NES... GameCube, PS2, 3DS), from RomM, played in the client with RetroArch
       # ROMM_URL: http://romm:8080
       # ROMM_USERNAME: sanctuaryvault
       # ROMM_PASSWORD: change-me

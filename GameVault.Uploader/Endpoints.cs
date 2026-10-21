@@ -27,7 +27,7 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -63,6 +63,31 @@ namespace GameVault.Uploader
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.GamesAsync(platformId, ct))));
             app.MapGet("/retro/covers/{**path}", (string path, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => { await romm.CoverAsync(path, context.Response, ct); return Results.Empty; }));
+            app.MapGet("/retro/platforms/{platformId:int}/firmware", (int platformId, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.FirmwareAsync(platformId, ct))));
+            app.MapGet("/retro/firmware/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => { await romm.FirmwareContentAsync(id, context.Response, ct); return Results.Empty; }));
+
+            // The saves of the retro games: each player has their own, kept here (RomM only sees the service's account)
+            app.MapGet("/retro/saves/{set}/info", (string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct) =>
+                AsSaverAsync(set, request, users, saves, ct, id =>
+                    saves.Get(id, set) is { } found ? Results.Json(new { savedAt = found.SavedAt }) : Results.NotFound()));
+            app.MapGet("/retro/saves/{set}", (string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct) =>
+                AsSaverAsync(set, request, users, saves, ct, id =>
+                    saves.Get(id, set) is { } found ? Results.File(found.File, "application/zip", $"{set}.zip") : Results.NotFound()));
+            app.MapPut("/retro/saves/{set}", async (string set, HttpContext context, AdminCheck users, RetroSaveStore saves, CancellationToken ct) =>
+            {
+                // Bigger than the upload chunks Kestrel is limited to
+                if (context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+                    limit.MaxRequestBodySize = RetroSaveStore.MaxSize + 1;
+                IResult? refused = await RefuseSaverAsync(set, context.Request, users, saves, ct);
+                if (refused != null)
+                    return refused;
+                int id = (await users.CheckUserAsync(context.Request, ct)).Id;
+                return await saves.SaveAsync(id, set, context.Request.Body, ct) is long savedAt
+                    ? Results.Json(new { savedAt })
+                    : Results.Json(new { error = $"Saves can have at most {RetroSaveStore.MaxSize >> 20} MB." }, statusCode: StatusCodes.Status413PayloadTooLarge);
+            });
             app.MapGet("/retro/games/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => { await romm.ContentAsync(id, context.Request, context.Response, ct); return Results.Empty; }));
 
@@ -287,6 +312,19 @@ namespace GameVault.Uploader
                 return Results.Json(new { error = "Remote installs are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
             return action(check.Id);
         }
+
+        private static async Task<IResult?> RefuseSaverAsync(string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct)
+        {
+            var check = await users.CheckUserAsync(request, ct);
+            if (!check.Allowed)
+                return Results.Json(new { error = check.Message }, statusCode: check.Status);
+            if (!saves.Enabled)
+                return Results.Json(new { error = "Retro saves are not kept by this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return RetroSaveStore.IsValidSet(set) ? null : Results.Json(new { error = "Unknown set of saves." }, statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        private static async Task<IResult> AsSaverAsync(string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct, Func<int, IResult> action) =>
+            await RefuseSaverAsync(set, request, users, saves, ct) ?? action((await users.CheckUserAsync(request, ct)).Id);
 
         private static async Task<IResult> FromRommAsync(HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct, Func<Task<IResult>> action)
         {

@@ -84,8 +84,14 @@ namespace GameVault.Uploader.Tests
             HttpResponseMessage answer = path switch
             {
                 "/api/platforms" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new object[] { new { id = 3, slug = "nes", name = "Nintendo Entertainment System", display_name = "NES", rom_count = 1 }, new { id = 4, slug = "dos", name = "DOS", display_name = (string?)null, rom_count = 0 } }) },
-                "/api/roms?platform_ids=3&limit=10000&order_by=name" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", fs_name = "Zelda (E).nes", fs_size_bytes = Rom.Length, path_cover_large = "/assets/romm/resources/roms/3/40/cover/big.png?ts=1", summary = "A sword" } } }) },
+                "/api/roms?platform_ids=3&limit=10000&order_by=name" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", fs_name = "Zelda (E).nes", fs_size_bytes = Rom.Length, path_cover_large = "/assets/romm/resources/roms/3/40/cover/big.png?ts=1", summary = "A sword", has_multiple_files = false } } }) },
                 "/api/roms/40" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 40, fs_name = "Zelda (E).nes" }) },
+                // A game in a folder: RomM names the file it sends
+                "/api/roms/41" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 41, fs_name = "Bleach [RBLP8P]" }) },
+                "/api/roms/41/content/Bleach%20%5BRBLP8P%5D" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(Rom) { Headers = { ContentDisposition = new("attachment") { FileNameStar = "RBLP8P.wbfs" } } } },
+                "/api/firmware?platform_id=3" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new object[] { new { id = 7, file_name = "scph5501.bin", file_size_bytes = 4, missing_from_fs = false }, new { id = 8, file_name = "gone.bin", file_size_bytes = 4, missing_from_fs = true } }) },
+                "/api/firmware/7" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 7, file_name = "scph5501.bin" }) },
+                "/api/firmware/7/content/scph5501.bin" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 1, 2, 3, 4 }) },
                 "/api/roms/40/content/Zelda%20%28E%29.nes" => Part(request),
                 "/assets/romm/resources/roms/3/40/cover/big.png" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 0x89, 0x50 }) { Headers = { ContentType = new("image/png") } } },
                 _ => new(HttpStatusCode.NotFound),
@@ -110,6 +116,7 @@ namespace GameVault.Uploader.Tests
         private readonly string profiles = Path.Combine(Path.GetTempPath(), $"gv-profiles-{Guid.NewGuid():N}");
         private readonly string saves = Path.Combine(Path.GetTempPath(), $"gv-saves-{Guid.NewGuid():N}");
         private readonly string remote = Path.Combine(Path.GetTempPath(), $"gv-remote-{Guid.NewGuid():N}");
+        private readonly string retroSaves = Path.Combine(Path.GetTempPath(), $"gv-retro-saves-{Guid.NewGuid():N}");
         private readonly FakeGameVault gameVault = new();
         private readonly FakeRequestsBot bot = new();
         private readonly FakeRomm romm = new();
@@ -135,6 +142,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("PROFILES_DIRECTORY", profiles);
                 host.UseSetting("SAVEFILES_DIRECTORY", saves);
                 host.UseSetting("REMOTE_INSTALLS_DIRECTORY", remote);
+                host.UseSetting("RETRO_SAVES_DIRECTORY", retroSaves);
                 host.UseSetting("ROMM_COMM_URL", "http://romm-sync.test:8095");
                 host.UseSetting("ROMM_COMM_API_KEY", "bot-key");
                 host.UseSetting("ROMM_URL", "http://romm.test:8080");
@@ -157,6 +165,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(profiles, true); } catch { }
             try { Directory.Delete(saves, true); } catch { }
             try { Directory.Delete(remote, true); } catch { }
+            try { Directory.Delete(retroSaves, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -385,7 +394,34 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.PartialContent, part.StatusCode);
             Assert.Equal(FakeRomm.Rom[4..], await part.Content.ReadAsByteArrayAsync());
             Assert.Equal(4, part.Content.Headers.ContentRange!.From);
-            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/games/41/content")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/games/42/content")).StatusCode);
+            Assert.Equal("RBLP8P.wbfs", (await player.GetAsync("/retro/games/41/content")).Content.Headers.ContentDisposition!.FileNameStar);
+
+            // The BIOS of a platform: the ones RomM still has
+            using (JsonDocument firmware = JsonDocument.Parse(await player.GetStringAsync("/retro/platforms/3/firmware")))
+                Assert.Equal("scph5501.bin", Assert.Single(firmware.RootElement.EnumerateArray()).GetProperty("fileName").GetString());
+            Assert.Equal(new byte[] { 1, 2, 3, 4 }, await player.GetByteArrayAsync("/retro/firmware/7/content"));
+        }
+
+        [Fact]
+        public async Task RetroSaves_AreKeptPerPlayer()
+        {
+            var player = Client("user");
+            var admin = Client("admin");
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/saves/retroarch/info")).StatusCode);
+
+            byte[] zip = { 0x50, 0x4B, 3, 4, 9 };
+            HttpResponseMessage put = await player.PutAsync("/retro/saves/retroarch", new ByteArrayContent(zip));
+            Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+            long savedAt = JsonDocument.Parse(await put.Content.ReadAsStringAsync()).RootElement.GetProperty("savedAt").GetInt64();
+            using (JsonDocument info = JsonDocument.Parse(await player.GetStringAsync("/retro/saves/retroarch/info")))
+                Assert.Equal(savedAt, info.RootElement.GetProperty("savedAt").GetInt64());
+            Assert.Equal(zip, await player.GetByteArrayAsync("/retro/saves/retroarch"));
+
+            // Another player has their own; a bad name or no sign-in gets nothing
+            Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/retro/saves/retroarch")).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.GetAsync("/retro/saves/..%2Fprofiles")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/saves/retroarch")).StatusCode);
         }
 
         [Fact]

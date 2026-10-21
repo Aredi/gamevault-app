@@ -9,6 +9,7 @@ builder.Services.AddSingleton<UploadStore>();
 builder.Services.AddSingleton<ProfileStore>();
 builder.Services.AddSingleton<SaveStore>();
 builder.Services.AddSingleton<RemoteInstallStore>();
+builder.Services.AddSingleton<RetroSaveStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
@@ -58,6 +59,7 @@ app.Logger.LogInformation("GameVault Uploader {Version}: files in {Files}, profi
 _ = app.Services.GetRequiredService<ProfileStore>();// says at once whether profiles are kept
 _ = app.Services.GetRequiredService<SaveStore>();
 _ = app.Services.GetRequiredService<RemoteInstallStore>();
+_ = app.Services.GetRequiredService<RetroSaveStore>();
 app.Run();
 
 public partial class Program { }

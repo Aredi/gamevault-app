@@ -303,8 +303,9 @@ namespace gamevault.Helper
         {
             try
             {
-                // A file name, never a path (the header comes from the server)
-                FileName = Path.GetFileName(response.Content.Headers.ContentDisposition.FileName.Replace("\"", ""));
+                // A file name, never a path (the header comes from the server); filename* keeps the accents
+                var disposition = response.Content.Headers.ContentDisposition;
+                FileName = Path.GetFileName((disposition?.FileNameStar ?? disposition?.FileName)!.Replace("\"", ""));
                 if (string.IsNullOrEmpty(FileName))
                 {
                     throw new Exception(Loc.T("Missing response header (Content-Disposition)"));

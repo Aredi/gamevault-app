@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using GameVault.Core;
+using GameVault.Core.Retro;
 using gamevault.Helper;
 using gamevault.Localization;
 using gamevault.ViewModels;
@@ -102,6 +103,17 @@ namespace gamevault.UserControls
             game.Busy = true;
             try
             {
+                bool cia = string.Equals(Path.GetExtension(game.FileName), ".cia", StringComparison.OrdinalIgnoreCase);
+                // Most 3DS packages are encrypted, which Azahar can not play: told before gigabytes come down
+                if (cia)
+                {
+                    game.Status = Loc.T("Checking the game...");
+                    if (CiaReader.Inspect(await RetroService.ReadStartAsync(game, CiaReader.HeaderBytes), game.Size).Verdict != CiaReader.Verdict.Playable)
+                    {
+                        game.Status = Loc.T("This 3DS game is encrypted: Azahar can not play it. A decrypted copy is needed in RomM.");
+                        return;
+                    }
+                }
                 string folder = RetroService.Folder(game, InstallLocationUserControl.DefaultLocation());
                 Directory.CreateDirectory(folder);
                 string metadata = Path.Combine(folder, RetroService.DownloadMetadata);
@@ -110,9 +122,35 @@ namespace gamevault.UserControls
                 // A download stopped half way goes on from where it was
                 await download.StartDownload(tryResume: File.Exists(metadata));
                 File.Delete(metadata);
-                await RetroArchManager.EnsureReadyAsync(game.Platform.Core, text => game.Status = text);
-                game.Status = "";
+                string downloaded = Directory.EnumerateFiles(folder).OrderByDescending(File.GetLastWriteTimeUtc).First();
+                if (game.Multi && string.Equals(Path.GetExtension(downloaded), ".zip", StringComparison.OrdinalIgnoreCase))
+                {
+                    // A game in several files (a CD and its tracks): RomM sends them zipped
+                    var sevenZip = new SevenZipHelper();
+                    sevenZip.Process += (_, e) => game.Status = Loc.F("Unpacking... {0}%", e.PercentageDone);
+                    game.Status = Loc.F("Unpacking... {0}%", 0);
+                    if (await sevenZip.ExtractArchive(downloaded, folder) != 0)
+                        throw new IOException(sevenZip.LastError);
+                    File.Delete(downloaded);
+                }
+                else if (cia)
+                {
+                    game.Status = Loc.T("Preparing the 3DS game...");
+                    byte[] start = new byte[CiaReader.HeaderBytes];
+                    int read;
+                    await using (FileStream file = File.OpenRead(downloaded))
+                        read = await file.ReadAsync(start);
+                    await CiaReader.ExtractAsync(downloaded, CiaReader.Inspect(start.AsSpan(0, read), new FileInfo(downloaded).Length));
+                }
+                await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
                 game.Refresh();
+                game.Status = game.Installed ? "" : Loc.T("None of this game's files can be started by the emulator.");
+            }
+            catch (RetroArchManager.MissingBiosException ex)
+            {
+                // The game is there: the BIOS comes when an administrator adds it, and Play fetches it
+                game.Refresh();
+                game.Status = ex.Message;
             }
             catch (Exception ex)
             {
@@ -129,11 +167,17 @@ namespace gamevault.UserControls
             game.Busy = true;
             try
             {
-                await RetroArchManager.EnsureReadyAsync(game.Platform.Core, text => game.Status = text);
-                var process = RetroArchManager.Launch(game.Platform.Core, rom);
+                await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
+                if (await RetroArchManager.TakeCloudSavesAsync(text => game.Status = text) is string kept)
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);
+                var process = RetroArchManager.Launch(game.Platform.System.Core, rom);
                 game.Status = Loc.T("Playing: Select+Start to quit");
-                // Busy while it runs: not started twice, not deleted under RetroArch
-                _ = process.WaitForExitAsync().ContinueWith(_ => { game.Status = ""; game.Busy = false; });
+                _ = WhenClosedAsync(process, game);
+            }
+            catch (RetroArchManager.MissingBiosException ex)
+            {
+                game.Status = ex.Message;
+                game.Busy = false;
             }
             catch (Exception ex)
             {
@@ -143,9 +187,35 @@ namespace gamevault.UserControls
             }
         }
 
+        /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then the saves go to the cloud.</summary>
+        private static async Task WhenClosedAsync(System.Diagnostics.Process process, RetroGame game)
+        {
+            await process.WaitForExitAsync();
+            game.Status = Loc.T("Sending the saves...");
+            await RetroArchManager.SendCloudSavesAsync();
+            game.Status = "";
+            game.Busy = false;
+        }
+
+        private async void Menu_Click(object? sender, RoutedEventArgs e)
+        {
+            uiMenu.IsEnabled = false;
+            try
+            {
+                await RetroArchManager.OpenMenuAsync(text => Show(text));
+                Show(null);
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                Show(Loc.F("Failed: {0}", ex.Message));
+            }
+            finally { uiMenu.IsEnabled = true; }
+        }
+
         private async void Delete_Click(object? sender, RoutedEventArgs e)
         {
-            if (GameOf(sender) is not RetroGame game || game.Busy || game.RomFile is not string rom)
+            if (GameOf(sender) is not RetroGame game || game.Busy || RetroService.InstalledFolder(game) is not string folder)
                 return;
             MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Delete '{0}' from this PC? Its saves are kept.", game.Name),
                 "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
@@ -153,7 +223,7 @@ namespace gamevault.UserControls
                 return;
             try
             {
-                Directory.Delete(Path.GetDirectoryName(rom)!, true);
+                Directory.Delete(folder, true);
             }
             catch (Exception ex) { game.Status = Loc.F("Failed: {0}", ex.Message); }
             game.Refresh();

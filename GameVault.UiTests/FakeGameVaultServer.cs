@@ -54,6 +54,20 @@ namespace GameVault.UiTests
         /// <summary>Game requests sent through the service (to the RomM-ComM bot): name of the game.</summary>
         public ConcurrentQueue<string> GameRequests { get; } = new();
         public static readonly byte[] RetroRom = Encoding.ASCII.GetBytes("NES\x1A-test-rom");
+        /// <summary>A PS1 game in two files, as RomM zips them.</summary>
+        public static readonly byte[] RetroCdGame = Zip(("Castlevania.cue", "FILE \"Castlevania.bin\" BINARY"), ("Castlevania.bin", "track"));
+        /// <summary>The player's retro saves: (zip, when saved).</summary>
+        public (byte[] Zip, long SavedAt)? RetroSaves { get; set; }
+
+        public static byte[] Zip(params (string Name, string Text)[] files)
+        {
+            var stream = new MemoryStream();
+            using (var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+                foreach (var (name, text) in files)
+                    using (var writer = new StreamWriter(zip.CreateEntry(name).Open()))
+                        writer.Write(text);
+            return stream.ToArray();
+        }
         /// <summary>Status the bot gives a request (pending when not set): game, status.</summary>
         public ConcurrentDictionary<string, string> GameRequestStatuses { get; } = new();
         /// <summary>The mappings received (PUT /api/games/{id}): game, provider, provider id.</summary>
@@ -147,7 +161,36 @@ namespace GameVault.UiTests
                     await Json(response, user);
                 // RomM through the SanctuaryVault service: a NES game, and a platform the client has no emulator for
                 else if (path == "/retro/platforms")
-                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 9, slug = "switch", name = "Switch", count = 4 } });
+                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 19, slug = "psx", name = "PlayStation", count = 1 }, new { id = 9, slug = "switch", name = "Switch", count = 4 } });
+                else if (path == "/retro/platforms/19/games")
+                    await Json(response, new[] { new { id = 50, name = "Castlevania", fileName = "Castlevania", size = RetroCdGame.LongLength, cover = (string?)null, summary = (string?)null, multi = true } });
+                else if (path == "/retro/games/50/content")
+                {
+                    response.ContentType = "application/zip";
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''Castlevania.zip");
+                    response.ContentLength64 = RetroCdGame.LongLength;
+                    await response.OutputStream.WriteAsync(RetroCdGame);
+                }
+                else if (path == "/retro/platforms/19/firmware")
+                    await Json(response, new[] { new { id = 7, fileName = "scph5501.bin", size = 4 } });
+                else if (path == "/retro/firmware/7/content")
+                    await response.OutputStream.WriteAsync(new byte[] { 1, 2, 3, 4 });
+                else if (path == "/retro/saves/retroarch/info")
+                {
+                    if (RetroSaves is { } saves)
+                        await Json(response, new { savedAt = saves.SavedAt });
+                    else
+                        response.StatusCode = 404;
+                }
+                else if (path == "/retro/saves/retroarch" && request.HttpMethod == "PUT")
+                {
+                    var body = new MemoryStream();
+                    await request.InputStream.CopyToAsync(body);
+                    RetroSaves = (body.ToArray(), (RetroSaves?.SavedAt ?? 0) + 1000);
+                    await Json(response, new { savedAt = RetroSaves.Value.SavedAt });
+                }
+                else if (path == "/retro/saves/retroarch" && RetroSaves is { } current)
+                    await response.OutputStream.WriteAsync(current.Zip);
                 else if (path == "/retro/platforms/3/games")
                     await Json(response, new[] { new { id = 40, name = "Zelda", fileName = "Zelda (E).nes", size = RetroRom.LongLength, cover = (string?)null, summary = "A sword" } });
                 else if (path == "/retro/games/40/content")

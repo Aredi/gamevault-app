@@ -85,7 +85,39 @@ namespace GameVault.Uploader
                 size = Number(r, "fs_size_bytes"),
                 cover = CoverInRomm().Match(Text(r, "path_cover_large") ?? Text(r, "path_cover_small") ?? "") is { Success: true } m ? m.Value : null,
                 summary = Text(r, "summary"),
+                // Several files: RomM sends them as one zip, which the client unpacks
+                multi = r.TryGetProperty("has_multiple_files", out JsonElement multi) && multi.ValueKind == JsonValueKind.True,
             }).ToList();
+        }
+
+        /// <summary>The BIOS RomM keeps for a platform.</summary>
+        public async Task<object> FirmwareAsync(int platformId, CancellationToken cancellationToken)
+        {
+            using JsonDocument firmware = await GetJsonAsync($"api/firmware?platform_id={platformId}", cancellationToken);
+            return firmware.RootElement.EnumerateArray()
+                .Where(f => !(f.TryGetProperty("missing_from_fs", out JsonElement missing) && missing.ValueKind == JsonValueKind.True))
+                .Select(f => new { id = Number(f, "id"), fileName = Text(f, "file_name"), size = Number(f, "file_size_bytes") })
+                .ToList();
+        }
+
+        public async Task FirmwareContentAsync(int id, HttpResponse response, CancellationToken cancellationToken)
+        {
+            string? name = null;
+            using (HttpResponseMessage firmware = await SendAsync(Get($"api/firmware/{id}"), cancellationToken))
+                if (firmware.IsSuccessStatusCode)
+                {
+                    using JsonDocument details = JsonDocument.Parse(await firmware.Content.ReadAsStringAsync(cancellationToken));
+                    name = Text(details.RootElement, "file_name");
+                }
+                else if (firmware.StatusCode != System.Net.HttpStatusCode.NotFound)
+                    throw new RommException($"RomM answered {(int)firmware.StatusCode}.");
+            if (string.IsNullOrEmpty(name))
+            {
+                response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+            using HttpResponseMessage file = await SendAsync(Get($"api/firmware/{id}/content/{Uri.EscapeDataString(name)}"), cancellationToken);
+            await CopyAsync(file, response, cancellationToken);
         }
 
         public async Task CoverAsync(string path, HttpResponse response, CancellationToken cancellationToken)
@@ -120,7 +152,8 @@ namespace GameVault.Uploader
             if (request.Headers.Range.Count > 0)
                 content.Headers.TryAddWithoutValidation("Range", request.Headers.Range.ToString());
             using HttpResponseMessage file = await SendAsync(content, cancellationToken);
-            response.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") { FileNameStar = name }.ToString();
+            // RomM names what it sends: the file in a game's folder (Wii), or the zip of a game in several files
+            response.Headers.ContentDisposition = (file.Content.Headers.ContentDisposition ?? new ContentDispositionHeaderValue("attachment") { FileNameStar = name }).ToString();
             await CopyAsync(file, response, cancellationToken);
         }
 

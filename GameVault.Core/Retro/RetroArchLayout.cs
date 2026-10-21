@@ -10,14 +10,8 @@ namespace GameVault.Core.Retro
         public const string Version = "1.22.2";
         private const string Buildbot = "https://buildbot.libretro.com";
 
-        /// <summary>RomM platform slug → libretro core. These need no BIOS.</summary>
-        public static readonly IReadOnlyDictionary<string, string> Cores = new Dictionary<string, string>
-        {
-            ["nes"] = "mesen",
-            ["snes"] = "snes9x",
-            ["gba"] = "mgba",
-            ["nds"] = "melondsds",
-        };
+        /// <summary>Azahar publishes its core itself (the buildbot has none): this version.</summary>
+        public const string AzaharVersion = "2126.2";
 
         private string Os => windows ? "windows" : "linux";
 
@@ -29,13 +23,29 @@ namespace GameVault.Core.Retro
         /// <summary>Where the package keeps its menus, controller profiles and core descriptions (the AppImage's portable home on Linux).</summary>
         private string DataDirectory => windows ? AppDirectory : Path.Combine(AppDirectory, "RetroArch-Linux-x86_64.AppImage.home", ".config", "retroarch");
         public string CoresDirectory => Path.Combine(directory, "cores");
-        /// <summary>Outside the package: an update of RetroArch keeps the saves.</summary>
-        public string SavesDirectory => Path.Combine(directory, "saves");
-        public string StatesDirectory => Path.Combine(directory, "states");
+        /// <summary>Outside the package (an update of RetroArch keeps them), one folder per GameVault player of this PC.</summary>
+        public string SavesDirectory(string player) => Path.Combine(directory, "saves", player);
+        public string StatesDirectory(string player) => Path.Combine(directory, "states", player);
+        public string SaveBackupsDirectory(string player) => Path.Combine(directory, "save-backups", player);
         /// <summary>The BIOS files, for the platforms that need some.</summary>
         public string SystemDirectory => Path.Combine(directory, "system");
         /// <summary>RetroArch ignores a folder of its configuration that does not exist (and saves in its own): made first.</summary>
-        public IEnumerable<string> Folders => new[] { CoresDirectory, SavesDirectory, StatesDirectory, SystemDirectory };
+        public IEnumerable<string> Folders(string player) => new[] { CoresDirectory, SavesDirectory(player), StatesDirectory(player), SystemDirectory };
+
+        /// <summary>The first version kept one saves folder for all: the first player to start a game here gets it.</summary>
+        public void AdoptSharedSaves(string player)
+        {
+            foreach (string kind in new[] { "saves", "states" })
+            {
+                string root = Path.Combine(directory, kind), own = Path.Combine(root, player);
+                if (!System.IO.Directory.Exists(root) || System.IO.Directory.Exists(own))
+                    continue;
+                var shared = System.IO.Directory.EnumerateFileSystemEntries(root).Where(e => !Path.GetFileName(e).All(char.IsDigit)).ToList();
+                System.IO.Directory.CreateDirectory(own);
+                foreach (string entry in shared)
+                    System.IO.Directory.Move(entry, Path.Combine(own, Path.GetFileName(entry)));
+            }
+        }
         public string ConfigFile => Path.Combine(directory, "sanctuaryvault.cfg");
         public string VersionFile => Path.Combine(directory, "version");
 
@@ -49,9 +59,16 @@ namespace GameVault.Core.Retro
 
         public string CoreFile(string core) => Path.Combine(CoresDirectory, windows ? $"{core}_libretro.dll" : $"{core}_libretro.so");
         // shortcut: the buildbot keeps no stable file per core, so cores are the nightly "latest"; pin them if one breaks
-        public string CoreUrl(string core) => $"{Buildbot}/nightly/{Os}/x86_64/latest/{Path.GetFileName(CoreFile(core))}.zip";
+        public string CoreUrl(string core) => core == "azahar"
+            ? $"https://github.com/azahar-emu/azahar/releases/download/{AzaharVersion}/azahar-libretro-{Os}-x86_64-{AzaharVersion}.zip"
+            : $"{Buildbot}/nightly/{Os}/x86_64/latest/{Path.GetFileName(CoreFile(core))}.zip";
 
-        public string Config()
+        /// <summary>A core's data files (Dolphin's Sys folder...), as RetroArch's own "core system files" downloader takes them.</summary>
+        public static string SystemFilesUrl(string name) => $"{Buildbot}/assets/system/{Uri.EscapeDataString(name)}.zip";
+        /// <summary>Written once the files of a name are in the system folder.</summary>
+        public string SystemFilesMarker(string name) => Path.Combine(SystemDirectory, $".{name}.installed");
+
+        public string Config(string player)
         {
             var settings = new (string Key, string Value)[]
             {
@@ -60,8 +77,8 @@ namespace GameVault.Core.Retro
                 ("assets_directory", Path.Combine(DataDirectory, "assets")),
                 ("joypad_autoconfig_dir", Path.Combine(DataDirectory, "autoconfig")),
                 ("system_directory", SystemDirectory),
-                ("savefile_directory", SavesDirectory),
-                ("savestate_directory", StatesDirectory),
+                ("savefile_directory", SavesDirectory(player)),
+                ("savestate_directory", StatesDirectory(player)),
                 // The menu theme kept in the package (the others are not unpacked)
                 ("menu_driver", "ozone"),
                 ("video_fullscreen", "true"),
@@ -77,5 +94,7 @@ namespace GameVault.Core.Retro
         }
 
         public IReadOnlyList<string> Arguments(string core, string rom) => new[] { "-L", CoreFile(core), "--config", ConfigFile, rom };
+        /// <summary>RetroArch's own menu, without a game: to change the controls.</summary>
+        public IReadOnlyList<string> MenuArguments => new[] { "--config", ConfigFile, "--menu" };
     }
 }

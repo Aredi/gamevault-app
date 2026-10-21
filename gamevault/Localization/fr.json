@@ -1090,8 +1090,21 @@
   "Playing: Select+Start to quit": "En jeu : Select+Start pour quitter",
   "Retro": "Rétro",
   "The games of the other platforms are not available on this server.": "Les jeux des autres plateformes ne sont pas disponibles sur ce serveur.",
-  "The games of the other platforms, played with RetroArch: it is installed and set up the first time. Select+Start quits the game.": "Les jeux des autres plateformes, joués avec RetroArch : il est installé et configuré automatiquement la première fois. Select+Start quitte le jeu.",
   "The games of the other platforms": "Les jeux des autres plateformes",
   "Installing RetroArch, once for all the games: downloading {0:0}%": "Installation de RetroArch, une seule fois pour tous les jeux : téléchargement {0:0} %",
-  "Installing RetroArch, once for all the games: unpacking {0}%": "Installation de RetroArch, une seule fois pour tous les jeux : décompression {0} %"
+  "Installing RetroArch, once for all the games: unpacking {0}%": "Installation de RetroArch, une seule fois pour tous les jeux : décompression {0} %",
+  "{0} needs a BIOS: an administrator adds it in RomM, in the Firmware of the platform.": "{0} a besoin d'un BIOS : un administrateur l'ajoute dans RomM, dans le Firmware de la plateforme.",
+  "Checking the game...": "Vérification du jeu...",
+  "Downloading the BIOS {0}...": "Téléchargement du BIOS {0}...",
+  "Downloading the emulator's files...": "Téléchargement des fichiers de l'émulateur...",
+  "Getting the saves from the other PCs...": "Récupération des sauvegardes des autres PC...",
+  "None of this game's files can be started by the emulator.": "Aucun fichier de ce jeu ne peut être lancé par l'émulateur.",
+  "Preparing the 3DS game...": "Préparation du jeu 3DS...",
+  "RetroArch settings": "Réglages de RetroArch",
+  "RetroArch without a game: controls, picture, sound": "RetroArch sans jeu : manettes, image, son",
+  "Sending the saves...": "Envoi des sauvegardes...",
+  "The games of the other platforms, played with RetroArch: it is installed and set up the first time. Select+Start quits the game, L3+R3 opens its menu. The saves follow you from PC to PC.": "Les jeux des autres plateformes, joués avec RetroArch : il est installé et configuré automatiquement la première fois. Select+Start quitte le jeu, L3+R3 ouvre son menu. Les sauvegardes te suivent d'un PC à l'autre.",
+  "The saves of another PC were newer and were taken; the ones of this PC are kept in {0}": "Les sauvegardes d'un autre PC étaient plus récentes et ont été reprises ; celles de ce PC sont gardées dans {0}",
+  "This 3DS game is encrypted: Azahar can not play it. A decrypted copy is needed in RomM.": "Ce jeu 3DS est chiffré : Azahar ne peut pas le lancer. Il faut une copie déchiffrée dans RomM.",
+  "Unpacking... {0}%": "Décompression... {0} %"
 }
