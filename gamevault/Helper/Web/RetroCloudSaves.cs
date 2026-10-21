@@ -77,6 +77,10 @@ namespace gamevault.Helper
             return saves.RootElement.EnumerateArray().Select(Read).OrderByDescending(s => s.UpdatedAt).ToList();
         }
 
+        /// <summary>The newest save of each of SanctuaryVault's slots (the list is newest first).</summary>
+        private static List<RommSave> Ours(List<RommSave> all) =>
+            new[] { MainSlot, RestSlot }.Select(slot => all.FirstOrDefault(s => s.Slot == slot)).OfType<RommSave>().ToList();
+
         private static async Task<byte[]> RommContentAsync(RommSave save)
         {
             using HttpResponseMessage response = await RommAccount.SendAsync(HttpMethod.Get, $"/api/saves/{save.Id}/content");
@@ -134,7 +138,7 @@ namespace gamevault.Helper
                 if (ToRomm)
                 {
                     var all = await RommSavesAsync(game);
-                    var ours = new[] { MainSlot, RestSlot }.Select(slot => all.FirstOrDefault(s => s.Slot == slot)).OfType<RommSave>().ToList();
+                    var ours = Ours(all);
                     // Saves of RomM's web page or another device: taken when this PC has none of the game
                     if (ours.Count == 0 && !saves.HasFiles && all.FirstOrDefault(s => !s.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) is RommSave other)
                         ours.Add(other);
@@ -230,7 +234,7 @@ namespace gamevault.Helper
                 {
                     var all = await RommSavesAsync(game);
                     var taken = version?.Romm != null ? new List<RommSave> { version.Romm }
-                        : new[] { MainSlot, RestSlot }.Select(slot => all.FirstOrDefault(s => s.Slot == slot)).OfType<RommSave>().ToList();
+                        : Ours(all);
                     if (taken.Count == 0)
                         taken = all.Take(1).ToList();
                     if (taken.Count == 0)

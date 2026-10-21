@@ -74,6 +74,18 @@ namespace GameVault.Uploader
             return JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
         }
 
+        /// <summary>The name of a rom's or BIOS's file, which RomM's download address ends with; null when RomM has no such id.</summary>
+        private async Task<string?> FileNameAsync(string path, string field, CancellationToken cancellationToken)
+        {
+            using HttpResponseMessage response = await SendAsync(Get(path), cancellationToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            if (!response.IsSuccessStatusCode)
+                throw new RommException($"RomM answered {(int)response.StatusCode}.");
+            using JsonDocument details = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+            return Text(details.RootElement, field);
+        }
+
         private static string? Text(JsonElement element, string name) =>
             element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
@@ -142,15 +154,7 @@ namespace GameVault.Uploader
 
         public async Task FirmwareContentAsync(int id, HttpResponse response, CancellationToken cancellationToken)
         {
-            string? name = null;
-            using (HttpResponseMessage firmware = await SendAsync(Get($"api/firmware/{id}"), cancellationToken))
-                if (firmware.IsSuccessStatusCode)
-                {
-                    using JsonDocument details = JsonDocument.Parse(await firmware.Content.ReadAsStringAsync(cancellationToken));
-                    name = Text(details.RootElement, "file_name");
-                }
-                else if (firmware.StatusCode != System.Net.HttpStatusCode.NotFound)
-                    throw new RommException($"RomM answered {(int)firmware.StatusCode}.");
+            string? name = await FileNameAsync($"api/firmware/{id}", "file_name", cancellationToken);
             if (string.IsNullOrEmpty(name))
             {
                 response.StatusCode = StatusCodes.Status404NotFound;
@@ -174,15 +178,7 @@ namespace GameVault.Uploader
         /// <summary>The rom's file, in parts when asked (Range), so a download can continue.</summary>
         public async Task ContentAsync(int id, HttpRequest request, HttpResponse response, CancellationToken cancellationToken)
         {
-            string? name = null;
-            using (HttpResponseMessage rom = await SendAsync(Get($"api/roms/{id}"), cancellationToken))
-                if (rom.IsSuccessStatusCode)
-                {
-                    using JsonDocument details = JsonDocument.Parse(await rom.Content.ReadAsStringAsync(cancellationToken));
-                    name = Text(details.RootElement, "fs_name");
-                }
-                else if (rom.StatusCode != System.Net.HttpStatusCode.NotFound)
-                    throw new RommException($"RomM answered {(int)rom.StatusCode}.");
+            string? name = await FileNameAsync($"api/roms/{id}", "fs_name", cancellationToken);
             if (string.IsNullOrEmpty(name))
             {
                 response.StatusCode = StatusCodes.Status404NotFound;

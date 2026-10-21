@@ -93,24 +93,26 @@ namespace gamevault.Helper
             {
                 var activity = DiscordActivity.Create($"{retroGame.Name} ({retroGame.Platform.Name})", minutesBeforeSession, sessionStartUtc, DateTime.UtcNow, retroCover,
                     minutes => Loc.F("{0} played in total", (string)new GameTimeConverter().Convert(minutes, typeof(string), null, CultureInfo.CurrentCulture)!));
-                Client()?.SetPresence(new RichPresence
-                {
-                    Details = activity.Details,
-                    State = activity.State,
-                    Timestamps = new Timestamps(activity.SessionStartUtc),
-                    Assets = new Assets
-                    {
-                        LargeImageKey = activity.LargeImage,
-                        LargeImageText = activity.LargeImageText,
-                        // As the library's games: the cover large, SanctuaryVault's logo small in its corner
-                        SmallImageKey = activity.LargeImage == DiscordActivity.LogoAsset ? null : DiscordActivity.LogoAsset,
-                        SmallImageText = "SanctuaryVault",
-                    },
-                    Buttons = new[] { new Button { Label = "SanctuaryVault", Url = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}" } },
-                });
+                SetPresence(activity);
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
+
+        /// <summary>The game's cover large, SanctuaryVault's logo small in its corner (or large, without a cover).</summary>
+        private void SetPresence(DiscordActivity activity) => Client()?.SetPresence(new RichPresence
+        {
+            Details = activity.Details,
+            State = activity.State,
+            Timestamps = new Timestamps(activity.SessionStartUtc),
+            Assets = new Assets
+            {
+                LargeImageKey = activity.LargeImage,
+                LargeImageText = activity.LargeImageText,
+                SmallImageKey = activity.LargeImage == DiscordActivity.LogoAsset ? null : DiscordActivity.LogoAsset,
+                SmallImageText = "SanctuaryVault",
+            },
+            Buttons = new[] { new Button { Label = "SanctuaryVault", Url = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}" } },
+        });
 
         /// <summary>A game was started from SanctuaryVault: show it at once instead of at the next minute.</summary>
         internal void GameStarted(int gameId)
@@ -158,20 +160,7 @@ namespace gamevault.Helper
                 var activity = DiscordActivity.Create(title, minutesBeforeSession, sessionStartUtc, DateTime.UtcNow, game?.Metadata?.Cover?.Source,
                     minutes => Loc.F("{0} played in total", (string)new GameTimeConverter().Convert(minutes, typeof(string), null, CultureInfo.CurrentCulture)!));
 
-                Client()?.SetPresence(new RichPresence
-                {
-                    Details = activity.Details,
-                    State = activity.State,
-                    Timestamps = new Timestamps(activity.SessionStartUtc),
-                    Assets = new Assets
-                    {
-                        LargeImageKey = activity.LargeImage,
-                        LargeImageText = activity.LargeImageText,
-                        SmallImageKey = activity.LargeImage == DiscordActivity.LogoAsset ? null : DiscordActivity.LogoAsset,
-                        SmallImageText = "SanctuaryVault",
-                    },
-                    Buttons = new[] { new Button { Label = "SanctuaryVault", Url = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}" } },
-                });
+                SetPresence(activity);
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }

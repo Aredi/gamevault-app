@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace gamevault.ViewModels
 {
-    /// <summary>The Retro page: the games of a RomM platform, filtered and sorted like the library, and the one shown beside them.</summary>
+    /// <summary>The Retro page: the games of a RomM platform, filtered and sorted like the library; the selected one tints the page.</summary>
     internal sealed class RetroViewModel : ViewModelBase
     {
         public RetroViewModel()
@@ -128,7 +128,7 @@ namespace gamevault.ViewModels
         }
 
         private RetroGame? selectedGame;
-        /// <summary>The game shown in the details panel; null closes it.</summary>
+        /// <summary>The game selected with the keyboard (Enter opens its page).</summary>
         public RetroGame? SelectedGame
         {
             get => selectedGame;
@@ -144,7 +144,6 @@ namespace gamevault.ViewModels
                 {
                     selectedGame.IsSelected = true;
                     selectedGame.PropertyChanged += SelectedGame_PropertyChanged;
-                    _ = selectedGame.LoadScreenshotsAsync();
                 }
                 SetAccent(selectedGame?.Accent);
                 OnPropertyChanged();
@@ -157,7 +156,7 @@ namespace gamevault.ViewModels
                 SetAccent(selectedGame?.Accent);
         }
 
-        /// <summary>The top of the page and the details take the color of the shown game, as in the library.</summary>
+        /// <summary>The top of the page takes the color of the selected game, as in the library.</summary>
         public RadialGradientBrush AmbientBrush { get; } = new()
         {
             Center = new Avalonia.RelativePoint(0.5, 0, Avalonia.RelativeUnit.Relative),
@@ -165,14 +164,10 @@ namespace gamevault.ViewModels
             RadiusX = new Avalonia.RelativeScalar(0.9, Avalonia.RelativeUnit.Relative),
             RadiusY = new Avalonia.RelativeScalar(1, Avalonia.RelativeUnit.Relative),
         };
-        public SolidColorBrush AccentBrush { get; } = new();
-        public SolidColorBrush AccentSoftBrush { get; } = new() { Opacity = 0.28 };
 
         private void SetAccent(Color? color)
         {
             Color accent = color ?? CoverColors.ThemeAccent;
-            AccentBrush.Color = accent;
-            AccentSoftBrush.Color = accent;
             AmbientBrush.GradientStops = new GradientStops
             {
                 new GradientStop(Color.FromArgb(82, accent.R, accent.G, accent.B), 0),

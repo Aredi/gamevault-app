@@ -80,10 +80,9 @@ namespace GameVault.Uploader
                 // Bigger than the upload chunks Kestrel is limited to
                 if (context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
                     limit.MaxRequestBodySize = RetroSaveStore.MaxSize + 1;
-                IResult? refused = await RefuseSaverAsync(set, context.Request, users, saves, ct);
+                var (refused, id) = await SaverAsync(set, context.Request, users, saves, ct);
                 if (refused != null)
                     return refused;
-                int id = (await users.CheckUserAsync(context.Request, ct)).Id;
                 return await saves.SaveAsync(id, set, context.Request.Body, ct) is long savedAt
                     ? Results.Json(new { savedAt })
                     : Results.Json(new { error = $"Saves can have at most {RetroSaveStore.MaxSize >> 20} MB." }, statusCode: StatusCodes.Status413PayloadTooLarge);
@@ -369,18 +368,22 @@ namespace GameVault.Uploader
             return action(check);
         }
 
-        private static async Task<IResult?> RefuseSaverAsync(string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct)
+        /// <returns>The player's id, or why they can not use these saves.</returns>
+        private static async Task<(IResult? Refused, int Id)> SaverAsync(string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct)
         {
             var check = await users.CheckUserAsync(request, ct);
             if (!check.Allowed)
-                return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return (Results.Json(new { error = check.Message }, statusCode: check.Status), 0);
             if (!saves.Enabled)
-                return Results.Json(new { error = "Retro saves are not kept by this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
-            return RetroSaveStore.IsValidSet(set) ? null : Results.Json(new { error = "Unknown set of saves." }, statusCode: StatusCodes.Status400BadRequest);
+                return (Results.Json(new { error = "Retro saves are not kept by this server." }, statusCode: StatusCodes.Status503ServiceUnavailable), 0);
+            return RetroSaveStore.IsValidSet(set) ? (null, check.Id) : (Results.Json(new { error = "Unknown set of saves." }, statusCode: StatusCodes.Status400BadRequest), 0);
         }
 
-        private static async Task<IResult> AsSaverAsync(string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct, Func<int, IResult> action) =>
-            await RefuseSaverAsync(set, request, users, saves, ct) ?? action((await users.CheckUserAsync(request, ct)).Id);
+        private static async Task<IResult> AsSaverAsync(string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct, Func<int, IResult> action)
+        {
+            var (refused, id) = await SaverAsync(set, request, users, saves, ct);
+            return refused ?? action(id);
+        }
 
         private static async Task<IResult> FromRommAsync(HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct, Func<Task<IResult>> action)
         {

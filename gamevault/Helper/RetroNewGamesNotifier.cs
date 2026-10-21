@@ -44,11 +44,7 @@ namespace gamevault.Helper
                 return;
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, $"{SanctuaryService.Current.TrimEnd('/')}/retro/latest");
-                using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
-                if (!response.IsSuccessStatusCode)
-                    return;
-                var newest = (JsonSerializer.Deserialize<List<Latest>>(await response.Content.ReadAsStringAsync()) ?? new())
+                var newest = (await RetroService.TryGetAsync<List<Latest>>("/retro/latest") ?? new())
                     .Where(g => RetroSystems.All.ContainsKey(g.Platform)).ToList();
                 if (newest.Count == 0)
                     return;

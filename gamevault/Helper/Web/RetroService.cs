@@ -36,9 +36,6 @@ namespace gamevault.Helper
         public bool IsSelected { get => isSelected; set { isSelected = value; OnPropertyChanged(); } }
     }
 
-    /// <summary>A line of a game's details: "Developers · Namco, Full Fat".</summary>
-    internal sealed record RetroDetail(string Label, string Value);
-
     /// <summary>A game of RomM, with what the page shows of it on this PC.</summary>
     internal sealed class RetroGame : ViewModelBase
     {
@@ -127,28 +124,13 @@ namespace gamevault.Helper
         [JsonIgnore]
         public bool HasVideo => !string.IsNullOrEmpty(Video);
 
-        /// <summary>The details shown beside the game, the empty ones left out.</summary>
-        [JsonIgnore]
-        public IReadOnlyList<RetroDetail> Details => new (string Label, string? Value)[]
-        {
-            (Loc.T("Release date"), ReleaseDate?.ToString("D", System.Globalization.CultureInfo.CurrentCulture)),
-            (Loc.T("Companies"), string.Join(", ", Companies)),
-            (Loc.T("Series"), string.Join(", ", Franchises)),
-            (Loc.T("Game modes"), string.Join(", ", Modes)),
-            (Loc.T("Players"), string.IsNullOrEmpty(Players) || Players == "null" ? null : Players),
-            (Loc.T("Regions"), string.Join(", ", Regions)),
-            (Loc.T("Languages"), string.Join(", ", Languages)),
-            (Loc.T("Age rating"), string.Join(", ", AgeRatings)),
-            (Loc.T("File"), FileName),
-        }.Where(d => !string.IsNullOrWhiteSpace(d.Value)).Select(d => new RetroDetail(d.Label, d.Value!)).ToList();
-
         private Color? accent;
-        /// <summary>The cover's color, for the card's glow and the details' tint.</summary>
+        /// <summary>The cover's color, for the card's glow and the page's tint.</summary>
         [JsonIgnore]
         public Color? Accent { get => accent; private set { accent = value; OnPropertyChanged(); } }
 
         private List<Bitmap>? screenshotImages;
-        /// <summary>Loaded when the game is shown in the details.</summary>
+        /// <summary>Loaded when the game's page opens.</summary>
         [JsonIgnore]
         public List<Bitmap>? ScreenshotImages { get => screenshotImages; private set { screenshotImages = value; OnPropertyChanged(); OnPropertyChanged(nameof(Banner)); } }
         [JsonIgnore]
@@ -207,7 +189,7 @@ namespace gamevault.Helper
         public string Status { get => status; set { status = value; OnPropertyChanged(); } }
 
         private bool isSelected;
-        /// <summary>Shown in the details (the card gets the library's selection frame).</summary>
+        /// <summary>Selected with the keyboard (the card gets the library's selection frame).</summary>
         [JsonIgnore]
         public bool IsSelected { get => isSelected; set { isSelected = value; OnPropertyChanged(); } }
 
@@ -236,11 +218,42 @@ namespace gamevault.Helper
         private static string Service => SanctuaryService.Current.TrimEnd('/');
         internal const string DownloadMetadata = "gamevault-metadata";
 
+        #region Requests to the service
+        internal static async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content = null)
+        {
+            using var request = new HttpRequestMessage(method, Service + path) { Content = content };
+            return await WebHelper.SendLongAsync(request, CancellationToken.None);
+        }
+
+        /// <summary>A failure throws (the page tells why).</summary>
+        internal static async Task<T> GetAsync<T>(string path) where T : new()
+        {
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, path);
+            response.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<T>(await response.Content.ReadAsStringAsync()) ?? new();
+        }
+
+        /// <summary>Nothing on a refusal (an older service, a feature it does not keep): what goes along without it.</summary>
+        internal static async Task<T?> TryGetAsync<T>(string path) where T : class
+        {
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, path);
+            return response.IsSuccessStatusCode ? JsonSerializer.Deserialize<T>(await response.Content.ReadAsStringAsync()) : null;
+        }
+
+        private static async Task<byte[]> GetBytesAsync(string path)
+        {
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, path);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync();
+        }
+
+        internal static StringContent Json(object value) => new(JsonSerializer.Serialize(value), System.Text.Encoding.UTF8, "application/json");
+        #endregion
+
         /// <summary>The platforms with games that RetroArch plays here; null when the server has none.</summary>
         public static async Task<List<RetroPlatform>?> ListPlatformsAsync()
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/platforms");
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, "/retro/platforms");
             if (response.StatusCode is System.Net.HttpStatusCode.ServiceUnavailable or System.Net.HttpStatusCode.NotFound)
                 return null;
             response.EnsureSuccessStatusCode();
@@ -250,10 +263,7 @@ namespace gamevault.Helper
 
         public static async Task<List<RetroGame>> ListGamesAsync(RetroPlatform platform)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/platforms/{platform.Id}/games");
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-            var games = JsonSerializer.Deserialize<List<RetroGame>>(await response.Content.ReadAsStringAsync()) ?? new();
+            var games = await GetAsync<List<RetroGame>>($"/retro/platforms/{platform.Id}/games");
             foreach (RetroGame game in games)
                 game.Platform = platform;
             return games;
@@ -268,6 +278,37 @@ namespace gamevault.Helper
         public static string? InstalledFolder(RetroGame game) => (SettingsViewModel.Instance.RootDirectories ?? new())
             .Select(root => Folder(game, root.Uri))
             .FirstOrDefault(folder => Directory.Exists(folder) && !File.Exists(Path.Combine(folder, DownloadMetadata)));
+
+        /// <summary>
+        /// The retro games in the library folders, from the description written beside each: the installed ones, or the
+        /// ones whose download stopped half way.
+        /// </summary>
+        public static IEnumerable<(string Folder, RetroGame Game)> SavedGames(bool downloading)
+        {
+            foreach (var root in SettingsViewModel.Instance.RootDirectories ?? new())
+            {
+                string retro = Path.Combine(root.Uri, "GameVault", "Retro");
+                if (!Directory.Exists(retro))
+                    continue;
+                foreach (string folder in Directory.EnumerateDirectories(retro).SelectMany(Directory.EnumerateDirectories))
+                {
+                    RetroGame? game = null;
+                    try
+                    {
+                        string info = Path.Combine(folder, RetroDownload.InfoFile);
+                        if (File.Exists(info) && File.Exists(Path.Combine(folder, DownloadMetadata)) == downloading
+                            && JsonSerializer.Deserialize<RetroDownload.SavedGame>(File.ReadAllText(info)) is { } saved && RetroSystems.All.ContainsKey(saved.Platform.Slug))
+                        {
+                            saved.Game.Platform = saved.Platform;
+                            game = saved.Game;
+                        }
+                    }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                    if (game != null)
+                        yield return (folder, game);
+                }
+            }
+        }
 
         /// <summary>The file the emulator starts; null while the game is not installed.</summary>
         public static string? InstalledRom(RetroGame game) => InstalledFolder(game) is string folder
@@ -292,28 +333,18 @@ namespace gamevault.Helper
         internal sealed record Firmware([property: JsonPropertyName("id")] int Id, [property: JsonPropertyName("fileName")] string FileName, [property: JsonPropertyName("size")] long Size);
 
         /// <summary>The BIOS RomM keeps for the platform.</summary>
-        public static async Task<List<Firmware>> ListFirmwareAsync(RetroPlatform platform)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/platforms/{platform.Id}/firmware");
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-            return JsonSerializer.Deserialize<List<Firmware>>(await response.Content.ReadAsStringAsync()) ?? new();
-        }
+        public static Task<List<Firmware>> ListFirmwareAsync(RetroPlatform platform) => GetAsync<List<Firmware>>($"/retro/platforms/{platform.Id}/firmware");
 
         public static async Task DownloadFirmwareAsync(Firmware firmware, string file)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/firmware/{firmware.Id}/content");
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-            await File.WriteAllBytesAsync(file + ".part", await response.Content.ReadAsByteArrayAsync());
+            await File.WriteAllBytesAsync(file + ".part", await GetBytesAsync($"/retro/firmware/{firmware.Id}/content"));
             File.Move(file + ".part", file, overwrite: true);
         }
 
         /// <summary>When the player's saves were last sent; null when the server has none (or keeps none).</summary>
         public static async Task<long?> SavesInfoAsync(string set)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/saves/{set}/info");
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, $"/retro/saves/{set}/info");
             if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.ServiceUnavailable)
                 return null;
             response.EnsureSuccessStatusCode();
@@ -321,38 +352,19 @@ namespace gamevault.Helper
             return info.RootElement.GetProperty("savedAt").GetInt64();
         }
 
-        public static async Task<byte[]> DownloadSavesAsync(string set)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/saves/{set}");
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsByteArrayAsync();
-        }
+        public static Task<byte[]> DownloadSavesAsync(string set) => GetBytesAsync($"/retro/saves/{set}");
 
         internal sealed record SavesVersion([property: JsonPropertyName("name")] string Name, [property: JsonPropertyName("savedAt")] long SavedAt, [property: JsonPropertyName("size")] long Size);
 
         /// <summary>The older versions of the player's saves, newest first.</summary>
-        public static async Task<List<SavesVersion>> SavesHistoryAsync(string set)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/saves/{set}/history");
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-            return JsonSerializer.Deserialize<List<SavesVersion>>(await response.Content.ReadAsStringAsync()) ?? new();
-        }
+        public static Task<List<SavesVersion>> SavesHistoryAsync(string set) => GetAsync<List<SavesVersion>>($"/retro/saves/{set}/history");
 
-        public static async Task<byte[]> DownloadSavesVersionAsync(string set, string name)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/saves/{set}/history/{Uri.EscapeDataString(name)}");
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsByteArrayAsync();
-        }
+        public static Task<byte[]> DownloadSavesVersionAsync(string set, string name) => GetBytesAsync($"/retro/saves/{set}/history/{Uri.EscapeDataString(name)}");
 
         /// <returns>When the server saved them.</returns>
         public static async Task<long> UploadSavesAsync(string set, Stream zip)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Put, $"{Service}/retro/saves/{set}") { Content = new StreamContent(zip) };
-            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Put, $"/retro/saves/{set}", new StreamContent(zip));
             response.EnsureSuccessStatusCode();
             using JsonDocument saved = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             return saved.RootElement.GetProperty("savedAt").GetInt64();

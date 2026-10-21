@@ -16,17 +16,10 @@ using System.Threading.Tasks;
 
 namespace gamevault.UserControls.SettingsComponents
 {
-    /// <summary>Settings > Retro: what RetroArch takes, the BIOS of the platforms, and the saves with their history.</summary>
+    /// <summary>Settings > Retro: what RetroArch takes, the BIOS of the platforms, the RomM account and the saves' folders.</summary>
     public partial class RetroSettingsUserControl : UserControl
     {
         internal sealed record BiosRow(string Platform, string State);
-
-        /// <summary>The platforms by name (offline, RomM's names are not known).</summary>
-        private static readonly Dictionary<string, string> Names = new()
-        {
-            ["nes"] = "NES", ["snes"] = "Super Nintendo", ["gba"] = "Game Boy Advance", ["nds"] = "Nintendo DS", ["ngc"] = "GameCube", ["wii"] = "Wii",
-            ["psx"] = "PlayStation", ["ps2"] = "PlayStation 2", ["neogeoaes"] = "Neo Geo", ["3ds"] = "Nintendo 3DS",
-        };
 
         public RetroSettingsUserControl()
         {
@@ -42,20 +35,20 @@ namespace gamevault.UserControls.SettingsComponents
                 ? Loc.F("Version {0} installed · {1}", RetroArchLayout.Version, StorageCleanup.FormatSize(size))
                 : Loc.T("Not installed yet: it is installed with the first retro game.");
             uiUninstall.IsEnabled = size > 0;
-            var cores = RetroSystems.All.Values.Where(s => File.Exists(layout.CoreFile(s.Core))).Select(s => Names.GetValueOrDefault(s.Slug, s.Slug)).ToList();
+            var cores = RetroSystems.All.Values.Where(s => File.Exists(layout.CoreFile(s.Core))).Select(s => s.Name).Distinct().ToList();
             uiCores.Text = cores.Count > 0 ? Loc.F("Emulators installed for: {0}", string.Join(", ", cores)) : "";
 
             uiBios.ItemsSource = RetroSystems.All.Values.Where(s => s.FirmwareFolder != null).Select(system =>
             {
                 string folder = Path.Combine(layout.SystemDirectory, system.FirmwareFolder!);
                 var files = Directory.Exists(folder) ? Directory.EnumerateFiles(folder).Select(Path.GetFileName).Where(f => !f!.StartsWith('.')).ToList() : new();
-                return new BiosRow(Names.GetValueOrDefault(system.Slug, system.Slug),
+                return new BiosRow(system.Name,
                     files.Count > 0 ? Loc.F("On this PC: {0}", string.Join(", ", files)) : Loc.T("Not on this PC yet: taken from RomM at the first game"));
             }).ToList();
 
             await RefreshRommAsync();
             uiSavesState.Text = SettingsViewModel.Instance.CloudSaves
-                ? Loc.T("Each game's saves go to the SanctuaryVault service after it is played and come back on your other PCs, as the cloud saves of the library.")
+                ? Loc.F("Each game's saves go to {0} after it is played and come back on your other PCs, as the cloud saves of the library.", RetroCloudSaves.Destination)
                 : Loc.T("Kept on this PC only: the cloud saves are off (Settings > Data).");
         }
 
@@ -92,7 +85,7 @@ namespace gamevault.UserControls.SettingsComponents
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
             uiRommCode.IsVisible = false;
             uiRommLink.IsEnabled = true;
-            await RefreshRommAsync();
+            await RefreshAsync();
         }
 
         private void RommPage_Click(object? sender, RoutedEventArgs e)
@@ -106,7 +99,7 @@ namespace gamevault.UserControls.SettingsComponents
             if (!await DialogService.ConfirmAsync(Loc.T("Unlink your RomM account? The retro saves go to SanctuaryVault again (the ones in RomM stay there)."), "RomM"))
                 return;
             RommAccount.Unlink();
-            await RefreshRommAsync();
+            await RefreshAsync();
         }
 
         private async void OpenMenu_Click(object? sender, RoutedEventArgs e)

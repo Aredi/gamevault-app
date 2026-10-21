@@ -169,7 +169,7 @@ namespace gamevault.UserControls
             {
                 var installed = RetroLibrary.InstalledGames();
                 var shown = MainWindowViewModel.Instance.Retro.ViewModel.AllGames;
-                return installed.Concat(shown).GroupBy(RetroLibrary.Key).Select(g => g.First()).Select(game => new QuickSearchItem
+                return installed.Concat(shown).DistinctBy(RetroLibrary.Key).Select(game => new QuickSearchItem
                 {
                     Title = game.Name,
                     Subtitle = string.Join(" · ", new[] { game.Platform.Name, game.ReleaseDate?.Year.ToString() }.Where(p => !string.IsNullOrEmpty(p))),

@@ -93,7 +93,7 @@ namespace GameVault.UiTests
                 Assert.Equal(("Zelda", "nes", false), (zelda.Name, zelda.Platform.Slug, zelda.Installed));
 
                 // Into the Downloads page, as the library's games, and played when it is complete
-                await page.InstallAsync(zelda);
+                await RetroPlay.InstallAsync(zelda);
                 RetroDownload download = Assert.Single(DownloadsViewModel.Instance.RetroDownloads);
                 await TestSession.WaitUntil(() => download.IsDone || download.IsFailed, TimeSpan.FromSeconds(20), "the NES download");
                 Assert.True(zelda.Installed, download.State);
@@ -107,7 +107,7 @@ namespace GameVault.UiTests
                 await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "psx"));
                 await TestSession.WaitUntil(() => page.Shown.Any(g => g.Name == "Castlevania"), TimeSpan.FromSeconds(10), "the PS1 games");
                 RetroGame castlevania = Assert.Single(page.Shown);
-                await page.InstallAsync(castlevania);
+                await RetroPlay.InstallAsync(castlevania);
                 // The page reloads its games (another platform and back): the download is not forgotten
                 await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
                 await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "psx"));

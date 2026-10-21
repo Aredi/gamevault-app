@@ -137,7 +137,7 @@ namespace gamevault.UserControls
 
         private void Reload_Click(object? sender, RoutedEventArgs e) => loading = LoadPlatformsAsync();
 
-        /// <summary>Opens a game from elsewhere (quick search, recent activity, a profile): its platform, then its details.</summary>
+        /// <summary>Opens a game from elsewhere (quick search, recent activity, a profile): its platform, then its page.</summary>
         internal async Task ShowGameAsync(string platformSlug, int romId)
         {
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
@@ -216,14 +216,6 @@ namespace gamevault.UserControls
         internal static void OpenGame(RetroGame game) => MainWindowViewModel.Instance.SetActiveControl(new RetroGameViewUserControl(game));
 
         private static RetroGame? GameOf(object? sender) => (sender as Control)?.DataContext as RetroGame;
-
-        /// <summary>
-        /// Into the Downloads page and its queue, as the library's games: the download goes on whatever page is shown,
-        /// and the game is made playable (unpacked, RetroArch, core, BIOS) when it is complete.
-        /// </summary>
-        internal Task InstallAsync(RetroGame game) => RetroPlay.InstallAsync(game);
-
-        internal Task PlayAsync(RetroGame game) => RetroPlay.PlayAsync(game);
 
         private async void Menu_Click(object? sender, RoutedEventArgs e)
         {

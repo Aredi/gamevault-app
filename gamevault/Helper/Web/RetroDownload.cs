@@ -187,7 +187,6 @@ namespace gamevault.Helper
             });
             State = "";
             IsPaused = false;
-            Game.Status = "";
             foreach (RetroGame game in watchers)
             {
                 game.Busy = false;
@@ -382,28 +381,9 @@ namespace gamevault.Helper
         /// <summary>At start: the downloads stopped half way (the app closed), shown paused as the library's.</summary>
         public static void Restore()
         {
-            foreach (var root in SettingsViewModel.Instance.RootDirectories ?? new())
-            {
-                string retro = Path.Combine(root.Uri, "GameVault", "Retro");
-                if (!Directory.Exists(retro))
-                    continue;
-                foreach (string folder in Directory.EnumerateDirectories(retro).SelectMany(Directory.EnumerateDirectories))
-                {
-                    try
-                    {
-                        string info = Path.Combine(folder, RetroDownload.InfoFile);
-                        if (!File.Exists(info) || !File.Exists(Path.Combine(folder, RetroService.DownloadMetadata)))
-                            continue;
-                        var saved = JsonSerializer.Deserialize<RetroDownload.SavedGame>(File.ReadAllText(info));
-                        if (saved == null || !RetroSystems.All.ContainsKey(saved.Platform.Slug))
-                            continue;
-                        saved.Game.Platform = saved.Platform;
-                        if (Find(saved.Game) == null)
-                            DownloadsViewModel.Instance.RetroDownloads.Add(new RetroDownload(saved.Game, folder).Paused());
-                    }
-                    catch (Exception ex) { Log.Ignored(ex); }
-                }
-            }
+            foreach (var (folder, game) in RetroService.SavedGames(downloading: true))
+                if (Find(game) == null)
+                    DownloadsViewModel.Instance.RetroDownloads.Add(new RetroDownload(game, folder).Paused());
         }
     }
 }

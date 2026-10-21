@@ -29,7 +29,7 @@ namespace GameVault.UiTests
             await page.LoadPlatformsAsync();
             await TestSession.WaitUntil(() => page.Shown.Any(), TimeSpan.FromSeconds(10), "the NES games");
             RetroGame zelda = page.Shown.Single(g => g.Name == "Zelda");
-            await page.InstallAsync(zelda);
+            await RetroPlay.InstallAsync(zelda);
             RetroDownload download = DownloadsViewModel.Instance.RetroDownloads.Single();
             await TestSession.WaitUntil(() => download.IsDone || download.IsFailed, TimeSpan.FromSeconds(20), "the NES download");
             Assert.True(zelda.Installed, download.State);
