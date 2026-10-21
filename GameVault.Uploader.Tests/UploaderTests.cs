@@ -155,6 +155,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("ROMM_URL", "http://romm.test:8080");
                 host.UseSetting("ROMM_USERNAME", "viewer");
                 host.UseSetting("ROMM_PASSWORD", "pass");
+                host.UseSetting("ROMM_PUBLIC_URL", "https://romm.example.com/");
                 host.ConfigureServices(services =>
                 {
                     services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
@@ -289,6 +290,8 @@ namespace GameVault.Uploader.Tests
             Assert.Equal("{}", await (await Client("user").GetAsync("/profiles/2")).Content.ReadAsStringAsync());
             using JsonDocument status = JsonDocument.Parse(await Client(null).GetStringAsync("/status"));
             Assert.True(status.RootElement.GetProperty("profiles").GetBoolean());
+            // Where the players link their RomM account
+            Assert.Equal("https://romm.example.com", status.RootElement.GetProperty("rommUrl").GetString());
         }
 
         [Fact]

@@ -88,7 +88,7 @@ namespace gamevault.UserControls
                 string cloud = !SettingsViewModel.Instance.CloudSaves ? Loc.T("cloud saves off (Settings > Data)")
                     : saves.LastSync > 0 ? Loc.F("synced {0}", Converter.RelativeDate.Format(DateTimeOffset.FromUnixTimeMilliseconds(saves.LastSync).UtcDateTime))
                     : Loc.T("not in the cloud yet");
-                ViewModel.SavesText = $"{local} · {cloud}";
+                ViewModel.SavesText = $"{local} · {cloud} · {RetroCloudSaves.Destination}";
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }

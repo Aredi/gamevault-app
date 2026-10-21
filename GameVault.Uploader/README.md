@@ -26,6 +26,7 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `ROMM_COMM_API_KEY` | - | The bot's `REQUESTS_API_KEY` |
 | `ROMM_URL` | - | [RomM](https://github.com/rommapp/romm) (e.g. `http://romm:8080`): the client's Retro page lists its NES, SNES, GBA, DS, GameCube, Wii, PS1, PS2, Neo Geo and 3DS games and plays them with RetroArch; the BIOS come from RomM's Firmware; off without it |
 | `ROMM_USERNAME`, `ROMM_PASSWORD` | - | The RomM account the service reads with: a Viewer account is enough |
+| `ROMM_PUBLIC_URL` | - | RomM as the players reach it: a player can link their own RomM account in the client, then their retro saves go to RomM (otherwise to this service) |
 | `RETRO_SAVES_DIRECTORY` | `/data/retro-saves` | The players' saves of the retro games (one zip per player, and the last 10 versions), so they follow them from PC to PC |
 | `RETRO_PLAYERS_DIRECTORY` | `/data/retro-players` | The players' time on the retro games and their favorites (profiles, recent activity) |
 

@@ -96,7 +96,7 @@ namespace GameVault.Core.Tests
             zelda.Pack(zip);
             using var archive = new ZipArchive(new MemoryStream(zip.ToArray()));
             Assert.Equal(new[] { "saves/Mesen/Zelda (E).srm", "saves/pcsx2/memcards/Mcd001.ps2", "states/Mesen/Zelda (E).state1" }, archive.Entries.Select(e => e.FullName).Order());
-            Assert.False(Saves("pc1", "nes-41", "Metroid").Files().Any(f => f.Contains("Mcd001")));
+            Assert.DoesNotContain(Saves("pc1", "nes-41", "Metroid").Files(), f => f.Contains("Mcd001"));
         }
 
         [Fact]
@@ -123,6 +123,43 @@ namespace GameVault.Core.Tests
                 Assert.Equal("pc2 save", new StreamReader(kept.GetEntry("saves/Mesen/Zelda (E).srm")!.Open()).ReadToEnd());
             Assert.False(second.IsOlderThan(1000));
             Assert.False(second.ChangedSinceSync);
+        }
+
+        [Fact]
+        public void ForRomm_TheMainSaveGoesAlone_AndComesBackWhereTheEmulatorReadsIt()
+        {
+            Write("pc1", "saves/Mesen/Zelda (E).srm", "cartridge");
+            Write("pc1", "states/Mesen/Zelda (E).state1", "state");
+            var sv = Saves("pc1");
+            var romm = new RetroGameSaves(Path.Combine(root, "pc1", "saves"), Path.Combine(root, "pc1", "states"), Path.Combine(root, "pc1", "backups"), "nes-40", "Zelda (E)", "romm");
+            Assert.EndsWith(Path.Combine("Mesen", "Zelda (E).srm"), romm.MainSave());
+            var rest = new MemoryStream();
+            Assert.True(romm.PackRest(rest));
+            using (var archive = new ZipArchive(new MemoryStream(rest.ToArray())))
+                Assert.Equal(new[] { "states/Mesen/Zelda (E).state1" }, archive.Entries.Select(e => e.FullName));
+
+            // Each destination has its own state: synced to the service is not synced to RomM
+            sv.Remember(1000);
+            Assert.False(sv.ChangedSinceSync);
+            Assert.True(romm.ChangedSinceSync);
+
+            // A save of RomM (its web page's emulator) comes in place of this PC's, which is kept
+            string? backup = romm.Replace(null, ("Mesen", ".srm", System.Text.Encoding.ASCII.GetBytes("from RomM")));
+            Assert.Equal("from RomM", File.ReadAllText(Path.Combine(root, "pc1", "saves", "Mesen", "Zelda (E).srm")));
+            Assert.NotNull(backup);
+            // A folder from the network stays inside the saves folder
+            romm.Replace(null, ("../..", ".srm", new byte[] { 1 }));
+            Assert.False(File.Exists(Path.Combine(root, "Zelda (E).srm")));
+        }
+
+        [Fact]
+        public void ACoresSaves_AreInTheFolderOfItsName()
+        {
+            var layout = new RetroArchLayout(root, windows: true);
+            Directory.CreateDirectory(Path.Combine(layout.AppDirectory, "info"));
+            File.WriteAllText(Path.Combine(layout.AppDirectory, "info", "mgba_libretro.info"), "display_name = \"Nintendo - Game Boy Advance (mGBA)\"\ncorename = \"mGBA\"\n");
+            Assert.Equal("mGBA", layout.SaveFolderName("mgba"));
+            Assert.Equal("azahar", layout.SaveFolderName("azahar"));
         }
 
         [Fact]

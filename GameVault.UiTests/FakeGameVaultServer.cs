@@ -64,8 +64,34 @@ namespace GameVault.UiTests
         public ConcurrentQueue<string> RetroPlaysSent { get; } = new();
         public ConcurrentDictionary<string, int> RetroMinutes { get; } = new();
         public string RetroFavorites { get; set; } = "[]";
+        /// <summary>RomM answers here too (its public address is this server's): the player's saves and the pairing.</summary>
+        public bool RommLinkable { get; set; }
+        public sealed record RommSave(int Id, int RomId, string FileName, string? Slot, string? Emulator, DateTime UpdatedAt, byte[] Content);
+        public ConcurrentQueue<RommSave> RommSaves { get; } = new();
+        private int rommTokenCalls;
+
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
         public List<object> RetroLatest { get; } = new();
+
+        private static object RommJson(RommSave s) => new
+        {
+            id = s.Id, rom_id = s.RomId, file_name = s.FileName, slot = s.Slot, emulator = s.Emulator, file_size_bytes = s.Content.Length,
+            updated_at = s.UpdatedAt.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ"), device_syncs = Array.Empty<object>(),
+        };
+
+        /// <summary>The file of a multipart upload (RomM's saveFile).</summary>
+        private static (string Name, byte[] Content) RommMultipartFile(byte[] body, string contentType)
+        {
+            string boundary = "--" + contentType.Split("boundary=")[1].Trim('"');
+            string text = Encoding.Latin1.GetString(body);
+            int part = text.IndexOf("name=saveFile", StringComparison.Ordinal);
+            if (part < 0)
+                part = text.IndexOf("name=\"saveFile\"", StringComparison.Ordinal);
+            var name = Regex.Match(text[part..], "filename=\"?([^\";\r\n]+)\"?").Groups[1].Value;
+            int start = text.IndexOf("\r\n\r\n", part, StringComparison.Ordinal) + 4;
+            int end = text.IndexOf("\r\n" + boundary, start, StringComparison.Ordinal);
+            return (name, body[start..end]);
+        }
 
         public static byte[] Zip(params (string Name, string Text)[] files)
         {
@@ -243,8 +269,38 @@ namespace GameVault.UiTests
                     response.ContentLength64 = RetroRom.LongLength;
                     await response.OutputStream.WriteAsync(RetroRom);
                 }
+                // RomM: the device pairing (pending once, then approved) and the player's saves
+                else if (path == "/api/auth/device/init")
+                {
+                    rommTokenCalls = 0;
+                    await Json(response, new { device_code = "device-code", user_code = "ABCD-1234", verification_path = "/pair/device", verification_path_complete = "/pair/device?user_code=ABCD-1234", expires_in = 60, interval = 2 });
+                }
+                else if (path == "/api/auth/device/token")
+                {
+                    if (Interlocked.Increment(ref rommTokenCalls) == 1)
+                    {
+                        response.StatusCode = 400;
+                        await Json(response, new { detail = "authorization_pending" });
+                    }
+                    else
+                        await Json(response, new { access_token = "romm-token", device_id = "pc-1", scopes = new[] { "assets.write" } });
+                }
+                else if (path == "/api/saves" && request.HttpMethod == "POST")
+                {
+                    var body = new MemoryStream();
+                    await request.InputStream.CopyToAsync(body);
+                    var (fileName, content) = RommMultipartFile(body.ToArray(), request.ContentType!);
+                    var saved = new RommSave(RommSaves.Count + 1, int.Parse(request.QueryString["rom_id"]!), fileName, request.QueryString["slot"], request.QueryString["emulator"],
+                        DateTime.UtcNow.AddSeconds(RommSaves.Count), content);
+                    RommSaves.Enqueue(saved);
+                    await Json(response, RommJson(saved));
+                }
+                else if (path == "/api/saves")
+                    await Json(response, RommSaves.Where(s => s.RomId == int.Parse(request.QueryString["rom_id"]!)).Select(RommJson));
+                else if ((match = Regex.Match(path, @"^/api/saves/(\d+)/content$")).Success && RommSaves.FirstOrDefault(s => s.Id == int.Parse(match.Groups[1].Value)) is RommSave found)
+                    await response.OutputStream.WriteAsync(found.Content);
                 else if (path == "/status")
-                    await Json(response, new { status = "OK", version = "1.0.0", freeSpace = 1L << 40, profiles = true, saveHistory = true });
+                    await Json(response, new { status = "OK", version = "1.0.0", freeSpace = 1L << 40, profiles = true, saveHistory = true, rommUrl = RommLinkable ? Url : null });
                 else if ((match = Regex.Match(path, @"^/savefiles/(\d+)$")).Success)
                     await Json(response, (SaveVersions.TryGetValue(int.Parse(match.Groups[1].Value), out var versions) ? versions : new())
                         .Select(v => (Name: v.Key, Size: v.Value.LongLength, Parts: v.Key.Split('_', '.')))

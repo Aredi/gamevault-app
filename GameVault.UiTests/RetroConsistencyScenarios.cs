@@ -187,5 +187,66 @@ namespace GameVault.UiTests
                 CleanUp(session);
             }
         }
+
+        [AvaloniaFact]
+        public async Task WithALinkedRommAccount_TheSavesGoToRomm_AndRommsOwnSavesComeBack()
+        {
+            var (session, page, zelda) = await InstallZeldaAsync();
+            bool cloud = SettingsViewModel.Instance.CloudSaves;
+            SettingsViewModel.Instance.CloudSaves = true;
+            session.Server.RommLinkable = true;
+            RommAccount.ForgetUrl();
+            string saves = RetroArchManager.SavesFolder;
+            string states = RetroArchManager.Layout.StatesDirectory(RetroArchManager.Player);
+            try
+            {
+                // Linked as RomM links its devices: a code approved on RomM's page (pending once here)
+                var settings = new RetroSettingsUserControl();
+                await settings.LinkRommAsync(open: false);
+                Assert.True(RommAccount.IsLinked);
+                Assert.Equal("admin", RommAccount.Username);
+
+                // A save made on RomM's web page: this PC has none of the game, it is taken before the game
+                session.Server.RommSaves.Enqueue(new FakeGameVaultServer.RommSave(100, 40, "Zelda (E).srm", null, "mesen", DateTime.UtcNow.AddDays(-1), "from RomM's web page"u8.ToArray()));
+                await RetroCloudSaves.TakeAsync(zelda, _ => { });
+                string main = Path.Combine(saves, RetroArchManager.Layout.SaveFolderName("mesen"), "Zelda (E).srm");
+                Assert.Equal("from RomM's web page", File.ReadAllText(main));
+
+                // Played here: the main save goes on its own (RomM's emulator reads it), the rest zipped, in SanctuaryVault's slots
+                File.WriteAllText(main, "played here");
+                Directory.CreateDirectory(Path.Combine(states, "Mesen"));
+                File.WriteAllText(Path.Combine(states, "Mesen", "Zelda (E).state1"), "a state");
+                await RetroCloudSaves.SendAsync(zelda);
+                var sent = session.Server.RommSaves.Where(s => s.Slot != null).ToList();
+                Assert.Equal(new[] { "sanctuaryvault", "sanctuaryvault-data" }, sent.Select(s => s.Slot));
+                Assert.Equal("played here", System.Text.Encoding.ASCII.GetString(sent[0].Content));
+                Assert.Equal(("Zelda (E).srm", "mesen"), (sent[0].FileName, sent[0].Emulator));
+
+                // The history: every save of the game in RomM; the web page's one restored, the state kept, then sent as the current one
+                var history = new RetroSaveHistoryUserControl(zelda, null);
+                await history.LoadAsync();
+                Assert.Equal(3, history.Rows.Count);
+                RetroSaveVersionRow web = history.Rows.Single(r => r.Version.Romm!.Slot == null);
+                await history.RestoreAsync(web);
+                Assert.Equal("from RomM's web page", File.ReadAllText(main));
+                Assert.Equal("a state", File.ReadAllText(Path.Combine(states, "Mesen", "Zelda (E).state1")));
+                Assert.Equal("from RomM's web page", System.Text.Encoding.ASCII.GetString(session.Server.RommSaves.Last(s => s.Slot == "sanctuaryvault").Content));
+
+                // Unlinked: back to SanctuaryVault, which gets them all at the next sync
+                RommAccount.Unlink();
+                Assert.Equal("SanctuaryVault", RetroCloudSaves.Destination);
+                await RetroCloudSaves.SendAsync(zelda);
+                Assert.True(session.Server.RetroSaves.ContainsKey("nes-40"));
+            }
+            finally
+            {
+                RommAccount.Unlink();
+                RommAccount.ForgetUrl();
+                session.Server.RommLinkable = false;
+                session.Server.RommSaves.Clear();
+                SettingsViewModel.Instance.CloudSaves = cloud;
+                CleanUp(session);
+            }
+        }
     }
 }

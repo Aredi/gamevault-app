@@ -35,6 +35,28 @@
             </StackPanel>
 
             <StackPanel Classes="section">
+                <TextBlock Classes="h1" Text="{l:T 'RomM account'}" />
+                <TextBlock x:Name="uiRommState" TextWrapping="Wrap" FontSize="14" />
+                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,4,0,0"
+                           Text="{l:T 'With your RomM account linked, the saves of the retro games go to your RomM: its web page plays with them too, and the ones made there come here. Without it, they go to SanctuaryVault.'}" />
+                <Border x:Name="uiRommCode" IsVisible="False" Background="{DynamicResource Brush.Surface}" CornerRadius="12" Padding="16,12" Margin="0,12,0,0" HorizontalAlignment="Left">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="{l:T 'Approve this code on the page of RomM that opened:'}" FontSize="13" />
+                        <TextBlock x:Name="uiRommCodeText" FontFamily="{StaticResource Font.Display}" FontSize="30" FontWeight="Bold" LetterSpacing="3" />
+                        <Button Classes="link" HorizontalAlignment="Left" Click="RommPage_Click">
+                            <TextBlock Text="{l:T 'Open the page of RomM again'}" FontSize="13" TextDecorations="Underline" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+                <WrapPanel Margin="0,12,0,0">
+                    <controls:IconButton x:Name="uiRommLink" Text="{l:T 'Link my RomM account'}" Icon="{StaticResource IconGameSettingsLinked}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
+                                         Click="RommLink_Click" />
+                    <controls:IconButton x:Name="uiRommUnlink" Text="{l:T 'Unlink'}" Kind="Danger" Icon="{StaticResource IconGameSettingsUnlinked}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
+                                         Click="RommUnlink_Click" />
+                </WrapPanel>
+            </StackPanel>
+
+            <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'Saves'}" />
                 <TextBlock x:Name="uiSavesState" TextWrapping="Wrap" FontSize="14" />
                 <WrapPanel Margin="0,12,0,0">

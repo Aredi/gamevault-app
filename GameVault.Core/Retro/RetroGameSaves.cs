@@ -20,24 +20,29 @@ namespace GameVault.Core.Retro
         private const int KeptBackups = 5;
 
         private readonly (string Prefix, string Folder)[] roots;
-        private readonly string cloud, backups, set, romStem;
+        private readonly string cloud, backups, set, romStem, destination;
 
         /// <param name="set">The game's name on the server ("nes-40").</param>
         /// <param name="romStem">The game's file without extension: the saves are named after it.</param>
-        public RetroGameSaves(string savesFolder, string statesFolder, string backupFolder, string set, string romStem)
+        /// <param name="destination">Where they are synced ("" the SanctuaryVault service, "romm"): each has its own state, so a newly linked RomM gets them all.</param>
+        public RetroGameSaves(string savesFolder, string statesFolder, string backupFolder, string set, string romStem, string destination = "")
         {
             roots = new[] { ("saves", savesFolder), ("states", statesFolder) };
             cloud = Path.Combine(savesFolder, CloudFolderName);
             backups = backupFolder;
             this.set = set;
             this.romStem = romStem;
+            this.destination = destination;
         }
+
+        /// <summary>The extensions of the save a game writes itself (its cartridge, its memory card), best first.</summary>
+        private static readonly string[] MainExtensions = { ".srm", ".sav", ".fs", ".mcd", ".mcr" };
 
         public string Set => set;
 
         private sealed record State(long ServerSavedAt, string Fingerprint);
 
-        private string StateFile => Path.Combine(cloud, $"{set}.json");
+        private string StateFile => Path.Combine(cloud, destination.Length == 0 ? $"{set}.json" : $"{set}.{destination}.json");
         private string ListFile => Path.Combine(cloud, $"{set}.files.json");
 
         private State Read()
@@ -136,16 +141,41 @@ namespace GameVault.Core.Retro
             List(written);
         }
 
-        public void Pack(Stream output)
+        public void Pack(Stream output) => Pack(output, Entries());
+
+        private static void Pack(Stream output, IEnumerable<(string Entry, string File)> entries)
         {
             using var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
-            foreach (var (entry, file) in Entries())
+            foreach (var (entry, file) in entries)
                 zip.CreateEntryFromFile(file, entry, CompressionLevel.Fastest);
+        }
+
+        /// <summary>
+        /// The save the game wrote itself ("Zelda (E).srm"), as an emulator of RomM's web page reads it: sent on its own,
+        /// the rest (states, memory cards, a console's storage) in <see cref="PackRest"/>. Null when the game has none.
+        /// </summary>
+        public string? MainSave() => Entries()
+            .Where(e => e.Entry.StartsWith("saves/", StringComparison.Ordinal) && NamedAfterGame(e.File) && MainExtensions.Contains(Path.GetExtension(e.File).ToLowerInvariant()))
+            .OrderBy(e => Array.IndexOf(MainExtensions, Path.GetExtension(e.File).ToLowerInvariant())).Select(e => e.File).FirstOrDefault();
+
+        /// <summary>The game's files but its main save; false when there are none.</summary>
+        public bool PackRest(Stream output)
+        {
+            string? main = MainSave();
+            var rest = Entries().Where(e => e.File != main).ToList();
+            Pack(output, rest);
+            return rest.Count > 0;
         }
 
         /// <summary>The server's saves of the game in place of these, which go to a backup first.</summary>
         /// <returns>The backup made, or null when there was nothing to keep.</returns>
-        public string? Unpack(Stream zip)
+        public string? Unpack(Stream zip) => Replace(zip, null);
+
+        /// <summary>
+        /// The game's saves replaced (all go to a backup first) by a zip of its files (in place of all but the main
+        /// save) and/or its main save, written where the emulator reads it (a folder of the saves, named after the game).
+        /// </summary>
+        public string? Replace(Stream? zip, (string Folder, string Extension, byte[] Content)? main)
         {
             string? backup = null;
             var current = Entries();
@@ -157,10 +187,25 @@ namespace GameVault.Core.Retro
                     Pack(target);
                 foreach (string old in Directory.GetFiles(backups, $"{set}-*.zip").OrderByDescending(f => f, StringComparer.Ordinal).Skip(KeptBackups))
                     File.Delete(old);
+                // Only what comes in place: the main save alone keeps the states and memory cards, and the other way round
+                string? currentMain = MainSave();
                 foreach (var (_, file) in current)
-                    File.Delete(file);
+                    if (file == currentMain ? main != null : zip != null)
+                        File.Delete(file);
             }
             var extracted = new List<string>();
+            if (main is var (mainFolder, extension, content))
+            {
+                string saves = Path.GetFullPath(roots[0].Folder) + Path.DirectorySeparatorChar;
+                string target = Path.GetFullPath(Path.Combine(saves, mainFolder, romStem + extension));
+                if (target.StartsWith(saves, StringComparison.Ordinal))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.WriteAllBytes(target, content);
+                }
+            }
+            if (zip == null)
+                return backup;
             using var archive = new ZipArchive(zip, ZipArchiveMode.Read, leaveOpen: true);
             foreach (ZipArchiveEntry entry in archive.Entries.Where(e => e.Name.Length > 0))
             {

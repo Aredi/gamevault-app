@@ -28,7 +28,7 @@ namespace gamevault.UserControls
             InitializeComponent();
             this.game = game;
             this.changed = changed;
-            uiGame.Text = game.Name;
+            uiGame.Text = $"{game.Name} · {RetroCloudSaves.Destination}";
             Loaded += async (_, _) =>
             {
                 Focus();
@@ -89,7 +89,7 @@ namespace gamevault.UserControls
         {
             IsEnabled = false;
             uiLoading.IsVisible = true;
-            MainWindowViewModel.Instance.AppBarText = await RetroCloudSaves.RestoreAsync(game, row.Version.Saves);
+            MainWindowViewModel.Instance.AppBarText = await RetroCloudSaves.RestoreAsync(game, row.IsCurrent ? null : row.Version);
             IsEnabled = true;
             changed?.Invoke();
             await LoadAsync();
@@ -105,7 +105,8 @@ namespace gamevault.UserControls
             Version = version;
             DateTime local = DateTimeOffset.FromUnixTimeMilliseconds(version.SavedAt).LocalDateTime;
             Date = local.ToString("f", CultureInfo.CurrentCulture);
-            Details = version.Size > 0 ? $"{RelativeDate.Format(local)} · {StorageCleanup.FormatSize(version.Size)}" : RelativeDate.Format(local);
+            Details = string.Join(" · ", new[] { RelativeDate.Format(local), version.Size > 0 ? StorageCleanup.FormatSize(version.Size) : null, version.Label }
+                .Where(p => !string.IsNullOrEmpty(p)));
         }
 
         public RetroCloudSaves.Version Version { get; }

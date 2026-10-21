@@ -53,9 +53,60 @@ namespace gamevault.UserControls.SettingsComponents
                     files.Count > 0 ? Loc.F("On this PC: {0}", string.Join(", ", files)) : Loc.T("Not on this PC yet: taken from RomM at the first game"));
             }).ToList();
 
+            await RefreshRommAsync();
             uiSavesState.Text = SettingsViewModel.Instance.CloudSaves
                 ? Loc.T("Each game's saves go to the SanctuaryVault service after it is played and come back on your other PCs, as the cloud saves of the library.")
                 : Loc.T("Kept on this PC only: the cloud saves are off (Settings > Data).");
+        }
+
+        private string? rommPage;
+
+        private async Task RefreshRommAsync()
+        {
+            bool available = await RommAccount.UrlAsync() != null;
+            uiRommState.Text = !available ? Loc.T("RomM is not set up on this server.")
+                : RommAccount.IsLinked ? Loc.F("Linked to RomM as {0}: the retro saves go to your RomM.", RommAccount.Username)
+                : Loc.T("Not linked: the retro saves go to SanctuaryVault.");
+            uiRommLink.IsVisible = available && !RommAccount.IsLinked;
+            uiRommUnlink.IsVisible = RommAccount.IsLinked;
+        }
+
+        private async void RommLink_Click(object? sender, RoutedEventArgs e) => await LinkRommAsync(open: true);
+
+        /// <summary>RomM's pairing: the code shown here, RomM's page opened, the approval waited for.</summary>
+        internal async Task LinkRommAsync(bool open)
+        {
+            uiRommLink.IsEnabled = false;
+            try
+            {
+                string? failure = await RommAccount.LinkAsync((code, page) =>
+                {
+                    rommPage = page;
+                    uiRommCodeText.Text = code;
+                    uiRommCode.IsVisible = true;
+                    if (open)
+                        PlatformInfo.OpenUrl(page);
+                }, System.Threading.CancellationToken.None);
+                MainWindowViewModel.Instance.AppBarText = failure ?? Loc.F("Linked to RomM as {0}", RommAccount.Username);
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+            uiRommCode.IsVisible = false;
+            uiRommLink.IsEnabled = true;
+            await RefreshRommAsync();
+        }
+
+        private void RommPage_Click(object? sender, RoutedEventArgs e)
+        {
+            if (rommPage != null)
+                PlatformInfo.OpenUrl(rommPage);
+        }
+
+        private async void RommUnlink_Click(object? sender, RoutedEventArgs e)
+        {
+            if (!await DialogService.ConfirmAsync(Loc.T("Unlink your RomM account? The retro saves go to SanctuaryVault again (the ones in RomM stay there)."), "RomM"))
+                return;
+            RommAccount.Unlink();
+            await RefreshRommAsync();
         }
 
         private async void OpenMenu_Click(object? sender, RoutedEventArgs e)

@@ -59,6 +59,23 @@ namespace GameVault.Core.Retro
 
         public bool IsInstalled => File.Exists(Executable) && File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() == Version;
 
+        /// <summary>
+        /// The folder RetroArch keeps a core's saves in (its saves are sorted by core): the core's name in its
+        /// description ("Mesen", "mGBA"), else the core.
+        /// </summary>
+        public string SaveFolderName(string core)
+        {
+            string info = Path.Combine(DataDirectory, windows ? "info" : "cores", $"{core}_libretro.info");
+            try
+            {
+                foreach (string line in File.Exists(info) ? File.ReadLines(info) : Enumerable.Empty<string>())
+                    if (line.Split('=', 2) is [var key, var value] && key.Trim() == "corename")
+                        return value.Trim().Trim('"');
+            }
+            catch (IOException) { }
+            return core;
+        }
+
         public string CoreFile(string core) => Path.Combine(CoresDirectory, windows ? $"{core}_libretro.dll" : $"{core}_libretro.so");
         // shortcut: the buildbot keeps no stable file per core, so cores are the nightly "latest"; pin them if one breaks
         public string CoreUrl(string core) => core == "azahar"

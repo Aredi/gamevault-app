@@ -90,6 +90,9 @@ namespace gamevault.Models
         GameRequestStatuses,
         //This PC for "Install on my PC" (profileconfig): the id the web page asks for
         RemoteDeviceId,
+        RommToken,
+        RommUsername,
+        RommDeviceId,
         //Download queue
         MaxConcurrentDownloads,
         //Interface language (profileconfig): "", "en", "fr"
