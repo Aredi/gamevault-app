@@ -109,6 +109,14 @@ namespace GameVault.Core.Retro
         public override string Settings(string existing) =>
             MergeIni(existing, "UI", Ui.SelectMany(s => new[] { ($"{s.Key}\\default", "false"), s }));
 
+        /// <summary>
+        /// Where Eden finds the games' updates and DLC at a game's start (it takes the newest update): the installed
+        /// Switch games' folders, nothing installed into the console. Its paths are in [UI], under "Paths\".
+        /// </summary>
+        public static string ContentFolders(string existing, IReadOnlyList<string> folders) =>
+            MergeIni(existing, "UI", folders.Select((f, i) => ($"Paths\\external_content_dirs\\{i + 1}\\path", $"\"{f.Replace('\\', '/')}\""))
+                .Append(("Paths\\external_content_dirs\\size", folders.Count.ToString())));
+
         public override IReadOnlyList<string> Arguments(string player, string launchFile) => new[] { "-u", "0", "-g", launchFile };
     }
 }

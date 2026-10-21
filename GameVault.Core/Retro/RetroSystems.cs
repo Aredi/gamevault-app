@@ -35,7 +35,7 @@ namespace GameVault.Core.Retro
             // Azahar plays decrypted games only; a CIA is given as its main content (.cxi), see CiaReader
             // RPCS3, not RetroArch: an ISO (encrypted ones too), or a game in a folder started by its EBOOT.BIN's folder
             new RetroSystem("ps3", "PlayStation 3", "rpcs3", new[] { "iso", "EBOOT.BIN" }, CoverRatio: 1.16),
-            // Eden, not RetroArch: a game card (.xci) or an eShop package (.nsp), not its updates and DLC
+            // Eden, not RetroArch: a game card (.xci) or an eShop package (.nsp); its updates and DLC are read from the games' folders
             new RetroSystem("switch", "Nintendo Switch", "eden", new[] { "xci", "nsp" }),
             new RetroSystem("3ds", "Nintendo 3DS", "azahar", new[] { "cxi", "zcxi", "3ds", "cci", "zcci", "3dsx", "z3dsx", "app", "elf", "cia" }, CoverRatio: 0.89),
         }.ToDictionary(s => s.Slug);
@@ -48,9 +48,13 @@ namespace GameVault.Core.Retro
             string.IsNullOrEmpty(rommUrl) || string.IsNullOrEmpty(cover) ? null
                 : $"{rommUrl.TrimEnd('/')}/assets/romm/resources/{cover.Replace("/cover/big.", "/cover/small.")}";
 
-        /// <summary>A Switch update or DLC by its title id in the name ("[0100670014483001]"): a game's own ends in 000.</summary>
-        public static bool IsSwitchAddOn(string fileName) =>
-            System.Text.RegularExpressions.Regex.Match(fileName, @"\[(0100[0-9A-Fa-f]{12})\]") is { Success: true } id && !id.Groups[1].Value.EndsWith("000");
+        /// <summary>
+        /// A Switch update or DLC: by its title id in the name ("[0100670014483001]": a game's own ends in 000), or in
+        /// the "update" or "dlc" folder of a game in RomM.
+        /// </summary>
+        public static bool IsSwitchAddOn(string path) =>
+            System.Text.RegularExpressions.Regex.Match(Path.GetFileName(path), @"\[(0100[0-9A-Fa-f]{12})\]") is { Success: true } id && !id.Groups[1].Value.EndsWith("000")
+            || Path.GetFileName(Path.GetDirectoryName(path)) is "update" or "dlc";
 
         /// <summary>The file to start in a game's folder; null when none has an extension the emulator knows.</summary>
         public static string? LaunchFile(RetroSystem system, IEnumerable<string> files)
@@ -61,7 +65,9 @@ namespace GameVault.Core.Retro
                 string? match = extension.Contains('.')
                     // The one nearest the top (a game's other EBOOT.BIN are deeper)
                     ? list.Where(f => string.Equals(Path.GetFileName(f), extension, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f.Length).FirstOrDefault()
-                    : list.Where(f => string.Equals(Path.GetExtension(f).TrimStart('.'), extension, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+                    // A Switch game before its updates and DLC, which are not started (alone, the add-on is the game's file: it is installed)
+                    : list.Where(f => string.Equals(Path.GetExtension(f).TrimStart('.'), extension, StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(f => system.IsEden && IsSwitchAddOn(f)).ThenBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
                 if (match != null)
                     return match;
             }

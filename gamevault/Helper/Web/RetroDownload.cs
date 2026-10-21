@@ -363,9 +363,6 @@ namespace gamevault.Helper
             // A PS3 package is installed into the console with its licence: not done here, told before gigabytes come down
             if (game.Platform.System.IsRpcs3 && string.Equals(Path.GetExtension(game.FileName), ".pkg", StringComparison.OrdinalIgnoreCase))
                 return Loc.T("PS3 packages (.pkg) can not be played here: an ISO or the game's folder is needed in RomM.");
-            // A Switch update or DLC is installed into the console over its game: not done here
-            if (game.Platform.System.IsEden && RetroSystems.IsSwitchAddOn(game.FileName))
-                return Loc.T("This is an update or a DLC of a Switch game: Eden plays the game itself (.xci or .nsp).");
             // Most 3DS packages are encrypted, which Azahar can not play: told before gigabytes come down
             if (string.Equals(Path.GetExtension(game.FileName), ".cia", StringComparison.OrdinalIgnoreCase)
                 && CiaReader.Inspect(await RetroService.ReadStartAsync(game, CiaReader.HeaderBytes), game.Size).Verdict != CiaReader.Verdict.Playable)

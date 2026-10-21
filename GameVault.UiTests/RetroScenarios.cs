@@ -207,18 +207,22 @@ namespace GameVault.UiTests
                 await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "switch"));
                 await TestSession.WaitUntil(() => page.Shown.Count() == 2, TimeSpan.FromSeconds(10), "the Switch games");
 
-                // A DLC is installed over its game: refused before its 10 GB come down
-                RetroGame dlc = page.Shown.Single(g => g.Name.Contains("DLC"));
-                await RetroPlay.InstallAsync(dlc);
-                Assert.Contains("DLC", dlc.Status);
-                Assert.Empty(DownloadsViewModel.Instance.RetroDownloads);
-
                 // The folder comes zipped and is unpacked; without the keys in RomM, the game waits for them
                 RetroGame game = page.Shown.Single(g => g.Name == "1-2-Switch");
                 await RetroPlay.InstallAsync(game);
                 RetroDownload download = Assert.Single(DownloadsViewModel.Instance.RetroDownloads);
                 await TestSession.WaitUntil(() => download.IsDone || download.IsFailed, TimeSpan.FromSeconds(20), "the Switch download");
                 Assert.True(game.Installed, download.State);
+
+                // A DLC is installed as a game, and not started: Eden takes it with its game
+                RetroGame dlc = page.Shown.Single(g => g.Name.Contains("DLC"));
+                await RetroPlay.InstallAsync(dlc);
+                RetroDownload dlcDownload = DownloadsViewModel.Instance.RetroDownloads.Single(d => d.Game.Id == dlc.Id);
+                await TestSession.WaitUntil(() => dlcDownload.IsDone || dlcDownload.IsFailed, TimeSpan.FromSeconds(20), "the DLC download");
+                Assert.True(dlc.Installed, dlcDownload.State);
+                await RetroPlay.PlayAsync(dlc);
+                Assert.Contains("DLC", dlc.Status);
+                Assert.False(dlc.Busy);
                 Assert.Contains("prod.keys", download.State);
                 Assert.Equal("1-2-Switch.xci", Path.GetFileName(game.RomFile));
                 Assert.Equal(new[] { "-u", "0", "-g", game.RomFile! }, layout.Arguments(RetroArchManager.Player, game.RomFile!));
@@ -232,9 +236,12 @@ namespace GameVault.UiTests
                 Assert.Equal("master_key_00 = 00", File.ReadAllText(Path.Combine(layout.KeysDirectory, "prod.keys")));
                 Assert.Equal(2, Directory.GetFiles(layout.FirmwareDirectory, "*.nca").Length);
 
-                // The player is the console's first user when the game starts (Eden itself is not run here)
+                // The player is the console's first user when the game starts (Eden itself is not run here), the updates and DLC read from the games' folders
                 Assert.ThrowsAny<Exception>(() => StandaloneEmulator.Eden.Launch(RetroArchManager.Player, game.RomFile!));
                 Assert.Equal(EdenLayout.UserId(RetroArchManager.Player), File.ReadAllBytes(layout.ProfilesFile)[0x10..0x20]);
+                string config = File.ReadAllText(layout.SettingsFiles.Single());
+                Assert.Contains("Paths\\external_content_dirs\\size=2", config);
+                Assert.Contains(Path.GetDirectoryName(dlc.RomFile)!.Replace('\\', '/'), config);
 
                 // Its saves are what it writes in the player's user folder
                 var saves = RetroCloudSaves.Of(game);

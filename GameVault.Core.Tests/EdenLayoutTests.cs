@@ -9,16 +9,29 @@ namespace GameVault.Core.Tests
         private static readonly string Root = Path.Combine(Path.GetTempPath(), "eden-layout");
 
         [Fact]
-        public void TheSwitch_PlaysItsGames_NotTheirUpdatesAndDlc()
+        public void TheSwitch_StartsItsGames_NotTheirUpdatesAndDlc()
         {
             RetroSystem system = RetroSystems.All["switch"];
             Assert.True(system.IsEden && system.IsStandalone);
             Assert.Equal("1-2-Switch.xci", Path.GetFileName(RetroSystems.LaunchFile(system, new[] { "1-2-Switch (Certificate).bin", "1-2-Switch.xci", "1-2-Switch (Initial Data).bin" })));
+            // A game's folder in RomM, its update and DLC beside it; an add-on alone is its own file
+            Assert.Equal("g/Zelda.nsp", RetroSystems.LaunchFile(system, new[] { "g/update/A.nsp", "g/Zelda.nsp", "g/Zelda [01007EF00011E800].nsp", "g/dlc/B.nsp" }));
+            Assert.Equal("d/X [0100670014483001].nsp", RetroSystems.LaunchFile(system, new[] { "d/X [0100670014483001].nsp" }));
+            Assert.True(RetroSystems.IsSwitchAddOn(Path.Combine("g", "dlc", "B.nsp")));
             Assert.False(RetroSystems.IsSwitchAddOn("Assassins Creed The Ezio Collection [0100670014482000].nsp"));
             Assert.False(RetroSystems.IsSwitchAddOn("Captain Toad Treasure Tracker [01009BF0072D4000][v393216].nsp"));
             Assert.False(RetroSystems.IsSwitchAddOn("Bayonetta 2.xci"));
             Assert.True(RetroSystems.IsSwitchAddOn("Assassins Creed The Ezio Collection - Brotherhood [DLC][0100670014483001].nsp"));
             Assert.True(RetroSystems.IsSwitchAddOn("Zelda [01007EF00011E800][v65536].nsp"));
+        }
+
+        [Fact]
+        public void TheUpdatesAndDlc_AreReadFromTheGamesFolders_TheOtherPathsStay()
+        {
+            // As Eden writes it
+            string ini = EdenLayout.ContentFolders("[UI]\nPaths\\gamedirs\\size=1\nPaths\\external_content_dirs\\size=0\n[Core]\n", new[] { @"C:\Jeux\GameVault\Retro\switch\70", "/home/a/switch/71" });
+            Assert.Equal("[UI]\nPaths\\gamedirs\\size=1\nPaths\\external_content_dirs\\size=2\n"
+                + "Paths\\external_content_dirs\\1\\path=\"C:/Jeux/GameVault/Retro/switch/70\"\nPaths\\external_content_dirs\\2\\path=\"/home/a/switch/71\"\n[Core]\n", ini);
         }
 
         [Fact]

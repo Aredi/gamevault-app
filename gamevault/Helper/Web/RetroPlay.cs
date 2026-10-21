@@ -38,6 +38,11 @@ namespace gamevault.Helper
         {
             if (game.Busy || game.RomFile is not string rom)
                 return;
+            if (game.Platform.System.IsEden && RetroSystems.IsSwitchAddOn(rom))
+            {
+                game.Status = Loc.T("An update or a DLC is not started: Eden takes it when its game is played.");
+                return;
+            }
             game.Busy = true;
             try
             {

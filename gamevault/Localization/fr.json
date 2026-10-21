@@ -1202,5 +1202,5 @@
   "{0} needs its keys (prod.keys) and its firmware (a zip of its .nca files): an administrator adds them in RomM, in the Firmware of the platform.": "{0} a besoin de ses clés (prod.keys) et de son firmware (un zip de ses fichiers .nca) : un administrateur les ajoute dans RomM, dans le Firmware de la plateforme.",
   "Downloading the Switch keys and firmware...": "Téléchargement des clés et du firmware Switch...",
   "The Switch firmware in RomM has no .nca file: an administrator replaces it with a zip of the firmware's files.": "Le firmware Switch de RomM n'a aucun fichier .nca : un administrateur le remplace par un zip des fichiers du firmware.",
-  "This is an update or a DLC of a Switch game: Eden plays the game itself (.xci or .nsp).": "C'est une mise à jour ou un DLC d'un jeu Switch : Eden joue le jeu lui-même (.xci ou .nsp)."
+  "An update or a DLC is not started: Eden takes it when its game is played.": "Une mise à jour ou un DLC ne se lance pas : Eden l'utilise quand vous jouez à son jeu."
 }

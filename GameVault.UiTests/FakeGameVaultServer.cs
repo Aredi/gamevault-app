@@ -214,7 +214,7 @@ namespace GameVault.UiTests
                     await Json(response, new[]
                     {
                         new { id = 70, name = "1-2-Switch", fileName = "1-2-Switch.xci", size = SwitchFolderGame.LongLength, multi = true },
-                        new { id = 71, name = "Assassin's Creed Brotherhood DLC", fileName = "Assassins Creed - Brotherhood [DLC][0100670014483001].nsp", size = 10434927777L, multi = false },
+                        new { id = 71, name = "Assassin's Creed Brotherhood DLC", fileName = "Assassins Creed - Brotherhood [DLC][0100670014483001].nsp", size = 3L, multi = false },
                     });
                 else if (path == "/retro/games/70/content")
                 {
@@ -222,6 +222,12 @@ namespace GameVault.UiTests
                     response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''1-2-Switch.xci.zip");
                     response.ContentLength64 = SwitchFolderGame.LongLength;
                     await response.OutputStream.WriteAsync(SwitchFolderGame);
+                }
+                else if (path == "/retro/games/71/content")
+                {
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''Assassins%20Creed%20-%20Brotherhood%20%5BDLC%5D%5B0100670014483001%5D.nsp");
+                    response.ContentLength64 = 3;
+                    await response.OutputStream.WriteAsync("dlc"u8.ToArray());
                 }
                 else if (path == "/retro/platforms/9/firmware")
                     await Json(response, SwitchFirmware is not var (keys, firmware) ? Array.Empty<object>()
