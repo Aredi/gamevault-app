@@ -71,6 +71,39 @@ namespace GameVault.Uploader.Tests
         }
     }
 
+    /// <summary>RomM: one platform with one game, a cover, and the game's file sent in parts.</summary>
+    internal sealed class FakeRomm : HttpMessageHandler
+    {
+        public static readonly byte[] Rom = System.Text.Encoding.ASCII.GetBytes("NES-ROM-CONTENT");
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.Headers.Authorization?.Parameter != Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("viewer:pass")))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+            string path = request.RequestUri!.PathAndQuery;
+            HttpResponseMessage answer = path switch
+            {
+                "/api/platforms" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new object[] { new { id = 3, slug = "nes", name = "Nintendo Entertainment System", display_name = "NES", rom_count = 1 }, new { id = 4, slug = "dos", name = "DOS", display_name = (string?)null, rom_count = 0 } }) },
+                "/api/roms?platform_ids=3&limit=10000&order_by=name" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", fs_name = "Zelda (E).nes", fs_size_bytes = Rom.Length, path_cover_large = "/assets/romm/resources/roms/3/40/cover/big.png?ts=1", summary = "A sword" } } }) },
+                "/api/roms/40" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 40, fs_name = "Zelda (E).nes" }) },
+                "/api/roms/40/content/Zelda%20%28E%29.nes" => Part(request),
+                "/assets/romm/resources/roms/3/40/cover/big.png" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 0x89, 0x50 }) { Headers = { ContentType = new("image/png") } } },
+                _ => new(HttpStatusCode.NotFound),
+            };
+            return Task.FromResult(answer);
+        }
+
+        private static HttpResponseMessage Part(HttpRequestMessage request)
+        {
+            long from = request.Headers.Range?.Ranges.First().From ?? 0;
+            var answer = new HttpResponseMessage(from > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK) { Content = new ByteArrayContent(Rom[(int)from..]) };
+            answer.Headers.AcceptRanges.Add("bytes");
+            if (from > 0)
+                answer.Content.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(from, Rom.Length - 1, Rom.Length);
+            return answer;
+        }
+    }
+
     public sealed class UploaderTests : IDisposable
     {
         private readonly string files = Path.Combine(Path.GetTempPath(), $"gv-uploader-{Guid.NewGuid():N}");
@@ -79,6 +112,7 @@ namespace GameVault.Uploader.Tests
         private readonly string remote = Path.Combine(Path.GetTempPath(), $"gv-remote-{Guid.NewGuid():N}");
         private readonly FakeGameVault gameVault = new();
         private readonly FakeRequestsBot bot = new();
+        private readonly FakeRomm romm = new();
         private readonly WebApplicationFactory<Program> factory;
 
         public UploaderTests()
@@ -103,11 +137,15 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("REMOTE_INSTALLS_DIRECTORY", remote);
                 host.UseSetting("ROMM_COMM_URL", "http://romm-sync.test:8095");
                 host.UseSetting("ROMM_COMM_API_KEY", "bot-key");
+                host.UseSetting("ROMM_URL", "http://romm.test:8080");
+                host.UseSetting("ROMM_USERNAME", "viewer");
+                host.UseSetting("ROMM_PASSWORD", "pass");
                 host.ConfigureServices(services =>
                 {
                     services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
                     services.AddHttpClient<GameVaultProxy>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
                     services.AddHttpClient<GameRequestsProxy>().ConfigurePrimaryHttpMessageHandler(() => bot);
+                    services.AddHttpClient<RommProxy>().ConfigurePrimaryHttpMessageHandler(() => romm);
                 });
             });
         }
@@ -313,6 +351,41 @@ namespace GameVault.Uploader.Tests
                 id = Assert.Single(again.RootElement.EnumerateArray()).GetProperty("id").GetString()!;
             Assert.Equal(HttpStatusCode.NoContent, (await player.DeleteAsync($"/remote/installs/{id}")).StatusCode);
             Assert.Equal("[]", await player.GetStringAsync("/remote/installs"));
+        }
+
+        [Fact]
+        public async Task RetroGames_ComeFromRomm_ForSignedInPlayers()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/platforms")).StatusCode);
+
+            // Only the platforms with games
+            using (JsonDocument platforms = JsonDocument.Parse(await player.GetStringAsync("/retro/platforms")))
+            {
+                JsonElement nes = Assert.Single(platforms.RootElement.EnumerateArray());
+                Assert.Equal((3, "nes", "NES"), (nes.GetProperty("id").GetInt32(), nes.GetProperty("slug").GetString(), nes.GetProperty("name").GetString()));
+            }
+            using (JsonDocument games = JsonDocument.Parse(await player.GetStringAsync("/retro/platforms/3/games")))
+            {
+                JsonElement zelda = Assert.Single(games.RootElement.EnumerateArray());
+                Assert.Equal(("Zelda", "Zelda (E).nes", "roms/3/40/cover/big.png"), (zelda.GetProperty("name").GetString(), zelda.GetProperty("fileName").GetString(), zelda.GetProperty("cover").GetString()));
+            }
+
+            // Covers only: no other path of RomM goes through
+            Assert.Equal("image/png", (await player.GetAsync("/retro/covers/roms/3/40/cover/big.png")).Content.Headers.ContentType!.MediaType);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/covers/roms/3/40/../../../api/users")).StatusCode);
+
+            // The file, whole or from where a download stopped
+            HttpResponseMessage whole = await player.GetAsync("/retro/games/40/content");
+            Assert.Equal(FakeRomm.Rom, await whole.Content.ReadAsByteArrayAsync());
+            Assert.Equal("Zelda (E).nes", whole.Content.Headers.ContentDisposition!.FileNameStar);
+            using var rest = new HttpRequestMessage(HttpMethod.Get, "/retro/games/40/content");
+            rest.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(4, null);
+            HttpResponseMessage part = await player.SendAsync(rest);
+            Assert.Equal(HttpStatusCode.PartialContent, part.StatusCode);
+            Assert.Equal(FakeRomm.Rom[4..], await part.Content.ReadAsByteArrayAsync());
+            Assert.Equal(4, part.Content.Headers.ContentRange!.From);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/games/41/content")).StatusCode);
         }
 
         [Fact]

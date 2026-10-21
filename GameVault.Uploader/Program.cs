@@ -26,6 +26,13 @@ builder.Services.AddHttpClient<GameRequestsProxy>(client =>
         client.BaseAddress = new Uri(options.RommCommUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddHttpClient<RommProxy>(client =>
+{
+    if (!string.IsNullOrEmpty(options.RommUrl))
+        client.BaseAddress = new Uri(options.RommUrl.TrimEnd('/') + "/");
+    // Games of several GB come through: the time goes to each read, not to the whole download
+    client.Timeout = Timeout.InfiniteTimeSpan;
+});
 
 var app = builder.Build();
 // Also served under the GameVault site (gamevault.example.com/sanctuary/ -> this service): same origin as the

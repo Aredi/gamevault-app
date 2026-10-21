@@ -24,6 +24,8 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `REMOTE_INSTALLS_DIRECTORY` | `/data/remote` | Games the players asked to install on their PC from the web page |
 | `ROMM_COMM_URL` | - | Requests API of the [RomM-ComM](https://github.com/idio-sync/romm-comm) Discord bot (e.g. `http://romm-sync:8095`): game requests are off without it |
 | `ROMM_COMM_API_KEY` | - | The bot's `REQUESTS_API_KEY` |
+| `ROMM_URL` | - | [RomM](https://github.com/rommapp/romm) (e.g. `http://romm:8080`): the client's Retro page lists its NES, SNES, GBA and DS games and plays them with RetroArch; off without it |
+| `ROMM_USERNAME`, `ROMM_PASSWORD` | - | The RomM account the service reads with: a Viewer account is enough |
 
 ## Web page
 

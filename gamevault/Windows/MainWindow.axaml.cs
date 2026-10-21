@@ -107,6 +107,9 @@ namespace gamevault.Windows
                 case MainControl.Library:
                     MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Library;
                     break;
+                case MainControl.Retro:
+                    MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Retro;
+                    break;
                 case MainControl.Settings:
                     MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Settings;
                     break;

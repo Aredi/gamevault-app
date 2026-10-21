@@ -14,11 +14,12 @@ namespace gamevault.ViewModels
     public enum MainControl
     {
         Library = 0,
-        Downloads = 1,
-        Community = 2,
-        Activity = 3,
-        Settings = 4,
-        AdminConsole = 5
+        Retro = 1,
+        Downloads = 2,
+        Community = 3,
+        Activity = 4,
+        Settings = 5,
+        AdminConsole = 6
     }
     internal class MainWindowViewModel : ViewModelBase
     {
@@ -27,6 +28,7 @@ namespace gamevault.ViewModels
             m_Settings = new SettingsUserControl();
             m_Downloads = new DownloadsUserControl();
             m_Library = new LibraryUserControl();
+            m_Retro = new RetroUserControl();
             m_Community = new CommunityUserControl();
             m_Activity = new ActivityUserControl();
             m_AdminConsole = new AdminConsoleUserControl();
@@ -115,6 +117,7 @@ namespace gamevault.ViewModels
         private SettingsUserControl m_Settings { get; set; }
         private DownloadsUserControl m_Downloads { get; set; }
         private LibraryUserControl m_Library { get; set; }
+        private RetroUserControl m_Retro { get; set; }
         private CommunityUserControl m_Community { get; set; }
         private ActivityUserControl m_Activity { get; set; }
         private AdminConsoleUserControl m_AdminConsole { get; set; }
@@ -186,6 +189,7 @@ namespace gamevault.ViewModels
             private set { m_Community = value; }
         }
         internal ActivityUserControl Activity => m_Activity;
+        internal RetroUserControl Retro => m_Retro;
         internal AdminConsoleUserControl AdminConsole
         {
             get { return m_AdminConsole; }

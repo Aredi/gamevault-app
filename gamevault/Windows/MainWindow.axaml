@@ -207,6 +207,15 @@
                                     </StackPanel>
                                 </Panel>
                             </ListBoxItem>
+                            <ListBoxItem ToolTip.Tip="{l:T 'Retro'}">
+                                <Panel>
+                                    <Border Classes="mark" />
+                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                        <Path Data="{StaticResource IconNavRetro}" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Retro'}" />
+                                    </StackPanel>
+                                </Panel>
+                            </ListBoxItem>
                             <ListBoxItem ToolTip.Tip="{l:T 'Downloads'}">
                                 <Panel>
                                     <Border Classes="mark" />

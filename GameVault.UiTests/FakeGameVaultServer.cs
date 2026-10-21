@@ -53,6 +53,7 @@ namespace GameVault.UiTests
         public sealed record RemoteInstall(int GameId, string Title, string DeviceId, string Status = "pending", string? Message = null);
         /// <summary>Game requests sent through the service (to the RomM-ComM bot): name of the game.</summary>
         public ConcurrentQueue<string> GameRequests { get; } = new();
+        public static readonly byte[] RetroRom = Encoding.ASCII.GetBytes("NES\x1A-test-rom");
         /// <summary>Status the bot gives a request (pending when not set): game, status.</summary>
         public ConcurrentDictionary<string, string> GameRequestStatuses { get; } = new();
         /// <summary>The mappings received (PUT /api/games/{id}): game, provider, provider id.</summary>
@@ -144,6 +145,18 @@ namespace GameVault.UiTests
                     await Json(response, Users.IsEmpty ? new[] { Admin } : Users.Values.OrderBy(u => u.ID).ToArray());
                 else if ((match = Regex.Match(path, @"^/api/users/(\d+)$")).Success && Users.TryGetValue(int.Parse(match.Groups[1].Value), out User? user))
                     await Json(response, user);
+                // RomM through the SanctuaryVault service: a NES game, and a platform the client has no emulator for
+                else if (path == "/retro/platforms")
+                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 9, slug = "switch", name = "Switch", count = 4 } });
+                else if (path == "/retro/platforms/3/games")
+                    await Json(response, new[] { new { id = 40, name = "Zelda", fileName = "Zelda (E).nes", size = RetroRom.LongLength, cover = (string?)null, summary = "A sword" } });
+                else if (path == "/retro/games/40/content")
+                {
+                    response.ContentType = "application/octet-stream";
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''Zelda%20%28E%29.nes");
+                    response.ContentLength64 = RetroRom.LongLength;
+                    await response.OutputStream.WriteAsync(RetroRom);
+                }
                 else if (path == "/status")
                     await Json(response, new { status = "OK", version = "1.0.0", freeSpace = 1L << 40, profiles = true, saveHistory = true });
                 else if ((match = Regex.Match(path, @"^/savefiles/(\d+)$")).Success)

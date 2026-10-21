@@ -27,7 +27,7 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -55,6 +55,16 @@ namespace GameVault.Uploader
                 var answer = await requests.AskAsync(check.Id, check.User, game, details, ct);
                 return Results.Content(answer.Body, "application/json", statusCode: answer.Status);
             });
+
+            // The games of the other platforms, from RomM, for every signed-in player
+            app.MapGet("/retro/platforms", (HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.PlatformsAsync(ct))));
+            app.MapGet("/retro/platforms/{platformId:int}/games", (int platformId, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.GamesAsync(platformId, ct))));
+            app.MapGet("/retro/covers/{**path}", (string path, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => { await romm.CoverAsync(path, context.Response, ct); return Results.Empty; }));
+            app.MapGet("/retro/games/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => { await romm.ContentAsync(id, context.Request, context.Response, ct); return Results.Empty; }));
 
             // "Install on my PC": the player's clients say they are open, the web page asks one of them for a game,
             // that client takes it and says what became of it (each player sees only their own PCs and requests)
@@ -276,6 +286,23 @@ namespace GameVault.Uploader
             if (!remote.Enabled)
                 return Results.Json(new { error = "Remote installs are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
             return action(check.Id);
+        }
+
+        private static async Task<IResult> FromRommAsync(HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct, Func<Task<IResult>> action)
+        {
+            var check = await users.CheckUserAsync(context.Request, ct);
+            if (!check.Allowed)
+                return Results.Json(new { error = check.Message }, statusCode: check.Status);
+            if (!romm.Enabled)
+                return Results.Json(new { error = "The games of the other platforms are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            try
+            {
+                return await action();
+            }
+            catch (RommProxy.RommException ex) when (!context.Response.HasStarted)
+            {
+                return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status502BadGateway);
+            }
         }
 
         private static async Task<IResult> GuardedAsync(string name, HttpRequest request, AdminCheck admins, CancellationToken ct, Func<string, Task<IResult>> action)

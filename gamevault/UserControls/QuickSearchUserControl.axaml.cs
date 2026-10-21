@@ -172,6 +172,7 @@ namespace gamevault.UserControls
                 Run = () => MainWindowViewModel.Instance.SetActiveControl(page),
             };
             yield return Page("Library", "IconNavLibrary", MainControl.Library);
+            yield return Page("Retro", "IconNavRetro", MainControl.Retro, "The games of the other platforms");
             yield return Page("Downloads", "IconNavDownloads", MainControl.Downloads);
             yield return new QuickSearchItem
             {
