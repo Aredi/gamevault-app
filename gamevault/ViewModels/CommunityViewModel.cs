@@ -35,6 +35,11 @@ namespace gamevault.ViewModels
             }
         }
 
+        private List<RetroPlayRow> retroPlays = new();
+        /// <summary>The shown player's retro games, the most played first.</summary>
+        public List<RetroPlayRow> RetroPlays { get => retroPlays; set { retroPlays = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasRetroPlays)); } }
+        public bool HasRetroPlays => RetroPlays.Count > 0;
+
         public List<Progress> UserProgresses
         {
             get
@@ -197,5 +202,9 @@ namespace gamevault.ViewModels
     }
 
     /// <summary>A line of the activity feed: "Zoé played Hades · 2 h ago".</summary>
-    internal sealed record ActivityFeedItem(User User, Game Game, string Text, string When);
+    /// <summary>A retro game on a profile: the game, "12 h · yesterday".</summary>
+    internal sealed record RetroPlayRow(Helper.RetroGame Game, string Text);
+
+    /// <param name="Retro">A retro game (from RomM) instead of a game of the library.</param>
+    internal sealed record ActivityFeedItem(User? User, Game? Game, string Text, string When, DateTime At = default, Helper.RetroGame? Retro = null);
 }

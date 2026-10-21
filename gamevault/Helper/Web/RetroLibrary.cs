@@ -1,0 +1,271 @@
+using GameVault.Core;
+using GameVault.Core.Library;
+using GameVault.Core.Retro;
+using gamevault.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace gamevault.Helper
+{
+    /// <summary>
+    /// The player's side of the retro games, as the library has it for the server's games: the games installed on this
+    /// PC (found on disk, so they are there offline too), the time played on each (kept by the SanctuaryVault service,
+    /// sent later when it can not be reached), the favorites (kept by the service, so they follow the player) and the
+    /// collections (on this PC, as the library's).
+    /// </summary>
+    internal static class RetroLibrary
+    {
+        private static string Service => SanctuaryService.Current.TrimEnd('/');
+        public static string Key(RetroGame game) => $"{game.Platform.Slug}:{game.Id}";
+
+        #region Installed games
+        /// <summary>The retro games installed in the library folders, from the description written beside each.</summary>
+        public static List<RetroGame> InstalledGames()
+        {
+            var games = new List<RetroGame>();
+            foreach (var root in SettingsViewModel.Instance.RootDirectories ?? new())
+            {
+                string retro = Path.Combine(root.Uri, "GameVault", "Retro");
+                if (!Directory.Exists(retro))
+                    continue;
+                foreach (string folder in Directory.EnumerateDirectories(retro).SelectMany(Directory.EnumerateDirectories))
+                {
+                    try
+                    {
+                        string info = Path.Combine(folder, RetroDownload.InfoFile);
+                        if (!File.Exists(info) || File.Exists(Path.Combine(folder, RetroService.DownloadMetadata)))
+                            continue;
+                        var saved = JsonSerializer.Deserialize<RetroDownload.SavedGame>(File.ReadAllText(info));
+                        if (saved == null || !RetroSystems.All.ContainsKey(saved.Platform.Slug))
+                            continue;
+                        saved.Game.Platform = saved.Platform;
+                        if (saved.Game.Installed && !games.Any(g => Key(g) == Key(saved.Game)))
+                            games.Add(saved.Game);
+                    }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
+            }
+            return games;
+        }
+
+        /// <summary>Games installed before the description existed get one, so they are found offline too.</summary>
+        public static void Describe(IEnumerable<RetroGame> games)
+        {
+            foreach (RetroGame game in games)
+            {
+                try
+                {
+                    if (RetroService.InstalledFolder(game) is string folder && !File.Exists(Path.Combine(folder, RetroDownload.InfoFile)))
+                        File.WriteAllText(Path.Combine(folder, RetroDownload.InfoFile), JsonSerializer.Serialize(new RetroDownload.SavedGame(game, game.Platform)));
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+        }
+        #endregion
+
+        #region Time played and favorites
+        internal sealed class Play
+        {
+            [JsonPropertyName("romId")] public int RomId { get; set; }
+            [JsonPropertyName("platform")] public string Platform { get; set; } = "";
+            [JsonPropertyName("platformName")] public string PlatformName { get; set; } = "";
+            [JsonPropertyName("name")] public string Name { get; set; } = "";
+            [JsonPropertyName("cover")] public string? Cover { get; set; }
+            [JsonPropertyName("minutes")] public int Minutes { get; set; }
+            [JsonPropertyName("lastPlayed")] public DateTime LastPlayed { get; set; }
+            public string Key => $"{Platform}:{RomId}";
+        }
+
+        private sealed class Player
+        {
+            [JsonPropertyName("plays")] public List<Play> Plays { get; set; } = new();
+            [JsonPropertyName("favorites")] public List<string> Favorites { get; set; } = new();
+        }
+
+        private static Dictionary<string, Play> plays = new();
+        private static HashSet<string> favorites = new();
+        private static readonly SemaphoreSlim loading = new(1, 1);
+
+        /// <summary>Not sent yet (the service could not be reached): sent with the next load.</summary>
+        private static string PendingFile => Path.Combine(Path.GetDirectoryName(LoginManager.Instance.GetUserProfile().CollectionsFile)!, "retro-pending-plays.json");
+
+        /// <summary>Fired when the times or the favorites changed (the pages show them again).</summary>
+        public static event Action? Changed;
+
+        /// <summary>The player's times and favorites from the service, after sending what waited.</summary>
+        public static async Task LoadAsync()
+        {
+            if (!await loading.WaitAsync(0))
+                return;
+            try
+            {
+                await SendPendingAsync();
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/players/me");
+                using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+                if (!response.IsSuccessStatusCode)
+                    return;
+                Player player = JsonSerializer.Deserialize<Player>(await response.Content.ReadAsStringAsync()) ?? new();
+                plays = player.Plays.GroupBy(p => p.Key).ToDictionary(g => g.Key, g => g.First());
+                favorites = player.Favorites.ToHashSet();
+                Changed?.Invoke();
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            finally { loading.Release(); }
+        }
+
+        public static int MinutesOf(RetroGame game) => plays.TryGetValue(Key(game), out Play? play) ? play.Minutes : 0;
+        public static DateTime? LastPlayedOf(RetroGame game) => plays.TryGetValue(Key(game), out Play? play) ? play.LastPlayed : null;
+        public static IReadOnlyCollection<Play> MyPlays => plays.Values;
+
+        /// <summary>A game was played: counted here at once, and on the service (the profile, the activity).</summary>
+        public static async Task RecordPlayAsync(RetroGame game, int minutes)
+        {
+            if (minutes < 1)
+                return;
+            var play = new Play { RomId = game.Id, Platform = game.Platform.Slug, PlatformName = game.Platform.Name, Name = game.Name, Cover = game.Cover, Minutes = minutes };
+            if (plays.TryGetValue(play.Key, out Play? known))
+                known.Minutes += minutes;
+            else
+                plays[play.Key] = new Play { RomId = play.RomId, Platform = play.Platform, PlatformName = play.PlatformName, Name = play.Name, Cover = play.Cover, Minutes = minutes };
+            plays[play.Key].LastPlayed = DateTime.UtcNow;
+            Changed?.Invoke();
+            if (!await SendAsync(play))
+            {
+                // Kept for later: the time is not lost
+                try
+                {
+                    var pending = ReadPending();
+                    pending.Add(play);
+                    File.WriteAllText(PendingFile, JsonSerializer.Serialize(pending));
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+        }
+
+        private static List<Play> ReadPending()
+        {
+            try { return File.Exists(PendingFile) ? JsonSerializer.Deserialize<List<Play>>(File.ReadAllText(PendingFile)) ?? new() : new(); }
+            catch (Exception ex) { Log.Ignored(ex); return new(); }
+        }
+
+        private static async Task SendPendingAsync()
+        {
+            var pending = ReadPending();
+            if (pending.Count == 0)
+                return;
+            var left = new List<Play>();
+            foreach (Play play in pending)
+                if (!await SendAsync(play))
+                    left.Add(play);
+            if (left.Count == 0)
+                File.Delete(PendingFile);
+            else
+                File.WriteAllText(PendingFile, JsonSerializer.Serialize(left));
+        }
+
+        private static async Task<bool> SendAsync(Play play)
+        {
+            try
+            {
+                // At most a day per call: a longer session is sent in parts
+                for (int left = play.Minutes; left > 0; left -= 1440)
+                {
+                    var part = new { romId = play.RomId, platform = play.Platform, platformName = play.PlatformName, name = play.Name, cover = play.Cover, minutes = Math.Min(left, 1440) };
+                    using var request = new HttpRequestMessage(HttpMethod.Post, $"{Service}/retro/players/me/plays")
+                    {
+                        Content = new StringContent(JsonSerializer.Serialize(part), Encoding.UTF8, "application/json"),
+                    };
+                    using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+                    if (!response.IsSuccessStatusCode)
+                        return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return false;
+            }
+        }
+
+        public static bool IsFavorite(RetroGame game) => favorites.Contains(Key(game));
+
+        public static async Task SetFavoriteAsync(RetroGame game, bool favorite)
+        {
+            if (favorite)
+                favorites.Add(Key(game));
+            else
+                favorites.Remove(Key(game));
+            Changed?.Invoke();
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Put, $"{Service}/retro/players/me/favorites")
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(favorites), Encoding.UTF8, "application/json"),
+                };
+                using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
+            }
+        }
+
+        /// <summary>Another player's times, for their profile.</summary>
+        public static async Task<List<Play>> PlaysOfAsync(int userId)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/players/{userId}");
+            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
+                return new();
+            return JsonSerializer.Deserialize<Player>(await response.Content.ReadAsStringAsync())?.Plays ?? new();
+        }
+
+        internal sealed class ActivityEntry
+        {
+            [JsonPropertyName("userId")] public int UserId { get; set; }
+            [JsonPropertyName("username")] public string Username { get; set; } = "";
+            [JsonPropertyName("romId")] public int RomId { get; set; }
+            [JsonPropertyName("platform")] public string Platform { get; set; } = "";
+            [JsonPropertyName("platformName")] public string PlatformName { get; set; } = "";
+            [JsonPropertyName("name")] public string Name { get; set; } = "";
+            [JsonPropertyName("cover")] public string? Cover { get; set; }
+            [JsonPropertyName("minutes")] public int Minutes { get; set; }
+            [JsonPropertyName("lastPlayed")] public DateTime LastPlayed { get; set; }
+        }
+
+        /// <summary>The retro games all the players played lately.</summary>
+        public static async Task<List<ActivityEntry>> ActivityAsync()
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/activity");
+            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            if (!response.IsSuccessStatusCode)
+                return new();
+            return JsonSerializer.Deserialize<List<ActivityEntry>>(await response.Content.ReadAsStringAsync()) ?? new();
+        }
+
+        /// <summary>A game known by its key only (a play, an activity): enough to show its name and cover.</summary>
+        public static RetroGame GameOf(int romId, string platform, string platformName, string name, string? cover) => new()
+        {
+            Id = romId,
+            Name = name,
+            Cover = cover,
+            Platform = new RetroPlatform { Slug = platform, Name = platformName },
+        };
+        #endregion
+
+        /// <summary>The retro collections of the profile, beside the library's (RomM ids are unique across platforms).</summary>
+        public static GameCollectionStore Collections =>
+            new(Path.Combine(Path.GetDirectoryName(LoginManager.Instance.GetUserProfile().CollectionsFile)!, "retro-collections.json"));
+    }
+}

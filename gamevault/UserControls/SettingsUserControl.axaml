@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
+             xmlns:sc="clr-namespace:gamevault.UserControls.SettingsComponents"
              x:Class="gamevault.UserControls.SettingsUserControl">
     <UserControl.Resources>
         <conv:GameSizeConverter x:Key="sizeConv" />
@@ -496,7 +497,18 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- 6: About -->
+            <!-- 6: Retro -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Path Classes="tabIcon" Data="{StaticResource IconNavRetro}" />
+                        <TextBlock Text="{l:T 'Retro'}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
+                <sc:RetroSettingsUserControl />
+            </TabItem>
+
+            <!-- 7: About -->
             <TabItem>
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" Spacing="12">
@@ -556,7 +568,7 @@
                 </StackPanel>
             </TabItem>
 
-            <!-- 7: Developer -->
+            <!-- 8: Developer -->
             <TabItem IsVisible="{Binding DevModeEnabled}">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" Spacing="12">

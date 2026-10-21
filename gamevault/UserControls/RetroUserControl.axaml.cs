@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.VisualTree;
 using GameVault.Core;
 using GameVault.Core.Retro;
 using gamevault.Helper;
@@ -20,7 +21,9 @@ namespace gamevault.UserControls
         internal RetroViewModel ViewModel { get; } = new();
         private const double CardWidth = 170;
         internal IEnumerable<RetroGame> Shown => ViewModel.Games;
-        private bool loaded;
+        private Task? loading;
+        /// <summary>Set when the service can not be reached: the games installed on this PC, found on disk.</summary>
+        private List<RetroGame>? offlineGames;
 
         public RetroUserControl()
         {
@@ -29,10 +32,20 @@ namespace gamevault.UserControls
             AttachedToVisualTree += (_, _) =>
             {
                 Focus();
-                if (!loaded)
-                    _ = LoadPlatformsAsync();
+                _ = EnsureLoadedAsync();
             };
+            KeyDown += Page_KeyDown;
         }
+
+        /// <summary>A list whose items change loses its selection (Avalonia does not take the bound index again): set back.</summary>
+        private void LoadCollections()
+        {
+            ViewModel.LoadCollections();
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => uiCollections.SelectedIndex = ViewModel.Collection);
+        }
+
+        /// <summary>Loaded once; again after a failure or offline, when the page is shown again.</summary>
+        internal Task EnsureLoadedAsync() => loading ??= LoadPlatformsAsync();
 
         private void Show(string? message, bool loading = false)
         {
@@ -42,24 +55,48 @@ namespace gamevault.UserControls
 
         internal async Task LoadPlatformsAsync()
         {
-            loaded = true;
             Show(null, loading: true);
+            LoadCollections();
+            _ = RetroLibrary.LoadAsync();
+            List<RetroPlatform>? platforms = null;
+            string? failure = null;
             try
             {
-                List<RetroPlatform>? platforms = await RetroService.ListPlatformsAsync();
-                if (platforms == null || platforms.Count == 0)
+                if (!MainWindowViewModel.Instance.IsOffline)
+                    platforms = await RetroService.ListPlatformsAsync();
+                else
+                    failure = Loc.T("You are not logged in or offline");
+            }
+            catch (Exception ex) { failure = WebExceptionHelper.TryGetServerMessage(ex); }
+            offlineGames = null;
+            if (failure != null || platforms == null)
+            {
+                // As the library offline: the games installed here stay playable
+                loading = null;
+                var installed = RetroLibrary.InstalledGames();
+                if (installed.Count == 0)
                 {
-                    Show(platforms == null ? Loc.T("The games of the other platforms are not available on this server.") : Loc.T("No game of a supported platform on the server yet."));
+                    ViewModel.Platforms = new();
+                    ViewModel.AllGames = new();
+                    Show(failure ?? Loc.T("The games of the other platforms are not available on this server."));
                     return;
                 }
-                ViewModel.Platforms = platforms;
-                await SelectPlatformAsync(platforms[0]);
+                platforms = installed.GroupBy(g => g.Platform.Slug).Select(group =>
+                {
+                    var platform = new RetroPlatform { Id = group.First().Platform.Id, Slug = group.Key, Name = group.First().Platform.Name, Count = group.Count() };
+                    foreach (RetroGame game in group)
+                        game.Platform = platform;
+                    return platform;
+                }).OrderBy(p => p.Name).ToList();
+                offlineGames = installed;
             }
-            catch (Exception ex)
+            if (platforms.Count == 0)
             {
-                loaded = false;// tried again when the page is opened again
-                Show(WebExceptionHelper.TryGetServerMessage(ex));
+                Show(Loc.T("No game of a supported platform on the server yet."));
+                return;
             }
+            ViewModel.Platforms = platforms;
+            await SelectPlatformAsync(platforms[0]);
         }
 
         internal async Task SelectPlatformAsync(RetroPlatform platform)
@@ -69,6 +106,12 @@ namespace gamevault.UserControls
             SizeCards(platform);
             ViewModel.SelectedGame = null;
             ViewModel.AllGames = new();
+            if (offlineGames != null)
+            {
+                ViewModel.AllGames = offlineGames.Where(g => g.Platform == platform).ToList();
+                Show(Loc.T("Offline: only the retro games installed on this PC are shown."));
+                return;
+            }
             Show(null, loading: true);
             try
             {
@@ -92,12 +135,91 @@ namespace gamevault.UserControls
                 await SelectPlatformAsync(platform);
         }
 
-        private void Reload_Click(object? sender, RoutedEventArgs e) => _ = LoadPlatformsAsync();
+        private void Reload_Click(object? sender, RoutedEventArgs e) => loading = LoadPlatformsAsync();
+
+        /// <summary>Opens a game from elsewhere (quick search, recent activity, a profile): its platform, then its details.</summary>
+        internal async Task ShowGameAsync(string platformSlug, int romId)
+        {
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
+            await EnsureLoadedAsync();
+            if (ViewModel.Platforms.FirstOrDefault(p => p.Slug == platformSlug) is not RetroPlatform platform)
+                return;
+            if (!platform.IsSelected)
+                await SelectPlatformAsync(platform);
+            if (ViewModel.AllGames.FirstOrDefault(g => g.Id == romId) is not RetroGame game)
+                return;
+            if (!ViewModel.Games.Contains(game))
+            {
+                ViewModel.Search = "";
+                ViewModel.OnlyInstalled = ViewModel.OnlyFavorites = false;
+                ViewModel.Collection = 0;
+            }
+            Select(game);
+        }
+
+        private void Select(RetroGame game)
+        {
+            ViewModel.SelectedGame = game;
+            int index = ViewModel.Games.IndexOf(game);
+            if (index >= 0)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => uiGames.GetOrCreateElement(index).BringIntoView());
+        }
+
+        /// <summary>As the library's shelf: the arrows move the selection, Enter plays or installs, Escape closes the details.</summary>
+        private async void Page_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+        {
+            if (e.Source is Avalonia.Visual source && (source is TextBox || source.FindAncestorOfType<ComboBox>(includeSelf: true) != null || source is ComboBoxItem))
+                return;
+            var games = ViewModel.Games;
+            if (games.Count == 0)
+                return;
+            RetroGame? selected = ViewModel.SelectedGame;
+            if (e.Key == Avalonia.Input.Key.Escape && selected != null)
+            {
+                e.Handled = true;
+                ViewModel.SelectedGame = null;
+                return;
+            }
+            if (e.Key == Avalonia.Input.Key.Enter && selected != null)
+            {
+                e.Handled = true;
+                if (selected.Installed)
+                    await PlayAsync(selected);
+                else
+                    await InstallAsync(selected);
+                return;
+            }
+            int columns = Math.Max(1, (int)(uiGames.Bounds.Width / ((UniformGridLayout)uiGames.Layout!).MinItemWidth));
+            int index = selected == null ? -1 : games.IndexOf(selected);
+            int next = e.Key switch
+            {
+                Avalonia.Input.Key.Left => index - 1,
+                Avalonia.Input.Key.Right => index + 1,
+                Avalonia.Input.Key.Up => index - columns,
+                Avalonia.Input.Key.Down => index + columns,
+                _ => int.MinValue,
+            };
+            if (next == int.MinValue)
+                return;
+            e.Handled = true;
+            Select(games[index < 0 ? 0 : Math.Clamp(next, 0, games.Count - 1)]);
+        }
+
+        private void Collections_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is Control anchor && GameOf(sender) is RetroGame game)
+                CollectionsFlyout.ShowForGame(anchor, game.Id, game.Name, RetroLibrary.Collections, () =>
+                {
+                    LoadCollections();
+                    ViewModel.ApplyFilter();
+                });
+        }
 
         private void GameCard_Click(object? sender, RoutedEventArgs e)
         {
             if (GameOf(sender) is RetroGame game)
                 ViewModel.SelectedGame = game;
+            Focus();
         }
 
         /// <summary>As in the library: a double click plays, or installs.</summary>
@@ -177,6 +299,7 @@ namespace gamevault.UserControls
                     MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);
                 var process = RetroArchManager.Launch(game.Platform.System.Core, rom);
                 game.Status = Loc.T("Playing: Select+Start to quit");
+                DiscordHelper.Instance.RetroStarted(game);
                 _ = WhenClosedAsync(process, game);
             }
             catch (RetroArchManager.MissingBiosException ex)
@@ -195,7 +318,11 @@ namespace gamevault.UserControls
         /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then the saves go to the cloud.</summary>
         private static async Task WhenClosedAsync(System.Diagnostics.Process process, RetroGame game)
         {
+            DateTime started = DateTime.UtcNow;
             await process.WaitForExitAsync();
+            DiscordHelper.Instance.RetroStopped();
+            // Counted as the library's games: the minutes of the session, on the profile and in the activity
+            await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
             game.Status = Loc.T("Sending the saves...");
             await RetroArchManager.SendCloudSavesAsync();
             game.Status = "";

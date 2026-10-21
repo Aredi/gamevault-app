@@ -2,6 +2,7 @@ using GameVault.Core;
 using GameVault.Core.Retro;
 using gamevault.Helper.Platform;
 using gamevault.Localization;
+using gamevault.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -77,6 +78,47 @@ namespace gamevault.Helper
                 throw new MissingBiosException(Loc.F("{0} needs a BIOS: an administrator adds it in RomM, in the Firmware of the platform.", platform.Name));
         }
 
+        public const string SavesSetName = SavesSet;
+
+        public static Task<List<RetroService.SavesVersion>> SavesHistoryAsync() => RetroService.SavesHistoryAsync(SavesSet);
+
+        /// <summary>
+        /// An older version of the saves back in place (this PC's go to a backup first), then sent as the current ones
+        /// so the other PCs take it too.
+        /// </summary>
+        /// <returns>The backup of this PC's saves, when there were some.</returns>
+        public static async Task<string?> RestoreSavesAsync(RetroService.SavesVersion version)
+        {
+            byte[] zip = await RetroService.DownloadSavesVersionAsync(SavesSet, version.Name);
+            RetroSaveSync saves = CloudSaves();
+            string? backup = await Task.Run(() => saves.Unpack(new MemoryStream(zip)));
+            string packed = Path.Combine(Layout.Directory, $".saves-{Player}.zip");
+            try
+            {
+                await Task.Run(() =>
+                {
+                    using FileStream target = File.Create(packed);
+                    saves.Pack(target);
+                });
+                long savedAt;
+                await using (FileStream source = File.OpenRead(packed))
+                    savedAt = await RetroService.UploadSavesAsync(SavesSet, source);
+                saves.Remember(savedAt);
+            }
+            finally { File.Delete(packed); }
+            return backup;
+        }
+
+        /// <summary>Back to RetroArch's own settings: the core options and controls changed in its menu go.</summary>
+        public static void ResetMenuSettings()
+        {
+            if (Directory.Exists(Layout.MenuSettingsDirectory))
+                Directory.Delete(Layout.MenuSettingsDirectory, true);
+        }
+
+        public static string SavesFolder => Layout.SavesDirectory(Player);
+        public static string SaveBackupsFolder => Layout.SaveBackupsDirectory(Player);
+
         /// <summary>RetroArch's own menu, to change the controls or the picture.</summary>
         public static async Task<Process> OpenMenuAsync(Action<string> status)
         {
@@ -126,6 +168,9 @@ namespace gamevault.Helper
         /// <returns>Where this PC's own saves were kept when they had changed too; null otherwise.</returns>
         public static async Task<string?> TakeCloudSavesAsync(Action<string> status)
         {
+            // The same switch as the library's cloud saves (Settings)
+            if (!SettingsViewModel.Instance.CloudSaves)
+                return null;
             RetroSaveSync saves = CloudSaves();
             try
             {
@@ -151,6 +196,8 @@ namespace gamevault.Helper
         /// <summary>After a game: the saves go to the service when they changed. Without network, after a next game.</summary>
         public static async Task SendCloudSavesAsync()
         {
+            if (!SettingsViewModel.Instance.CloudSaves)
+                return;
             RetroSaveSync saves = CloudSaves();
             string zip = Path.Combine(Layout.Directory, $".saves-{Player}.zip");
             try
@@ -192,6 +239,25 @@ namespace gamevault.Helper
                     progress((double)done / total);
                 }
             }
+        }
+
+        /// <summary>RetroArch, its cores, their files and the BIOS: what goes with "Uninstall" (the saves stay).</summary>
+        public static IEnumerable<string> InstalledParts => new[] { Layout.AppDirectory, Layout.CoresDirectory, Layout.SystemDirectory };
+
+        public static long InstalledSize() => InstalledParts.Where(Directory.Exists).Sum(GameVault.Core.Storage.StorageCleanup.DirectorySize);
+
+        /// <summary>Taken again from the internet at the next game; the saves and their backups are kept.</summary>
+        public static async Task UninstallAsync()
+        {
+            await preparing.WaitAsync();
+            try
+            {
+                foreach (string part in InstalledParts.Where(Directory.Exists))
+                    Directory.Delete(part, true);
+                foreach (string file in new[] { Layout.VersionFile, Layout.ConfigFile })
+                    File.Delete(file);
+            }
+            finally { preparing.Release(); }
         }
 
         public static Process Launch(string core, string rom) => Start(Layout.Arguments(core, rom));

@@ -23,6 +23,9 @@ namespace GameVault.Uploader
         [GeneratedRegex(@"roms/\d+/\d+/(cover|screenshots|manual)/[A-Za-z0-9]+\.[a-z]+")]
         private static partial Regex MediaInRomm();
 
+        /// <summary>A path of RomM's pictures and manuals, as the games list gives them.</summary>
+        public static bool IsMedia(string? path) => path != null && MediaPath().IsMatch(path);
+
         private static string? Media(string? path) => MediaInRomm().Match(path ?? "") is { Success: true } m && MediaPath().IsMatch(m.Value) ? m.Value : null;
 
         private static string[] Texts(JsonElement element, string name) =>
@@ -191,10 +194,13 @@ namespace GameVault.Uploader
             using HttpResponseMessage file = await SendAsync(content, cancellationToken);
             // RomM names what it sends: the file in a game's folder (Wii), or the zip of a game in several files
             response.Headers.ContentDisposition = (file.Content.Headers.ContentDisposition ?? new ContentDispositionHeaderValue("attachment") { FileNameStar = name }).ToString();
-            await CopyAsync(file, response, cancellationToken);
+            // The client's download limit (Settings), in kB/s as the GameVault server takes it
+            long limit = long.TryParse(request.Headers["X-Download-Speed-Limit"], out long kilobytes) && kilobytes > 0 ? kilobytes * 1000 : 0;
+            await CopyAsync(file, response, cancellationToken, limit);
         }
 
-        private static async Task CopyAsync(HttpResponseMessage from, HttpResponse to, CancellationToken cancellationToken)
+        /// <param name="bytesPerSecond">0: as fast as it goes.</param>
+        private static async Task CopyAsync(HttpResponseMessage from, HttpResponse to, CancellationToken cancellationToken, long bytesPerSecond = 0)
         {
             to.StatusCode = (int)from.StatusCode;
             if (!from.IsSuccessStatusCode)
@@ -205,7 +211,38 @@ namespace GameVault.Uploader
                 to.Headers.ContentRange = from.Content.Headers.ContentRange.ToString();
             if (from.Headers.AcceptRanges.Count > 0)
                 to.Headers.AcceptRanges = from.Headers.AcceptRanges.ToString();
-            await from.Content.CopyToAsync(to.Body, cancellationToken);
+            if (bytesPerSecond <= 0)
+            {
+                await from.Content.CopyToAsync(to.Body, cancellationToken);
+                return;
+            }
+            await using Stream source = await from.Content.ReadAsStreamAsync(cancellationToken);
+            byte[] buffer = new byte[Math.Clamp(bytesPerSecond / 10, 4096, 1 << 20)];
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            long sent = 0;
+            int read;
+            while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+            {
+                await to.Body.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                sent += read;
+                // Ahead of the allowed pace: wait until the sent bytes match it
+                TimeSpan due = TimeSpan.FromSeconds((double)sent / bytesPerSecond) - clock.Elapsed;
+                if (due > TimeSpan.Zero)
+                    await Task.Delay(due, cancellationToken);
+            }
+        }
+
+        /// <summary>The games added to RomM last, for the new games notification.</summary>
+        public async Task<object> LatestAsync(CancellationToken cancellationToken)
+        {
+            using JsonDocument page = await GetJsonAsync("api/roms?order_by=id&order_dir=desc&limit=30", cancellationToken);
+            return page.RootElement.GetProperty("items").EnumerateArray().Select(r => new
+            {
+                id = Number(r, "id"),
+                name = Text(r, "name") ?? Text(r, "fs_name_no_ext"),
+                platform = Text(r, "platform_slug"),
+                platformName = Text(r, "platform_display_name") ?? Text(r, "platform_custom_name"),
+            }).ToList();
         }
     }
 }

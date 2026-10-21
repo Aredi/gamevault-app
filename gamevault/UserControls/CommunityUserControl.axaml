@@ -575,6 +575,37 @@
                             <TextBlock Classes="muted" Text="{l:T 'No games played yet'}" FontSize="14"
                                        IsVisible="{Binding UserProgresses.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Zero}}" />
                         </StackPanel>
+
+                        <!-- Their retro games (time kept by the SanctuaryVault service) -->
+                        <StackPanel Spacing="12" IsVisible="{Binding HasRetroPlays}">
+                            <TextBlock Classes="sectionTitle" Text="{l:T 'Their retro games'}" />
+                            <ItemsControl ItemsSource="{Binding RetroPlays}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Width="390" Margin="0,0,14,14" CornerRadius="14" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}"
+                                                BorderThickness="1" Padding="10">
+                                            <Grid ColumnDefinitions="Auto,*">
+                                                <Button Classes="wrapper" Width="54" Height="81" Click="RetroGame_Click" Cursor="Hand">
+                                                    <Border CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                                        <Image Source="{Binding Game.CoverImage}" Stretch="UniformToFill" />
+                                                    </Border>
+                                                </Button>
+                                                <StackPanel Grid.Column="1" Margin="14,2,8,0" Spacing="5" VerticalAlignment="Center">
+                                                    <TextBlock FontSize="14.5" FontWeight="Bold" TextTrimming="CharacterEllipsis" Text="{Binding Game.Name}" />
+                                                    <TextBlock Classes="muted" FontSize="12.5" Text="{Binding Game.Platform.Name}" />
+                                                    <TextBlock Classes="muted" FontSize="12.5" Text="{Binding Text}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </StackPanel>
                 </Panel>
             </ScrollViewer>

@@ -208,7 +208,11 @@ namespace gamevault.Helper
             try
             {
                 Directory.CreateDirectory(Folder);
-                client = new HttpClientDownloadWithProgress(RetroService.ContentUrl(Game), Folder, Game.FileName)
+                // The download limit of the settings, applied by the SanctuaryVault service as the GameVault server does
+                var headers = SettingsViewModel.Instance.DownloadLimit > 0
+                    ? new Dictionary<string, string> { ["X-Download-Speed-Limit"] = SettingsViewModel.Instance.DownloadLimit.ToString() }
+                    : null;
+                client = new HttpClientDownloadWithProgress(RetroService.ContentUrl(Game), Folder, Game.FileName, headers)
                 {
                     Connections = SettingsViewModel.Instance.DownloadConnections,
                 };
@@ -348,7 +352,21 @@ namespace gamevault.Helper
             if (string.Equals(Path.GetExtension(game.FileName), ".cia", StringComparison.OrdinalIgnoreCase)
                 && CiaReader.Inspect(await RetroService.ReadStartAsync(game, CiaReader.HeaderBytes), game.Size).Verdict != CiaReader.Verdict.Playable)
                 return Loc.T("This 3DS game is encrypted: Azahar can not play it. A decrypted copy is needed in RomM.");
-            var download = new RetroDownload(game, RetroService.Folder(game, UserControls.InstallLocationUserControl.DefaultLocation()));
+            // As the library's games: asked where when the setting says so (or no folder is set yet)
+            string root;
+            if (SettingsViewModel.Instance.AskInstallLocation)
+            {
+                var picker = new UserControls.InstallLocationUserControl(game.Size);
+                MainWindowViewModel.Instance.OpenPopup(picker);
+                root = await picker.SelectInstallLocation();
+                if (string.IsNullOrEmpty(root))
+                    return Loc.T("No install location was chosen");
+                if (!Directory.Exists(root))
+                    return Loc.T("Selected directory does not exist");
+            }
+            else
+                root = UserControls.InstallLocationUserControl.DefaultLocation();
+            var download = new RetroDownload(game, RetroService.Folder(game, root));
             download.WriteInfo();
             DownloadsViewModel.Instance.RetroDownloads.Add(download);
             DownloadQueue.Enqueue(download);

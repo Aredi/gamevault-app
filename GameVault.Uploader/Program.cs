@@ -10,6 +10,7 @@ builder.Services.AddSingleton<ProfileStore>();
 builder.Services.AddSingleton<SaveStore>();
 builder.Services.AddSingleton<RemoteInstallStore>();
 builder.Services.AddSingleton<RetroSaveStore>();
+builder.Services.AddSingleton<RetroPlayerStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
@@ -60,6 +61,7 @@ _ = app.Services.GetRequiredService<ProfileStore>();// says at once whether prof
 _ = app.Services.GetRequiredService<SaveStore>();
 _ = app.Services.GetRequiredService<RemoteInstallStore>();
 _ = app.Services.GetRequiredService<RetroSaveStore>();
+_ = app.Services.GetRequiredService<RetroPlayerStore>();
 app.Run();
 
 public partial class Program { }

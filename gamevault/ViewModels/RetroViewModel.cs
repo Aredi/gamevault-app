@@ -13,8 +13,17 @@ namespace gamevault.ViewModels
     {
         public RetroViewModel()
         {
-            SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating") };
+            SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating"), Loc.T("Last played"), Loc.T("Playtime") };
+            collections = new() { Loc.T("All collections") };
             SetAccent(null);
+            // Times and favorites come from the service after the list: the cards follow
+            RetroLibrary.Changed += () => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                foreach (RetroGame game in AllGames)
+                    game.RefreshPlayer();
+                if (OnlyFavorites || SortBy >= 3)
+                    ApplyFilter();
+            });
         }
 
         private List<RetroPlatform> platforms = new();
@@ -30,6 +39,7 @@ namespace gamevault.ViewModels
                 allGames = value;
                 // The cards show the downloads already going on (started before a reload or a change of page)
                 RetroDownloads.Attach(allGames);
+                RetroLibrary.Describe(allGames.Where(g => g.Installed));
                 ApplyFilter();
             }
         }
@@ -38,7 +48,7 @@ namespace gamevault.ViewModels
         public List<RetroGame> Games { get => games; private set { games = value; OnPropertyChanged(); OnPropertyChanged(nameof(CountText)); } }
 
         public string CountText => AllGames.Count == 0 ? "" : Games.Count == AllGames.Count
-            ? Loc.F("{0} games", AllGames.Count)
+            ? new Converter.CountConverter().Convert(AllGames.Count, typeof(string), "{0} game|{0} games", System.Globalization.CultureInfo.CurrentCulture) as string ?? ""
             : Loc.F("{0} of {1}", Games.Count, AllGames.Count);
 
         private string search = "";
@@ -46,6 +56,40 @@ namespace gamevault.ViewModels
 
         private bool onlyInstalled;
         public bool OnlyInstalled { get => onlyInstalled; set { onlyInstalled = value; OnPropertyChanged(); ApplyFilter(); } }
+
+        private bool onlyFavorites;
+        public bool OnlyFavorites { get => onlyFavorites; set { onlyFavorites = value; OnPropertyChanged(); ApplyFilter(); } }
+
+        private List<string> collections = new();
+        /// <summary>"All collections", then the profile's retro collections.</summary>
+        public List<string> Collections { get => collections; private set { collections = value; OnPropertyChanged(); } }
+        private int collection;
+        public int Collection
+        {
+            get => collection;
+            set
+            {
+                // -1: the list emptied its selection while its items changed
+                if (value < 0 || value == collection)
+                    return;
+                collection = value;
+                OnPropertyChanged();
+                ApplyFilter();
+            }
+        }
+
+        /// <summary>The collections again (one was created from a game).</summary>
+        public void LoadCollections()
+        {
+            string? shown = Collection > 0 && Collection < Collections.Count ? Collections[Collection] : null;
+            var names = new List<string> { Loc.T("All collections") };
+            try { names.AddRange(RetroLibrary.Collections.Load().Select(c => c.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)); }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+            collection = shown != null ? Math.Max(0, names.IndexOf(shown)) : 0;
+            if (!names.SequenceEqual(Collections))
+                Collections = names;
+            OnPropertyChanged(nameof(Collection));
+        }
 
         public string[] SortOptions { get; }
         private int sortBy;
@@ -65,10 +109,19 @@ namespace gamevault.ViewModels
                 shown = shown.Where(g => g.Name.Contains(text, StringComparison.OrdinalIgnoreCase) || g.FileName.Contains(text, StringComparison.OrdinalIgnoreCase));
             if (OnlyInstalled)
                 shown = shown.Where(g => g.Installed);
+            if (OnlyFavorites)
+                shown = shown.Where(g => g.IsFavorite);
+            if (Collection > 0 && Collection < Collections.Count)
+            {
+                var members = RetroLibrary.Collections.Load().FirstOrDefault(c => c.Name == Collections[Collection])?.GameIds.ToHashSet() ?? new();
+                shown = shown.Where(g => members.Contains(g.Id));
+            }
             shown = SortBy switch
             {
                 1 => shown.OrderByDescending(g => g.Released ?? long.MinValue),
                 2 => shown.OrderByDescending(g => g.Rating ?? -1),
+                3 => shown.OrderByDescending(g => RetroLibrary.LastPlayedOf(g) ?? DateTime.MinValue),
+                4 => shown.OrderByDescending(g => g.MinutesPlayed),
                 _ => shown.OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase),
             };
             Games = shown.ToList();
@@ -82,10 +135,14 @@ namespace gamevault.ViewModels
             set
             {
                 if (selectedGame != null)
+                {
                     selectedGame.PropertyChanged -= SelectedGame_PropertyChanged;
+                    selectedGame.IsSelected = false;
+                }
                 selectedGame = value;
                 if (selectedGame != null)
                 {
+                    selectedGame.IsSelected = true;
                     selectedGame.PropertyChanged += SelectedGame_PropertyChanged;
                     _ = selectedGame.LoadScreenshotsAsync();
                 }

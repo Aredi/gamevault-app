@@ -18,8 +18,11 @@ namespace gamevault.UserControls
     internal static class CollectionsFlyout
     {
         /// <summary>Check boxes of all collections for one game, plus a field to create a new one.</summary>
-        public static void ShowForGame(Control anchor, int gameId, string gameTitle)
+        /// <param name="store">The retro games have their own collections; the library's by default.</param>
+        /// <param name="changed">Told when a collection was created or a game added or removed.</param>
+        public static void ShowForGame(Control anchor, int gameId, string gameTitle, GameVault.Core.Library.GameCollectionStore? store = null, Action? changed = null)
         {
+            GameVault.Core.Library.GameCollectionStore Store() => store ?? LibraryData.Collections;
             var panel = new StackPanel { Spacing = 6, Width = 280 };
             var flyout = new Flyout { Content = panel, Placement = PlacementMode.Bottom };
 
@@ -27,20 +30,25 @@ namespace gamevault.UserControls
             {
                 panel.Children.Clear();
                 panel.Children.Add(new TextBlock { Text = Loc.F("Collections of {0}", gameTitle), FontWeight = FontWeight.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
-                var collections = LibraryData.Collections.Load().OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+                var collections = Store().Load().OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
                 if (collections.Count == 0)
                     panel.Children.Add(new TextBlock { Text = Loc.T("No collection yet."), Opacity = 0.7 });
                 foreach (var collection in collections)
                 {
                     var box = new CheckBox { Content = collection.Name, IsChecked = collection.GameIds.Contains(gameId) };
-                    box.IsCheckedChanged += (_, _) => Run(() => LibraryData.Collections.SetMembership(collection.Name, gameId, box.IsChecked == true));
+                    box.IsCheckedChanged += (_, _) =>
+                    {
+                        Run(() => Store().SetMembership(collection.Name, gameId, box.IsChecked == true));
+                        changed?.Invoke();
+                    };
                     panel.Children.Add(box);
                 }
                 panel.Children.Add(NewCollectionRow(name =>
                 {
-                    var store = LibraryData.Collections;
-                    store.Create(name);
-                    store.SetMembership(name, gameId, true);
+                    var collectionStore = Store();
+                    collectionStore.Create(name);
+                    collectionStore.SetMembership(name, gameId, true);
+                    changed?.Invoke();
                     Fill();
                 }));
             }

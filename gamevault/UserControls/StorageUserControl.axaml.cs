@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using GameVault.Core;
 using GameVault.Core.Storage;
 using gamevault.Converter;
+using gamevault.Helper;
 using gamevault.Helper.Platform;
 using gamevault.Localization;
 using gamevault.Models;
@@ -22,7 +23,9 @@ namespace gamevault.UserControls
     /// </summary>
     public partial class StorageUserControl : UserControl
     {
-        private List<(InstalledGameUsage Usage, Game Game)> games = new();
+        private List<(InstalledGameUsage Usage, Game? Game, RetroGame? Retro)> games = new();
+        /// <summary>RetroArch and its cores, BIOS (not a game: never "not played for a while").</summary>
+        private InstalledGameUsage? emulator;
 
         public StorageUserControl()
         {
@@ -50,22 +53,36 @@ namespace gamevault.UserControls
             uiLoading.IsVisible = true;
             var installed = InstallViewModel.Instance.InstalledGames.Where(g => g.Key != null && !string.IsNullOrEmpty(g.Value)).ToList();
             var records = InstallViewModel.Instance.PlayRecords;
-            games = await Task.Run(() => installed.Select(install =>
+            await RetroLibrary.LoadAsync();
+            games = await Task.Run(() =>
             {
-                records.TryGetValue(install.Key.ID, out var record);
-                long size = 0;
-                DateTime installedAt = DateTime.UtcNow;
-                try
+                static (long Size, DateTime InstalledAt) Measure(string folder)
                 {
-                    size = StorageCleanup.DirectorySize(install.Value);
-                    installedAt = Directory.GetCreationTimeUtc(install.Value);
+                    try { return (StorageCleanup.DirectorySize(folder), Directory.GetCreationTimeUtc(folder)); }
+                    catch (Exception ex) { Log.Ignored(ex); return (0, DateTime.UtcNow); }
                 }
-                catch (Exception ex) { Log.Ignored(ex); }
-                var usage = new InstalledGameUsage(install.Key.ID, install.Key.Metadata?.Title ?? install.Key.Title ?? "", install.Value, size,
-                    record?.MinutesPlayed ?? 0, record?.LastPlayedAt?.ToUniversalTime(), installedAt);
-                return (usage, install.Key);
-            }).ToList());
-            uiDrives.ItemsSource = DriveRow.For(games.Select(g => g.Usage));
+                var all = installed.Select(install =>
+                {
+                    records.TryGetValue(install.Key.ID, out var record);
+                    var (size, installedAt) = Measure(install.Value);
+                    var usage = new InstalledGameUsage(install.Key.ID, install.Key.Metadata?.Title ?? install.Key.Title ?? "", install.Value, size,
+                        record?.MinutesPlayed ?? 0, record?.LastPlayedAt?.ToUniversalTime(), installedAt);
+                    return (usage, (Game?)install.Key, (RetroGame?)null);
+                }).ToList();
+                // The retro games too: negative ids, apart from the server's games
+                int retroId = 0;
+                foreach (RetroGame retro in RetroLibrary.InstalledGames())
+                {
+                    if (RetroService.InstalledFolder(retro) is not string folder)
+                        continue;
+                    var (size, installedAt) = Measure(folder);
+                    all.Add((new InstalledGameUsage(--retroId, retro.Name, folder, size, retro.MinutesPlayed, RetroLibrary.LastPlayedOf(retro), installedAt), null, retro));
+                }
+                return all;
+            });
+            long emulatorSize = await Task.Run(RetroArchManager.InstalledSize);
+            emulator = emulatorSize > 0 ? new InstalledGameUsage(int.MinValue, "RetroArch", RetroArchManager.Layout.Directory, emulatorSize, 0, null, DateTime.UtcNow) : null;
+            uiDrives.ItemsSource = DriveRow.For(games.Select(g => g.Usage).Concat(emulator != null ? new[] { emulator } : Array.Empty<InstalledGameUsage>()));
             uiLoading.IsVisible = false;
             Show();
         }
@@ -78,11 +95,13 @@ namespace gamevault.UserControls
                 ? Loc.F("{0} installed games take {1}. {2} were not played for 3 months: {3} can be freed.", summary.Count, StorageCleanup.FormatSize(summary.Size), summary.IdleCount, StorageCleanup.FormatSize(summary.IdleSize))
                 : Loc.F("{0} installed games take {1}.", summary.Count, StorageCleanup.FormatSize(summary.Size));
             var sort = uiSort.SelectedIndex switch { 1 => InstalledGamesSort.LastPlayed, 2 => InstalledGamesSort.Title, _ => InstalledGamesSort.Size };
-            var byId = games.ToDictionary(g => g.Usage.Id, g => g.Game);
+            var byId = games.ToDictionary(g => g.Usage.Id);
             var shown = InstalledGamesUsage.Sort(games.Select(g => g.Usage), sort, now)
                 .Where(u => uiIdleOnly.IsChecked != true || InstalledGamesUsage.IsIdle(u, now))
-                .Select(u => new StorageGameRow(u, byId[u.Id], now))
+                .Select(u => new StorageGameRow(u, byId[u.Id].Game, now, byId[u.Id].Retro))
                 .ToList();
+            if (emulator != null && uiIdleOnly.IsChecked != true)
+                shown.Add(new StorageGameRow(emulator, null, now, isEmulator: true));
             uiGames.ItemsSource = shown;
             uiEmpty.Text = games.Count == 0 ? Loc.T("No game is installed.") : Loc.T("Every installed game was played lately.");
             uiEmpty.IsVisible = shown.Count == 0 && !uiLoading.IsVisible;
@@ -111,6 +130,24 @@ namespace gamevault.UserControls
         {
             if ((sender as Control)?.DataContext is not StorageGameRow row)
                 return;
+            if (row.Retro != null || row.IsEmulator)
+            {
+                string question = row.IsEmulator
+                    ? Loc.T("Uninstall RetroArch, its cores and the BIOS? They come back at the next retro game; the saves are kept.")
+                    : Loc.F("Delete '{0}' from this PC? Its saves are kept.", row.Title);
+                if (!await DialogService.ConfirmAsync(question, Loc.T("Storage")))
+                    return;
+                try
+                {
+                    if (row.IsEmulator)
+                        await RetroArchManager.UninstallAsync();
+                    else
+                        Directory.Delete(row.Usage.Directory, true);
+                }
+                catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+                await LoadAsync();
+                return;
+            }
             var settings = new GameSettingsUserControl(row.Game);
             MainWindowViewModel.Instance.OpenPopup(settings);
             await settings.UninstallGame();
@@ -123,19 +160,26 @@ namespace gamevault.UserControls
     /// <summary>A line of the list: an installed game, its size and its last session.</summary>
     internal sealed class StorageGameRow
     {
-        public StorageGameRow(InstalledGameUsage usage, Game game, DateTime nowUtc)
+        public StorageGameRow(InstalledGameUsage usage, Game? game, DateTime nowUtc, RetroGame? retro = null, bool isEmulator = false)
         {
             Usage = usage;
             Game = game;
-            IsIdle = InstalledGamesUsage.IsIdle(usage, nowUtc);
+            Retro = retro;
+            IsEmulator = isEmulator;
+            IsIdle = !isEmulator && InstalledGamesUsage.IsIdle(usage, nowUtc);
             string time = usage.MinutesPlayed > 0 ? (string)new GameTimeConverter().Convert(usage.MinutesPlayed, typeof(string), null, CultureInfo.CurrentCulture)! : "";
-            PlayText = usage.LastPlayedUtc is DateTime last
+            PlayText = isEmulator ? Loc.T("The emulators of the retro games, their files and the BIOS (the saves are kept)")
+                : usage.LastPlayedUtc is DateTime last
                 ? Loc.F("Played {0} · {1}", RelativeDate.Format(last), time)
                 : Loc.F("Never started · installed {0}", RelativeDate.Format(usage.InstalledUtc));
+            if (retro != null)
+                PlayText = $"{retro.Platform.Name} · {PlayText}";
         }
 
         public InstalledGameUsage Usage { get; }
-        public Game Game { get; }
+        public Game? Game { get; }
+        public RetroGame? Retro { get; }
+        public bool IsEmulator { get; }
         public string Title => Usage.Title;
         public string SizeText => StorageCleanup.FormatSize(Usage.Size);
         public bool IsIdle { get; }

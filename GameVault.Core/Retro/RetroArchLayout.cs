@@ -22,6 +22,8 @@ namespace GameVault.Core.Retro
         public string Executable => Path.Combine(AppDirectory, windows ? "retroarch.exe" : "RetroArch-Linux-x86_64.AppImage");
         /// <summary>Where the package keeps its menus, controller profiles and core descriptions (the AppImage's portable home on Linux).</summary>
         private string DataDirectory => windows ? AppDirectory : Path.Combine(AppDirectory, "RetroArch-Linux-x86_64.AppImage.home", ".config", "retroarch");
+        /// <summary>What the player changed in RetroArch's menu: core options, controls remapped, overrides.</summary>
+        public string MenuSettingsDirectory => Path.Combine(DataDirectory, "config");
         public string CoresDirectory => Path.Combine(directory, "cores");
         /// <summary>Outside the package (an update of RetroArch keeps them), one folder per GameVault player of this PC.</summary>
         public string SavesDirectory(string player) => Path.Combine(directory, "saves", player);

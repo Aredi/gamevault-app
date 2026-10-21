@@ -20,6 +20,8 @@ namespace GameVault.Uploader
         public string? RommCommApiKey { get; init; }
         /// <summary>RETRO_SAVES_DIRECTORY: the players' saves of the retro games (a volume, e.g. /data/retro-saves).</summary>
         public string RetroSavesDirectory { get; init; } = "/data/retro-saves";
+        /// <summary>RETRO_PLAYERS_DIRECTORY: the players' time on the retro games and their favorites (a volume, e.g. /data/retro-players).</summary>
+        public string RetroPlayersDirectory { get; init; } = "/data/retro-players";
         /// <summary>ROMM_URL: RomM, for the games of the other platforms (e.g. http://romm:8080); off without it.</summary>
         public string? RommUrl { get; init; }
         /// <summary>ROMM_USERNAME and ROMM_PASSWORD: the RomM account the service reads with (a viewer is enough).</summary>
@@ -32,7 +34,7 @@ namespace GameVault.Uploader
             string files = configuration["FILES_DIRECTORY"] ?? "/files";
             if (!Directory.Exists(files))
                 throw new InvalidOperationException($"FILES_DIRECTORY '{files}' does not exist: mount the games folder of the GameVault server there.");
-            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote", RommCommUrl = configuration["ROMM_COMM_URL"], RommCommApiKey = configuration["ROMM_COMM_API_KEY"], RetroSavesDirectory = configuration["RETRO_SAVES_DIRECTORY"] ?? "/data/retro-saves", RommUrl = configuration["ROMM_URL"], RommUsername = configuration["ROMM_USERNAME"], RommPassword = configuration["ROMM_PASSWORD"] };
+            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote", RommCommUrl = configuration["ROMM_COMM_URL"], RommCommApiKey = configuration["ROMM_COMM_API_KEY"], RetroSavesDirectory = configuration["RETRO_SAVES_DIRECTORY"] ?? "/data/retro-saves", RetroPlayersDirectory = configuration["RETRO_PLAYERS_DIRECTORY"] ?? "/data/retro-players", RommUrl = configuration["ROMM_URL"], RommUsername = configuration["ROMM_USERNAME"], RommPassword = configuration["ROMM_PASSWORD"] };
         }
     }
 }

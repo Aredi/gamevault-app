@@ -99,9 +99,29 @@ namespace gamevault.Helper
         [JsonIgnore]
         public string RatingText => Rating is double rating ? $"{rating:0} %" : "—";
         [JsonIgnore]
-        public string PlayersText => string.IsNullOrEmpty(Players) || Players == "null" ? "—" : Players;
-        [JsonIgnore]
         public string DurationText => MainStory is long seconds ? Loc.F("{0} h", Math.Max(1, Math.Round(seconds / 3600.0))) : "—";
+        /// <summary>The player's time on it (all PCs), as the library's PLAYTIME.</summary>
+        [JsonIgnore]
+        public int MinutesPlayed => RetroLibrary.MinutesOf(this);
+        [JsonIgnore]
+        public string PlaytimeText => MinutesPlayed > 0
+            ? (string)new Converter.GameTimeConverter().Convert(MinutesPlayed, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture)!
+            : "—";
+        [JsonIgnore]
+        public bool IsFavorite
+        {
+            get => RetroLibrary.IsFavorite(this);
+            set { if (value != IsFavorite) _ = RetroLibrary.SetFavoriteAsync(this, value); OnPropertyChanged(); }
+        }
+
+        /// <summary>The time played or the favorites changed.</summary>
+        public void RefreshPlayer()
+        {
+            OnPropertyChanged(nameof(MinutesPlayed));
+            OnPropertyChanged(nameof(PlaytimeText));
+            OnPropertyChanged(nameof(IsFavorite));
+        }
+
         [JsonIgnore]
         public bool HasManual => Manual != null;
         [JsonIgnore]
@@ -115,6 +135,7 @@ namespace gamevault.Helper
             (Loc.T("Companies"), string.Join(", ", Companies)),
             (Loc.T("Series"), string.Join(", ", Franchises)),
             (Loc.T("Game modes"), string.Join(", ", Modes)),
+            (Loc.T("Players"), string.IsNullOrEmpty(Players) || Players == "null" ? null : Players),
             (Loc.T("Regions"), string.Join(", ", Regions)),
             (Loc.T("Languages"), string.Join(", ", Languages)),
             (Loc.T("Age rating"), string.Join(", ", AgeRatings)),
@@ -184,6 +205,11 @@ namespace gamevault.Helper
         private string status = "";
         [JsonIgnore]
         public string Status { get => status; set { status = value; OnPropertyChanged(); } }
+
+        private bool isSelected;
+        /// <summary>Shown in the details (the card gets the library's selection frame).</summary>
+        [JsonIgnore]
+        public bool IsSelected { get => isSelected; set { isSelected = value; OnPropertyChanged(); } }
 
         private bool busy;
         [JsonIgnore]
@@ -298,6 +324,25 @@ namespace gamevault.Helper
         public static async Task<byte[]> DownloadSavesAsync(string set)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/saves/{set}");
+            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync();
+        }
+
+        internal sealed record SavesVersion([property: JsonPropertyName("name")] string Name, [property: JsonPropertyName("savedAt")] long SavedAt, [property: JsonPropertyName("size")] long Size);
+
+        /// <summary>The older versions of the player's saves, newest first.</summary>
+        public static async Task<List<SavesVersion>> SavesHistoryAsync(string set)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/saves/{set}/history");
+            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            response.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<List<SavesVersion>>(await response.Content.ReadAsStringAsync()) ?? new();
+        }
+
+        public static async Task<byte[]> DownloadSavesVersionAsync(string set, string name)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/retro/saves/{set}/history/{Uri.EscapeDataString(name)}");
             using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsByteArrayAsync();

@@ -15,7 +15,11 @@
                         <Button Classes="wrapper" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,6" Cursor="Hand" Click="Item_Click">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Border Width="40" Height="60" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
-                                    <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" DecodeWidthOverride="120" />
+                                    <Panel>
+                                        <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" DecodeWidthOverride="120"
+                                                          IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding Retro, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    </Panel>
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="3" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Text}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />

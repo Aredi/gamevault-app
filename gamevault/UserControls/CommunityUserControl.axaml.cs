@@ -319,12 +319,34 @@ namespace gamevault.UserControls
             if (generation != profileGeneration)
                 return;
             profile = result.Profile;
+            _ = LoadRetroPlaysAsync(user.ID, generation);
             ViewModel.ServiceAvailable = result.Available;
             ViewModel.ServiceProblem = result.Problem;
             await FetchChosenGamesAsync(profile);
             if (generation != profileGeneration)
                 return;
             ShowProfile();
+        }
+
+        private async Task LoadRetroPlaysAsync(int userId, int generation)
+        {
+            ViewModel.RetroPlays = new();
+            try
+            {
+                var plays = await RetroLibrary.PlaysOfAsync(userId);
+                if (generation != profileGeneration)
+                    return;
+                ViewModel.RetroPlays = plays.OrderByDescending(p => p.Minutes).Select(p => new RetroPlayRow(
+                    RetroLibrary.GameOf(p.RomId, p.Platform, p.PlatformName, p.Name, p.Cover),
+                    $"{(string)new gamevault.Converter.GameTimeConverter().Convert(p.Minutes, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture)!} · {gamevault.Converter.RelativeDate.Format(p.LastPlayed)}")).ToList();
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private void RetroGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is RetroPlayRow row)
+                _ = MainWindowViewModel.Instance.Retro.ShowGameAsync(row.Game.Platform.Slug, row.Game.Id);
         }
 
         /// <summary>The chosen games the player never played: their progress does not bring them.</summary>

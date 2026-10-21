@@ -53,9 +53,13 @@ namespace gamevault.UserControls
             uiQuery.AddHandler(KeyDownEvent, Query_KeyDown, RoutingStrategies.Tunnel);
         }
 
+        /// <summary>The retro games, read once per opening (the installed ones are found on disk).</summary>
+        private List<QuickSearchItem> retroGames = new();
+
         public void Open()
         {
             IsVisible = true;
+            retroGames = RetroGames();
             uiQuery.Text = "";
             Refresh("");
             Dispatcher.UIThread.Post(() => uiQuery.Focus(), DispatcherPriority.Input);
@@ -90,7 +94,7 @@ namespace gamevault.UserControls
             }
             else
             {
-                foreach (QuickSearchItem item in InstalledGames().Concat(Actions()))
+                foreach (QuickSearchItem item in InstalledGames().Concat(retroGames).Concat(Actions()))
                 {
                     item.Score = Math.Max(QuickMatch.Score(query, item.Title), QuickMatch.Score(query, item.Subtitle) / 2);
                     // Installed games that match come before an equally good page
@@ -156,6 +160,29 @@ namespace gamevault.UserControls
                 Kind = installed ? Loc.T("Installed") : Loc.T("Game"),
                 Run = () => MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(game)),
             };
+        }
+
+        /// <summary>The retro games installed here and the ones of the platform the Retro page shows.</summary>
+        internal static List<QuickSearchItem> RetroGames()
+        {
+            try
+            {
+                var installed = RetroLibrary.InstalledGames();
+                var shown = MainWindowViewModel.Instance.Retro.ViewModel.AllGames;
+                return installed.Concat(shown).GroupBy(RetroLibrary.Key).Select(g => g.First()).Select(game => new QuickSearchItem
+                {
+                    Title = game.Name,
+                    Subtitle = string.Join(" · ", new[] { game.Platform.Name, game.ReleaseDate?.Year.ToString() }.Where(p => !string.IsNullOrEmpty(p))),
+                    Icon = Icon("IconNavRetro"),
+                    Kind = game.Installed ? Loc.T("Installed") : Loc.T("Retro"),
+                    Run = () => _ = MainWindowViewModel.Instance.Retro.ShowGameAsync(game.Platform.Slug, game.Id),
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return new();
+            }
         }
 
         private static Geometry? Icon(string key) =>

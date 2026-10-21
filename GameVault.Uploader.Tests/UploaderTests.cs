@@ -89,6 +89,7 @@ namespace GameVault.Uploader.Tests
                     hltb_metadata = new { main_story = 32400 }, regions = new[] { "Europe" }, languages = new[] { "French" },
                     merged_screenshots = new[] { "/assets/romm/resources/roms/3/40/screenshots/0.jpg", "/assets/romm/resources/roms/3/40/../../9/secret.jpg" },
                     path_manual = "roms/3/40/manual/40.pdf", youtube_video_id = "abc123", ss_metadata = new { box2d_url = "https://example?devpassword=secret" } } } }) },
+                "/api/roms?order_by=id&order_dir=desc&limit=30" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", platform_slug = "nes", platform_display_name = "NES" } } }) },
                 "/api/roms/40" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 40, fs_name = "Zelda (E).nes" }) },
                 // A game in a folder: RomM names the file it sends
                 "/api/roms/41" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 41, fs_name = "Bleach [RBLP8P]" }) },
@@ -121,6 +122,7 @@ namespace GameVault.Uploader.Tests
         private readonly string saves = Path.Combine(Path.GetTempPath(), $"gv-saves-{Guid.NewGuid():N}");
         private readonly string remote = Path.Combine(Path.GetTempPath(), $"gv-remote-{Guid.NewGuid():N}");
         private readonly string retroSaves = Path.Combine(Path.GetTempPath(), $"gv-retro-saves-{Guid.NewGuid():N}");
+        private readonly string retroPlayers = Path.Combine(Path.GetTempPath(), $"gv-retro-players-{Guid.NewGuid():N}");
         private readonly FakeGameVault gameVault = new();
         private readonly FakeRequestsBot bot = new();
         private readonly FakeRomm romm = new();
@@ -147,6 +149,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("SAVEFILES_DIRECTORY", saves);
                 host.UseSetting("REMOTE_INSTALLS_DIRECTORY", remote);
                 host.UseSetting("RETRO_SAVES_DIRECTORY", retroSaves);
+                host.UseSetting("RETRO_PLAYERS_DIRECTORY", retroPlayers);
                 host.UseSetting("ROMM_COMM_URL", "http://romm-sync.test:8095");
                 host.UseSetting("ROMM_COMM_API_KEY", "bot-key");
                 host.UseSetting("ROMM_URL", "http://romm.test:8080");
@@ -170,6 +173,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(saves, true); } catch { }
             try { Directory.Delete(remote, true); } catch { }
             try { Directory.Delete(retroSaves, true); } catch { }
+            try { Directory.Delete(retroPlayers, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -416,6 +420,50 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task RetroPlays_AddUp_AndShowInTheActivityOfAllPlayers()
+        {
+            var player = Client("user");
+            var admin = Client("admin");
+            object Play(int minutes) => new { romId = 40, platform = "nes", platformName = "NES", name = "Zelda", cover = "roms/3/40/cover/big.png", minutes };
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/retro/players/me/plays", Play(25))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/retro/players/me/plays", Play(5))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/retro/players/me/plays", Play(0))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/retro/players/me/plays", new { romId = 1, platform = "../x", name = "x", minutes = 3 })).StatusCode);
+
+            using (JsonDocument me = JsonDocument.Parse(await player.GetStringAsync("/retro/players/me")))
+            {
+                JsonElement zelda = Assert.Single(me.RootElement.GetProperty("plays").EnumerateArray());
+                Assert.Equal((30, "nes:40"), (zelda.GetProperty("minutes").GetInt32(), zelda.GetProperty("key").GetString()));
+            }
+            // Favorites: only valid keys are kept
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/retro/players/me/favorites", new[] { "nes:40", "bad key", "nes:40" })).StatusCode);
+            using (JsonDocument me = JsonDocument.Parse(await player.GetStringAsync("/retro/players/me")))
+                Assert.Equal(new[] { "nes:40" }, me.RootElement.GetProperty("favorites").EnumerateArray().Select(f => f.GetString()));
+
+            // Every player sees the others' plays (profile, recent activity)
+            using (JsonDocument theirs = JsonDocument.Parse(await admin.GetStringAsync("/retro/players/2")))
+                Assert.Single(theirs.RootElement.GetProperty("plays").EnumerateArray());
+            using (JsonDocument activity = JsonDocument.Parse(await admin.GetStringAsync("/retro/activity")))
+            {
+                JsonElement recent = Assert.Single(activity.RootElement.EnumerateArray());
+                Assert.Equal(("player", "Zelda", 30), (recent.GetProperty("username").GetString(), recent.GetProperty("name").GetString(), recent.GetProperty("minutes").GetInt32()));
+            }
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/activity")).StatusCode);
+
+            // The newest games of RomM, for the notification
+            using (JsonDocument latest = JsonDocument.Parse(await player.GetStringAsync("/retro/latest")))
+                Assert.Equal("nes", Assert.Single(latest.RootElement.EnumerateArray()).GetProperty("platform").GetString());
+        }
+
+        [Fact]
+        public async Task RetroDownloads_KeepTheirBytes_UnderASpeedLimit()
+        {
+            using var limited = new HttpRequestMessage(HttpMethod.Get, "/retro/games/40/content");
+            limited.Headers.Add("X-Download-Speed-Limit", "1");
+            Assert.Equal(FakeRomm.Rom, await (await Client("user").SendAsync(limited)).Content.ReadAsByteArrayAsync());
+        }
+
+        [Fact]
         public async Task RetroSaves_AreKeptPerPlayer()
         {
             var player = Client("user");
@@ -429,6 +477,17 @@ namespace GameVault.Uploader.Tests
             using (JsonDocument info = JsonDocument.Parse(await player.GetStringAsync("/retro/saves/retroarch/info")))
                 Assert.Equal(savedAt, info.RootElement.GetProperty("savedAt").GetInt64());
             Assert.Equal(zip, await player.GetByteArrayAsync("/retro/saves/retroarch"));
+
+            // Saved again: the previous one goes to the history, and can be taken back
+            await Task.Delay(20);
+            Assert.Equal(HttpStatusCode.OK, (await player.PutAsync("/retro/saves/retroarch", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4, 10 }))).StatusCode);
+            using (JsonDocument history = JsonDocument.Parse(await player.GetStringAsync("/retro/saves/retroarch/history")))
+            {
+                JsonElement older = Assert.Single(history.RootElement.EnumerateArray());
+                Assert.Equal(savedAt, older.GetProperty("savedAt").GetInt64());
+                Assert.Equal(zip, await player.GetByteArrayAsync($"/retro/saves/retroarch/history/{older.GetProperty("name").GetString()}"));
+            }
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/saves/retroarch/history/..%2F..%2Fother.zip")).StatusCode);
 
             // Another player has their own; a bad name or no sign-in gets nothing
             Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/retro/saves/retroarch")).StatusCode);

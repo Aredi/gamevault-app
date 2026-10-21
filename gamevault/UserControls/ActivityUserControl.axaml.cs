@@ -63,9 +63,18 @@ namespace gamevault.UserControls
                         string text = string.Equals(p.State, "COMPLETED", StringComparison.OrdinalIgnoreCase)
                             ? Loc.F("{0} completed {1}", p.User!.Username, game)
                             : Loc.F("{0} played {1}", p.User!.Username, game);
-                        return new ActivityFeedItem(p.User, p.Game, text, Converter.RelativeDate.Format(p.LastPlayedAt!.Value));
+                        return new ActivityFeedItem(p.User, p.Game, text, Converter.RelativeDate.Format(p.LastPlayedAt!.Value), p.LastPlayedAt!.Value.ToUniversalTime());
                     })
                     .ToList();
+                // The retro games played lately (kept by the SanctuaryVault service), among them by date
+                try
+                {
+                    var retro = (await RetroLibrary.ActivityAsync()).Select(a => new ActivityFeedItem(null, null,
+                        Loc.F("{0} played {1}", a.Username, $"{a.Name} ({a.PlatformName})"), Converter.RelativeDate.Format(a.LastPlayed), a.LastPlayed.ToUniversalTime(),
+                        RetroLibrary.GameOf(a.RomId, a.Platform, a.PlatformName, a.Name, a.Cover)));
+                    Items = Items.Concat(retro).OrderByDescending(i => i.At).Take(30).ToList();
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
             }
             catch (Exception ex) { Log.Ignored(ex); }
             uiItems.ItemsSource = Items;
@@ -75,7 +84,11 @@ namespace gamevault.UserControls
 
         private void Item_Click(object? sender, RoutedEventArgs e)
         {
-            if ((sender as Control)?.DataContext is ActivityFeedItem item)
+            if ((sender as Control)?.DataContext is not ActivityFeedItem item)
+                return;
+            if (item.Retro is Helper.RetroGame retro)
+                _ = MainWindowViewModel.Instance.Retro.ShowGameAsync(retro.Platform.Slug, retro.Id);
+            else if (item.Game != null)
                 MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(item.Game));
         }
     }

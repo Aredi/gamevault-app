@@ -61,6 +61,47 @@ namespace gamevault.Helper
             return client;
         }
 
+        /// <summary>The retro game RetroArch runs (the game tracker does not see it): kept until it closes.</summary>
+        private RetroGame? retroGame;
+
+        internal void RetroStarted(RetroGame game)
+        {
+            retroGame = game;
+            currentGameId = RetroPresence;
+            sessionStartUtc = DateTime.UtcNow;
+            minutesBeforeSession = game.MinutesPlayed;
+            if (SettingsViewModel.Instance.SyncDiscordPresence)
+                ShowRetro();
+        }
+
+        internal void RetroStopped()
+        {
+            retroGame = null;
+            Clear();
+        }
+
+        private const int RetroPresence = -2;
+
+        private void ShowRetro()
+        {
+            if (retroGame == null)
+                return;
+            try
+            {
+                var activity = DiscordActivity.Create($"{retroGame.Name} ({retroGame.Platform.Name})", minutesBeforeSession, sessionStartUtc, DateTime.UtcNow, null,
+                    minutes => Loc.F("{0} played in total", (string)new GameTimeConverter().Convert(minutes, typeof(string), null, CultureInfo.CurrentCulture)!));
+                Client()?.SetPresence(new RichPresence
+                {
+                    Details = activity.Details,
+                    State = activity.State,
+                    Timestamps = new Timestamps(activity.SessionStartUtc),
+                    Assets = new Assets { LargeImageKey = activity.LargeImage, LargeImageText = activity.LargeImageText },
+                    Buttons = new[] { new Button { Label = "SanctuaryVault", Url = $"https://github.com/{AppRepository.Owner}/{AppRepository.Name}" } },
+                });
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
         /// <summary>A game was started from SanctuaryVault: show it at once instead of at the next minute.</summary>
         internal void GameStarted(int gameId)
         {
@@ -80,7 +121,9 @@ namespace gamevault.Helper
                 }
                 if (trackedGameIds.Count == 0)
                 {
-                    Clear();
+                    // A retro game is not one of the tracked games: it stays shown while RetroArch runs
+                    if (retroGame == null)
+                        Clear();
                     return;
                 }
                 int gameId = trackedGameIds.Contains(currentGameId) ? currentGameId : trackedGameIds[0];
@@ -141,7 +184,12 @@ namespace gamevault.Helper
         {
             int game = currentGameId;
             Clear();
-            if (game != -1 && SettingsViewModel.Instance.SyncDiscordPresence)
+            if (retroGame != null && SettingsViewModel.Instance.SyncDiscordPresence)
+            {
+                currentGameId = RetroPresence;
+                ShowRetro();
+            }
+            else if (game != -1 && SettingsViewModel.Instance.SyncDiscordPresence)
                 Show(game);
         }
 

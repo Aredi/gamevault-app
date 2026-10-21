@@ -65,8 +65,10 @@
                     </ItemsControl>
                     <Border Width="1" Height="20" Background="{DynamicResource Brush.Line}" Margin="4,6,12,14" />
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyInstalled}" Content="{l:T 'Installed'}" />
+                    <ToggleButton Classes="chip" IsChecked="{Binding OnlyFavorites}" Content="{l:T 'Bookmarks'}" />
                 </WrapPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                    <ComboBox x:Name="uiCollections" MinWidth="170" MinHeight="32" ItemsSource="{Binding Collections}" SelectedIndex="{Binding Collection}" ToolTip.Tip="{l:T 'Collections'}" />
                     <TextBlock Classes="muted" Text="{l:T 'Sort by'}" FontSize="13" VerticalAlignment="Center" />
                     <ComboBox MinWidth="160" MinHeight="32" ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortBy}" />
                 </StackPanel>
@@ -99,8 +101,12 @@
                                                     <Image Source="{Binding CoverImage}" Stretch="UniformToFill" />
                                                 </Panel>
                                             </Border>
+                                            <Border Classes="selection" BorderBrush="{Binding Accent, Converter={StaticResource accentBrushConv}}" IsVisible="{Binding IsSelected}" />
                                             <!-- State -->
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" Spacing="4">
+                                                <Border Classes="badge" IsVisible="{Binding IsFavorite}" ToolTip.Tip="{l:T 'Bookmarks'}">
+                                                    <Path Data="{StaticResource IconBookmarkFilled}" Fill="Yellow" Stretch="Uniform" Width="9" Height="11" VerticalAlignment="Center" />
+                                                </Border>
                                                 <Border Classes="badge" IsVisible="{Binding Installed}">
                                                     <StackPanel Orientation="Horizontal" Spacing="3">
                                                         <Path Data="{StaticResource IconTick}" Fill="{DynamicResource Brush.Success}" Stretch="Uniform" Width="9" Height="9" VerticalAlignment="Center" />
@@ -178,6 +184,8 @@
                                         <TextBlock Text="{l:T 'Play'}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+                                <ToggleButton Classes="icon bookmark" Margin="0,0,8,8" Width="40" Height="40" IsChecked="{Binding IsFavorite}" ToolTip.Tip="{l:T 'Bookmark'}" />
+                                <Button Classes="ghost" Margin="0,0,8,8" Click="Collections_Click" Content="{l:T 'Collections'}" Background="{DynamicResource Brush.Surface3}" />
                                 <Button Classes="ghost" Margin="0,0,8,8" Click="Manual_Click" IsVisible="{Binding HasManual}" Content="{l:T 'Manual'}"
                                         Background="{DynamicResource Brush.Surface3}" />
                                 <Button Classes="ghost" Margin="0,0,8,8" Click="Video_Click" IsVisible="{Binding HasVideo}" Content="{l:T 'Video'}"
@@ -192,12 +200,12 @@
 
                             <Grid ColumnDefinitions="*,*,*">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Classes="eyebrow muted" Text="{l:T 'RATING'}" FontSize="10.5" />
-                                    <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding RatingText}" />
+                                    <TextBlock Classes="eyebrow muted" Text="{l:T 'PLAYTIME'}" FontSize="10.5" />
+                                    <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding PlaytimeText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Spacing="3">
-                                    <TextBlock Classes="eyebrow muted" Text="{l:T 'PLAYERS'}" FontSize="10.5" />
-                                    <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding PlayersText}" />
+                                    <TextBlock Classes="eyebrow muted" Text="{l:T 'RATING'}" FontSize="10.5" />
+                                    <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding RatingText}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Spacing="3" ToolTip.Tip="{l:T 'To finish the main story (HowLongToBeat)'}">
                                     <TextBlock Classes="eyebrow muted" Text="{l:T 'DURATION'}" FontSize="10.5" />

@@ -58,6 +58,14 @@ namespace GameVault.UiTests
         public static readonly byte[] RetroCdGame = Zip(("Castlevania.cue", "FILE \"Castlevania.bin\" BINARY"), ("Castlevania.bin", "track"));
         /// <summary>The player's retro saves: (zip, when saved).</summary>
         public (byte[] Zip, long SavedAt)? RetroSaves { get; set; }
+        /// <summary>Older versions of the retro saves: name → (when saved, zip).</summary>
+        public ConcurrentDictionary<string, (long SavedAt, byte[] Zip)> RetroSavesHistory { get; } = new();
+        /// <summary>The retro plays sent (JSON), and the time kept per game key ("nes:40").</summary>
+        public ConcurrentQueue<string> RetroPlaysSent { get; } = new();
+        public ConcurrentDictionary<string, int> RetroMinutes { get; } = new();
+        public string RetroFavorites { get; set; } = "[]";
+        /// <summary>What /retro/latest answers (RomM's newest games).</summary>
+        public List<object> RetroLatest { get; } = new();
 
         public static byte[] Zip(params (string Name, string Text)[] files)
         {
@@ -175,6 +183,36 @@ namespace GameVault.UiTests
                     await Json(response, new[] { new { id = 7, fileName = "scph5501.bin", size = 4 } });
                 else if (path == "/retro/firmware/7/content")
                     await response.OutputStream.WriteAsync(new byte[] { 1, 2, 3, 4 });
+                else if (path == "/retro/players/me" && request.HttpMethod == "GET")
+                    await Json(response, new
+                    {
+                        plays = RetroMinutes.Select(m => new { key = m.Key, romId = int.Parse(m.Key.Split(':')[1]), platform = m.Key.Split(':')[0], platformName = "NES", name = "Zelda", cover = (string?)null, minutes = m.Value, lastPlayed = DateTime.UtcNow }),
+                        favorites = JsonSerializer.Deserialize<string[]>(RetroFavorites),
+                    });
+                else if (path == "/retro/players/me/plays")
+                {
+                    string body = await new StreamReader(request.InputStream).ReadToEndAsync();
+                    RetroPlaysSent.Enqueue(body);
+                    using JsonDocument play = JsonDocument.Parse(body);
+                    string key = $"{play.RootElement.GetProperty("platform").GetString()}:{play.RootElement.GetProperty("romId").GetInt32()}";
+                    RetroMinutes.AddOrUpdate(key, play.RootElement.GetProperty("minutes").GetInt32(), (_, m) => m + play.RootElement.GetProperty("minutes").GetInt32());
+                    response.StatusCode = 204;
+                }
+                else if (path == "/retro/players/me/favorites")
+                {
+                    RetroFavorites = await new StreamReader(request.InputStream).ReadToEndAsync();
+                    response.StatusCode = 204;
+                }
+                else if (path == "/retro/activity")
+                    await Json(response, RetroMinutes.Select(m => new { userId = 2, username = "Mario", romId = int.Parse(m.Key.Split(':')[1]), platform = m.Key.Split(':')[0], platformName = "NES", name = "Zelda", cover = (string?)null, minutes = m.Value, lastPlayed = DateTime.UtcNow }));
+                else if ((match = Regex.Match(path, @"^/retro/players/(\d+)$")).Success)
+                    await Json(response, new { plays = RetroMinutes.Select(m => new { romId = int.Parse(m.Key.Split(':')[1]), platform = m.Key.Split(':')[0], platformName = "NES", name = "Zelda", minutes = m.Value, lastPlayed = DateTime.UtcNow }) });
+                else if (path == "/retro/latest")
+                    await Json(response, RetroLatest);
+                else if (path == "/retro/saves/retroarch/history")
+                    await Json(response, RetroSavesHistory.Select(v => new { name = v.Key, savedAt = v.Value.SavedAt, size = v.Value.Zip.Length }).OrderByDescending(v => v.savedAt));
+                else if ((match = Regex.Match(path, @"^/retro/saves/retroarch/history/([^/]+)$")).Success && RetroSavesHistory.TryGetValue(Uri.UnescapeDataString(match.Groups[1].Value), out var version))
+                    await response.OutputStream.WriteAsync(version.Zip);
                 else if (path == "/retro/saves/retroarch/info")
                 {
                     if (RetroSaves is { } saves)

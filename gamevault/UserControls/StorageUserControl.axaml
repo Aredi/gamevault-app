@@ -66,7 +66,11 @@
                             <Border Margin="0,0,8,8" Padding="10" CornerRadius="12" Background="{DynamicResource Brush.Background2}">
                                 <Grid ColumnDefinitions="48,*,Auto,Auto">
                                     <Border Width="48" Height="72" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
-                                        <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" />
+                                        <Panel>
+                                            <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding Retro, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            <Path Data="{StaticResource IconNavRetro}" Fill="{DynamicResource Brush.Muted}" Width="24" Height="24" Stretch="Uniform" IsVisible="{Binding IsEmulator}" />
+                                        </Panel>
                                     </Border>
                                     <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center" Spacing="4">
                                         <StackPanel Orientation="Horizontal" Spacing="8">

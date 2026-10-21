@@ -9,6 +9,8 @@ namespace GameVault.Uploader
     public sealed partial class RetroSaveStore
     {
         public const long MaxSize = 1L << 30;
+        /// <summary>The versions kept before the current one, to go back to.</summary>
+        public const int KeptVersions = 10;
 
         private readonly string directory;
         private readonly ILogger<RetroSaveStore> logger;
@@ -38,6 +40,27 @@ namespace GameVault.Uploader
             return Enabled && File.Exists(file) ? (file, new DateTimeOffset(File.GetLastWriteTimeUtc(file)).ToUnixTimeMilliseconds()) : null;
         }
 
+        private string HistoryOf(int userId) => Path.Combine(directory, userId.ToString(), "history");
+
+        public sealed record Version(string Name, long SavedAt, long Size);
+
+        /// <summary>The older versions of a set, newest first.</summary>
+        public List<Version> History(int userId, string set)
+        {
+            string history = HistoryOf(userId);
+            if (!Enabled || !Directory.Exists(history))
+                return new();
+            return Directory.GetFiles(history, $"{set}-*.zip")
+                .Select(f => (File: f, Stamp: Path.GetFileNameWithoutExtension(f)[(set.Length + 1)..]))
+                .Where(f => long.TryParse(f.Stamp, out _))
+                .Select(f => new Version(Path.GetFileName(f.File), long.Parse(f.Stamp), new FileInfo(f.File).Length))
+                .OrderByDescending(v => v.SavedAt).ToList();
+        }
+
+        /// <summary>The file of an older version; null when there is no such version.</summary>
+        public string? HistoryFile(int userId, string set, string name) =>
+            History(userId, set).Any(v => v.Name == name) ? Path.Combine(HistoryOf(userId), name) : null;
+
         /// <returns>When it was saved (unix ms); null when it is larger than <see cref="MaxSize"/>.</returns>
         public async Task<long?> SaveAsync(int userId, string set, Stream body, CancellationToken cancellationToken)
         {
@@ -57,6 +80,15 @@ namespace GameVault.Uploader
                             return null;
                         await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                     }
+                }
+                // The current one goes to the history (named by when it was saved)
+                if (File.Exists(file))
+                {
+                    string history = HistoryOf(userId);
+                    Directory.CreateDirectory(history);
+                    File.Move(file, Path.Combine(history, $"{set}-{new DateTimeOffset(File.GetLastWriteTimeUtc(file)).ToUnixTimeMilliseconds()}.zip"), overwrite: true);
+                    foreach (string old in Directory.GetFiles(history, $"{set}-*.zip").OrderByDescending(f => f, StringComparer.Ordinal).Skip(KeptVersions))
+                        File.Delete(old);
                 }
                 File.Move(part, file, overwrite: true);
             }

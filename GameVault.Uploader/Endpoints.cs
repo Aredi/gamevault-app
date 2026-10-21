@@ -27,7 +27,7 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers) => Results.Json(new { status = "OK", version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -88,6 +88,47 @@ namespace GameVault.Uploader
                     ? Results.Json(new { savedAt })
                     : Results.Json(new { error = $"Saves can have at most {RetroSaveStore.MaxSize >> 20} MB." }, statusCode: StatusCodes.Status413PayloadTooLarge);
             });
+            app.MapGet("/retro/latest", (HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.LatestAsync(ct))));
+
+            // The older versions of the retro saves, to go back to one
+            app.MapGet("/retro/saves/{set}/history", (string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct) =>
+                AsSaverAsync(set, request, users, saves, ct, id =>
+                    Results.Json(saves.History(id, set).Select(v => new { name = v.Name, savedAt = v.SavedAt, size = v.Size }))));
+            app.MapGet("/retro/saves/{set}/history/{name}", (string set, string name, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct) =>
+                AsSaverAsync(set, request, users, saves, ct, id =>
+                    saves.HistoryFile(id, set, name) is string file ? Results.File(file, "application/zip", name) : Results.NotFound()));
+
+            // Each player's time on the retro games and favorites; the recent plays of all of them
+            app.MapGet("/retro/players/me", (HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+                AsRetroPlayerAsync(request, users, players, ct, check => Results.Json(players.Get(check.Id))));
+            app.MapGet("/retro/players/{userId:int}", (int userId, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+                AsRetroPlayerAsync(request, users, players, ct, _ => Results.Json(new { plays = players.Get(userId).Plays })));
+            app.MapPost("/retro/players/me/plays", (RetroPlayerStore.Play played, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+                AsRetroPlayerAsync(request, users, players, ct, check =>
+                {
+                    played.Key = $"{played.Platform}:{played.RomId}";
+                    if (!RetroPlayerStore.IsValidKey(played.Key) || played.Minutes is < 1 or > 1440 || string.IsNullOrWhiteSpace(played.Name))
+                        return Results.Json(new { error = "A play needs a game and 1 to 1440 minutes." }, statusCode: StatusCodes.Status400BadRequest);
+                    played.Name = played.Name.Trim()[..Math.Min(played.Name.Trim().Length, 200)];
+                    played.PlatformName = (played.PlatformName ?? "")[..Math.Min((played.PlatformName ?? "").Length, 80)];
+                    played.Cover = RommProxy.IsMedia(played.Cover) ? played.Cover : null;
+                    players.AddPlay(check.Id, check.User, played);
+                    return Results.NoContent();
+                }));
+            app.MapPut("/retro/players/me/favorites", (string[] favorites, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+                AsRetroPlayerAsync(request, users, players, ct, check =>
+                {
+                    players.SetFavorites(check.Id, check.User, favorites);
+                    return Results.NoContent();
+                }));
+            app.MapGet("/retro/activity", (HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+                AsRetroPlayerAsync(request, users, players, ct, _ => Results.Json(players.Recent(30).Select(a => new
+                {
+                    userId = a.UserId, username = a.Username, romId = a.Play.RomId, platform = a.Play.Platform, platformName = a.Play.PlatformName,
+                    name = a.Play.Name, cover = a.Play.Cover, minutes = a.Play.Minutes, lastPlayed = a.Play.LastPlayed,
+                }))));
+
             app.MapGet("/retro/games/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => { await romm.ContentAsync(id, context.Request, context.Response, ct); return Results.Empty; }));
 
@@ -311,6 +352,16 @@ namespace GameVault.Uploader
             if (!remote.Enabled)
                 return Results.Json(new { error = "Remote installs are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
             return action(check.Id);
+        }
+
+        private static async Task<IResult> AsRetroPlayerAsync(HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct, Func<AdminCheck.Result, IResult> action)
+        {
+            var check = await users.CheckUserAsync(request, ct);
+            if (!check.Allowed)
+                return Results.Json(new { error = check.Message }, statusCode: check.Status);
+            if (!players.Enabled)
+                return Results.Json(new { error = "Retro play times are not kept by this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            return action(check);
         }
 
         private static async Task<IResult?> RefuseSaverAsync(string set, HttpRequest request, AdminCheck users, RetroSaveStore saves, CancellationToken ct)

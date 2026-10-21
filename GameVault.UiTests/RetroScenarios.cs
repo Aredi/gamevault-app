@@ -26,6 +26,7 @@ namespace GameVault.UiTests
             var session = await TestSession.GetAsync();
             SanctuaryService.Current = session.Server.Url;
             string saves = RetroArchManager.Layout.SavesDirectory(gamevault.Helper.LoginManager.Instance.GetCurrentUser()!.ID.ToString());
+            SettingsViewModel.Instance.CloudSaves = true;
             try
             {
                 // Another PC sent a save: it comes here before a game
