@@ -102,6 +102,11 @@ namespace GameVault.UiTests
                 page.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Right, Source = page });
                 Assert.Same(zelda, page.ViewModel.SelectedGame);
                 Assert.True(zelda.IsSelected);
+                // Enter opens the game's page, as a click on its card
+                page.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, Source = page });
+                var shown = Assert.IsType<RetroGameViewUserControl>(MainWindowViewModel.Instance.ActiveControl);
+                Assert.Same(zelda, shown.ViewModel.Game);
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
                 page.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape, Source = page });
                 Assert.Null(page.ViewModel.SelectedGame);
 

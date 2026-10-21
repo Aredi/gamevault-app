@@ -167,7 +167,7 @@ namespace gamevault.UserControls
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => uiGames.GetOrCreateElement(index).BringIntoView());
         }
 
-        /// <summary>As the library's shelf: the arrows move the selection, Enter opens the game's page, Escape closes the details.</summary>
+        /// <summary>As the library: the arrows move the selection, Enter opens the game's page, Escape clears the selection.</summary>
         private void Page_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
         {
             if (e.Source is Avalonia.Visual source && (source is TextBox || source.FindAncestorOfType<ComboBox>(includeSelf: true) != null || source is ComboBoxItem))
@@ -204,73 +204,24 @@ namespace gamevault.UserControls
             Select(games[index < 0 ? 0 : Math.Clamp(next, 0, games.Count - 1)]);
         }
 
-        private void Collections_Click(object? sender, RoutedEventArgs e)
-        {
-            if (sender is Control anchor && GameOf(sender) is RetroGame game)
-                CollectionsFlyout.ShowForGame(anchor, game.Id, game.Name, RetroLibrary.Collections, () =>
-                {
-                    LoadCollections();
-                    ViewModel.ApplyFilter();
-                });
-        }
-
+        /// <summary>As the library's gallery: a card opens the game's page.</summary>
         private void GameCard_Click(object? sender, RoutedEventArgs e)
         {
-            if (GameOf(sender) is RetroGame game)
-                ViewModel.SelectedGame = game;
-            Focus();
-        }
-
-        /// <summary>As the library's shelf: a double click opens the game's page.</summary>
-        private void GameCard_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
-        {
-            if (GameOf(sender) is RetroGame game)
-                OpenGame(game);
+            if (GameOf(sender) is not RetroGame game)
+                return;
+            ViewModel.SelectedGame = game;
+            OpenGame(game);
         }
 
         internal static void OpenGame(RetroGame game) => MainWindowViewModel.Instance.SetActiveControl(new RetroGameViewUserControl(game));
 
-        private void OpenGame_Click(object? sender, RoutedEventArgs e)
-        {
-            if (GameOf(sender) is RetroGame game)
-                OpenGame(game);
-        }
-
-        private void CloseDetails_Click(object? sender, RoutedEventArgs e) => ViewModel.SelectedGame = null;
-
-        private async void Manual_Click(object? sender, RoutedEventArgs e)
-        {
-            if (GameOf(sender) is not RetroGame { Manual: string manual })
-                return;
-            try { PlatformInfo.OpenFile(await RetroService.MediaFileAsync(manual)); }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
-        }
-
-        private void Video_Click(object? sender, RoutedEventArgs e)
-        {
-            if (GameOf(sender) is RetroGame { Video: string video })
-                PlatformInfo.OpenUrl($"https://www.youtube.com/watch?v={Uri.EscapeDataString(video)}");
-        }
-
         private static RetroGame? GameOf(object? sender) => (sender as Control)?.DataContext as RetroGame;
-
-        private async void Install_Click(object? sender, RoutedEventArgs e)
-        {
-            if (GameOf(sender) is RetroGame game)
-                await InstallAsync(game);
-        }
 
         /// <summary>
         /// Into the Downloads page and its queue, as the library's games: the download goes on whatever page is shown,
         /// and the game is made playable (unpacked, RetroArch, core, BIOS) when it is complete.
         /// </summary>
         internal Task InstallAsync(RetroGame game) => RetroPlay.InstallAsync(game);
-
-        private async void Play_Click(object? sender, RoutedEventArgs e)
-        {
-            if (GameOf(sender) is RetroGame game)
-                await PlayAsync(game);
-        }
 
         internal Task PlayAsync(RetroGame game) => RetroPlay.PlayAsync(game);
 
@@ -288,23 +239,6 @@ namespace gamevault.UserControls
                 Show(Loc.F("Failed: {0}", ex.Message));
             }
             finally { uiMenu.IsEnabled = true; }
-        }
-
-        private async void Delete_Click(object? sender, RoutedEventArgs e)
-        {
-            if (GameOf(sender) is not RetroGame game || game.Busy || RetroService.InstalledFolder(game) is not string folder)
-                return;
-            MessageDialogResult result = await App.Instance.MainWindow.ShowMessageAsync(Loc.F("Delete '{0}' from this PC? Its saves are kept.", game.Name),
-                "", MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings() { AffirmativeButtonText = Loc.T("Yes"), NegativeButtonText = Loc.T("No") });
-            if (result != MessageDialogResult.Affirmative)
-                return;
-            try
-            {
-                Directory.Delete(folder, true);
-            }
-            catch (Exception ex) { game.Status = Loc.F("Failed: {0}", ex.Message); }
-            game.Refresh();
-            ViewModel.ApplyFilter();
         }
     }
 }
