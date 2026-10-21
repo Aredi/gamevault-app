@@ -31,14 +31,17 @@ namespace gamevault.Helper
                 if (!Layout.IsInstalled)
                 {
                     string work = Path.Combine(Layout.Directory, ".download");
+                    // Shown first: removing what a stopped installation left can take a while
+                    status(Loc.F("Installing RetroArch, once for all the games: downloading {0:0}%", 0));
                     if (Directory.Exists(work))
                         Directory.Delete(work, true);
                     Directory.CreateDirectory(work);
                     string archive = Path.Combine(work, "RetroArch.7z");
-                    await DownloadAsync(Layout.PackageUrl, archive, done => status(Loc.F("Downloading RetroArch... {0:0}%", done * 100)));
-                    status(Loc.T("Unpacking RetroArch..."));
+                    await DownloadAsync(Layout.PackageUrl, archive, done => status(Loc.F("Installing RetroArch, once for all the games: downloading {0:0}%", done * 100)));
+                    status(Loc.F("Installing RetroArch, once for all the games: unpacking {0}%", 0));
                     var sevenZip = new SevenZipHelper();
-                    if (await sevenZip.ExtractArchive(archive, work) != 0)
+                    sevenZip.Process += (_, e) => status(Loc.F("Installing RetroArch, once for all the games: unpacking {0}%", e.PercentageDone));
+                    if (await sevenZip.ExtractArchive(archive, work, excludedNames: RetroArchLayout.UnusedPackageFolders) != 0)
                         throw new IOException(sevenZip.LastError);
                     if (Directory.Exists(Layout.AppDirectory))
                         Directory.Delete(Layout.AppDirectory, true);

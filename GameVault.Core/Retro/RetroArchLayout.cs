@@ -39,6 +39,12 @@ namespace GameVault.Core.Retro
         public string ConfigFile => Path.Combine(directory, "sanctuaryvault.cfg");
         public string VersionFile => Path.Combine(directory, "version");
 
+        /// <summary>
+        /// Left in the package: 13 000 of its 15 000 files (other menu themes, shaders, touch overlays, the game
+        /// database), which the client does not use. On Windows each written file is scanned, which took minutes.
+        /// </summary>
+        public static readonly IReadOnlyList<string> UnusedPackageFolders = new[] { "xmb", "glui", "shaders", "overlays", "database", "filters" };
+
         public bool IsInstalled => File.Exists(Executable) && File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() == Version;
 
         public string CoreFile(string core) => Path.Combine(CoresDirectory, windows ? $"{core}_libretro.dll" : $"{core}_libretro.so");
@@ -56,6 +62,8 @@ namespace GameVault.Core.Retro
                 ("system_directory", SystemDirectory),
                 ("savefile_directory", SavesDirectory),
                 ("savestate_directory", StatesDirectory),
+                // The menu theme kept in the package (the others are not unpacked)
+                ("menu_driver", "ozone"),
                 ("video_fullscreen", "true"),
                 // RetroPad combinations: 4 is Select+Start, 2 is L3+R3
                 ("input_quit_gamepad_combo", "4"),

@@ -32,7 +32,7 @@
                                 </Panel>
                             </Border>
                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding Status}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis"
+                            <TextBlock Text="{Binding Status}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
                                        IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock Text="{Binding SizeText}" Classes="muted" FontSize="12"
                                        IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNullOrEmpty}}" />

@@ -1083,7 +1083,6 @@
   "The games the players of the server played lately": "Les jeux auxquels les joueurs du serveur ont joué dernièrement",
   "Nobody played lately": "Personne n'a joué dernièrement",
   "Delete '{0}' from this PC? Its saves are kept.": "Supprimer « {0} » de ce PC ? Ses sauvegardes sont conservées.",
-  "Downloading RetroArch... {0:0}%": "Téléchargement de RetroArch... {0:0} %",
   "Downloading the emulator...": "Téléchargement de l'émulateur...",
   "Downloading... {0:0}%": "Téléchargement... {0:0} %",
   "Failed: {0}": "Échec : {0}",
@@ -1092,6 +1091,7 @@
   "Retro": "Rétro",
   "The games of the other platforms are not available on this server.": "Les jeux des autres plateformes ne sont pas disponibles sur ce serveur.",
   "The games of the other platforms, played with RetroArch: it is installed and set up the first time. Select+Start quits the game.": "Les jeux des autres plateformes, joués avec RetroArch : il est installé et configuré automatiquement la première fois. Select+Start quitte le jeu.",
-  "Unpacking RetroArch...": "Décompression de RetroArch...",
-  "The games of the other platforms": "Les jeux des autres plateformes"
+  "The games of the other platforms": "Les jeux des autres plateformes",
+  "Installing RetroArch, once for all the games: downloading {0:0}%": "Installation de RetroArch, une seule fois pour tous les jeux : téléchargement {0:0} %",
+  "Installing RetroArch, once for all the games: unpacking {0}%": "Installation de RetroArch, une seule fois pour tous les jeux : décompression {0} %"
 }

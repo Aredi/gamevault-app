@@ -110,7 +110,8 @@ namespace gamevault.Helper
             ProcessShepherd.Instance.RemoveProcess(process);
             return result;
         }
-        internal async Task<int> ExtractArchive(string archivePath, string outputDir, string password = "")
+        /// <param name="excludedNames">Files or folders of these names are left in the archive (wherever they are).</param>
+        internal async Task<int> ExtractArchive(string archivePath, string outputDir, string password = "", IEnumerable<string>? excludedNames = null)
         {
             int exitCode = -1;
             await Task.Run(() =>
@@ -125,6 +126,8 @@ namespace gamevault.Helper
                      // One argument: spaces or quotes in the password stay part of it
                      process.StartInfo.ArgumentList.Add($"-p{password}");
                  }
+                 foreach (string name in excludedNames ?? Array.Empty<string>())
+                     process.StartInfo.ArgumentList.Add($"-xr!{name}");
                  process.EnableRaisingEvents = true;
                  var errors = new System.Text.StringBuilder();
                  process.ErrorDataReceived += (sender, e) =>
@@ -138,22 +141,6 @@ namespace gamevault.Helper
                          exitCode = 69;
                      }
                  };
-                 process.OutputDataReceived += (sender, e) =>
-                 {
-                     if (Process == null)
-                     {
-                         return;
-                     }
-                     if (e.Data != null && e.Data.Contains("%"))
-                     {
-                         int index = e.Data.IndexOf("%");
-                         string percentageStr = e.Data.Substring(0, index).Replace(" ", "");
-                         if (int.TryParse(percentageStr, out int percentage))
-                         {
-                             Process(this, new SevenZipProgressEventArgs(percentage));
-                         }
-                     }
-                 };
 
                  if (!Directory.Exists(outputDir))
                  {
@@ -161,9 +148,10 @@ namespace gamevault.Helper
                  }
 
                  process.Start();
-                 process.BeginOutputReadLine();
                  process.BeginErrorReadLine();
+                 Task progress = ReadProgressAsync(process.StandardOutput, percentage => Process?.Invoke(this, new SevenZipProgressEventArgs(percentage)));
                  process.WaitForExit();
+                 progress.Wait();
                  ProcessShepherd.Instance.RemoveProcess(process);
                  lock (errors)
                      LastError = errors.ToString();
@@ -181,6 +169,35 @@ namespace gamevault.Helper
                 return exitCode;
             }
         }
+        /// <summary>
+        /// 7-Zip redraws its percentage with backspaces, never ending the line: read line by line, the progress only
+        /// came at the end. The output is cut on backspaces too.
+        /// </summary>
+        internal static async Task ReadProgressAsync(TextReader output, Action<int> report)
+        {
+            char[] buffer = new char[4096];
+            var segment = new System.Text.StringBuilder();
+            int last = -1;
+            void Flush()
+            {
+                string text = segment.ToString();
+                segment.Clear();
+                int index = text.IndexOf('%');
+                if (index > 0 && int.TryParse(text[..index].Trim(), out int percentage) && percentage != last)
+                    report(last = percentage);
+            }
+            int read;
+            while ((read = await output.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                for (int i = 0; i < read; i++)
+                {
+                    if (buffer[i] is '\b' or '\r' or '\n')
+                        Flush();
+                    else
+                        segment.Append(buffer[i]);
+                }
+            Flush();
+        }
+
         internal async Task PackArchive(string directoryToPack, string archiveName)
         {
             await Task.Run(() =>

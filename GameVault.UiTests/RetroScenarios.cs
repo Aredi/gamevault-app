@@ -8,6 +8,16 @@ namespace GameVault.UiTests
     /// <summary>The games of the other platforms: listed from the SanctuaryVault service, installed into the library folder.</summary>
     public class RetroScenarios
     {
+        [Fact]
+        public async Task SevenZipProgress_IsRead_ThoughItIsRedrawnWithBackspaces()
+        {
+            // As 7-Zip writes it: no new line until the end
+            string output = "\n7-Zip 23.01\n\n  0M Scan\b\b\b\b\b\b\b\b         \b\b\b\b\b\b\b\b\b  12% 3 - assets/a.png\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b 12% 4 - b\b\b\b\b\b\b\b\b\b\b 45% 9 - c\b\b\b\b\b\b\b\b\b\b\b100%\nEverything is Ok\n";
+            var seen = new List<int>();
+            await SevenZipHelper.ReadProgressAsync(new StringReader(output), seen.Add);
+            Assert.Equal(new[] { 12, 45, 100 }, seen);
+        }
+
         [AvaloniaFact]
         public async Task ARetroGame_IsListedAndInstalled_OnlyForThePlatformsRetroArchPlays()
         {

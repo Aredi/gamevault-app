@@ -18,6 +18,9 @@ namespace GameVault.Core.Tests
             Assert.Contains($"libretro_info_path = \"{home}/cores\"\n", config);
             Assert.Contains("savefile_directory = \"/data/retroarch/saves\"\n", config);
             Assert.Contains("input_quit_gamepad_combo = \"4\"\n", config);
+            // The only menu theme unpacked
+            Assert.Contains("menu_driver = \"ozone\"\n", config);
+            Assert.DoesNotContain("ozone", RetroArchLayout.UnusedPackageFolders);
             Assert.Equal(new[] { "-L", "/data/retroarch/cores/mgba_libretro.so", "--config", "/data/retroarch/sanctuaryvault.cfg", "/games/a.gba" }, layout.Arguments("mgba", "/games/a.gba"));
         }
 
