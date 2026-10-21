@@ -68,6 +68,8 @@ namespace GameVault.UiTests
         public bool RommLinkable { get; set; }
         public sealed record RommSave(int Id, int RomId, string FileName, string? Slot, string? Emulator, DateTime UpdatedAt, byte[] Content);
         public ConcurrentQueue<RommSave> RommSaves { get; } = new();
+        /// <summary>RomM's games: its Windows games are the library's files.</summary>
+        public ConcurrentQueue<(int Id, string Platform, string FileName)> RommRoms { get; } = new();
         private int rommTokenCalls;
 
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
@@ -294,6 +296,13 @@ namespace GameVault.UiTests
                         DateTime.UtcNow.AddSeconds(RommSaves.Count), content);
                     RommSaves.Enqueue(saved);
                     await Json(response, RommJson(saved));
+                }
+                else if (path == "/api/roms")
+                {
+                    string term = request.QueryString["search_term"] ?? "";
+                    var found = RommRoms.Where(r => r.FileName.Contains(term, StringComparison.OrdinalIgnoreCase))
+                        .Select(r => new { id = r.Id, platform_slug = r.Platform, fs_name = r.FileName }).ToList();
+                    await Json(response, new { items = found, total = found.Count });
                 }
                 else if (path == "/api/saves")
                     await Json(response, RommSaves.Where(s => s.RomId == int.Parse(request.QueryString["rom_id"]!)).Select(RommJson));

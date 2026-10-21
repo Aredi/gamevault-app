@@ -38,7 +38,7 @@
                 <TextBlock Classes="h1" Text="{l:T 'RomM account'}" />
                 <TextBlock x:Name="uiRommState" TextWrapping="Wrap" FontSize="14" />
                 <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,4,0,0"
-                           Text="{l:T 'With your RomM account linked, the saves of the retro games go to your RomM: its web page plays with them too, and the ones made there come here. Without it, they go to SanctuaryVault.'}" />
+                           Text="{l:T 'With your RomM account linked, the saves of the retro games go to your RomM: its web page plays with them too, and the ones made there come here. The cloud saves of the PC games also get a copy there. Without it, all go to SanctuaryVault.'}" />
                 <Border x:Name="uiRommCode" IsVisible="False" Background="{DynamicResource Brush.Surface}" CornerRadius="12" Padding="16,12" Margin="0,12,0,0" HorizontalAlignment="Left">
                     <StackPanel Spacing="6">
                         <TextBlock Text="{l:T 'Approve this code on the page of RomM that opened:'}" FontSize="13" />

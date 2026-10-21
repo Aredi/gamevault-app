@@ -3,7 +3,11 @@ using gamevault.Helper.Platform;
 using gamevault.Localization;
 using gamevault.Models;
 using gamevault.ViewModels;
+using GameVault.Core.Retro;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -14,6 +18,33 @@ using System.Threading.Tasks;
 
 namespace gamevault.Helper
 {
+    /// <summary>A save of the player's RomM (theirs, from any device or its web page).</summary>
+    internal sealed class RommSave
+    {
+        public int Id { get; init; }
+        public string FileName { get; init; } = "";
+        public string? Slot { get; init; }
+        public string? Emulator { get; init; }
+        public DateTime UpdatedAt { get; init; }
+        public long Size { get; init; }
+        public string? Device { get; init; }
+        public bool IsOurs => Slot is RetroCloudSaves.MainSlot or RetroCloudSaves.RestSlot;
+
+        public static RommSave Read(JsonElement save) => new()
+        {
+            Id = save.GetProperty("id").GetInt32(),
+            FileName = save.GetProperty("file_name").GetString() ?? "",
+            Slot = save.TryGetProperty("slot", out JsonElement slot) && slot.ValueKind == JsonValueKind.String ? slot.GetString() : null,
+            Emulator = save.TryGetProperty("emulator", out JsonElement emulator) && emulator.ValueKind == JsonValueKind.String ? emulator.GetString() : null,
+            UpdatedAt = DateTime.Parse(save.GetProperty("updated_at").GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal),
+            Size = save.TryGetProperty("file_size_bytes", out JsonElement size) && size.ValueKind == JsonValueKind.Number ? size.GetInt64() : 0,
+            Device = save.TryGetProperty("device_syncs", out JsonElement syncs) && syncs.ValueKind == JsonValueKind.Array
+                ? syncs.EnumerateArray().Where(s => s.TryGetProperty("is_current", out JsonElement current) && current.ValueKind == JsonValueKind.True)
+                    .Select(s => s.GetProperty("device_name").GetString()).FirstOrDefault()
+                : null,
+        };
+    }
+
     /// <summary>
     /// The player's own RomM account, linked as RomM links its devices: the client shows a code, the player approves it
     /// on RomM's page, and the client gets a token for that account (no password typed here). With it, the retro saves
@@ -124,8 +155,64 @@ namespace gamevault.Helper
             return Loc.T("The code expired before it was approved in RomM.");
         }
 
+        #region Saves
+        /// <summary>The player's RomM saves of a game, the newest first.</summary>
+        public static async Task<List<RommSave>> SavesAsync(int romId)
+        {
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, $"/api/saves?rom_id={romId}");
+            response.EnsureSuccessStatusCode();
+            using JsonDocument saves = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            return saves.RootElement.EnumerateArray().Select(RommSave.Read).OrderByDescending(s => s.UpdatedAt).ToList();
+        }
+
+        public static async Task<byte[]> SaveContentAsync(RommSave save)
+        {
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get, $"/api/saves/{save.Id}/content");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync();
+        }
+
+        /// <param name="slot">A stable name: RomM pairs each new save with the previous one of the slot, and keeps the last 10.</param>
+        public static async Task<RommSave> UploadSaveAsync(int romId, string emulator, string slot, string fileName, byte[] content)
+        {
+            var form = new MultipartFormDataContent();
+            var file = new ByteArrayContent(content);
+            file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            form.Add(file, "saveFile", fileName);
+            string device = DeviceId.Length > 0 ? $"&device_id={Uri.EscapeDataString(DeviceId)}" : "";
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Post,
+                $"/api/saves?rom_id={romId}&emulator={Uri.EscapeDataString(emulator)}&slot={slot}{device}&autocleanup=true&autocleanup_limit=10", form);
+            response.EnsureSuccessStatusCode();
+            using JsonDocument saved = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            return RommSave.Read(saved.RootElement);
+        }
+
+        private static readonly Dictionary<string, int?> pcGames = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// The game of RomM that is this file of the library: RomM and GameVault read the same folder (RomM's Windows
+        /// platform is GameVault's files), so the file names are the same. Not one of the retro platforms, where a file
+        /// of the same name is another game. Null when RomM does not have it.
+        /// </summary>
+        public static async Task<int?> PcGameIdAsync(string fileName)
+        {
+            if (pcGames.TryGetValue(fileName, out int? known))
+                return known;
+            using HttpResponseMessage response = await SendAsync(HttpMethod.Get,
+                $"/api/roms?search_term={Uri.EscapeDataString(System.IO.Path.GetFileNameWithoutExtension(fileName))}&limit=50");
+            response.EnsureSuccessStatusCode();
+            using JsonDocument page = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            int? id = page.RootElement.GetProperty("items").EnumerateArray()
+                .Where(r => string.Equals(r.GetProperty("fs_name").GetString(), fileName, StringComparison.OrdinalIgnoreCase)
+                    && !RetroSystems.All.ContainsKey(r.GetProperty("platform_slug").GetString() ?? ""))
+                .Select(r => (int?)r.GetProperty("id").GetInt32()).FirstOrDefault();
+            return pcGames[fileName] = id;
+        }
+        #endregion
+
         public static void Unlink()
         {
+            pcGames.Clear();
             foreach (AppConfigKey key in new[] { AppConfigKey.RommToken, AppConfigKey.RommUsername, AppConfigKey.RommDeviceId })
                 Preferences.DeleteKey(key, Config);
             Changed?.Invoke();

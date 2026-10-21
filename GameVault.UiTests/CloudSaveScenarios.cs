@@ -149,5 +149,51 @@ namespace GameVault.UiTests
             Assert.Equal(gamevault.Helper.Integrations.CloudSaveStatus.BackupSuccess, await upload);
             Assert.Contains(Path.GetFileName(session.InstallFolder(game).TrimEnd('/')), File.ReadAllText(Path.Combine(folder, "used-config.yaml")));
         }
+
+        [AvaloniaFact]
+        public async Task WithALinkedRommAccount_TheSavesGoToRommToo_AndRommsComeBackWhereThereAreNone()
+        {
+            if (!OperatingSystem.IsLinux())
+                return;
+            var (session, game, _) = await InstalledGameWithLocalSave(407, "Saved Game G", "this computer: level 3");
+            // RomM reads the library's folder: the game is its Windows game of the same file (a NES game of that name is another)
+            session.Server.RommRoms.Enqueue((7001, "nes", "Saved Game G (L_P).tar.gz"));
+            session.Server.RommRoms.Enqueue((7002, "win", "Saved Game G (L_P).tar.gz"));
+            session.Server.RommLinkable = true;
+            gamevault.Helper.SanctuaryService.Current = session.Server.Url;
+            gamevault.Helper.RommAccount.ForgetUrl();
+            try
+            {
+                Assert.Null(await gamevault.Helper.RommAccount.LinkAsync((_, _) => { }, CancellationToken.None));
+
+                // Sent to the server, then the same archive to RomM
+                Assert.Equal(gamevault.Helper.Integrations.CloudSaveStatus.BackupSuccess, await gamevault.Helper.Integrations.SaveGameHelper.Instance.BackupSaveGame(game.ID, force: true));
+                var sent = session.Server.RommSaves.Single();
+                Assert.Equal((7002, "sanctuaryvault", "ludusavi", "Saved Game G (L_P).tar.sanctuaryvault.zip"), (sent.RomId, sent.Slot!, sent.Emulator!, sent.FileName));
+                Assert.Equal(session.Server.Saves[game.ID].Data, sent.Content);
+
+                // The server has none (a new server), this PC neither: RomM's is taken
+                session.Server.Saves.TryRemove(game.ID, out _);
+                File.Delete(FakeLudusavi.SaveFile("Saved Game G"));
+                session.Server.RommSaves.Enqueue(new FakeGameVaultServer.RommSave(2, 7002, "x.zip", "sanctuaryvault", "ludusavi", DateTime.UtcNow.AddMinutes(1),
+                    FakeLudusavi.ServerSaveArchive("Saved Game G", "from RomM: level 4")));
+                Assert.Equal(gamevault.Helper.Integrations.CloudSaveStatus.RestoreSuccess, await gamevault.Helper.Integrations.SaveGameHelper.Instance.RestoreBackup(game.ID, session.InstallFolder(game)));
+                Assert.Equal("from RomM: level 4", File.ReadAllText(FakeLudusavi.SaveFile("Saved Game G")));
+
+                // This PC has one: RomM's does not replace it
+                File.WriteAllText(FakeLudusavi.SaveFile("Saved Game G"), "this computer: level 5");
+                await gamevault.Helper.Integrations.SaveGameHelper.Instance.RestoreBackup(game.ID, session.InstallFolder(game));
+                Assert.Equal("this computer: level 5", File.ReadAllText(FakeLudusavi.SaveFile("Saved Game G")));
+            }
+            finally
+            {
+                gamevault.Helper.RommAccount.Unlink();
+                gamevault.Helper.RommAccount.ForgetUrl();
+                gamevault.Helper.SanctuaryService.Current = gamevault.Helper.SanctuaryService.Url;
+                session.Server.RommLinkable = false;
+                session.Server.RommSaves.Clear();
+                session.Server.RommRoms.Clear();
+            }
+        }
     }
 }

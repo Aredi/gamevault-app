@@ -39,69 +39,17 @@ namespace gamevault.Helper
         }
 
         #region RomM
-        /// <summary>A save of the player's RomM (theirs, from any device or its web page).</summary>
-        internal sealed class RommSave
-        {
-            public int Id { get; init; }
-            public string FileName { get; init; } = "";
-            public string? Slot { get; init; }
-            public string? Emulator { get; init; }
-            public DateTime UpdatedAt { get; init; }
-            public long Size { get; init; }
-            public string? Device { get; init; }
-            public bool IsOurs => Slot is MainSlot or RestSlot;
-        }
-
-        private static RommSave Read(JsonElement save) => new()
-        {
-            Id = save.GetProperty("id").GetInt32(),
-            FileName = save.GetProperty("file_name").GetString() ?? "",
-            Slot = save.TryGetProperty("slot", out JsonElement slot) && slot.ValueKind == JsonValueKind.String ? slot.GetString() : null,
-            Emulator = save.TryGetProperty("emulator", out JsonElement emulator) && emulator.ValueKind == JsonValueKind.String ? emulator.GetString() : null,
-            UpdatedAt = DateTime.Parse(save.GetProperty("updated_at").GetString()!, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal),
-            Size = save.TryGetProperty("file_size_bytes", out JsonElement size) && size.ValueKind == JsonValueKind.Number ? size.GetInt64() : 0,
-            Device = save.TryGetProperty("device_syncs", out JsonElement syncs) && syncs.ValueKind == JsonValueKind.Array
-                ? syncs.EnumerateArray().Where(s => s.TryGetProperty("is_current", out JsonElement current) && current.ValueKind == JsonValueKind.True)
-                    .Select(s => s.GetProperty("device_name").GetString()).FirstOrDefault()
-                : null,
-        };
-
         private static long Millis(DateTime utc) => new DateTimeOffset(utc, TimeSpan.Zero).ToUnixTimeMilliseconds();
 
         /// <summary>The player's RomM saves of the game, the newest first.</summary>
-        internal static async Task<List<RommSave>> RommSavesAsync(RetroGame game)
-        {
-            using HttpResponseMessage response = await RommAccount.SendAsync(HttpMethod.Get, $"/api/saves?rom_id={game.Id}");
-            response.EnsureSuccessStatusCode();
-            using JsonDocument saves = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            return saves.RootElement.EnumerateArray().Select(Read).OrderByDescending(s => s.UpdatedAt).ToList();
-        }
+        internal static Task<List<RommSave>> RommSavesAsync(RetroGame game) => RommAccount.SavesAsync(game.Id);
 
         /// <summary>The newest save of each of SanctuaryVault's slots (the list is newest first).</summary>
         private static List<RommSave> Ours(List<RommSave> all) =>
             new[] { MainSlot, RestSlot }.Select(slot => all.FirstOrDefault(s => s.Slot == slot)).OfType<RommSave>().ToList();
 
-        private static async Task<byte[]> RommContentAsync(RommSave save)
-        {
-            using HttpResponseMessage response = await RommAccount.SendAsync(HttpMethod.Get, $"/api/saves/{save.Id}/content");
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsByteArrayAsync();
-        }
-
-        private static async Task<RommSave> RommUploadAsync(RetroGame game, string slot, string fileName, byte[] content)
-        {
-            var form = new MultipartFormDataContent();
-            var file = new ByteArrayContent(content);
-            file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-            form.Add(file, "saveFile", fileName);
-            string device = RommAccount.DeviceId.Length > 0 ? $"&device_id={Uri.EscapeDataString(RommAccount.DeviceId)}" : "";
-            // RomM keeps the last versions of each slot: the history of the game's page
-            using HttpResponseMessage response = await RommAccount.SendAsync(HttpMethod.Post,
-                $"/api/saves?rom_id={game.Id}&emulator={Uri.EscapeDataString(game.Platform.System.Core)}&slot={slot}{device}&autocleanup=true&autocleanup_limit=10", form);
-            response.EnsureSuccessStatusCode();
-            using JsonDocument saved = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            return Read(saved.RootElement);
-        }
+        private static Task<RommSave> RommUploadAsync(RetroGame game, string slot, string fileName, byte[] content) =>
+            RommAccount.UploadSaveAsync(game.Id, game.Platform.System.Core, slot, fileName, content);
 
         /// <summary>A save of RomM in place of this PC's: the zip of the rest, or a main save where the emulator reads it.</summary>
         private static async Task<string?> PutBackAsync(RetroGame game, RetroGameSaves saves, IReadOnlyList<RommSave> taken)
@@ -110,7 +58,7 @@ namespace gamevault.Helper
             (string, string, byte[])? main = null;
             foreach (RommSave save in taken)
             {
-                byte[] content = await RommContentAsync(save);
+                byte[] content = await RommAccount.SaveContentAsync(save);
                 if (save.Slot == RestSlot)
                     rest = content;
                 else
