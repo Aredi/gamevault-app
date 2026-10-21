@@ -87,7 +87,26 @@ namespace GameVault.Core.Retro
         /// <summary>Written once the files of a name are in the system folder.</summary>
         public string SystemFilesMarker(string name) => Path.Combine(SystemDirectory, $".{name}.installed");
 
-        public string Config(string player)
+        /// <summary>The CRT look (crt-easymode, one light pass), for both kinds of RetroArch's video drivers (OpenGL, the others).</summary>
+        private const string GlslShaders = "https://raw.githubusercontent.com/libretro/glsl-shaders/ad947689af01544f2857591a0e3e171ac30e9dff/crt/shaders/crt-easymode.glsl";
+        private const string SlangShaders = "https://raw.githubusercontent.com/libretro/slang-shaders/eef0df221e440b1ad1bd2f9019552ea3359a51e2/crt/shaders/crt-easymode.slang";
+        public static readonly IReadOnlyList<(string Extension, string Url)> CrtShaderUrls = new[] { ("glsl", GlslShaders), ("slang", SlangShaders) };
+
+        public string ShadersDirectory => Path.Combine(directory, "shaders");
+        public string CrtShaderFile(string extension) => Path.Combine(ShadersDirectory, "crt", $"crt-easymode.{extension}");
+
+        /// <summary>
+        /// A game's own picture setting, where RetroArch looks for it (after the presets saved in its menu, which stay
+        /// the player's): shaders/presets/&lt;core's name&gt;/&lt;game&gt;.glslp or .slangp.
+        /// </summary>
+        public string GamePreset(string core, string rom, string extension) =>
+            Path.Combine(ShadersDirectory, "presets", SaveFolderName(core), $"{Path.GetFileNameWithoutExtension(rom)}.{extension}p");
+
+        public string CrtPreset(string extension) =>
+            $"shaders = \"1\"\nshader0 = \"{CrtShaderFile(extension)}\"\nfilter_linear0 = \"false\"\n" + (extension == "slang" ? "scale_type0 = \"viewport\"\n" : "");
+
+        /// <param name="achievements">The player's RetroAchievements account (its token, never its password), or null.</param>
+        public string Config(string player, (string User, string Token)? achievements = null)
         {
             var settings = new (string Key, string Value)[]
             {
@@ -108,11 +127,40 @@ namespace GameVault.Core.Retro
                 ("pause_nonactive", "false"),
                 // Written again before each game: a change made in the menu lasts until RetroArch closes
                 ("config_save_on_exit", "false"),
+                // A picture of the game with each save state: the game's page shows them
+                ("savestate_thumbnail_enable", "true"),
+                ("video_shader_dir", ShadersDirectory),
+                ("video_shader_enable", "true"),
+                // Not hardcore: the save states stay allowed
+                ("cheevos_enable", achievements != null ? "true" : "false"),
+                ("cheevos_username", achievements?.User ?? ""),
+                ("cheevos_token", achievements?.Token ?? ""),
+                ("cheevos_hardcore_mode_enable", "false"),
             };
             return string.Concat(settings.Select(s => $"{s.Key} = \"{s.Value}\"\n"));
         }
 
-        public IReadOnlyList<string> Arguments(string core, string rom) => new[] { "-L", CoreFile(core), "--config", ConfigFile, rom };
+        /// <param name="stateSlot">The save state the game starts from, or none.</param>
+        public IReadOnlyList<string> Arguments(string core, string rom, int? stateSlot = null) => stateSlot is int slot
+            ? new[] { "-L", CoreFile(core), "--config", ConfigFile, "--entryslot", slot.ToString(), rom }
+            : new[] { "-L", CoreFile(core), "--config", ConfigFile, rom };
+
+        /// <summary>A save state of a game: its slot (0 is ".state"), when, and its picture when RetroArch took one.</summary>
+        public sealed record SaveState(int Slot, string File, DateTime Saved, string? Picture);
+
+        /// <summary>The game's save states (RetroArch sorts them by core), the newest first; the automatic one is not a slot.</summary>
+        public IReadOnlyList<SaveState> SaveStates(string player, string core, string rom)
+        {
+            string folder = Path.Combine(StatesDirectory(player), SaveFolderName(core)), stem = Path.GetFileNameWithoutExtension(rom) + ".state";
+            if (!System.IO.Directory.Exists(folder))
+                return Array.Empty<SaveState>();
+            return System.IO.Directory.EnumerateFiles(folder, stem + "*")
+                .Select(file => (file, suffix: Path.GetFileName(file)[stem.Length..]))
+                .Where(f => f.suffix.Length == 0 || f.suffix.All(char.IsDigit))
+                .Select(f => new SaveState(f.suffix.Length == 0 ? 0 : int.Parse(f.suffix), f.file, File.GetLastWriteTimeUtc(f.file), File.Exists(f.file + ".png") ? f.file + ".png" : null))
+                .Where(s => s.Slot <= 999)
+                .OrderByDescending(s => s.Saved).ToList();
+        }
         /// <summary>RetroArch's own menu, without a game: to change the controls.</summary>
         public IReadOnlyList<string> MenuArguments => new[] { "--config", ConfigFile, "--menu" };
     }

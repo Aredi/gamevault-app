@@ -93,6 +93,11 @@ namespace gamevault.Models
         RommToken,
         RommUsername,
         RommDeviceId,
+        //RetroAchievements (profileconfig): the account's name and token, never its password
+        RetroAchievementsUser,
+        RetroAchievementsToken,
+        //Retro consoles shown with the CRT look (profileconfig): "nes,snes"
+        RetroCrtSystems,
         //Download queue
         MaxConcurrentDownloads,
         //Interface language (profileconfig): "", "en", "fr"

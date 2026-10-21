@@ -13,6 +13,22 @@ namespace gamevault.ViewModels
     /// <summary>A friend on a retro game's page: their time and last session.</summary>
     internal sealed record RetroPlayerRow(User? User, string Username, string TimeText, string WhenText);
 
+    /// <summary>An achievement of the game: its badge (grey until earned), what it asks, its points.</summary>
+    internal sealed class RetroAchievementRow(GameVault.Core.Retro.RommProgress.Achievement achievement) : ViewModelBase
+    {
+        public string Title => achievement.Title;
+        public string Description => achievement.Description;
+        public string PointsText => Loc.F("{0} pts", achievement.Points);
+        public bool Earned => achievement.Earned;
+        public double Opacity => achievement.Earned ? 1 : 0.45;
+        public string? BadgeUrl => achievement.Earned ? achievement.Badge : achievement.LockedBadge ?? achievement.Badge;
+        private Bitmap? badge;
+        public Bitmap? Badge { get => badge; set { badge = value; OnPropertyChanged(); } }
+    }
+
+    /// <summary>A save state of the game: its picture, its slot, when; "Resume" starts the game from it.</summary>
+    internal sealed record RetroStateRow(int Slot, Bitmap? Picture, string SlotText, string WhenText);
+
     /// <summary>The page of a retro game, as the library's game page: the game, its screenshots, its saves, who played it.</summary>
     internal sealed class RetroGameViewModel : ViewModelBase
     {
@@ -82,6 +98,90 @@ namespace gamevault.ViewModels
         private List<RetroPlayerRow> players = new();
         public List<RetroPlayerRow> Players { get => players; set { players = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPlayers)); } }
         public bool HasPlayers => Players.Count > 0;
+
+        #region RomM: the player's status and rating, the achievements
+        public List<string> StatusOptions { get; } = new()
+        {
+            "—", Loc.T("Started"), Loc.T("Finished"), Loc.T("Completed 100%"), Loc.T("Retired"), Loc.T("Never playing"),
+        };
+        public List<string> RatingOptions { get; } = new[] { "—" }.Concat(Enumerable.Range(1, 10).Select(n => $"{n} / 10")).ToList();
+
+        private bool hasRomm;
+        /// <summary>The player's RomM gave its side of the game: the status and the rating show.</summary>
+        public bool HasRomm { get => hasRomm; set { hasRomm = value; OnPropertyChanged(); } }
+
+        private string rommNote = "";
+        /// <summary>Why the status, rating and achievements are not there (not linked, linked before they existed).</summary>
+        public string RommNote { get => rommNote; set { rommNote = value; OnPropertyChanged(); } }
+
+        /// <summary>The player changed the status or the rating (not when the page sets it).</summary>
+        public event Action<object>? MineChanged;
+        private bool loadingMine;
+
+        private int statusIndex;
+        public int StatusIndex
+        {
+            get => statusIndex;
+            set
+            {
+                if (value < 0 || value == statusIndex)
+                    return;
+                statusIndex = value;
+                OnPropertyChanged();
+                if (!loadingMine)
+                    MineChanged?.Invoke(new { status = value == 0 ? null : GameVault.Core.Retro.RommProgress.Statuses[value] });
+            }
+        }
+
+        private int ratingIndex;
+        public int RatingIndex
+        {
+            get => ratingIndex;
+            set
+            {
+                if (value < 0 || value == ratingIndex)
+                    return;
+                ratingIndex = value;
+                OnPropertyChanged();
+                if (!loadingMine)
+                    MineChanged?.Invoke(new { rating = value });
+            }
+        }
+
+        public void SetMine(GameVault.Core.Retro.RommProgress.Mine mine)
+        {
+            loadingMine = true;
+            StatusIndex = Math.Max(0, GameVault.Core.Retro.RommProgress.Statuses.ToList().IndexOf(mine.Status));
+            RatingIndex = mine.Rating;
+            loadingMine = false;
+            HasRomm = true;
+        }
+
+        private List<RetroAchievementRow> achievements = new();
+        public List<RetroAchievementRow> Achievements
+        {
+            get => achievements;
+            set { achievements = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasAchievements)); OnPropertyChanged(nameof(AchievementsText)); }
+        }
+        public bool HasAchievements => Achievements.Count > 0;
+        /// <summary>"12 / 126 achievements · 40 / 1200 points", and how to earn them when not signed in.</summary>
+        public string AchievementsText
+        {
+            get
+            {
+                if (Achievements.Count == 0)
+                    return "";
+                string text = Loc.F("{0} / {1} achievements earned", Achievements.Count(a => a.Earned), Achievements.Count);
+                return RetroAchievementsAccount.IsSignedIn ? text
+                    : $"{text} · {Loc.T("Sign in to RetroAchievements (Settings > Retro) to earn them.")}";
+            }
+        }
+        #endregion
+
+        private List<RetroStateRow> states = new();
+        /// <summary>The game's save states (RetroArch's games), the newest first.</summary>
+        public List<RetroStateRow> States { get => states; set { states = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasStates)); } }
+        public bool HasStates => States.Count > 0;
 
         /// <summary>The time played changed (a session ended): the strip shows it again.</summary>
         public void RefreshPlayer() => OnPropertyChanged(nameof(LastPlayedText));

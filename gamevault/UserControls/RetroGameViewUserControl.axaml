@@ -239,6 +239,18 @@
                                 <TextBlock Classes="label" Text="{l:T 'RATING'}" />
                                 <TextBlock Classes="value" Text="{Binding Game.RatingText}" />
                             </StackPanel>
+                            <!-- The player's own status and rating, kept in their RomM -->
+                            <StackPanel Classes="stat" IsVisible="{Binding HasRomm}">
+                                <TextBlock Classes="label" Text="{l:T 'MY GAME'}" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <ComboBox MinWidth="150" MinHeight="30" ItemsSource="{Binding StatusOptions}" SelectedIndex="{Binding StatusIndex}" ToolTip.Tip="{l:T 'Your status of the game, kept in your RomM'}" />
+                                    <ComboBox MinWidth="96" MinHeight="30" ItemsSource="{Binding RatingOptions}" SelectedIndex="{Binding RatingIndex}" ToolTip.Tip="{l:T 'Your rating of the game, kept in your RomM'}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Classes="stat" IsVisible="{Binding !HasRomm}">
+                                <TextBlock Classes="label" Text="{l:T 'MY GAME'}" />
+                                <TextBlock Text="{Binding RommNote}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="300" />
+                            </StackPanel>
                             <StackPanel Classes="stat">
                                 <TextBlock Classes="label" Text="{l:T 'CLOUD SAVES'}" />
                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -331,6 +343,70 @@
                             <TabControl Classes="page" Padding="0,8,0,0" Margin="0,8,0,0">
                                 <TabItem Header="{l:T 'Description'}">
                                     <TextBlock Text="{Binding Game.Summary, TargetNullValue={l:T 'No description'}}" TextWrapping="Wrap" FontSize="15" LineHeight="24" Opacity="0.9" />
+                                </TabItem>
+                                <!-- RetroAchievements, from the player's RomM: the earned ones bright -->
+                                <TabItem Header="{l:T 'Achievements'}" IsVisible="{Binding HasAchievements}">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="{Binding AchievementsText}" Classes="muted" FontSize="13" TextWrapping="Wrap" />
+                                        <ItemsControl ItemsSource="{Binding Achievements}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" Margin="0,0,0,8" Padding="10" Opacity="{Binding Opacity}">
+                                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                                            <Border Width="48" Height="48" CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                                                <Image Source="{Binding Badge}" Stretch="UniformToFill" />
+                                                            </Border>
+                                                            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="2">
+                                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                                <TextBlock Text="{Binding Description}" Classes="muted" FontSize="12.5" TextWrapping="Wrap" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
+                                                                <TextBlock Text="{Binding PointsText}" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Right" />
+                                                                <Path Data="{StaticResource IconTick}" Fill="{DynamicResource Brush.Success}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Right"
+                                                                      IsVisible="{Binding Earned}" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </TabItem>
+                                <!-- The save states RetroArch made, with its picture: the game starts from one -->
+                                <TabItem Header="{l:T 'Save states'}" IsVisible="{Binding HasStates}">
+                                    <ItemsControl ItemsSource="{Binding States}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Width="220" CornerRadius="12" ClipToBounds="True" Background="{DynamicResource Brush.Surface}" Margin="0,0,12,12">
+                                                    <StackPanel>
+                                                        <local:AspectBox Ratio="0.75">
+                                                            <Border Background="Black">
+                                                                <Image Source="{Binding Picture}" Stretch="Uniform" />
+                                                            </Border>
+                                                        </local:AspectBox>
+                                                        <Grid ColumnDefinitions="*,Auto" Margin="10,8">
+                                                            <StackPanel VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding SlotText}" FontWeight="SemiBold" />
+                                                                <TextBlock Text="{Binding WhenText}" Classes="muted" FontSize="12" />
+                                                            </StackPanel>
+                                                            <Button Grid.Column="1" Classes="ghost small" Click="ResumeState_Click"
+                                                                    IsEnabled="{Binding !$parent[local:RetroGameViewUserControl].DataContext.Game.Busy}">
+                                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                    <Path Data="{StaticResource IconPlay}" Width="12" Height="12" />
+                                                                    <TextBlock Text="{l:T 'Resume'}" VerticalAlignment="Center" />
+                                                                </StackPanel>
+                                                            </Button>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </TabItem>
                             </TabControl>
                         </StackPanel>

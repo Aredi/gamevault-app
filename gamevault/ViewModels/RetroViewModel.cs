@@ -15,16 +15,23 @@ namespace gamevault.ViewModels
         {
             SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating"), Loc.T("Last played"), Loc.T("Playtime") };
             collections = new() { Loc.T("All collections") };
+            recent = RetroLibrary.Recent(12);
             SetAccent(null);
             // Times and favorites come from the service after the list: the cards follow
             RetroLibrary.Changed += () => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
+                Recent = RetroLibrary.Recent(12);
                 foreach (RetroGame game in AllGames)
                     game.RefreshPlayer();
                 if (OnlyFavorites || SortBy >= 3)
                     ApplyFilter();
             });
         }
+
+        private List<RetroGame> recent = new();
+        /// <summary>"Continue playing": the games played last, whatever the console.</summary>
+        public List<RetroGame> Recent { get => recent; set { recent = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasRecent)); } }
+        public bool HasRecent => Recent.Count > 0;
 
         private List<RetroPlatform> platforms = new();
         public List<RetroPlatform> Platforms { get => platforms; set { platforms = value; OnPropertyChanged(); } }

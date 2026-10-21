@@ -35,7 +35,7 @@ namespace GameVault.Core.Retro
             // Azahar plays decrypted games only; a CIA is given as its main content (.cxi), see CiaReader
             // RPCS3, not RetroArch: an ISO (encrypted ones too), or a game in a folder started by its EBOOT.BIN's folder
             new RetroSystem("ps3", "PlayStation 3", "rpcs3", new[] { "iso", "EBOOT.BIN" }, CoverRatio: 1.16),
-            // Eden, not RetroArch: a game card (.xci) or an eShop package (.nsp); its updates and DLC are read from the games' folders
+            // Eden, not RetroArch: a game card (.xci) or an eShop package (.nsp), compressed ones (.nsz, .xcz) made .nsp at their download; its updates and DLC are read from the games' folders
             new RetroSystem("switch", "Nintendo Switch", "eden", new[] { "xci", "nsp" }),
             new RetroSystem("3ds", "Nintendo 3DS", "azahar", new[] { "cxi", "zcxi", "3ds", "cci", "zcci", "3dsx", "z3dsx", "app", "elf", "cia" }, CoverRatio: 0.89),
         }.ToDictionary(s => s.Slug);

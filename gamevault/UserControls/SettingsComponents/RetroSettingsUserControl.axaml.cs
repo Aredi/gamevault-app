@@ -21,6 +21,14 @@ namespace gamevault.UserControls.SettingsComponents
     {
         internal sealed record BiosRow(string Platform, string State);
 
+        /// <summary>A console of RetroArch and whether it has the CRT look.</summary>
+        internal sealed class CrtRow(string slug, string name, bool isOn)
+        {
+            public string Slug { get; } = slug;
+            public string Name { get; } = name;
+            public bool IsOn { get; set; } = isOn;
+        }
+
         public RetroSettingsUserControl()
         {
             InitializeComponent();
@@ -48,6 +56,9 @@ namespace gamevault.UserControls.SettingsComponents
             }).Concat(RetroSystems.All.Values.Where(s => s.IsStandalone).Select(s => new BiosRow(s.Name, StandaloneEmulator.Of(s)!.FirmwareState))).ToList();
 
             await RefreshRommAsync();
+            RefreshAchievements();
+            var crt = RetroArchManager.CrtSystems;
+            uiCrt.ItemsSource = RetroSystems.All.Values.Where(s => !s.IsStandalone).Select(s => new CrtRow(s.Slug, s.Name, crt.Contains(s.Slug))).ToList();
             uiSavesState.Text = SettingsViewModel.Instance.CloudSaves
                 ? Loc.F("Each game's saves go to {0} after it is played and come back on your other PCs, as the cloud saves of the library.", RetroCloudSaves.Destination)
                 : Loc.T("Kept on this PC only: the cloud saves are off (Settings > Data).");
@@ -101,6 +112,59 @@ namespace gamevault.UserControls.SettingsComponents
                 return;
             RommAccount.Unlink();
             await RefreshAsync();
+        }
+
+        private void RefreshAchievements()
+        {
+            bool signedIn = RetroAchievementsAccount.IsSignedIn;
+            uiAchievementsState.Text = signedIn
+                ? Loc.F("Signed in as {0}: the achievements unlock in RetroArch's games.", RetroAchievementsAccount.User)
+                : Loc.T("Not signed in: no achievements.");
+            uiAchievementsForm.IsVisible = !signedIn;
+            uiAchievementsSignOut.IsVisible = signedIn;
+        }
+
+        private async void AchievementsSignIn_Click(object? sender, RoutedEventArgs e) => await SignInAchievementsAsync();
+
+        private async void AchievementsPassword_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+        {
+            if (e.Key == Avalonia.Input.Key.Enter)
+                await SignInAchievementsAsync();
+        }
+
+        private async Task SignInAchievementsAsync()
+        {
+            if (string.IsNullOrWhiteSpace(uiAchievementsUser.Text) || string.IsNullOrEmpty(uiAchievementsPassword.Text))
+                return;
+            uiAchievementsSignIn.IsEnabled = false;
+            try
+            {
+                string? failure = await RetroAchievementsAccount.SignInAsync(uiAchievementsUser.Text, uiAchievementsPassword.Text);
+                MainWindowViewModel.Instance.AppBarText = failure ?? Loc.F("Signed in to RetroAchievements as {0}", RetroAchievementsAccount.User);
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+            // The password is not kept, not even here
+            uiAchievementsPassword.Text = "";
+            uiAchievementsSignIn.IsEnabled = true;
+            RefreshAchievements();
+        }
+
+        private void AchievementsSignOut_Click(object? sender, RoutedEventArgs e)
+        {
+            RetroAchievementsAccount.SignOut();
+            RefreshAchievements();
+        }
+
+        private void Crt_Changed(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not CrtRow row || sender is not CheckBox box)
+                return;
+            var crt = RetroArchManager.CrtSystems;
+            if (box.IsChecked == true)
+                crt.Add(row.Slug);
+            else
+                crt.Remove(row.Slug);
+            RetroArchManager.CrtSystems = crt;
         }
 
         private async void OpenMenu_Click(object? sender, RoutedEventArgs e)

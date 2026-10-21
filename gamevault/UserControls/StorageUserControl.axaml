@@ -48,6 +48,7 @@
 
         <WrapPanel Grid.Row="2" Margin="0,4,0,10">
             <CheckBox x:Name="uiIdleOnly" Content="{l:T 'Only the games not played for 3 months'}" Margin="0,0,20,6" VerticalAlignment="Center" IsCheckedChanged="IdleOnly_Changed" />
+            <CheckBox x:Name="uiRetroOnly" Content="{l:T 'Retro games only'}" Margin="0,0,20,6" VerticalAlignment="Center" IsCheckedChanged="IdleOnly_Changed" />
             <TextBlock Classes="muted" Text="{l:T 'Sort by'}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,6" />
             <ComboBox x:Name="uiSort" SelectedIndex="0" MinWidth="200" Margin="0,0,0,6" SelectionChanged="Sort_Changed">
                 <ComboBoxItem Content="{l:T 'Size'}" />
@@ -55,6 +56,13 @@
                 <ComboBoxItem Content="{l:T 'Title'}" />
             </ComboBox>
             <local:ProgressRing x:Name="uiLoading" IsActive="True" Width="22" Height="22" Margin="14,0,0,6" VerticalAlignment="Center" />
+            <!-- The retro games checked below, deleted together (their saves stay) -->
+            <Button x:Name="uiDeleteSelected" Classes="ghost small" Background="{DynamicResource Brush.Surface}" Margin="14,0,0,6" IsVisible="False" Click="DeleteSelected_Click">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                    <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
+                    <TextBlock x:Name="uiDeleteSelectedText" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
         </WrapPanel>
 
         <!-- Installed games -->
@@ -64,15 +72,17 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Margin="0,0,8,8" Padding="10" CornerRadius="12" Background="{DynamicResource Brush.Background2}">
-                                <Grid ColumnDefinitions="48,*,Auto,Auto">
-                                    <Border Width="48" Height="72" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                <Grid ColumnDefinitions="30,48,*,Auto,Auto">
+                                    <CheckBox IsChecked="{Binding IsSelected}" IsVisible="{Binding Retro, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Center"
+                                              IsCheckedChanged="Selected_Changed" ToolTip.Tip="{l:T 'Select to delete several retro games at once'}" />
+                                    <Border Grid.Column="1" Width="48" Height="72" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
                                         <Panel>
                                             <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                             <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding Retro, Converter={x:Static ObjectConverters.IsNotNull}}" />
                                             <Path Data="{StaticResource IconNavRetro}" Fill="{DynamicResource Brush.Muted}" Width="24" Height="24" Stretch="Uniform" IsVisible="{Binding IsEmulator}" />
                                         </Panel>
                                     </Border>
-                                    <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center" Spacing="4">
+                                    <StackPanel Grid.Column="2" Margin="14,0,12,0" VerticalAlignment="Center" Spacing="4">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14.5" TextTrimming="CharacterEllipsis" MaxWidth="460" />
                                             <Border CornerRadius="8" Padding="8,1" Background="{DynamicResource Brush.Warning}" IsVisible="{Binding IsIdle}" VerticalAlignment="Center">
@@ -81,8 +91,8 @@
                                         </StackPanel>
                                         <TextBlock Classes="muted" FontSize="12.5" Text="{Binding PlayText}" />
                                     </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" Margin="0,0,16,0" />
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Grid.Column="3" Text="{Binding SizeText}" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                         <Button Classes="round small" Click="OpenFolder_Click" ToolTip.Tip="{l:T 'Open folder'}">
                                             <Path Data="{StaticResource IconGameSettingsFolder}" Width="14" Height="14" />
                                         </Button>

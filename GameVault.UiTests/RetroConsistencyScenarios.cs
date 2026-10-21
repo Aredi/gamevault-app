@@ -253,5 +253,111 @@ namespace GameVault.UiTests
                 CleanUp(session);
             }
         }
+
+        [AvaloniaFact]
+        public async Task TheRetroLibrary_KeepsTheStatusRatingAndAchievementsInRomm_ResumesAState_ShowsTheCrtLook_AndContinuePlaying()
+        {
+            var (session, page, zelda) = await InstallZeldaAsync();
+            session.Server.RommLinkable = true;
+            RommAccount.ForgetUrl();
+            var crt = RetroArchManager.CrtSystems;
+            RetroArchLayout layout = RetroArchManager.Layout;
+            try
+            {
+                // Not linked: the page tells how to keep them
+                var view = new RetroGameViewUserControl(zelda);
+                await view.LoadAsync();
+                Assert.False(view.ViewModel.HasRomm);
+                Assert.Contains("RomM", view.ViewModel.RommNote);
+
+                // Linked: the player's status and rating in RomM, changed from the page
+                await new RetroSettingsUserControl().LinkRommAsync(open: false);
+                session.Server.RommMine[40] = ("finished", 7);
+                view = new RetroGameViewUserControl(zelda);
+                await view.LoadAsync();
+                Assert.True(view.ViewModel.HasRomm);
+                Assert.Equal(2, view.ViewModel.StatusIndex);
+                Assert.Equal(7, view.ViewModel.RatingIndex);
+                Assert.Empty(session.Server.RommPropsSent);
+                view.ViewModel.StatusIndex = 3;
+                await TestSession.WaitUntil(() => session.Server.RommMine[40].Status == "completed_100", TimeSpan.FromSeconds(5), "the status in RomM");
+                view.ViewModel.RatingIndex = 9;
+                await TestSession.WaitUntil(() => session.Server.RommMine[40].Rating == 9, TimeSpan.FromSeconds(5), "the rating in RomM");
+
+                // RomM's achievements of the game, the earned one marked; without RetroAchievements, how to earn them
+                Assert.Equal(new[] { true, false }, view.ViewModel.Achievements.Select(a => a.Earned));
+                Assert.Contains("RetroAchievements", view.ViewModel.AchievementsText);
+
+                // A link made before: RomM refuses the change, the page asks to link again
+                session.Server.RommOldScopes = true;
+                view.ViewModel.RatingIndex = 3;
+                await TestSession.WaitUntil(() => !view.ViewModel.HasRomm, TimeSpan.FromSeconds(5), "the refusal");
+                Assert.Equal(new RommAccount.MissingScopeException().Message, view.ViewModel.RommNote);
+                session.Server.RommOldScopes = false;
+
+                // After a game: RomM's "last played", and the RetroAchievements account's progression taken again
+                await RommAccount.PlayedAsync(zelda.Id);
+                Assert.Contains(session.Server.RommPropsSent, p => p.Contains("update_last_played=true"));
+                await RommAccount.SyncAchievementsAsync("Alexis");
+                Assert.Equal("Alexis", session.Server.RommRaUser);
+                Assert.Equal(1, session.Server.RommRaRefreshes);
+
+                // The save states RetroArch made, with their picture: the game starts from one
+                string states = Path.Combine(layout.StatesDirectory(RetroArchManager.Player), layout.SaveFolderName("mesen"));
+                Directory.CreateDirectory(states);
+                string state = Path.Combine(states, Path.GetFileNameWithoutExtension(zelda.RomFile) + ".state2");
+                File.WriteAllText(state, "level 3");
+                File.WriteAllBytes(state + ".png", Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="));
+                await view.LoadAsync();
+                RetroStateRow row = Assert.Single(view.ViewModel.States);
+                Assert.Equal(2, row.Slot);
+                Assert.NotNull(row.Picture);
+                Assert.Equal(new[] { "--entryslot", "2" }, layout.Arguments("mesen", zelda.RomFile!, 2).Skip(4).Take(2));
+
+                // The CRT look of the NES: the game's own preset, both shader kinds; gone when it is off
+                foreach (var (extension, _) in RetroArchLayout.CrtShaderUrls)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(layout.CrtShaderFile(extension))!);
+                    File.WriteAllText(layout.CrtShaderFile(extension), "shader");
+                }
+                RetroArchManager.CrtSystems = new() { "nes" };
+                // RetroArch itself is not run here
+                Assert.ThrowsAny<Exception>(() => RetroArchManager.Launch(zelda.Platform.System, zelda.RomFile!));
+                Assert.Equal(layout.CrtPreset("slang"), File.ReadAllText(layout.GamePreset("mesen", zelda.RomFile!, "slang")));
+                Assert.True(File.Exists(layout.GamePreset("mesen", zelda.RomFile!, "glsl")));
+                RetroArchManager.CrtSystems = new();
+                Assert.ThrowsAny<Exception>(() => RetroArchManager.Launch(zelda.Platform.System, zelda.RomFile!));
+                Assert.False(File.Exists(layout.GamePreset("mesen", zelda.RomFile!, "slang")));
+
+                // Continue playing: the game played last, whatever the console
+                await RetroLibrary.RecordPlayAsync(zelda, 5);
+                await TestSession.WaitUntil(() => page.ViewModel.Recent.FirstOrDefault()?.Id == zelda.Id, TimeSpan.FromSeconds(5), "continue playing");
+                Assert.Equal("nes", page.ViewModel.Recent[0].Platform.Slug);
+
+                // Storage: the retro games only, the checked ones deleted together (their saves stay)
+                var storage = new StorageUserControl();
+                await storage.LoadAsync();
+                StorageGameRow zeldaRow = storage.Rows.Single(r => r.Retro?.Id == zelda.Id);
+                storage.Select(zeldaRow, true);
+                await storage.DeleteSelectedAsync();
+                Assert.DoesNotContain(storage.Rows, r => r.Retro?.Id == zelda.Id);
+                zelda.Refresh();
+                Assert.False(zelda.Installed);
+                Assert.True(File.Exists(state));
+            }
+            finally
+            {
+                RetroArchManager.CrtSystems = crt;
+                RommAccount.Unlink();
+                RommAccount.ForgetUrl();
+                session.Server.RommLinkable = false;
+                session.Server.RommOldScopes = false;
+                session.Server.RommMine.Clear();
+                session.Server.RommPropsSent.Clear();
+                session.Server.RommRaUser = null;
+                session.Server.RommRaRefreshes = 0;
+                CleanUp(session);
+            }
+        }
     }
 }

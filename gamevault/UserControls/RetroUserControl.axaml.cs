@@ -213,6 +213,13 @@ namespace gamevault.UserControls
             OpenGame(game);
         }
 
+        /// <summary>A game of "Continue playing": its console, then its page.</summary>
+        private async void RecentCard_Click(object? sender, RoutedEventArgs e)
+        {
+            if (GameOf(sender) is RetroGame game)
+                await ShowGameAsync(game.Platform.Slug, game.Id);
+        }
+
         internal static void OpenGame(RetroGame game) => MainWindowViewModel.Instance.SetActiveControl(new RetroGameViewUserControl(game));
 
         private static RetroGame? GameOf(object? sender) => (sender as Control)?.DataContext as RetroGame;

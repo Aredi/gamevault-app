@@ -310,6 +310,19 @@ namespace gamevault.Helper
                     read = await file.ReadAsync(start);
                 await CiaReader.ExtractAsync(downloaded, CiaReader.Inspect(start.AsSpan(0, read), new FileInfo(downloaded).Length));
             }
+            // Eden reads no compressed Switch game (.nsz, .xcz): an .nsp again, as nsz itself makes it
+            if (Game.Platform.System.IsEden)
+                foreach (string compressed in Directory.EnumerateFiles(Folder, "*", SearchOption.AllDirectories).Where(SwitchCompressed.IsCompressed).ToList())
+                {
+                    int shown = -1;
+                    State = Loc.F("Decompressing the Switch game... {0}%", 0);
+                    await Task.Run(() => SwitchCompressed.Decompress(compressed, done =>
+                    {
+                        if ((int)(done * 100) is int percent && percent != shown)
+                            Preparing(Loc.F("Decompressing the Switch game... {0}%", shown = percent));
+                    }));
+                    File.Delete(compressed);
+                }
             await RetroArchManager.EnsureReadyAsync(Game.Platform, Preparing);
             if (Game.RomFile == null)
                 throw new IOException(Loc.T("None of this game's files can be started by the emulator."));

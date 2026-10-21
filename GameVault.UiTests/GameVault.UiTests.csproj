@@ -27,4 +27,9 @@
 		<ProjectReference Include="..\gamevault\gamevault.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- The compressed Switch game of SwitchCompressedTests, downloaded as a RomM game -->
+		<None Include="..\GameVault.Core.Tests\Fixtures\Switch\game.nsz" Link="Fixtures\game.nsz" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
 </Project>

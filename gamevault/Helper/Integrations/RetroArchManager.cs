@@ -57,8 +57,41 @@ namespace gamevault.Helper
                 }
                 if (system.FirmwareFolder is string folder)
                     await EnsureBiosAsync(platform, Path.Combine(Layout.SystemDirectory, folder), status);
+                if (CrtSystems.Contains(system.Slug))
+                    foreach (var (extension, url) in RetroArchLayout.CrtShaderUrls.Where(s => !File.Exists(Layout.CrtShaderFile(s.Extension))))
+                    {
+                        status(Loc.T("Downloading the CRT look..."));
+                        Directory.CreateDirectory(Path.GetDirectoryName(Layout.CrtShaderFile(extension))!);
+                        await File.WriteAllBytesAsync(Layout.CrtShaderFile(extension), await HttpClients.Shared.GetByteArrayAsync(url));
+                    }
             }
             finally { preparing.Release(); }
+        }
+
+        private static string ProfileConfig => LoginManager.Instance.GetUserProfile().UserConfigFile;
+
+        /// <summary>The consoles the player sees with the CRT look (Settings > Retro), by their slug.</summary>
+        public static HashSet<string> CrtSystems
+        {
+            get => Preferences.Get(Models.AppConfigKey.RetroCrtSystems, ProfileConfig).Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            set => Preferences.Set(Models.AppConfigKey.RetroCrtSystems, string.Join(",", value.Order()), ProfileConfig);
+        }
+
+        /// <summary>The game's CRT preset written when its console has the look, removed when it no longer has it.</summary>
+        private static void SetPicture(RetroSystem system, string rom)
+        {
+            bool crt = CrtSystems.Contains(system.Slug);
+            foreach (var (extension, _) in RetroArchLayout.CrtShaderUrls)
+            {
+                string preset = Layout.GamePreset(system.Core, rom, extension);
+                if (crt && File.Exists(Layout.CrtShaderFile(extension)))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(preset)!);
+                    File.WriteAllText(preset, Layout.CrtPreset(extension));
+                }
+                else if (File.Exists(preset))
+                    File.Delete(preset);
+            }
         }
 
         /// <summary>The BIOS RomM keeps for the platform, fetched when missing. Without network, the ones already here.</summary>
@@ -131,7 +164,7 @@ namespace gamevault.Helper
             Layout.AdoptSharedSaves(player);
             foreach (string folder in Layout.Folders(player))
                 Directory.CreateDirectory(folder);
-            File.WriteAllText(Layout.ConfigFile, Layout.Config(player));
+            File.WriteAllText(Layout.ConfigFile, Layout.Config(player, RetroAchievementsAccount.Account));
         }
 
         internal static async Task DownloadAsync(string url, string file, Action<double> progress)
@@ -157,8 +190,8 @@ namespace gamevault.Helper
             }
         }
 
-        /// <summary>RetroArch, its cores, their files and the BIOS: what goes with "Uninstall" (the saves stay).</summary>
-        public static IEnumerable<string> InstalledParts => new[] { Layout.AppDirectory, Layout.CoresDirectory, Layout.SystemDirectory };
+        /// <summary>RetroArch, its cores, their files, the BIOS and the CRT look: what goes with "Uninstall" (the saves stay).</summary>
+        public static IEnumerable<string> InstalledParts => new[] { Layout.AppDirectory, Layout.CoresDirectory, Layout.SystemDirectory, Layout.ShadersDirectory };
 
         /// <summary>RetroArch, RPCS3 and Eden, as one "emulators" line of the storage.</summary>
         public static long InstalledSize() => InstalledParts.Where(Directory.Exists).Sum(GameVault.Core.Storage.StorageCleanup.DirectorySize) + StandaloneEmulator.All.Sum(e => e.InstalledSize());
@@ -180,7 +213,13 @@ namespace gamevault.Helper
                 await emulator.UninstallAsync();
         }
 
-        public static Process Launch(string core, string rom) => Start(Layout.Arguments(core, rom));
+        /// <param name="stateSlot">The save state the game starts from, or none.</param>
+        public static Process Launch(RetroSystem system, string rom, int? stateSlot = null)
+        {
+            try { SetPicture(system, rom); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            return Start(Layout.Arguments(system.Core, rom, stateSlot));
+        }
 
         private static Process Start(IReadOnlyList<string> arguments)
         {

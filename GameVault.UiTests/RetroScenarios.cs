@@ -205,7 +205,7 @@ namespace GameVault.UiTests
                 var page = new RetroUserControl();
                 await page.LoadPlatformsAsync();
                 await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "switch"));
-                await TestSession.WaitUntil(() => page.Shown.Count() == 2, TimeSpan.FromSeconds(10), "the Switch games");
+                await TestSession.WaitUntil(() => page.Shown.Count() == 3, TimeSpan.FromSeconds(10), "the Switch games");
 
                 // The folder comes zipped and is unpacked; without the keys in RomM, the game waits for them
                 RetroGame game = page.Shown.Single(g => g.Name == "1-2-Switch");
@@ -213,6 +213,15 @@ namespace GameVault.UiTests
                 RetroDownload download = Assert.Single(DownloadsViewModel.Instance.RetroDownloads);
                 await TestSession.WaitUntil(() => download.IsDone || download.IsFailed, TimeSpan.FromSeconds(20), "the Switch download");
                 Assert.True(game.Installed, download.State);
+
+                // A game compressed by nsz: an .nsp again once downloaded, the .nsz gone
+                RetroGame compressed = page.Shown.Single(g => g.Name == "Compressed Game");
+                await RetroPlay.InstallAsync(compressed);
+                RetroDownload compressedDownload = DownloadsViewModel.Instance.RetroDownloads.Single(d => d.Game.Id == compressed.Id);
+                await TestSession.WaitUntil(() => compressedDownload.IsDone || compressedDownload.IsFailed, TimeSpan.FromSeconds(20), "the compressed game");
+                Assert.True(compressed.Installed, compressedDownload.State);
+                Assert.Equal("Compressed Game.nsp", Path.GetFileName(compressed.RomFile));
+                Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(compressed.RomFile)!, "*.nsz"));
 
                 // A DLC is installed as a game, and not started: Eden takes it with its game
                 RetroGame dlc = page.Shown.Single(g => g.Name.Contains("DLC"));
@@ -240,7 +249,7 @@ namespace GameVault.UiTests
                 Assert.ThrowsAny<Exception>(() => StandaloneEmulator.Eden.Launch(RetroArchManager.Player, game.RomFile!));
                 Assert.Equal(EdenLayout.UserId(RetroArchManager.Player), File.ReadAllBytes(layout.ProfilesFile)[0x10..0x20]);
                 string config = File.ReadAllText(layout.SettingsFiles.Single());
-                Assert.Contains("Paths\\external_content_dirs\\size=2", config);
+                Assert.Contains("Paths\\external_content_dirs\\size=3", config);
                 Assert.Contains(Path.GetDirectoryName(dlc.RomFile)!.Replace('\\', '/'), config);
 
                 // Its saves are what it writes in the player's user folder

@@ -21,4 +21,8 @@
 		<ProjectReference Include="..\GameVault.Core\GameVault.Core.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
 </Project>

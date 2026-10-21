@@ -83,6 +83,39 @@
                 <TextBlock Classes="muted" FontSize="13.5" Margin="28,16" TextWrapping="Wrap" Text="{Binding Message}"
                            IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 <local:ProgressRing IsActive="{Binding Loading}" IsVisible="{Binding Loading}" Width="32" Height="32" HorizontalAlignment="Left" Margin="38,16" />
+                <!-- Continue playing: the games played last, whatever the console -->
+                <StackPanel Margin="28,8,28,14" Spacing="10" IsVisible="{Binding HasRecent}">
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'Continue playing'}" />
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding Recent}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="14" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="gameCard" Width="124" VerticalAlignment="Top" Click="RecentCard_Click">
+                                        <StackPanel Spacing="6">
+                                            <local:AspectBox Ratio="{Binding Platform.System.CoverRatio}">
+                                                <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                    <Panel>
+                                                        <TextBlock Text="{Binding Name}" Classes="muted" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" Margin="8" />
+                                                        <Image Source="{Binding CoverImage}" Stretch="UniformToFill" />
+                                                    </Panel>
+                                                </Border>
+                                            </local:AspectBox>
+                                            <StackPanel Spacing="1">
+                                                <TextBlock Classes="cardTitle" Text="{Binding Name}" />
+                                                <TextBlock Classes="cardInfo" Text="{Binding Platform.Name}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
                 <ItemsRepeater x:Name="uiGames" ItemsSource="{Binding Games}" Margin="20,0">
                     <ItemsRepeater.Layout>
                         <UniformGridLayout ItemsStretch="Uniform" MinItemWidth="186" MinItemHeight="320" MinRowSpacing="10" MinColumnSpacing="0" />

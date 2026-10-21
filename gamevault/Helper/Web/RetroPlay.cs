@@ -34,7 +34,8 @@ namespace gamevault.Helper
         }
 
         /// <summary>RetroArch ready, the game's saves from the cloud when newer, then the game.</summary>
-        public static async Task PlayAsync(RetroGame game)
+        /// <param name="stateSlot">A save state of the game to start from (RetroArch's games), or none.</param>
+        public static async Task PlayAsync(RetroGame game, int? stateSlot = null)
         {
             if (game.Busy || game.RomFile is not string rom)
                 return;
@@ -52,7 +53,7 @@ namespace gamevault.Helper
                 var saves = RetroCloudSaves.Of(game);
                 var before = saves.Snapshot();
                 StandaloneEmulator? emulator = StandaloneEmulator.Of(game.Platform.System);
-                Process process = emulator != null ? emulator.Launch(RetroArchManager.Player, rom) : RetroArchManager.Launch(game.Platform.System.Core, rom);
+                Process process = emulator != null ? emulator.Launch(RetroArchManager.Player, rom) : RetroArchManager.Launch(game.Platform.System, rom, stateSlot);
                 game.Status = emulator != null ? Loc.T("Playing: close the game's window to quit") : Loc.T("Playing: Select+Start to quit");
                 DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
                 _ = WhenClosedAsync(process, game, before);
@@ -86,6 +87,14 @@ namespace gamevault.Helper
             await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
             game.Status = Loc.T("Sending the saves...");
             await RetroCloudSaves.SendAsync(game);
+            // RomM's "last played", and the achievements RetroArch unlocked
+            if (RommAccount.IsLinked)
+            {
+                try { await RommAccount.PlayedAsync(game.Id); }
+                catch (Exception ex) { Log.Ignored(ex); }
+                if (StandaloneEmulator.Of(game.Platform.System) == null)
+                    await RetroAchievementsAccount.SyncRommAsync();
+            }
             game.Status = "";
             game.Busy = false;
         }

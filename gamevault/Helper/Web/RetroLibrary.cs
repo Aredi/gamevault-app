@@ -92,6 +92,12 @@ namespace gamevault.Helper
             finally { loading.Release(); }
         }
 
+        /// <summary>The games played last (all consoles the client plays), for "Continue playing".</summary>
+        public static List<RetroGame> Recent(int count) => plays.Values
+            .Where(p => RetroSystems.All.ContainsKey(p.Platform))
+            .OrderByDescending(p => p.LastPlayed).Take(count)
+            .Select(p => GameOf(p.RomId, p.Platform, p.PlatformName, p.Name, p.Cover)).ToList();
+
         public static int MinutesOf(RetroGame game) => plays.TryGetValue(Key(game), out Play? play) ? play.Minutes : 0;
         public static DateTime? LastPlayedOf(RetroGame game) => plays.TryGetValue(Key(game), out Play? play) ? play.LastPlayed : null;
 

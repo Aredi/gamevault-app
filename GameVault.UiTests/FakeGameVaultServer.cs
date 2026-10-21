@@ -63,6 +63,8 @@ namespace GameVault.UiTests
             ("Infamous/PS3_GAME/USRDIR/bin/EBOOT.BIN", "other"));
         /// <summary>A Switch game card in its folder with its dump's files, as RomM zips it.</summary>
         public static readonly byte[] SwitchFolderGame = Zip(("1-2-Switch.xci/1-2-Switch (Initial Data).bin", "data"), ("1-2-Switch.xci/1-2-Switch.xci", "xci"));
+        /// <summary>A Switch game compressed by nsz (Eden reads none: made an .nsp again).</summary>
+        public static readonly byte[] SwitchCompressedGame = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "game.nsz"));
         /// <summary>The Switch's keys and firmware (a zip of its .nca) in RomM; none when null.</summary>
         public (byte[] Keys, byte[] Firmware)? SwitchFirmware { get; set; }
         /// <summary>The player's retro saves, per game ("nes-40"): (zip, when saved).</summary>
@@ -82,6 +84,14 @@ namespace GameVault.UiTests
         /// <summary>RomM's games: its Windows games are the library's files.</summary>
         public ConcurrentQueue<(int Id, string Platform, string FileName)> RommRoms { get; } = new();
         private int rommTokenCalls;
+        /// <summary>The player's status and rating of each game in RomM, and the changes received (JSON, with the query).</summary>
+        public ConcurrentDictionary<int, (string? Status, int Rating)> RommMine { get; } = new();
+        public ConcurrentQueue<string> RommPropsSent { get; } = new();
+        /// <summary>A link made before the client asked for the statuses: RomM refuses to change them.</summary>
+        public bool RommOldScopes { get; set; }
+        /// <summary>The RetroAchievements account RomM has for the player, and whether its progression was taken again.</summary>
+        public string? RommRaUser { get; set; }
+        public int RommRaRefreshes;
 
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
         public List<object> RetroLatest { get; } = new();
@@ -193,7 +203,63 @@ namespace GameVault.UiTests
             try
             {
                 Match match;
-                if (path == "/api/auth/basic/login" && !HasPassword(request))
+                bool romm = request.Headers["Authorization"] == "Bearer romm-token";
+                // RomM's own answers to the linked player (its paths are the GameVault server's ones too)
+                if (romm && path == "/api/users/me")
+                    await Json(response, new
+                    {
+                        id = 1, username = "admin", ra_username = RommRaUser,
+                        ra_progression = new { total = 1, results = new[] { new { rom_ra_id = 5626, earned_achievements = new[] { new { id = "379571", date = "2026-10-01" } } } } },
+                    });
+                else if (romm && path == "/api/users/1" && request.HttpMethod == "PUT")
+                {
+                    string form = await new StreamReader(request.InputStream).ReadToEndAsync();
+                    RommRaUser = Uri.UnescapeDataString(form.Split('=', 2)[1]);
+                    await Json(response, new { id = 1 });
+                }
+                else if (romm && path == "/api/users/1/ra/refresh")
+                {
+                    Interlocked.Increment(ref RommRaRefreshes);
+                    await Json(response, new { });
+                }
+                else if (romm && (match = Regex.Match(path, @"^/api/roms/(\d+)$")).Success)
+                {
+                    int id = int.Parse(match.Groups[1].Value);
+                    var mine = RommMine.GetValueOrDefault(id);
+                    await Json(response, new
+                    {
+                        id, ra_id = 5626,
+                        rom_user = new { status = mine.Status, rating = mine.Rating },
+                        merged_ra_metadata = new
+                        {
+                            achievements = new[]
+                            {
+                                new { ra_id = 109111, title = "Mission 1", description = "Clear it.", points = 3, badge_id = "379571", badge_url = (string?)null, badge_url_lock = (string?)null, display_order = 0 },
+                                new { ra_id = 109112, title = "Mission 2", description = "Clear it with an S Rank.", points = 5, badge_id = "379572", badge_url = (string?)null, badge_url_lock = (string?)null, display_order = 1 },
+                            },
+                        },
+                    });
+                }
+                else if (romm && (match = Regex.Match(path, @"^/api/roms/(\d+)/props$")).Success)
+                {
+                    if (RommOldScopes)
+                    {
+                        response.StatusCode = 403;
+                        return;
+                    }
+                    int id = int.Parse(match.Groups[1].Value);
+                    string body = await new StreamReader(request.InputStream).ReadToEndAsync();
+                    RommPropsSent.Enqueue(request.Url.Query + body);
+                    using var changes = JsonDocument.Parse(body);
+                    var mine = RommMine.GetValueOrDefault(id);
+                    if (changes.RootElement.TryGetProperty("status", out JsonElement status))
+                        mine.Status = status.ValueKind == JsonValueKind.String ? status.GetString() : null;
+                    if (changes.RootElement.TryGetProperty("rating", out JsonElement rating))
+                        mine.Rating = rating.GetInt32();
+                    RommMine[id] = mine;
+                    await Json(response, new { });
+                }
+                else if (path == "/api/auth/basic/login" && !HasPassword(request))
                     response.StatusCode = 401;// as the real server, which refuses an empty password at once
                 else if (path == "/api/auth/basic/login")
                     await Json(response, new { id = "1", access_token = "access", refresh_token = "refresh" });
@@ -209,12 +275,13 @@ namespace GameVault.UiTests
                     await Json(response, user);
                 // RomM through the SanctuaryVault service: a NES game, and a platform the client has no emulator for (the PS4)
                 else if (path == "/retro/platforms")
-                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 19, slug = "psx", name = "PlayStation", count = 1 }, new { id = 21, slug = "ps3", name = "PlayStation 3", count = 2 }, new { id = 9, slug = "switch", name = "Switch", count = 2 }, new { id = 30, slug = "ps4", name = "PlayStation 4", count = 4 } });
+                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 19, slug = "psx", name = "PlayStation", count = 1 }, new { id = 21, slug = "ps3", name = "PlayStation 3", count = 2 }, new { id = 9, slug = "switch", name = "Switch", count = 3 }, new { id = 30, slug = "ps4", name = "PlayStation 4", count = 4 } });
                 else if (path == "/retro/platforms/9/games")
                     await Json(response, new[]
                     {
                         new { id = 70, name = "1-2-Switch", fileName = "1-2-Switch.xci", size = SwitchFolderGame.LongLength, multi = true },
                         new { id = 71, name = "Assassin's Creed Brotherhood DLC", fileName = "Assassins Creed - Brotherhood [DLC][0100670014483001].nsp", size = 3L, multi = false },
+                        new { id = 72, name = "Compressed Game", fileName = "Compressed Game.nsz", size = SwitchCompressedGame.LongLength, multi = false },
                     });
                 else if (path == "/retro/games/70/content")
                 {
@@ -222,6 +289,12 @@ namespace GameVault.UiTests
                     response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''1-2-Switch.xci.zip");
                     response.ContentLength64 = SwitchFolderGame.LongLength;
                     await response.OutputStream.WriteAsync(SwitchFolderGame);
+                }
+                else if (path == "/retro/games/72/content")
+                {
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''Compressed%20Game.nsz");
+                    response.ContentLength64 = SwitchCompressedGame.LongLength;
+                    await response.OutputStream.WriteAsync(SwitchCompressedGame);
                 }
                 else if (path == "/retro/games/71/content")
                 {

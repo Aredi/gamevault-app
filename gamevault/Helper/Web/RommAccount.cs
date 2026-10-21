@@ -60,8 +60,11 @@ namespace gamevault.Helper
     /// </summary>
     internal static class RommAccount
     {
-        /// <summary>What the client may do in the player's RomM: read the games, read and write their saves.</summary>
-        private static readonly string[] Scopes = { "me.read", "roms.read", "assets.read", "assets.write", "devices.read", "devices.write" };
+        /// <summary>
+        /// What the client may do in the player's RomM: read the games, read and write their saves, their status and
+        /// rating of a game, and their RetroAchievements account (its name, for their progression).
+        /// </summary>
+        private static readonly string[] Scopes = { "me.read", "me.write", "roms.read", "roms.user.read", "roms.user.write", "assets.read", "assets.write", "devices.read", "devices.write" };
 
         private static string Config => LoginManager.Instance.GetUserProfile().UserConfigFile;
         public static string Token => Preferences.Get(AppConfigKey.RommToken, Config);
@@ -221,6 +224,48 @@ namespace gamevault.Helper
                     && !RetroSystems.All.ContainsKey(r.GetProperty("platform_slug").GetString() ?? ""))
                 .Select(r => (int?)r.GetProperty("id").GetInt32()).FirstOrDefault();
             return pcGames[fileName] = id;
+        }
+        #endregion
+
+        #region The player's games
+        /// <summary>A link made before the client asked for it (the status, the rating, the achievements): linked again.</summary>
+        public sealed class MissingScopeException() : Exception(Loc.T("Link your RomM account again (Settings > Retro): SanctuaryVault now also keeps your statuses, ratings and achievements in it."));
+
+        private static async Task<JsonElement> JsonAsync(HttpMethod method, string path, HttpContent? content = null)
+        {
+            using HttpResponseMessage response = await SendAsync(method, path, content);
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+                throw new MissingScopeException();
+            response.EnsureSuccessStatusCode();
+            string body = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(body))
+                return default;
+            using JsonDocument json = JsonDocument.Parse(body);
+            return json.RootElement.Clone();
+        }
+
+        /// <summary>RomM's details of a game, with the player's status, rating and the game's achievements.</summary>
+        public static Task<JsonElement> RomAsync(int romId) => JsonAsync(HttpMethod.Get, $"/api/roms/{romId}");
+
+        public static Task<JsonElement> MeAsync() => JsonAsync(HttpMethod.Get, "/api/users/me");
+
+        /// <summary>The player's status or rating of a game (only the ones given change).</summary>
+        public static Task SetMineAsync(int romId, object changes) => JsonAsync(HttpMethod.Put, $"/api/roms/{romId}/props", Json(changes));
+
+        /// <summary>The game was played: RomM's "last played" (its page sorts by it).</summary>
+        public static Task PlayedAsync(int romId) => JsonAsync(HttpMethod.Put, $"/api/roms/{romId}/props?update_last_played=true", Json(new { }));
+
+        /// <summary>
+        /// The player's RetroAchievements account in their RomM (its name only), then their progression taken again
+        /// from RetroAchievements: the games' pages show what they earned.
+        /// </summary>
+        public static async Task SyncAchievementsAsync(string raUser)
+        {
+            JsonElement me = await MeAsync();
+            string id = me.GetProperty("id").ToString();
+            if (!string.Equals(me.TryGetProperty("ra_username", out JsonElement known) && known.ValueKind == JsonValueKind.String ? known.GetString() : null, raUser, StringComparison.OrdinalIgnoreCase))
+                await JsonAsync(HttpMethod.Put, $"/api/users/{id}", new FormUrlEncodedContent(new Dictionary<string, string> { ["ra_username"] = raUser }));
+            await JsonAsync(HttpMethod.Post, $"/api/users/{id}/ra/refresh", Json(new { incremental = true }));
         }
         #endregion
 

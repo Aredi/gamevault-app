@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using GameVault.Core;
+using GameVault.Core.Retro;
 using gamevault.Helper;
 using gamevault.Helper.Platform;
 using gamevault.Localization;
@@ -41,7 +42,13 @@ namespace gamevault.UserControls
             };
             SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width);
             RetroLibrary.Changed += LibraryChanged;
-            DetachedFromVisualTree += (_, _) => RetroLibrary.Changed -= LibraryChanged;
+            game.PropertyChanged += Game_PropertyChanged;
+            DetachedFromVisualTree += (_, _) =>
+            {
+                RetroLibrary.Changed -= LibraryChanged;
+                game.PropertyChanged -= Game_PropertyChanged;
+            };
+            ViewModel.MineChanged += async changes => await SetMineAsync(changes);
             AttachedToVisualTree += (_, _) => Focus();
             Loaded += async (_, _) => await LoadAsync();
         }
@@ -52,13 +59,98 @@ namespace gamevault.UserControls
             ViewModel.RefreshPlayer();
         });
 
+        /// <summary>A game ended (or was installed, deleted): its saves and save states again.</summary>
+        private void Game_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is nameof(RetroGame.Busy) or nameof(RetroGame.Installed) && !ViewModel.Game.Busy)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    RefreshSaves();
+                    LoadStates();
+                });
+        }
+
         internal async Task LoadAsync()
         {
             RefreshSaves();
+            LoadStates();
             _ = RetroLibrary.LoadAsync();
+            Task romm = LoadRommAsync();
             await ViewModel.Game.LoadScreenshotsAsync();
             ViewModel.SelectedScreenshot ??= ViewModel.Game.ScreenshotImages?.FirstOrDefault();
             await LoadPlayersAsync();
+            await romm;
+        }
+
+        /// <summary>The player's status and rating of the game, and its achievements, from their RomM.</summary>
+        private async Task LoadRommAsync()
+        {
+            if (!RommAccount.IsLinked)
+            {
+                ViewModel.RommNote = Loc.T("Link your RomM account (Settings > Retro) to keep your status, rating and achievements of the games.");
+                return;
+            }
+            try
+            {
+                JsonElement rom = await RommAccount.RomAsync(ViewModel.Game.Id);
+                ViewModel.SetMine(RommProgress.MineOf(rom));
+                JsonElement me = default;
+                try { me = await RommAccount.MeAsync(); }
+                catch (Exception ex) { Log.Ignored(ex); }
+                ViewModel.Achievements = RommProgress.AchievementsOf(rom, me).Select(a => new RetroAchievementRow(a)).ToList();
+                // The badges, a few at a time (a game has up to a few hundred)
+                await Parallel.ForEachAsync(ViewModel.Achievements.Where(a => a.BadgeUrl != null), new ParallelOptions { MaxDegreeOfParallelism = 6 }, async (row, _) =>
+                {
+                    try
+                    {
+                        byte[] png = await HttpClients.Shared.GetByteArrayAsync(row.BadgeUrl);
+                        var badge = new Bitmap(new MemoryStream(png));
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() => row.Badge = badge);
+                    }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                });
+            }
+            catch (RommAccount.MissingScopeException ex) { ViewModel.RommNote = ex.Message; }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private async Task SetMineAsync(object changes)
+        {
+            try { await RommAccount.SetMineAsync(ViewModel.Game.Id, changes); }
+            catch (RommAccount.MissingScopeException ex)
+            {
+                ViewModel.HasRomm = false;
+                ViewModel.RommNote = ex.Message;
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        /// <summary>The save states of RetroArch's games, with the picture RetroArch took.</summary>
+        private void LoadStates()
+        {
+            try
+            {
+                RetroGame game = ViewModel.Game;
+                if (StandaloneEmulator.Of(game.Platform.System) != null || game.RomFile is not string rom)
+                {
+                    ViewModel.States = new();
+                    return;
+                }
+                ViewModel.States = RetroArchManager.Layout.SaveStates(RetroArchManager.Player, game.Platform.System.Core, rom).Select(state =>
+                {
+                    Bitmap? picture = null;
+                    try { picture = state.Picture != null ? new Bitmap(state.Picture) : null; }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                    return new RetroStateRow(state.Slot, picture, Loc.F("Slot {0}", state.Slot), Converter.RelativeDate.Format(state.Saved));
+                }).ToList();
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private async void ResumeState_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is RetroStateRow state)
+                await RetroPlay.PlayAsync(ViewModel.Game, state.Slot);
         }
 
         /// <summary>The friends who played it, with their avatar when the server gives the players.</summary>

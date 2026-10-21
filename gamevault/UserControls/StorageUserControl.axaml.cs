@@ -26,6 +26,8 @@ namespace gamevault.UserControls
         private List<(InstalledGameUsage Usage, Game? Game, RetroGame? Retro)> games = new();
         /// <summary>RetroArch and its cores, BIOS (not a game: never "not played for a while").</summary>
         private InstalledGameUsage? emulator;
+        /// <summary>The retro games checked for deletion, by folder: kept when the list is sorted or filtered again.</summary>
+        private readonly HashSet<string> selected = new();
 
         public StorageUserControl()
         {
@@ -98,13 +100,63 @@ namespace gamevault.UserControls
             var byId = games.ToDictionary(g => g.Usage.Id);
             var shown = InstalledGamesUsage.Sort(games.Select(g => g.Usage), sort, now)
                 .Where(u => uiIdleOnly.IsChecked != true || InstalledGamesUsage.IsIdle(u, now))
-                .Select(u => new StorageGameRow(u, byId[u.Id].Game, now, byId[u.Id].Retro))
+                .Where(u => uiRetroOnly.IsChecked != true || byId[u.Id].Retro != null)
+                .Select(u => new StorageGameRow(u, byId[u.Id].Game, now, byId[u.Id].Retro) { IsSelected = selected.Contains(u.Directory) })
                 .ToList();
             if (emulator != null && uiIdleOnly.IsChecked != true)
                 shown.Add(new StorageGameRow(emulator, null, now, isEmulator: true));
             uiGames.ItemsSource = shown;
             uiEmpty.Text = games.Count == 0 ? Loc.T("No game is installed.") : Loc.T("Every installed game was played lately.");
             uiEmpty.IsVisible = shown.Count == 0 && !uiLoading.IsVisible;
+            ShowSelection();
+        }
+
+        /// <summary>The button of the checked retro games: how many, how much room.</summary>
+        private void ShowSelection()
+        {
+            selected.IntersectWith(games.Where(g => g.Retro != null).Select(g => g.Usage.Directory));
+            long size = games.Where(g => selected.Contains(g.Usage.Directory)).Sum(g => g.Usage.Size);
+            uiDeleteSelected.IsVisible = selected.Count > 0;
+            uiDeleteSelectedText.Text = Loc.F("Delete the {0} selected retro games ({1})", selected.Count, StorageCleanup.FormatSize(size));
+        }
+
+        private void Selected_Changed(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is StorageGameRow row)
+                Select(row, row.IsSelected);
+        }
+
+        internal void Select(StorageGameRow row, bool on)
+        {
+            if (row.Retro == null)
+                return;
+            row.IsSelected = on;
+            if (on)
+                selected.Add(row.Usage.Directory);
+            else
+                selected.Remove(row.Usage.Directory);
+            ShowSelection();
+        }
+
+        private List<(InstalledGameUsage Usage, Game? Game, RetroGame? Retro)> Chosen => games.Where(g => g.Retro != null && selected.Contains(g.Usage.Directory)).ToList();
+
+        private async void DeleteSelected_Click(object? sender, RoutedEventArgs e)
+        {
+            var chosen = Chosen;
+            if (chosen.Count > 0 && await DialogService.ConfirmAsync(Loc.F("Delete {0} retro games from this PC ({1})? Their saves are kept.", chosen.Count, StorageCleanup.FormatSize(chosen.Sum(g => g.Usage.Size))), Loc.T("Storage")))
+                await DeleteSelectedAsync();
+        }
+
+        /// <summary>The checked retro games deleted (their saves stay), then the list again.</summary>
+        internal async Task DeleteSelectedAsync()
+        {
+            foreach (var game in Chosen)
+            {
+                try { await Task.Run(() => Directory.Delete(game.Usage.Directory, true)); }
+                catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            }
+            selected.Clear();
+            await LoadAsync();
         }
 
         private void IdleOnly_Changed(object? sender, RoutedEventArgs e)
@@ -177,6 +229,8 @@ namespace gamevault.UserControls
         }
 
         public InstalledGameUsage Usage { get; }
+        /// <summary>Checked for deletion (the retro games).</summary>
+        public bool IsSelected { get; set; }
         public Game? Game { get; }
         public RetroGame? Retro { get; }
         public bool IsEmulator { get; }
