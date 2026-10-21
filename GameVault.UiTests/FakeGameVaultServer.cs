@@ -56,6 +56,11 @@ namespace GameVault.UiTests
         public static readonly byte[] RetroRom = Encoding.ASCII.GetBytes("NES\x1A-test-rom");
         /// <summary>A PS1 game in two files, as RomM zips them.</summary>
         public static readonly byte[] RetroCdGame = Zip(("Castlevania.cue", "FILE \"Castlevania.bin\" BINARY"), ("Castlevania.bin", "track"));
+        /// <summary>A PS3 game in its folder, as RomM zips it (not "multi" for RomM: one folder).</summary>
+        /// <summary>The PS3's firmware in RomM; none when null.</summary>
+        public byte[]? Ps3Firmware { get; set; }
+        public static readonly byte[] Ps3FolderGame = Zip(("Infamous/PS3_DISC.SFB", "disc"), ("Infamous/PS3_GAME/PARAM.SFO", "sfo"), ("Infamous/PS3_GAME/USRDIR/EBOOT.BIN", "eboot"),
+            ("Infamous/PS3_GAME/USRDIR/bin/EBOOT.BIN", "other"));
         /// <summary>The player's retro saves, per game ("nes-40"): (zip, when saved).</summary>
         public ConcurrentDictionary<string, (byte[] Zip, long SavedAt)> RetroSaves { get; } = new();
         /// <summary>Older versions of the retro saves: "nes-40-1000.zip" → (when saved, zip).</summary>
@@ -200,7 +205,24 @@ namespace GameVault.UiTests
                     await Json(response, user);
                 // RomM through the SanctuaryVault service: a NES game, and a platform the client has no emulator for
                 else if (path == "/retro/platforms")
-                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 19, slug = "psx", name = "PlayStation", count = 1 }, new { id = 9, slug = "switch", name = "Switch", count = 4 } });
+                    await Json(response, new object[] { new { id = 3, slug = "nes", name = "NES", count = 1 }, new { id = 19, slug = "psx", name = "PlayStation", count = 1 }, new { id = 21, slug = "ps3", name = "PlayStation 3", count = 2 }, new { id = 9, slug = "switch", name = "Switch", count = 4 } });
+                else if (path == "/retro/platforms/21/games")
+                    await Json(response, new[]
+                    {
+                        new { id = 60, name = "inFamous", fileName = "Infamous", size = Ps3FolderGame.LongLength, multi = false },
+                        new { id = 61, name = "Fatal Frame", fileName = "Fatal Frame.pkg", size = 3601L << 20, multi = false },
+                    });
+                else if (path == "/retro/games/60/content")
+                {
+                    response.ContentType = "application/zip";
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''Infamous.zip");
+                    response.ContentLength64 = Ps3FolderGame.LongLength;
+                    await response.OutputStream.WriteAsync(Ps3FolderGame);
+                }
+                else if (path == "/retro/platforms/21/firmware")
+                    await Json(response, Ps3Firmware == null ? Array.Empty<object>() : new object[] { new { id = 8, fileName = "PS3UPDAT.PUP", size = Ps3Firmware.LongLength } });
+                else if (path == "/retro/firmware/8/content" && Ps3Firmware != null)
+                    await response.OutputStream.WriteAsync(Ps3Firmware);
                 else if (path == "/retro/platforms/19/games")
                     await Json(response, new[] { new { id = 50, name = "Castlevania", fileName = "Castlevania", size = RetroCdGame.LongLength, cover = (string?)null, summary = (string?)null, multi = true } });
                 else if (path == "/retro/games/50/content")

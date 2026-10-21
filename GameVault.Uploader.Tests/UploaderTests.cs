@@ -94,6 +94,9 @@ namespace GameVault.Uploader.Tests
                 // A game in a folder: RomM names the file it sends
                 "/api/roms/41" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 41, fs_name = "Bleach [RBLP8P]" }) },
                 "/api/roms/41/content/Bleach%20%5BRBLP8P%5D" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(Rom) { Headers = { ContentDisposition = new("attachment") { FileNameStar = "RBLP8P.wbfs" } } } },
+                // A PS3 game's folder: RomM zips it as it sends it
+                "/api/roms/43" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 43, fs_name = "Infamous", has_nested_single_file = true }) },
+                "/api/roms/43/content/Infamous" => Part(request),
                 "/api/firmware?platform_id=3" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new object[] { new { id = 7, file_name = "scph5501.bin", file_size_bytes = 4, missing_from_fs = false }, new { id = 8, file_name = "gone.bin", file_size_bytes = 4, missing_from_fs = true } }) },
                 "/api/firmware/7" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 7, file_name = "scph5501.bin" }) },
                 "/api/firmware/7/content/scph5501.bin" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 1, 2, 3, 4 }) },
@@ -415,6 +418,12 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(4, part.Content.Headers.ContentRange!.From);
             Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/games/42/content")).StatusCode);
             Assert.Equal("RBLP8P.wbfs", (await player.GetAsync("/retro/games/41/content")).Content.Headers.ContentDisposition!.FileNameStar);
+            // A zip RomM makes while sending (a folder): never asked in parts, which RomM can not answer in time
+            using var zipPart = new HttpRequestMessage(HttpMethod.Get, "/retro/games/43/content");
+            zipPart.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(4, null);
+            HttpResponseMessage zipped = await player.SendAsync(zipPart);
+            Assert.Equal(HttpStatusCode.OK, zipped.StatusCode);
+            Assert.Equal(FakeRomm.Rom, await zipped.Content.ReadAsByteArrayAsync());
 
             // The BIOS of a platform: the ones RomM still has
             using (JsonDocument firmware = JsonDocument.Parse(await player.GetStringAsync("/retro/platforms/3/firmware")))

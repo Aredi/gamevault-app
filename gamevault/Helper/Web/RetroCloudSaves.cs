@@ -34,8 +34,11 @@ namespace gamevault.Helper
         {
             var layout = RetroArchManager.Layout;
             string player = RetroArchManager.Player;
-            return new RetroGameSaves(layout.SavesDirectory(player), layout.StatesDirectory(player), layout.SaveBackupsDirectory(player), SetOf(game),
-                Path.GetFileNameWithoutExtension(game.RomFile ?? game.FileName), ToRomm ? "romm" : "");
+            string stem = Path.GetFileNameWithoutExtension(game.RomFile ?? game.FileName), destination = ToRomm ? "romm" : "";
+            // RPCS3's console keeps its saves by game serial: what the game writes while it runs is its saves
+            if (game.Platform.System.IsRpcs3)
+                return new RetroGameSaves(Rpcs3Manager.Layout.SavesDirectory(player), Rpcs3Manager.Layout.StatesDirectory, layout.SaveBackupsDirectory(player), SetOf(game), stem, destination);
+            return new RetroGameSaves(layout.SavesDirectory(player), layout.StatesDirectory(player), layout.SaveBackupsDirectory(player), SetOf(game), stem, destination);
         }
 
         #region RomM

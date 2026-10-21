@@ -52,6 +52,8 @@ namespace gamevault.ViewModels
         public string RegionsText => Join(Game.Regions);
         public string LanguagesText => Join(Game.Languages);
         public string AgeRatingsText => Join(Game.AgeRatings);
+        /// <summary>The settings of the game's emulator.</summary>
+        public string MenuText => Game.Platform.System.IsRpcs3 ? Loc.T("Controls and picture: RPCS3 settings") : Loc.T("Controls and picture: RetroArch settings");
         public string PlayersText => string.IsNullOrEmpty(Game.Players) || Game.Players == "null" ? "—" : Game.Players;
 
         private Bitmap? selectedScreenshot;

@@ -214,7 +214,7 @@
                                     <TextBlock Text="{l:T 'Open the game folder'}" />
                                 </Button>
                                 <Button Classes="heroLink" Click="Menu_Click">
-                                    <TextBlock Text="{l:T 'Controls and picture: RetroArch settings'}" />
+                                    <TextBlock Text="{Binding MenuText}" />
                                 </Button>
                             </WrapPanel>
                         </StackPanel>

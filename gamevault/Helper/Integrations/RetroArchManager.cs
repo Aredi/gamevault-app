@@ -31,6 +31,12 @@ namespace gamevault.Helper
         /// <summary>RetroArch, then what the platform needs: its core, the core's data files and the BIOS.</summary>
         public static async Task EnsureReadyAsync(RetroPlatform platform, Action<string> status)
         {
+            // The PS3 is RPCS3's
+            if (platform.System.IsRpcs3)
+            {
+                await Rpcs3Manager.EnsureReadyAsync(platform, status);
+                return;
+            }
             await preparing.WaitAsync();
             try
             {
@@ -128,7 +134,7 @@ namespace gamevault.Helper
             File.WriteAllText(Layout.ConfigFile, Layout.Config(player));
         }
 
-        private static async Task DownloadAsync(string url, string file, Action<double> progress)
+        internal static async Task DownloadAsync(string url, string file, Action<double> progress)
         {
             using HttpResponseMessage response = await HttpClients.Shared.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
@@ -154,7 +160,8 @@ namespace gamevault.Helper
         /// <summary>RetroArch, its cores, their files and the BIOS: what goes with "Uninstall" (the saves stay).</summary>
         public static IEnumerable<string> InstalledParts => new[] { Layout.AppDirectory, Layout.CoresDirectory, Layout.SystemDirectory };
 
-        public static long InstalledSize() => InstalledParts.Where(Directory.Exists).Sum(GameVault.Core.Storage.StorageCleanup.DirectorySize);
+        /// <summary>RetroArch and RPCS3, as one "emulators" line of the storage.</summary>
+        public static long InstalledSize() => InstalledParts.Where(Directory.Exists).Sum(GameVault.Core.Storage.StorageCleanup.DirectorySize) + Rpcs3Manager.InstalledSize();
 
         /// <summary>Taken again from the internet at the next game; the saves and their backups are kept.</summary>
         public static async Task UninstallAsync()
@@ -164,10 +171,12 @@ namespace gamevault.Helper
             {
                 foreach (string part in InstalledParts.Where(Directory.Exists))
                     Directory.Delete(part, true);
-                foreach (string file in new[] { Layout.VersionFile, Layout.ConfigFile })
+                // RetroArch may never have been installed (only PS3 games played)
+                foreach (string file in new[] { Layout.VersionFile, Layout.ConfigFile }.Where(File.Exists))
                     File.Delete(file);
             }
             finally { preparing.Release(); }
+            await Rpcs3Manager.UninstallAsync();
         }
 
         public static Process Launch(string core, string rom) => Start(Layout.Arguments(core, rom));

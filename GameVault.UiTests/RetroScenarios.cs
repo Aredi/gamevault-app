@@ -88,7 +88,7 @@ namespace GameVault.UiTests
                 await page.LoadPlatformsAsync();
                 await TestSession.WaitUntil(() => page.Shown.Any(), TimeSpan.FromSeconds(10), "the NES games");
 
-                Assert.Equal(new[] { "nes", "psx" }, page.ViewModel.Platforms.Select(p => p.Slug).Order());
+                Assert.Equal(new[] { "nes", "ps3", "psx" }, page.ViewModel.Platforms.Select(p => p.Slug).Order());
                 RetroGame zelda = Assert.Single(page.Shown);
                 Assert.Equal(("Zelda", "nes", false), (zelda.Name, zelda.Platform.Slug, zelda.Installed));
 
@@ -121,6 +121,64 @@ namespace GameVault.UiTests
                 Assert.Equal("Castlevania.cue", Path.GetFileName(castlevania.RomFile));
                 Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(castlevania.RomFile)!, "Castlevania.zip")));
                 Assert.Equal(new byte[] { 1, 2, 3, 4 }, File.ReadAllBytes(Path.Combine(layout.SystemDirectory, "scph5501.bin")));
+            }
+            finally
+            {
+                SanctuaryService.Current = SanctuaryService.Url;
+                DownloadsViewModel.Instance.RetroDownloads.Clear();
+                Directory.Delete(layout.Directory, true);
+                Directory.Delete(Path.Combine(session.LibraryRoot, "GameVault", "Retro"), true);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task APs3Game_IsUnpackedFromItsFolder_AndRpcs3StartsItsFolder_WithTheFirmwareFromRomm()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            // RPCS3 as if already downloaded (the test does not fetch 90 MB), its firmware not yet installed
+            Rpcs3Layout layout = Rpcs3Manager.Layout;
+            Directory.CreateDirectory(Path.GetDirectoryName(layout.Executable)!);
+            File.WriteAllText(layout.Executable, "");
+            File.WriteAllText(layout.VersionFile, Rpcs3Layout.Version);
+            try
+            {
+                var page = new RetroUserControl();
+                await page.LoadPlatformsAsync();
+                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "ps3"));
+                await TestSession.WaitUntil(() => page.Shown.Count() == 2, TimeSpan.FromSeconds(10), "the PS3 games");
+
+                // A package needs the console's installation and its licence: refused before it comes down
+                RetroGame package = page.Shown.Single(g => g.Name == "Fatal Frame");
+                await RetroPlay.InstallAsync(package);
+                Assert.Contains(".pkg", package.Status);
+                Assert.Empty(DownloadsViewModel.Instance.RetroDownloads);
+
+                // The folder comes zipped and is unpacked; without the firmware in RomM, the game waits for it
+                RetroGame infamous = page.Shown.Single(g => g.Name == "inFamous");
+                await RetroPlay.InstallAsync(infamous);
+                RetroDownload download = Assert.Single(DownloadsViewModel.Instance.RetroDownloads);
+                await TestSession.WaitUntil(() => download.IsDone || download.IsFailed, TimeSpan.FromSeconds(20), "the PS3 download");
+                Assert.True(infamous.Installed, download.State);
+                Assert.Contains("PS3UPDAT.PUP", download.State);
+                string folder = Path.Combine(session.LibraryRoot, "GameVault", "Retro", "ps3", "60", "Infamous");
+                Assert.Equal(Path.Combine(folder, "PS3_GAME", "USRDIR", "EBOOT.BIN"), infamous.RomFile);
+                Assert.Equal(new[] { "--no-gui", "--user-id", Rpcs3Layout.UserId(RetroArchManager.Player), folder }, layout.Arguments(RetroArchManager.Player, infamous.RomFile!));
+                Assert.Contains("infoBoxEnabledWelcome=false", File.ReadAllText(layout.GuiSettingsFiles.First()));
+
+                // Its saves are what it writes in the console's storage, for the player
+                var saves = RetroCloudSaves.Of(infamous);
+                var before = saves.Snapshot();
+                string save = Path.Combine(layout.SavesDirectory(RetroArchManager.Player), "BCUS98119-SAVE", "SYS-DATA");
+                Directory.CreateDirectory(Path.GetDirectoryName(save)!);
+                File.WriteAllText(save, "chapter 2");
+                saves.Track(before);
+                Assert.Contains(save, saves.Files());
+
+                // Uninstalled with the other emulators: the console's storage, with the saves, stays
+                await RetroArchManager.UninstallAsync();
+                Assert.False(File.Exists(layout.Executable));
+                Assert.True(File.Exists(save));
             }
             finally
             {

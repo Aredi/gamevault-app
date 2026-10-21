@@ -150,7 +150,13 @@ namespace gamevault.UserControls
 
         private async void Menu_Click(object? sender, RoutedEventArgs e)
         {
-            try { await RetroArchManager.OpenMenuAsync(text => ViewModel.Game.Status = text); }
+            try
+            {
+                if (ViewModel.Game.Platform.System.IsRpcs3)
+                    await Rpcs3Manager.OpenAsync(text => ViewModel.Game.Status = text);
+                else
+                    await RetroArchManager.OpenMenuAsync(text => ViewModel.Game.Status = text);
+            }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
             ViewModel.Game.Status = "";
         }

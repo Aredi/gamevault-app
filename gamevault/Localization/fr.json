@@ -1147,7 +1147,6 @@
   "The saves of this PC kept when newer ones came from another PC": "Les sauvegardes de ce PC gardées quand de plus récentes sont venues d'un autre PC",
   "Their retro games": "Leurs jeux rétro",
   "Uninstall RetroArch": "Désinstaller RetroArch",
-  "Uninstall RetroArch, its cores and the BIOS? They come back at the next retro game; the saves are kept.": "Désinstaller RetroArch, ses cœurs et les BIOS ? Ils reviendront au prochain jeu rétro ; les sauvegardes sont gardées.",
   "Version {0} installed · {1}": "Version {0} installée · {1}",
   "{0} save file(s) on this PC": "{0} fichier(s) de sauvegarde sur ce PC",
   "cloud saves off (Settings > Data)": "sauvegardes cloud désactivées (Paramètres > Données)",
@@ -1186,5 +1185,17 @@
   "The saves of '{0}' are in RomM": "Les sauvegardes de « {0} » sont dans RomM",
   "Unlink": "Délier",
   "Unlink your RomM account? The retro saves go to SanctuaryVault again (the ones in RomM stay there).": "Délier ton compte RomM ? Les sauvegardes rétro iront de nouveau dans SanctuaryVault (celles dans RomM y restent).",
-  "With your RomM account linked, the saves of the retro games go to your RomM: its web page plays with them too, and the ones made there come here. The cloud saves of the PC games RomM has go there too, instead of the GameVault server (the others stay on it). Without it, nothing goes to RomM.": "Avec ton compte RomM lié, les sauvegardes des jeux rétro vont dans ton RomM : son site web joue aussi avec, et celles faites là-bas reviennent ici. Les sauvegardes cloud des jeux PC que RomM possède y vont aussi, à la place du serveur GameVault (les autres y restent). Sans compte, rien ne va dans RomM."
+  "With your RomM account linked, the saves of the retro games go to your RomM: its web page plays with them too, and the ones made there come here. The cloud saves of the PC games RomM has go there too, instead of the GameVault server (the others stay on it). Without it, nothing goes to RomM.": "Avec ton compte RomM lié, les sauvegardes des jeux rétro vont dans ton RomM : son site web joue aussi avec, et celles faites là-bas reviennent ici. Les sauvegardes cloud des jeux PC que RomM possède y vont aussi, à la place du serveur GameVault (les autres y restent). Sans compte, rien ne va dans RomM.",
+  "{0} needs its firmware (PS3UPDAT.PUP): an administrator adds it in RomM, in the Firmware of the platform.": "{0} a besoin de son firmware (PS3UPDAT.PUP) : un administrateur l'ajoute dans RomM, dans le Firmware de la plateforme.",
+  "Controls and picture: RPCS3 settings": "Manettes et image : réglages de RPCS3",
+  "Downloading the PS3 firmware...": "Téléchargement du firmware PS3...",
+  "Firmware installed in RPCS3": "Firmware installé dans RPCS3",
+  "Installing RPCS3, once for all the PS3 games: downloading {0:0}%": "Installation de RPCS3, une fois pour tous les jeux PS3 : téléchargement {0:0} %",
+  "Installing RPCS3, once for all the PS3 games: unpacking {0}%": "Installation de RPCS3, une fois pour tous les jeux PS3 : décompression {0} %",
+  "Not on this PC yet: PS3UPDAT.PUP is taken from RomM at the first game, RPCS3 asks to install it": "Pas encore sur ce PC : PS3UPDAT.PUP est pris dans RomM au premier jeu, RPCS3 demande de l'installer",
+  "Playing: close the game's window to quit": "En jeu : ferme la fenêtre du jeu pour quitter",
+  "PS3 packages (.pkg) can not be played here: an ISO or the game's folder is needed in RomM.": "Les paquets PS3 (.pkg) ne peuvent pas être joués ici : il faut une ISO ou le dossier du jeu dans RomM.",
+  "RPCS3 asks to install the PS3 firmware: answer Yes in its window": "RPCS3 demande d'installer le firmware PS3 : réponds Oui dans sa fenêtre",
+  "The PS3 firmware was not installed: play again and answer Yes in RPCS3's window.": "Le firmware PS3 n'a pas été installé : relance le jeu et réponds Oui dans la fenêtre de RPCS3.",
+  "Uninstall the emulators (RetroArch, its cores, RPCS3), the BIOS and the PS3 firmware? They come back at the next retro game; the saves are kept.": "Désinstaller les émulateurs (RetroArch, ses cœurs, RPCS3), les BIOS et le firmware PS3 ? Ils reviennent au prochain jeu rétro ; les sauvegardes sont gardées."
 }

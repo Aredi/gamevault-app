@@ -280,15 +280,22 @@ namespace gamevault.Helper
         internal static string Size(double bytes, int unit = 1024) =>
             new Converter.GameSizeConverter().Convert((long)Math.Round(bytes), typeof(string), unit, System.Globalization.CultureInfo.CurrentCulture) as string ?? "";
 
+        /// <summary>A step of the preparation, from another thread: shown when it comes, unless the preparation ended (its outcome stays).</summary>
+        private void Preparing(string text) => Dispatcher.UIThread.Post(() =>
+        {
+            if (IsPreparing)
+                State = text;
+        });
+
         /// <summary>The downloaded file made playable, then what the platform needs.</summary>
         private async Task PrepareAsync()
         {
             string downloaded = Directory.EnumerateFiles(Folder).Where(f => Path.GetFileName(f) != InfoFile).OrderByDescending(File.GetLastWriteTimeUtc).First();
-            if (Game.Multi && string.Equals(Path.GetExtension(downloaded), ".zip", StringComparison.OrdinalIgnoreCase))
+            if ((Game.Multi || Game.Platform.System.IsRpcs3) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z")
             {
-                // A game in several files (a CD and its tracks): RomM sends them zipped
+                // A game in several files (a CD and its tracks, a PS3 game's folder): RomM sends them zipped; a PS3 ISO may be zipped too
                 var sevenZip = new SevenZipHelper();
-                sevenZip.Process += (_, e) => Dispatcher.UIThread.Post(() => State = Loc.F("Unpacking... {0}%", e.PercentageDone));
+                sevenZip.Process += (_, e) => Preparing(Loc.F("Unpacking... {0}%", e.PercentageDone));
                 State = Loc.F("Unpacking... {0}%", 0);
                 if (await sevenZip.ExtractArchive(downloaded, Folder) != 0)
                     throw new IOException(sevenZip.LastError);
@@ -303,7 +310,7 @@ namespace gamevault.Helper
                     read = await file.ReadAsync(start);
                 await CiaReader.ExtractAsync(downloaded, CiaReader.Inspect(start.AsSpan(0, read), new FileInfo(downloaded).Length));
             }
-            await RetroArchManager.EnsureReadyAsync(Game.Platform, text => Dispatcher.UIThread.Post(() => State = text));
+            await RetroArchManager.EnsureReadyAsync(Game.Platform, Preparing);
             if (Game.RomFile == null)
                 throw new IOException(Loc.T("None of this game's files can be started by the emulator."));
         }
@@ -353,6 +360,9 @@ namespace gamevault.Helper
             }
             if ((SettingsViewModel.Instance.RootDirectories?.Count ?? 0) == 0)
                 return Loc.T("No Root Directory configured! Go to ⚙️Settings->Data");
+            // A PS3 package is installed into the console with its licence: not done here, told before gigabytes come down
+            if (game.Platform.System.IsRpcs3 && string.Equals(Path.GetExtension(game.FileName), ".pkg", StringComparison.OrdinalIgnoreCase))
+                return Loc.T("PS3 packages (.pkg) can not be played here: an ISO or the game's folder is needed in RomM.");
             // Most 3DS packages are encrypted, which Azahar can not play: told before gigabytes come down
             if (string.Equals(Path.GetExtension(game.FileName), ".cia", StringComparison.OrdinalIgnoreCase)
                 && CiaReader.Inspect(await RetroService.ReadStartAsync(game, CiaReader.HeaderBytes), game.Size).Verdict != CiaReader.Verdict.Playable)

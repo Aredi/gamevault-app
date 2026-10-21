@@ -74,8 +74,8 @@ namespace GameVault.Uploader
             return JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
         }
 
-        /// <summary>The name of a rom's or BIOS's file, which RomM's download address ends with; null when RomM has no such id.</summary>
-        private async Task<string?> FileNameAsync(string path, string field, CancellationToken cancellationToken)
+        /// <summary>RomM's details of a rom or BIOS (the name its download address ends with); null when RomM has no such id.</summary>
+        private async Task<JsonElement?> DetailsAsync(string path, CancellationToken cancellationToken)
         {
             using HttpResponseMessage response = await SendAsync(Get(path), cancellationToken);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -83,8 +83,10 @@ namespace GameVault.Uploader
             if (!response.IsSuccessStatusCode)
                 throw new RommException($"RomM answered {(int)response.StatusCode}.");
             using JsonDocument details = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
-            return Text(details.RootElement, field);
+            return details.RootElement.Clone();
         }
+
+        private static bool Flag(JsonElement element, string name) => element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.True;
 
         private static string? Text(JsonElement element, string name) =>
             element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
@@ -154,7 +156,7 @@ namespace GameVault.Uploader
 
         public async Task FirmwareContentAsync(int id, HttpResponse response, CancellationToken cancellationToken)
         {
-            string? name = await FileNameAsync($"api/firmware/{id}", "file_name", cancellationToken);
+            string? name = await DetailsAsync($"api/firmware/{id}", cancellationToken) is JsonElement details ? Text(details, "file_name") : null;
             if (string.IsNullOrEmpty(name))
             {
                 response.StatusCode = StatusCodes.Status404NotFound;
@@ -178,14 +180,18 @@ namespace GameVault.Uploader
         /// <summary>The rom's file, in parts when asked (Range), so a download can continue.</summary>
         public async Task ContentAsync(int id, HttpRequest request, HttpResponse response, CancellationToken cancellationToken)
         {
-            string? name = await FileNameAsync($"api/roms/{id}", "fs_name", cancellationToken);
+            JsonElement? rom = await DetailsAsync($"api/roms/{id}", cancellationToken);
+            string? name = rom is JsonElement details ? Text(details, "fs_name") : null;
             if (string.IsNullOrEmpty(name))
             {
                 response.StatusCode = StatusCodes.Status404NotFound;
                 return;
             }
             HttpRequestMessage content = Get($"api/roms/{id}/content/{Uri.EscapeDataString(name)}");
-            if (request.Headers.Range.Count > 0)
+            // A game in several files or a folder (a PS3 game) comes as a zip RomM makes as it sends it: asked a part of
+            // it, RomM reads all the files first (a PS3 game's 7 GB: the request times out). Sent whole instead.
+            bool zipped = Flag(rom!.Value, "has_multiple_files") || Flag(rom.Value, "has_nested_single_file");
+            if (request.Headers.Range.Count > 0 && !zipped)
                 content.Headers.TryAddWithoutValidation("Range", request.Headers.Range.ToString());
             using HttpResponseMessage file = await SendAsync(content, cancellationToken);
             // RomM names what it sends: the file in a game's folder (Wii), or the zip of a game in several files

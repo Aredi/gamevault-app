@@ -4,11 +4,15 @@ namespace GameVault.Core.Retro
     /// <param name="Slug">RomM's platform slug.</param>
     /// <param name="Name">Its name when RomM's is not known (offline).</param>
     /// <param name="Core">The RetroArch core.</param>
-    /// <param name="Extensions">The files the emulator starts, best first: a game in several files is given its first match.</param>
+    /// <param name="Extensions">The files the emulator starts, best first: a game in several files is given its first match. A name with a dot is a whole file name ("EBOOT.BIN").</param>
     /// <param name="SystemFiles">The core's data files from libretro (assets/system/&lt;name&gt;.zip), unpacked in the system folder.</param>
     /// <param name="FirmwareFolder">Where the BIOS kept in RomM go, inside the system folder ("" for its root); null when none is needed.</param>
     /// <param name="CoverRatio">Height / width of the platform's box art (the median of RomM's covers): the cards take it.</param>
-    public sealed record RetroSystem(string Slug, string Name, string Core, string[] Extensions, string? SystemFiles = null, string? FirmwareFolder = null, double CoverRatio = 1.4);
+    public sealed record RetroSystem(string Slug, string Name, string Core, string[] Extensions, string? SystemFiles = null, string? FirmwareFolder = null, double CoverRatio = 1.4)
+    {
+        /// <summary>Played with RPCS3, not RetroArch.</summary>
+        public bool IsRpcs3 => Core == "rpcs3";
+    }
 
     public static class RetroSystems
     {
@@ -26,6 +30,8 @@ namespace GameVault.Core.Retro
             // The game stays a zip: FinalBurn Neo reads MAME sets, with neogeo.zip as BIOS
             new RetroSystem("neogeoaes", "Neo Geo", "fbneo", new[] { "zip", "7z" }, FirmwareFolder: "fbneo", CoverRatio: 1.5),
             // Azahar plays decrypted games only; a CIA is given as its main content (.cxi), see CiaReader
+            // RPCS3, not RetroArch: an ISO (encrypted ones too), or a game in a folder started by its EBOOT.BIN's folder
+            new RetroSystem("ps3", "PlayStation 3", "rpcs3", new[] { "iso", "EBOOT.BIN" }, CoverRatio: 1.16),
             new RetroSystem("3ds", "Nintendo 3DS", "azahar", new[] { "cxi", "zcxi", "3ds", "cci", "zcci", "3dsx", "z3dsx", "app", "elf", "cia" }, CoverRatio: 0.89),
         }.ToDictionary(s => s.Slug);
 
@@ -43,7 +49,10 @@ namespace GameVault.Core.Retro
             var list = files.ToList();
             foreach (string extension in system.Extensions)
             {
-                string? match = list.Where(f => string.Equals(Path.GetExtension(f).TrimStart('.'), extension, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+                string? match = extension.Contains('.')
+                    // The one nearest the top (a game's other EBOOT.BIN are deeper)
+                    ? list.Where(f => string.Equals(Path.GetFileName(f), extension, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f.Length).FirstOrDefault()
+                    : list.Where(f => string.Equals(Path.GetExtension(f).TrimStart('.'), extension, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
                 if (match != null)
                     return match;
             }
