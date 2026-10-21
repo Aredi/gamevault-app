@@ -61,8 +61,8 @@ namespace GameVault.Uploader
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.PlatformsAsync(ct))));
             app.MapGet("/retro/platforms/{platformId:int}/games", (int platformId, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.GamesAsync(platformId, ct))));
-            app.MapGet("/retro/covers/{**path}", (string path, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
-                FromRommAsync(context, users, romm, ct, async () => { await romm.CoverAsync(path, context.Response, ct); return Results.Empty; }));
+            app.MapGet("/retro/media/{**path}", (string path, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => { await romm.MediaAsync(path, context.Response, ct); return Results.Empty; }));
             app.MapGet("/retro/platforms/{platformId:int}/firmware", (int platformId, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.FirmwareAsync(platformId, ct))));
             app.MapGet("/retro/firmware/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>

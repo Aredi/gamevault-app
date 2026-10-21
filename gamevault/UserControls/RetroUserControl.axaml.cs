@@ -1,8 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using GameVault.Core;
 using GameVault.Core.Retro;
 using gamevault.Helper;
+using gamevault.Helper.Platform;
 using gamevault.Localization;
 using gamevault.ViewModels;
 using System;
@@ -15,13 +17,15 @@ namespace gamevault.UserControls
 {
     public partial class RetroUserControl : UserControl
     {
-        private List<RetroGame> games = new();
-        internal IEnumerable<RetroGame> Shown => uiGames.ItemsSource as IEnumerable<RetroGame> ?? Array.Empty<RetroGame>();
+        internal RetroViewModel ViewModel { get; } = new();
+        private const double CardWidth = 170;
+        internal IEnumerable<RetroGame> Shown => ViewModel.Games;
         private bool loaded;
 
         public RetroUserControl()
         {
             InitializeComponent();
+            DataContext = ViewModel;
             AttachedToVisualTree += (_, _) =>
             {
                 Focus();
@@ -32,9 +36,8 @@ namespace gamevault.UserControls
 
         private void Show(string? message, bool loading = false)
         {
-            uiMessage.Text = message;
-            uiMessage.IsVisible = message != null;
-            uiLoading.IsActive = uiLoading.IsVisible = loading;
+            ViewModel.Message = message;
+            ViewModel.Loading = loading;
         }
 
         internal async Task LoadPlatformsAsync()
@@ -49,8 +52,8 @@ namespace gamevault.UserControls
                     Show(platforms == null ? Loc.T("The games of the other platforms are not available on this server.") : Loc.T("No game of a supported platform on the server yet."));
                     return;
                 }
-                uiPlatforms.ItemsSource = platforms;
-                uiPlatforms.SelectedIndex = 0;
+                ViewModel.Platforms = platforms;
+                await SelectPlatformAsync(platforms[0]);
             }
             catch (Exception ex)
             {
@@ -59,27 +62,69 @@ namespace gamevault.UserControls
             }
         }
 
-        private async void Platform_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        internal async Task SelectPlatformAsync(RetroPlatform platform)
         {
-            if (uiPlatforms.SelectedItem is not RetroPlatform platform)
-                return;
+            foreach (RetroPlatform other in ViewModel.Platforms)
+                other.IsSelected = other == platform;
+            SizeCards(platform);
+            ViewModel.SelectedGame = null;
+            ViewModel.AllGames = new();
             Show(null, loading: true);
-            uiGames.ItemsSource = null;
             try
             {
-                games = await RetroService.ListGamesAsync(platform);
+                ViewModel.AllGames = await RetroService.ListGamesAsync(platform);
                 Show(null);
-                ApplyFilter();
             }
             catch (Exception ex) { Show(WebExceptionHelper.TryGetServerMessage(ex)); }
         }
 
-        private void Search_TextChanged(object? sender, TextChangedEventArgs e) => ApplyFilter();
-
-        private void ApplyFilter()
+        /// <summary>As the library's cards (170 wide, the title and info below), with the shape of the platform's boxes.</summary>
+        internal void SizeCards(RetroPlatform platform)
         {
-            string search = uiSearch.Text?.Trim() ?? "";
-            uiGames.ItemsSource = search.Length == 0 ? games : games.Where(g => g.Name.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+            var layout = (UniformGridLayout)uiGames.Layout!;
+            layout.MinItemWidth = CardWidth + 16;
+            layout.MinItemHeight = CardWidth * platform.System.CoverRatio + 70;
+        }
+
+        private async void Platform_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is RetroPlatform platform)
+                await SelectPlatformAsync(platform);
+        }
+
+        private void Reload_Click(object? sender, RoutedEventArgs e) => _ = LoadPlatformsAsync();
+
+        private void GameCard_Click(object? sender, RoutedEventArgs e)
+        {
+            if (GameOf(sender) is RetroGame game)
+                ViewModel.SelectedGame = game;
+        }
+
+        /// <summary>As in the library: a double click plays, or installs.</summary>
+        private async void GameCard_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+        {
+            if (GameOf(sender) is not RetroGame game)
+                return;
+            if (game.Installed)
+                await PlayAsync(game);
+            else
+                await InstallAsync(game);
+        }
+
+        private void CloseDetails_Click(object? sender, RoutedEventArgs e) => ViewModel.SelectedGame = null;
+
+        private async void Manual_Click(object? sender, RoutedEventArgs e)
+        {
+            if (GameOf(sender) is not RetroGame { Manual: string manual })
+                return;
+            try { PlatformInfo.OpenFile(await RetroService.MediaFileAsync(manual)); }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        private void Video_Click(object? sender, RoutedEventArgs e)
+        {
+            if (GameOf(sender) is RetroGame { Video: string video })
+                PlatformInfo.OpenUrl($"https://www.youtube.com/watch?v={Uri.EscapeDataString(video)}");
         }
 
         private static RetroGame? GameOf(object? sender) => (sender as Control)?.DataContext as RetroGame;
@@ -162,7 +207,13 @@ namespace gamevault.UserControls
 
         private async void Play_Click(object? sender, RoutedEventArgs e)
         {
-            if (GameOf(sender) is not RetroGame game || game.Busy || game.RomFile is not string rom)
+            if (GameOf(sender) is RetroGame game)
+                await PlayAsync(game);
+        }
+
+        private async Task PlayAsync(RetroGame game)
+        {
+            if (game.Busy || game.RomFile is not string rom)
                 return;
             game.Busy = true;
             try
@@ -227,6 +278,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex) { game.Status = Loc.F("Failed: {0}", ex.Message); }
             game.Refresh();
+            ViewModel.ApplyFilter();
         }
     }
 }

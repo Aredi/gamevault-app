@@ -67,7 +67,7 @@ namespace GameVault.UiTests
                 await page.LoadPlatformsAsync();
                 await TestSession.WaitUntil(() => page.Shown.Any(), TimeSpan.FromSeconds(10), "the NES games");
 
-                Assert.Equal(new[] { "nes", "psx" }, ((IEnumerable<RetroPlatform>)page.FindControl<ComboBox>("uiPlatforms")!.ItemsSource!).Select(p => p.Slug));
+                Assert.Equal(new[] { "nes", "psx" }, page.ViewModel.Platforms.Select(p => p.Slug).Order());
                 RetroGame zelda = Assert.Single(page.Shown);
                 Assert.Equal(("Zelda", "nes", false), (zelda.Name, zelda.Platform.Slug, zelda.Installed));
 
@@ -79,7 +79,7 @@ namespace GameVault.UiTests
 
                 // A CD game: its zip unpacked, the cue started, the platform's BIOS fetched from RomM
                 File.WriteAllText(layout.CoreFile("swanstation"), "");
-                page.FindControl<ComboBox>("uiPlatforms")!.SelectedIndex = 1;
+                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "psx"));
                 await TestSession.WaitUntil(() => page.Shown.Any(g => g.Name == "Castlevania"), TimeSpan.FromSeconds(10), "the PS1 games");
                 RetroGame castlevania = Assert.Single(page.Shown);
                 await page.InstallAsync(castlevania);

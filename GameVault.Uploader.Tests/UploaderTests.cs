@@ -84,7 +84,11 @@ namespace GameVault.Uploader.Tests
             HttpResponseMessage answer = path switch
             {
                 "/api/platforms" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new object[] { new { id = 3, slug = "nes", name = "Nintendo Entertainment System", display_name = "NES", rom_count = 1 }, new { id = 4, slug = "dos", name = "DOS", display_name = (string?)null, rom_count = 0 } }) },
-                "/api/roms?platform_ids=3&limit=10000&order_by=name" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", fs_name = "Zelda (E).nes", fs_size_bytes = Rom.Length, path_cover_large = "/assets/romm/resources/roms/3/40/cover/big.png?ts=1", summary = "A sword", has_multiple_files = false } } }) },
+                "/api/roms?platform_ids=3&limit=10000&order_by=name" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", fs_name = "Zelda (E).nes", fs_size_bytes = Rom.Length, path_cover_large = "/assets/romm/resources/roms/3/40/cover/big.png?ts=1", summary = "A sword", has_multiple_files = false,
+                    metadatum = new { genres = new[] { "Adventure" }, companies = new[] { "Nintendo", "Nintendo" }, first_release_date = 509328000000L, average_rating = 88.5, player_count = "1", game_modes = new[] { "Single player" } },
+                    hltb_metadata = new { main_story = 32400 }, regions = new[] { "Europe" }, languages = new[] { "French" },
+                    merged_screenshots = new[] { "/assets/romm/resources/roms/3/40/screenshots/0.jpg", "/assets/romm/resources/roms/3/40/../../9/secret.jpg" },
+                    path_manual = "roms/3/40/manual/40.pdf", youtube_video_id = "abc123", ss_metadata = new { box2d_url = "https://example?devpassword=secret" } } } }) },
                 "/api/roms/40" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 40, fs_name = "Zelda (E).nes" }) },
                 // A game in a folder: RomM names the file it sends
                 "/api/roms/41" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 41, fs_name = "Bleach [RBLP8P]" }) },
@@ -378,11 +382,19 @@ namespace GameVault.Uploader.Tests
             {
                 JsonElement zelda = Assert.Single(games.RootElement.EnumerateArray());
                 Assert.Equal(("Zelda", "Zelda (E).nes", "roms/3/40/cover/big.png"), (zelda.GetProperty("name").GetString(), zelda.GetProperty("fileName").GetString(), zelda.GetProperty("cover").GetString()));
+                Assert.Equal((509328000000L, 88.5, "Adventure", "Nintendo", 32400L), (zelda.GetProperty("released").GetInt64(), zelda.GetProperty("rating").GetDouble(),
+                    zelda.GetProperty("genres")[0].GetString(), zelda.GetProperty("companies")[0].GetString(), zelda.GetProperty("mainStory").GetInt64()));
+                // Only RomM's own media paths; nothing of the providers' metadata (their keys) goes out
+                Assert.Equal(new[] { "roms/3/40/screenshots/0.jpg" }, zelda.GetProperty("screenshots").EnumerateArray().Select(s => s.GetString()));
+                Assert.Equal(("roms/3/40/manual/40.pdf", "abc123"), (zelda.GetProperty("manual").GetString(), zelda.GetProperty("video").GetString()));
+                Assert.DoesNotContain("devpassword", games.RootElement.GetRawText());
+                Assert.Single(zelda.GetProperty("companies").EnumerateArray());
             }
 
             // Covers only: no other path of RomM goes through
-            Assert.Equal("image/png", (await player.GetAsync("/retro/covers/roms/3/40/cover/big.png")).Content.Headers.ContentType!.MediaType);
-            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/covers/roms/3/40/../../../api/users")).StatusCode);
+            Assert.Equal("image/png", (await player.GetAsync("/retro/media/roms/3/40/cover/big.png")).Content.Headers.ContentType!.MediaType);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/media/roms/3/40/../../../api/users")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/media/roms/3/40/manual/40.exe")).StatusCode);
 
             // The file, whole or from where a download stopped
             HttpResponseMessage whole = await player.GetAsync("/retro/games/40/content");

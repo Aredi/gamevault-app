@@ -13,12 +13,25 @@ namespace GameVault.Uploader
     {
         public bool Enabled => !string.IsNullOrEmpty(options.RommUrl) && !string.IsNullOrEmpty(options.RommUsername);
 
-        /// <summary>The covers RomM keeps (roms/&lt;platform&gt;/&lt;rom&gt;/cover/big.png): nothing else of RomM is reachable this way.</summary>
-        [GeneratedRegex(@"^roms/\d+/\d+/cover/(small|big)\.(png|jpe?g|webp)$")]
-        private static partial Regex CoverPath();
+        /// <summary>
+        /// The pictures and manuals RomM keeps for a game (roms/&lt;platform&gt;/&lt;rom&gt;/cover/big.png, …/screenshots/0.jpg,
+        /// …/manual/523.pdf): nothing else of RomM is reachable this way.
+        /// </summary>
+        [GeneratedRegex(@"^roms/\d+/\d+/(cover/(small|big)\.(png|jpe?g|webp)|screenshots/\d+\.(png|jpe?g|webp)|manual/\d+\.pdf)$")]
+        private static partial Regex MediaPath();
 
-        [GeneratedRegex(@"roms/\d+/\d+/cover/[a-z]+\.[a-z]+")]
-        private static partial Regex CoverInRomm();
+        [GeneratedRegex(@"roms/\d+/\d+/(cover|screenshots|manual)/[A-Za-z0-9]+\.[a-z]+")]
+        private static partial Regex MediaInRomm();
+
+        private static string? Media(string? path) => MediaInRomm().Match(path ?? "") is { Success: true } m && MediaPath().IsMatch(m.Value) ? m.Value : null;
+
+        private static string[] Texts(JsonElement element, string name) =>
+            element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out JsonElement list) && list.ValueKind == JsonValueKind.Array
+                ? list.EnumerateArray().Where(v => v.ValueKind == JsonValueKind.String).Select(v => v.GetString()!).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+                : Array.Empty<string>();
+
+        private static double? Decimal(JsonElement element, string name) =>
+            element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number ? value.GetDouble() : null;
 
         public sealed class RommException(string message) : Exception(message);
 
@@ -77,16 +90,40 @@ namespace GameVault.Uploader
         public async Task<object> GamesAsync(int platformId, CancellationToken cancellationToken)
         {
             using JsonDocument page = await GetJsonAsync($"api/roms?platform_ids={platformId}&limit=10000&order_by=name", cancellationToken);
-            return page.RootElement.GetProperty("items").EnumerateArray().Select(r => new
+            return page.RootElement.GetProperty("items").EnumerateArray().Select(r =>
             {
-                id = Number(r, "id"),
-                name = Text(r, "name") ?? Text(r, "fs_name_no_ext"),
-                fileName = Text(r, "fs_name"),
-                size = Number(r, "fs_size_bytes"),
-                cover = CoverInRomm().Match(Text(r, "path_cover_large") ?? Text(r, "path_cover_small") ?? "") is { Success: true } m ? m.Value : null,
-                summary = Text(r, "summary"),
-                // Several files: RomM sends them as one zip, which the client unpacks
-                multi = r.TryGetProperty("has_multiple_files", out JsonElement multi) && multi.ValueKind == JsonValueKind.True,
+                JsonElement about = r.TryGetProperty("metadatum", out JsonElement metadatum) ? metadatum : default;
+                JsonElement hltb = r.TryGetProperty("hltb_metadata", out JsonElement howLong) ? howLong : default;
+                return new
+                {
+                    id = Number(r, "id"),
+                    name = Text(r, "name") ?? Text(r, "fs_name_no_ext"),
+                    fileName = Text(r, "fs_name"),
+                    size = Number(r, "fs_size_bytes"),
+                    cover = Media(Text(r, "path_cover_large") ?? Text(r, "path_cover_small")),
+                    summary = Text(r, "summary"),
+                    // What the library shows of a game: picked one by one (RomM's metadata also hold its providers' keys)
+                    released = Decimal(about, "first_release_date") is double date ? (long?)date : null,
+                    rating = Decimal(about, "average_rating"),
+                    genres = Texts(about, "genres"),
+                    companies = Texts(about, "companies"),
+                    franchises = Texts(about, "franchises"),
+                    modes = Texts(about, "game_modes"),
+                    ageRatings = Texts(about, "age_ratings"),
+                    // RomM writes "null" when it does not know
+                    players = about.ValueKind == JsonValueKind.Object && Text(about, "player_count") is string players && players != "null" ? players : null,
+                    regions = Texts(r, "regions"),
+                    languages = Texts(r, "languages"),
+                    screenshots = r.TryGetProperty("merged_screenshots", out JsonElement shots) && shots.ValueKind == JsonValueKind.Array
+                        ? shots.EnumerateArray().Select(s => Media(s.GetString())).OfType<string>().Take(12).ToArray()
+                        : Array.Empty<string>(),
+                    manual = Media(Text(r, "path_manual")),
+                    video = Text(r, "youtube_video_id"),
+                    // Seconds to finish the main story, from HowLongToBeat
+                    mainStory = Decimal(hltb, "main_story") is double story && story > 0 ? (long?)story : null,
+                    // Several files: RomM sends them as one zip, which the client unpacks
+                    multi = r.TryGetProperty("has_multiple_files", out JsonElement multi) && multi.ValueKind == JsonValueKind.True,
+                };
             }).ToList();
         }
 
@@ -120,9 +157,9 @@ namespace GameVault.Uploader
             await CopyAsync(file, response, cancellationToken);
         }
 
-        public async Task CoverAsync(string path, HttpResponse response, CancellationToken cancellationToken)
+        public async Task MediaAsync(string path, HttpResponse response, CancellationToken cancellationToken)
         {
-            if (!CoverPath().IsMatch(path))
+            if (!MediaPath().IsMatch(path))
             {
                 response.StatusCode = StatusCodes.Status404NotFound;
                 return;

@@ -1,57 +1,263 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.RetroUserControl"
              Focusable="True">
-    <!-- The games of the other platforms (RomM), played with RetroArch: installed and set up by the client -->
-    <Grid RowDefinitions="Auto,*" Margin="40,24,20,0">
-        <StackPanel Spacing="4" Margin="0,0,20,12">
-            <TextBlock Classes="pageTitle" Text="{l:T 'Retro'}" />
+    <!-- The games of the other platforms (RomM), played with RetroArch: laid out as the library (toolbar, chips, cards, details) -->
+    <UserControl.Resources>
+        <conv:AccentBrushConverter x:Key="accentBrushConv" />
+        <conv:AccentShadowConverter x:Key="accentShadowConv" />
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="WrapPanel.chips > :is(Control)">
+            <Setter Property="Margin" Value="0,0,8,8" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto">
+        <!-- Top of the page tinted with the color of the shown game -->
+        <Border Grid.RowSpan="2" Grid.ColumnSpan="2" Height="620" VerticalAlignment="Top" IsHitTestVisible="False" Background="{Binding AmbientBrush}" />
+
+        <!-- ===== Toolbar ===== -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="28,20,28,6" Spacing="14">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Classes="pageTitle" Text="{l:T 'Retro'}" VerticalAlignment="Center" />
+                    <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Margin="0,4,0,0" Text="{Binding CountText}" />
+                </StackPanel>
+                <TextBox x:Name="uiSearch" Grid.Column="1" Classes="librarySearch" MaxWidth="460" Margin="28,0" HorizontalAlignment="Stretch"
+                         Watermark="{l:T 'Search the retro games'}" Text="{Binding Search}">
+                    <TextBox.InnerLeftContent>
+                        <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="16" Height="16" Margin="12,0,6,0" />
+                    </TextBox.InnerLeftContent>
+                </TextBox>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Button x:Name="uiMenu" Classes="round small" Click="Menu_Click" ToolTip.Tip="{l:T 'RetroArch without a game: controls, picture, sound'}">
+                        <Path Data="{StaticResource IconNavSettings}" Width="16" Height="16" />
+                    </Button>
+                    <Button Classes="round small" Click="Reload_Click" ToolTip.Tip="{l:T 'Reload'}">
+                        <Path Data="{StaticResource IconReload}" Width="15" Height="15" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Platforms, then the filters and the sorting -->
+            <Grid ColumnDefinitions="*,Auto">
+                <WrapPanel Classes="chips" Margin="0,0,0,-8">
+                    <ItemsControl x:Name="uiPlatforms" ItemsSource="{Binding Platforms}" Margin="0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ToggleButton Classes="chip" Margin="0,0,8,8" IsChecked="{Binding IsSelected, Mode=OneWay}" Click="Platform_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Count}" Opacity="0.6" FontSize="11" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </ToggleButton>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Width="1" Height="20" Background="{DynamicResource Brush.Line}" Margin="4,6,12,14" />
+                    <ToggleButton Classes="chip" IsChecked="{Binding OnlyInstalled}" Content="{l:T 'Installed'}" />
+                </WrapPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                    <TextBlock Classes="muted" Text="{l:T 'Sort by'}" FontSize="13" VerticalAlignment="Center" />
+                    <ComboBox MinWidth="160" MinHeight="32" ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortBy}" />
+                </StackPanel>
+            </Grid>
             <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                       Text="{l:T 'The games of the other platforms, played with RetroArch: it is installed and set up the first time. Select+Start quits the game, L3+R3 opens its menu. The saves follow you from PC to PC.'}" />
-            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,12,0,0">
-                <ComboBox x:Name="uiPlatforms" MinWidth="220" SelectionChanged="Platform_SelectionChanged" />
-                <TextBox x:Name="uiSearch" Width="260" Watermark="{l:T 'Search'}" TextChanged="Search_TextChanged" />
-                <Button x:Name="uiMenu" Classes="ghost" Content="{l:T 'RetroArch settings'}" Click="Menu_Click"
-                        ToolTip.Tip="{l:T 'RetroArch without a game: controls, picture, sound'}" />
-            </StackPanel>
-            <TextBlock x:Name="uiMessage" Classes="muted" FontSize="13" Margin="0,16" IsVisible="False" TextWrapping="Wrap" />
-            <local:ProgressRing x:Name="uiLoading" IsActive="False" IsVisible="False" Width="32" Height="32" HorizontalAlignment="Left" Margin="10,16" />
+                       Text="{l:T 'Played with RetroArch, installed and set up the first time. Select+Start quits the game, L3+R3 opens its menu. The saves follow you from PC to PC.'}" />
         </StackPanel>
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <ItemsRepeater x:Name="uiGames" Margin="0,0,20,40">
-                <ItemsRepeater.Layout>
-                    <UniformGridLayout MinItemWidth="170" MinItemHeight="330" MinRowSpacing="14" MinColumnSpacing="14" />
-                </ItemsRepeater.Layout>
-                <ItemsRepeater.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Width="170" Spacing="6" ToolTip.Tip="{Binding Summary}">
-                            <Border Width="170" Height="220" CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
-                                <Panel>
-                                    <TextBlock Text="{Binding Name}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" Margin="10" />
-                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill" />
-                                </Panel>
-                            </Border>
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding Status}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"
-                                       IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                            <TextBlock Text="{Binding SizeText}" Classes="muted" FontSize="12"
-                                       IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                            <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding !Busy}">
-                                <Button Classes="action small" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Content="{l:T 'Install'}"
-                                        Click="Install_Click" IsVisible="{Binding !Installed}" />
-                                <Button Classes="action small" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Content="{l:T 'Play'}"
-                                        Click="Play_Click" IsVisible="{Binding Installed}" />
-                                <Button Grid.Column="1" Classes="wrapper" Margin="8,0,0,0" Cursor="Hand" Click="Delete_Click" IsVisible="{Binding Installed}"
-                                        ToolTip.Tip="{l:T 'Delete'}">
-                                    <Path Data="{DynamicResource IconTrash}" Fill="IndianRed" Width="18" Height="18" Stretch="Uniform" />
-                                </Button>
-                            </Grid>
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsRepeater.ItemTemplate>
-            </ItemsRepeater>
+
+        <!-- ===== Games ===== -->
+        <ScrollViewer Grid.Row="1" Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,8,0,40">
+                <TextBlock Classes="muted" FontSize="13.5" Margin="28,16" TextWrapping="Wrap" Text="{Binding Message}"
+                           IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <local:ProgressRing IsActive="{Binding Loading}" IsVisible="{Binding Loading}" Width="32" Height="32" HorizontalAlignment="Left" Margin="38,16" />
+                <ItemsRepeater x:Name="uiGames" ItemsSource="{Binding Games}" Margin="20,0">
+                    <ItemsRepeater.Layout>
+                        <UniformGridLayout ItemsStretch="Uniform" MinItemWidth="186" MinItemHeight="320" MinRowSpacing="10" MinColumnSpacing="0" />
+                    </ItemsRepeater.Layout>
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate>
+                            <Button Classes="gameCard" Margin="8,8,8,0" VerticalAlignment="Top" Click="GameCard_Click" DoubleTapped="GameCard_DoubleTapped">
+                                <StackPanel Spacing="8">
+                                    <local:AspectBox Ratio="{Binding Platform.System.CoverRatio}">
+                                        <Panel Classes="lift">
+                                            <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
+                                                    BoxShadow="{Binding Accent, Converter={StaticResource accentShadowConv}, ConverterParameter='16 36 -8 0.75'}" />
+                                            <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                                <Panel>
+                                                    <TextBlock Text="{Binding Name}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" Margin="14" />
+                                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill" />
+                                                </Panel>
+                                            </Border>
+                                            <!-- State -->
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" Spacing="4">
+                                                <Border Classes="badge" IsVisible="{Binding Installed}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="3">
+                                                        <Path Data="{StaticResource IconTick}" Fill="{DynamicResource Brush.Success}" Stretch="Uniform" Width="9" Height="9" VerticalAlignment="Center" />
+                                                        <TextBlock Text="{l:T 'INSTALLED'}" Foreground="{DynamicResource Brush.Success}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                            <!-- What is going on (download, unpacking, playing) -->
+                                            <Border VerticalAlignment="Bottom" Margin="8" Padding="10,6" CornerRadius="8" Background="#CC000000"
+                                                    IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11.5" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                                            </Border>
+                                        </Panel>
+                                    </local:AspectBox>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="cardTitle" Text="{Binding Name}" />
+                                        <TextBlock Classes="cardInfo" Text="{Binding Info}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </StackPanel>
         </ScrollViewer>
+
+        <!-- ===== The shown game ===== -->
+        <Border Grid.Row="1" Grid.Column="1" Width="400" IsVisible="{Binding SelectedGame, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1,1,0,0" CornerRadius="18,0,0,0"
+                ClipToBounds="True" Margin="0,10,0,0">
+            <Panel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedGame}">
+                    <StackPanel>
+                        <Panel Height="210">
+                            <Image Source="{Binding Banner}" Stretch="UniformToFill" />
+                            <Border>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0%,100%" EndPoint="0%,0%">
+                                        <GradientStop Color="{DynamicResource GameVault.Colors.Background2}" Offset="0" />
+                                        <GradientStop Color="#00000000" Offset="0.75" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                        </Panel>
+                        <StackPanel Margin="24,-96,24,28" Spacing="16">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Border Width="116" Height="174" CornerRadius="10" ClipToBounds="True" BoxShadow="0 16 32 -10 #B3000000" Background="{DynamicResource Brush.Surface3}">
+                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="16,0,0,4" VerticalAlignment="Bottom" Spacing="4">
+                                    <TextBlock Classes="display" FontSize="22" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                                    <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0} · {1}">
+                                                <Binding Path="Platform.Name" />
+                                                <Binding Path="SizeText" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+
+                            <WrapPanel IsEnabled="{Binding !Busy}">
+                                <Button Classes="action" Margin="0,0,8,8" Click="Install_Click" IsVisible="{Binding !Installed}"
+                                        Background="{Binding $parent[local:RetroUserControl].DataContext.AccentBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Path Data="{StaticResource IconArrowDown}" />
+                                        <TextBlock VerticalAlignment="Center" Text="{Binding SizeText, StringFormat={l:T 'Install · {0}'}}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="action" Margin="0,0,8,8" Click="Play_Click" IsVisible="{Binding Installed}"
+                                        Background="{Binding $parent[local:RetroUserControl].DataContext.AccentBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Path Data="{StaticResource IconPlay}" />
+                                        <TextBlock Text="{l:T 'Play'}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Classes="ghost" Margin="0,0,8,8" Click="Manual_Click" IsVisible="{Binding HasManual}" Content="{l:T 'Manual'}"
+                                        Background="{DynamicResource Brush.Surface3}" />
+                                <Button Classes="ghost" Margin="0,0,8,8" Click="Video_Click" IsVisible="{Binding HasVideo}" Content="{l:T 'Video'}"
+                                        Background="{DynamicResource Brush.Surface3}" />
+                                <Button Classes="ghost" Margin="0,0,8,8" Click="Delete_Click" IsVisible="{Binding Installed}" ToolTip.Tip="{l:T 'Delete from this PC (the saves are kept)'}"
+                                        Background="{DynamicResource Brush.Surface3}">
+                                    <Path Data="{DynamicResource IconTrash}" Fill="IndianRed" Width="16" Height="16" Stretch="Uniform" />
+                                </Button>
+                            </WrapPanel>
+                            <TextBlock Text="{Binding Status}" Classes="muted" FontSize="13" TextWrapping="Wrap" Margin="0,-8,0,0"
+                                       IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <Grid ColumnDefinitions="*,*,*">
+                                <StackPanel Spacing="3">
+                                    <TextBlock Classes="eyebrow muted" Text="{l:T 'RATING'}" FontSize="10.5" />
+                                    <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding RatingText}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="3">
+                                    <TextBlock Classes="eyebrow muted" Text="{l:T 'PLAYERS'}" FontSize="10.5" />
+                                    <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding PlayersText}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="3" ToolTip.Tip="{l:T 'To finish the main story (HowLongToBeat)'}">
+                                    <TextBlock Classes="eyebrow muted" Text="{l:T 'DURATION'}" FontSize="10.5" />
+                                    <TextBlock FontWeight="Bold" FontSize="16" Text="{Binding DurationText}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding Genres}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="12" Padding="10,4" Margin="0,0,6,6"
+                                                Background="{Binding $parent[local:RetroUserControl].DataContext.AccentSoftBrush}">
+                                            <TextBlock Text="{Binding}" FontSize="12" FontWeight="SemiBold" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="13.5" LineHeight="21" Opacity="0.88"
+                                       IsVisible="{Binding Summary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <!-- Screenshots -->
+                            <ItemsControl ItemsSource="{Binding ScreenshotImages}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" ClipToBounds="True" Margin="0,0,6,6" Background="{DynamicResource Brush.Surface3}">
+                                            <Image Source="{Binding}" Stretch="Uniform" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Details -->
+                            <ItemsControl ItemsSource="{Binding Details}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="120,*" Margin="0,0,0,8">
+                                            <TextBlock Classes="muted" FontSize="12.5" Text="{Binding Label}" />
+                                            <TextBlock Grid.Column="1" FontSize="12.5" TextWrapping="Wrap" Text="{Binding Value}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+                <Button Classes="round small" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" Click="CloseDetails_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="{StaticResource IconClose}" Width="12" Height="12" />
+                </Button>
+            </Panel>
+        </Border>
     </Grid>
 </UserControl>

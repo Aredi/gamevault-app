@@ -1,4 +1,6 @@
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using gamevault.Localization;
 using GameVault.Core;
 using GameVault.Core.Retro;
 using gamevault.Helper.Platform;
@@ -15,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace gamevault.Helper
 {
-    internal sealed class RetroPlatform
+    internal sealed class RetroPlatform : ViewModelBase
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
@@ -28,7 +30,14 @@ namespace gamevault.Helper
 
         public RetroSystem System => RetroSystems.All[Slug];
         public override string ToString() => $"{Name} ({Count})";
+
+        private bool isSelected;
+        /// <summary>The platform whose games the page shows (its chip is checked).</summary>
+        public bool IsSelected { get => isSelected; set { isSelected = value; OnPropertyChanged(); } }
     }
+
+    /// <summary>A line of a game's details: "Developers · Namco, Full Fat".</summary>
+    internal sealed record RetroDetail(string Label, string Value);
 
     /// <summary>A game of RomM, with what the page shows of it on this PC.</summary>
     internal sealed class RetroGame : ViewModelBase
@@ -48,11 +57,99 @@ namespace gamevault.Helper
         /// <summary>Several files (a CD game with its tracks...): they come as one zip, unpacked here.</summary>
         [JsonPropertyName("multi")]
         public bool Multi { get; set; }
+        /// <summary>First release, in unix milliseconds.</summary>
+        [JsonPropertyName("released")]
+        public long? Released { get; set; }
+        /// <summary>0 to 100.</summary>
+        [JsonPropertyName("rating")]
+        public double? Rating { get; set; }
+        [JsonPropertyName("genres")]
+        public string[] Genres { get; set; } = Array.Empty<string>();
+        [JsonPropertyName("companies")]
+        public string[] Companies { get; set; } = Array.Empty<string>();
+        [JsonPropertyName("franchises")]
+        public string[] Franchises { get; set; } = Array.Empty<string>();
+        [JsonPropertyName("modes")]
+        public string[] Modes { get; set; } = Array.Empty<string>();
+        [JsonPropertyName("ageRatings")]
+        public string[] AgeRatings { get; set; } = Array.Empty<string>();
+        [JsonPropertyName("players")]
+        public string? Players { get; set; }
+        [JsonPropertyName("regions")]
+        public string[] Regions { get; set; } = Array.Empty<string>();
+        [JsonPropertyName("languages")]
+        public string[] Languages { get; set; } = Array.Empty<string>();
+        [JsonPropertyName("screenshots")]
+        public string[] Screenshots { get; set; } = Array.Empty<string>();
+        /// <summary>The manual (a PDF kept by RomM).</summary>
+        [JsonPropertyName("manual")]
+        public string? Manual { get; set; }
+        /// <summary>A YouTube video id.</summary>
+        [JsonPropertyName("video")]
+        public string? Video { get; set; }
+        /// <summary>Seconds to finish the main story (HowLongToBeat).</summary>
+        [JsonPropertyName("mainStory")]
+        public long? MainStory { get; set; }
+
+        [JsonIgnore]
+        public DateTime? ReleaseDate => Released is long ms ? DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime : null;
+        /// <summary>Under the card: "2001 · Adventure".</summary>
+        [JsonIgnore]
+        public string Info => string.Join(" · ", new[] { ReleaseDate?.Year.ToString(), Genres.FirstOrDefault() }.Where(p => !string.IsNullOrEmpty(p)));
+        [JsonIgnore]
+        public string RatingText => Rating is double rating ? $"{rating:0} %" : "—";
+        [JsonIgnore]
+        public string PlayersText => string.IsNullOrEmpty(Players) || Players == "null" ? "—" : Players;
+        [JsonIgnore]
+        public string DurationText => MainStory is long seconds ? Loc.F("{0} h", Math.Max(1, Math.Round(seconds / 3600.0))) : "—";
+        [JsonIgnore]
+        public bool HasManual => Manual != null;
+        [JsonIgnore]
+        public bool HasVideo => !string.IsNullOrEmpty(Video);
+
+        /// <summary>The details shown beside the game, the empty ones left out.</summary>
+        [JsonIgnore]
+        public IReadOnlyList<RetroDetail> Details => new (string Label, string? Value)[]
+        {
+            (Loc.T("Release date"), ReleaseDate?.ToString("D", System.Globalization.CultureInfo.CurrentCulture)),
+            (Loc.T("Companies"), string.Join(", ", Companies)),
+            (Loc.T("Series"), string.Join(", ", Franchises)),
+            (Loc.T("Game modes"), string.Join(", ", Modes)),
+            (Loc.T("Regions"), string.Join(", ", Regions)),
+            (Loc.T("Languages"), string.Join(", ", Languages)),
+            (Loc.T("Age rating"), string.Join(", ", AgeRatings)),
+            (Loc.T("File"), FileName),
+        }.Where(d => !string.IsNullOrWhiteSpace(d.Value)).Select(d => new RetroDetail(d.Label, d.Value!)).ToList();
+
+        private Color? accent;
+        /// <summary>The cover's color, for the card's glow and the details' tint.</summary>
+        [JsonIgnore]
+        public Color? Accent { get => accent; private set { accent = value; OnPropertyChanged(); } }
+
+        private List<Bitmap>? screenshotImages;
+        /// <summary>Loaded when the game is shown in the details.</summary>
+        [JsonIgnore]
+        public List<Bitmap>? ScreenshotImages { get => screenshotImages; private set { screenshotImages = value; OnPropertyChanged(); OnPropertyChanged(nameof(Banner)); } }
+        [JsonIgnore]
+        public Bitmap? Banner => ScreenshotImages?.FirstOrDefault() ?? CoverImage;
+
+        public async Task LoadScreenshotsAsync()
+        {
+            if (ScreenshotImages != null)
+                return;
+            var images = new List<Bitmap>();
+            foreach (string screenshot in Screenshots)
+            {
+                try { images.Add(await RetroService.MediaImageAsync(screenshot, 640)); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+            ScreenshotImages = images;
+        }
 
         [JsonIgnore]
         public RetroPlatform Platform { get; set; } = null!;
         [JsonIgnore]
-        public string SizeText => GameVault.Core.Storage.StorageCleanup.FormatSize(Size);
+        public string SizeText => new Converter.GameSizeConverter().Convert(Size, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture) as string ?? "";
 
         private Bitmap? coverImage;
         private bool coverAsked;
@@ -75,8 +172,11 @@ namespace gamevault.Helper
         {
             try
             {
-                coverImage = await RetroService.CoverAsync(Cover!);
+                coverImage = await RetroService.MediaImageAsync(Cover!, 240);
                 OnPropertyChanged(nameof(CoverImage));
+                OnPropertyChanged(nameof(Banner));
+                Bitmap cover = coverImage;
+                Accent = await Task.Run(() => CoverColors.Get(cover, "retro:" + Cover));
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
@@ -213,19 +313,30 @@ namespace gamevault.Helper
             return saved.RootElement.GetProperty("savedAt").GetInt64();
         }
 
-        /// <summary>Kept on disk: a cover is downloaded once.</summary>
-        public static async Task<Bitmap> CoverAsync(string cover)
+        /// <summary>A cover, screenshot or manual of RomM, kept on disk: each is downloaded once.</summary>
+        public static async Task<string> MediaFileAsync(string media)
         {
-            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-covers", cover.Replace('/', '_'));
+            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", media.Replace('/', '_'));
             if (!File.Exists(file))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-                await WebHelper.DownloadImageFromUrlAsync($"{Service}/retro/covers/{cover}", file);
+                await WebHelper.DownloadImageFromUrlAsync($"{Service}/retro/media/{media}", file);
             }
+            return file;
+        }
+
+        public static async Task<Bitmap> MediaImageAsync(string media, int width)
+        {
+            string file = await MediaFileAsync(media);
             return await Task.Run(() =>
             {
                 using FileStream stream = File.OpenRead(file);
-                return Bitmap.DecodeToWidth(stream, 240);
+                var full = new Bitmap(stream);
+                // Small pictures (a GBA screenshot is 240 pixels wide) stay as they are: the view scales them
+                if (full.PixelSize.Width <= width)
+                    return full;
+                using (full)
+                    return full.CreateScaledBitmap(new Avalonia.PixelSize(width, Math.Max(1, full.PixelSize.Height * width / full.PixelSize.Width)));
             });
         }
     }

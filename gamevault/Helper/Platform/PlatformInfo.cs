@@ -110,6 +110,13 @@ namespace gamevault.Helper.Platform
             Open(url);
         }
 
+        /// <summary>Opens a downloaded document (a game's manual) with the PC's viewer.</summary>
+        public static void OpenFile(string path)
+        {
+            if (File.Exists(path))
+                Open(path);
+        }
+
         /// <summary>
         /// Opens a folder in the file manager.
         /// </summary>
