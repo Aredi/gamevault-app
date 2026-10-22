@@ -368,9 +368,13 @@ namespace gamevault.UserControls
             if (games.Count == 0)
                 return;
             int mastered = games.Count(g => g.Total > 0 && g.Earned == g.Total);
-            ViewModel.AchievementsTotal = mastered > 0
-                ? Loc.F("{0} achievements · {1} games at 100 %", games.Sum(g => g.Earned), mastered)
-                : Loc.F("{0} achievements", games.Sum(g => g.Earned));
+            int unlocked = games.Sum(g => g.Earned);
+            ViewModel.AchievementsTotal = mastered switch
+            {
+                0 => Loc.F("{0} achievements", unlocked),
+                1 => Loc.F("{0} achievements · 1 game at 100 %", unlocked),
+                _ => Loc.F("{0} achievements · {1} games at 100 %", unlocked, mastered),
+            };
             var rows = games.SelectMany(g => g.Unlocks.Select(u => (Game: g, Unlock: u))).OrderByDescending(u => u.Unlock.Date).Take(8)
                 .Select(u => new UnlockRow(u.Unlock.Title, $"{u.Game.Name} ({u.Game.PlatformName})", gamevault.Converter.RelativeDate.Format(u.Unlock.Date), u.Unlock.Badge)).ToList();
             ViewModel.Unlocks = rows;
