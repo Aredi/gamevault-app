@@ -95,6 +95,42 @@ namespace gamevault.ViewModels
                 OnPropertyChanged();
             }
         }
+        /// <summary>Its console has several controllers (Settings > Retro): the page can choose the game's.</summary>
+        public bool HasControllerChoice => Controllers.Length > 0;
+        private GameVault.Core.Retro.RetroControllers.Controller[] Controllers =>
+            GameVault.Core.Retro.RetroControllers.BySystem.GetValueOrDefault(Game.Platform.Slug) ?? Array.Empty<GameVault.Core.Retro.RetroControllers.Controller>();
+        /// <summary>"Automatic (its console's)", then the console's controllers.</summary>
+        public List<string> ControllerOptions => Controllers.Select(c => ControllerName(c.Name))
+            .Prepend(Loc.F("Automatic ({0})", ControllerName(Controllers.FirstOrDefault(c => c.Device == RetroArchManager.Controllers.GetValueOrDefault(Game.Platform.Slug))?.Name ?? Controllers.FirstOrDefault()?.Name ?? ""))).ToList();
+        public int ControllerIndex
+        {
+            get => RetroArchManager.GameControllers.TryGetValue(Game.Id.ToString(), out int chosen) ? Array.FindIndex(Controllers, c => c.Device == chosen) + 1 : 0;
+            set
+            {
+                if (value < 0 || value == ControllerIndex)
+                    return;
+                var games = RetroArchManager.GameControllers;
+                if (value == 0)
+                    games.Remove(Game.Id.ToString());
+                else
+                    games[Game.Id.ToString()] = Controllers[value - 1].Device;
+                RetroArchManager.GameControllers = games;
+                OnPropertyChanged();
+            }
+        }
+        /// <summary>A controller of <see cref="GameVault.Core.Retro.RetroControllers"/>, in the client's language.</summary>
+        public static string ControllerName(string name) => name switch
+        {
+            "Wiimote + Nunchuk" => Loc.T("Wiimote + Nunchuk"),
+            "Wiimote" => Loc.T("Wiimote"),
+            "Sideways Wiimote" => Loc.T("Sideways Wiimote"),
+            "Classic Controller" => Loc.T("Classic Controller"),
+            "GameCube Controller" => Loc.T("GameCube Controller"),
+            "DualShock (analog)" => Loc.T("DualShock (analog)"),
+            "Digital controller" => Loc.T("Digital controller"),
+            _ => name,
+        };
+
         /// <summary>"in French", inside a sentence.</summary>
         public static string Lower(string text) => text.Length > 0 ? char.ToLower(text[0], CultureInfo.CurrentCulture) + text[1..] : text;
         /// <summary>"In French": RomM's name, in the client's language.</summary>

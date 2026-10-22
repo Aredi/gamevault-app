@@ -95,6 +95,21 @@
             </StackPanel>
 
             <StackPanel Classes="section">
+                <TextBlock Classes="h1" Text="{l:T 'Controllers'}" />
+                <TextBlock Text="{l:T 'The controller of the consoles that have several; a game\'s page can choose another.'}" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,10" />
+                <ItemsControl x:Name="uiControllers">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="260,Auto" Margin="0,0,0,8">
+                                <TextBlock Text="{Binding Console}" FontSize="13.5" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <ComboBox Grid.Column="1" MinWidth="220" ItemsSource="{Binding Choices}" SelectedIndex="{Binding Index}" SelectionChanged="Controller_Changed" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'Game language'}" />
                 <TextBlock x:Name="uiLanguageConsoles" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,10" />
                 <ComboBox x:Name="uiLanguage" MinWidth="220" SelectionChanged="Language_Changed" />

@@ -101,6 +101,9 @@ namespace gamevault.Helper
             return Start(Array.Empty<string>());
         }
 
+        /// <summary>What the player has to do once for their controller, shown while the game runs; none when it is ready.</summary>
+        public virtual string? ControllerHint => null;
+
         /// <summary>Its platform's core, as the settings know it ("rpcs3").</summary>
         public abstract string Core { get; }
 

@@ -104,6 +104,10 @@ namespace gamevault.Models
         RetroLanguage,
         //Language chosen for games (profileconfig): "559=French;12=Japanese"
         RetroGameLanguages,
+        //Controller of the consoles that have several (profileconfig), RetroArch's ids: "wii=769;psx=261"
+        RetroControllers,
+        //Controller chosen for games (profileconfig): "559=1025"
+        RetroGameControllers,
         //Download queue
         MaxConcurrentDownloads,
         //Interface language (profileconfig): "", "en", "fr"

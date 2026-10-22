@@ -103,6 +103,25 @@ namespace gamevault.Helper
         /// <summary>The language the game starts in.</summary>
         public static string LanguageOf(RetroGame game) => RetroLanguage.Pick(GameLanguages.GetValueOrDefault(game.Id), Language, game.Languages);
 
+        /// <summary>The controller of the consoles that have several (Settings > Retro), by their slug.</summary>
+        public static Dictionary<string, int> Controllers
+        {
+            get => RetroControllers.Parse(Preferences.Get(Models.AppConfigKey.RetroControllers, ProfileConfig));
+            set => Preferences.Set(Models.AppConfigKey.RetroControllers, RetroControllers.Format(value), ProfileConfig);
+        }
+
+        /// <summary>The controller chosen on games' pages, by their RomM id.</summary>
+        public static Dictionary<string, int> GameControllers
+        {
+            get => RetroControllers.Parse(Preferences.Get(Models.AppConfigKey.RetroGameControllers, ProfileConfig));
+            set => Preferences.Set(Models.AppConfigKey.RetroGameControllers, RetroControllers.Format(value), ProfileConfig);
+        }
+
+        /// <summary>The controller the game starts with; null when its console has one only.</summary>
+        public static int? ControllerOf(RetroGame game) => RetroControllers.Pick(game.Platform.Slug,
+            GameControllers.TryGetValue(game.Id.ToString(), out int chosen) ? chosen : null,
+            Controllers.TryGetValue(game.Platform.Slug, out int console) ? console : null);
+
         /// <summary>A value of the core's options (the others, chosen in RetroArch's menu, kept).</summary>
         private static void SetOption(string core, (string Key, string Value)? option)
         {
@@ -111,6 +130,17 @@ namespace gamevault.Helper
             string file = Layout.CoreOptionsFile(core);
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             File.WriteAllText(file, RetroResolution.MergeOptions(File.Exists(file) ? File.ReadAllText(file) : "", key, value));
+        }
+
+        /// <summary>The controller in the game's remap file, unless the player saved their own for it in RetroArch's menu.</summary>
+        private static void SetController(string core, string rom, int device)
+        {
+            static string? Read(string file) => File.Exists(file) ? File.ReadAllText(file) : null;
+            string file = Layout.GameRemapFile(core, rom);
+            if (RetroControllers.Remap(Read(file), Read(Layout.FolderRemapFile(core, rom)) ?? Read(Layout.CoreRemapFile(core)), device) is not string remap)
+                return;
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, remap);
         }
 
         /// <summary>The game's CRT preset written when its console has the look, removed when it no longer has it.</summary>
@@ -250,8 +280,9 @@ namespace gamevault.Helper
         }
 
         /// <param name="language">The console's, when it has one: see <see cref="LanguageOf"/>.</param>
+        /// <param name="controller">Its first port's, when the console has several: see <see cref="ControllerOf"/>.</param>
         /// <param name="stateSlot">The save state the game starts from, or none.</param>
-        public static Process Launch(RetroSystem system, string rom, string language, int? stateSlot = null)
+        public static Process Launch(RetroSystem system, string rom, string language, int? controller = null, int? stateSlot = null)
         {
             try
             {
@@ -259,6 +290,8 @@ namespace gamevault.Helper
                 if (Resolutions.TryGetValue(system.Core, out int scale))
                     SetOption(system.Core, RetroResolution.CoreOption(system.Core, scale));
                 SetOption(system.Core, RetroLanguage.CoreOption(system.Core, language));
+                if (controller is int device)
+                    SetController(system.Core, rom, device);
             }
             catch (Exception ex) { Log.Ignored(ex); }
             return Start(Layout.Arguments(system.Core, rom, stateSlot));

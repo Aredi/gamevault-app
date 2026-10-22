@@ -1239,5 +1239,17 @@
   "Game language": "Langue des jeux",
   "LANGUAGE": "LANGUE",
   "The language of the console the game starts in; a game without it keeps its own": "La langue de la console au lancement du jeu ; un jeu qui ne l'a pas garde la sienne",
-  "The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.": "Les consoles qui ont une langue démarrent dans celle-ci : {0}. Un jeu qui ne l'a pas garde la sienne ; la page d'un jeu peut en choisir une autre."
+  "The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.": "Les consoles qui ont une langue démarrent dans celle-ci : {0}. Un jeu qui ne l'a pas garde la sienne ; la page d'un jeu peut en choisir une autre.",
+  "Wiimote + Nunchuk": "Wiimote + Nunchuk",
+  "Wiimote": "Wiimote",
+  "Sideways Wiimote": "Wiimote à l'horizontale",
+  "Classic Controller": "Manette Classique",
+  "GameCube Controller": "Manette GameCube",
+  "DualShock (analog)": "DualShock (analogique)",
+  "Digital controller": "Manette numérique",
+  "CONTROLLER": "MANETTE",
+  "Controllers": "Manettes",
+  "The controller the game is played with: RetroArch gives it to the console at the start": "La manette avec laquelle on joue : RetroArch la donne à la console au lancement",
+  "The controller of the consoles that have several; a game's page can choose another.": "La manette des consoles qui en ont plusieurs ; la page d'un jeu peut en choisir une autre.",
+  "Controller: Eden plays with the keyboard until yours is chosen once in its window (Emulation > Configure > Controls > Input Device)": "Manette : Eden joue au clavier tant que la vôtre n'est pas choisie une fois dans sa fenêtre (Émulation > Configurer > Contrôles > Périphérique d'entrée)"
 }

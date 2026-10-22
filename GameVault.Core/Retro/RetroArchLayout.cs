@@ -69,6 +69,14 @@ namespace GameVault.Core.Retro
         /// <summary>A core's options file (what the player chose in RetroArch's menu, and the definition chosen here).</summary>
         public string CoreOptionsFile(string core) => Path.Combine(MenuSettingsDirectory, SaveFolderName(core), $"{SaveFolderName(core)}.opt");
 
+        /// <summary>
+        /// The remap files RetroArch reads at a game's start, the first found only: the game's, its folder's, its core's
+        /// (what the player saves in its menu: controls, controller type).
+        /// </summary>
+        public string GameRemapFile(string core, string rom) => Path.Combine(MenuSettingsDirectory, "remaps", SaveFolderName(core), Path.GetFileNameWithoutExtension(rom) + ".rmp");
+        public string FolderRemapFile(string core, string rom) => Path.Combine(MenuSettingsDirectory, "remaps", SaveFolderName(core), Path.GetFileName(Path.GetDirectoryName(rom)) + ".rmp");
+        public string CoreRemapFile(string core) => Path.Combine(MenuSettingsDirectory, "remaps", SaveFolderName(core), SaveFolderName(core) + ".rmp");
+
         public string SaveFolderName(string core)
         {
             if (LibraryNames.TryGetValue(core, out string? name))

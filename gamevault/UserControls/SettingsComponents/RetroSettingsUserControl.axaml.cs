@@ -39,6 +39,16 @@ namespace gamevault.UserControls.SettingsComponents
             public int Index { get; set; } = Math.Max(0, Array.IndexOf(scales, scale));
         }
 
+        /// <summary>A console with several controllers and the one its games are played with.</summary>
+        internal sealed class ControllerRow(string slug, string console, RetroControllers.Controller[] controllers, int? device)
+        {
+            public string Slug { get; } = slug;
+            public string Console { get; } = console;
+            public RetroControllers.Controller[] Controllers { get; } = controllers;
+            public string[] Choices { get; } = controllers.Select(c => RetroGameViewModel.ControllerName(c.Name)).ToArray();
+            public int Index { get; set; } = Math.Max(0, Array.FindIndex(controllers, c => c.Device == device));
+        }
+
         public RetroSettingsUserControl()
         {
             InitializeComponent();
@@ -72,6 +82,9 @@ namespace gamevault.UserControls.SettingsComponents
             var resolutions = RetroArchManager.Resolutions;
             uiResolution.ItemsSource = RetroResolution.Scales.Select(r => new ResolutionRow(r.Key,
                 string.Join(", ", RetroSystems.All.Values.Where(s => s.Core == r.Key).Select(s => s.Name)), r.Value, resolutions.GetValueOrDefault(r.Key, 1))).ToList();
+            var controllers = RetroArchManager.Controllers;
+            uiControllers.ItemsSource = RetroControllers.BySystem.Select(c => new ControllerRow(c.Key, RetroSystems.All[c.Key].Name, c.Value,
+                controllers.TryGetValue(c.Key, out int device) ? device : null)).ToList();
             uiLanguageConsoles.Text = Loc.F("The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.",
                 string.Join(", ", RetroSystems.All.Values.Where(s => RetroLanguage.Cores.Contains(s.Core)).Select(s => s.Name)));
             uiLanguage.ItemsSource = RetroLanguage.All.Select(RetroGameViewModel.LanguageName)
@@ -171,6 +184,15 @@ namespace gamevault.UserControls.SettingsComponents
         {
             RetroAchievementsAccount.SignOut();
             RefreshAchievements();
+        }
+
+        private void Controller_Changed(object? sender, SelectionChangedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ControllerRow row || sender is not ComboBox box || box.SelectedIndex < 0 || !IsLoaded)
+                return;
+            var controllers = RetroArchManager.Controllers;
+            controllers[row.Slug] = row.Controllers[box.SelectedIndex].Device;
+            RetroArchManager.Controllers = controllers;
         }
 
         private void Language_Changed(object? sender, SelectionChangedEventArgs e)

@@ -69,5 +69,23 @@ namespace gamevault.Helper
             }
             catch (IOException) { return false; }
         }
+
+        /// <summary>The controller ready (RPCS3 alone plays with the keyboard), unless the player set theirs in RPCS3's window.</summary>
+        public override Process Launch(string player, string launchFile, string language)
+        {
+            try
+            {
+                string file = Layout.InputFile;
+                string? input = Layout.Input(File.Exists(file) ? File.ReadAllText(file) : null,
+                    PlatformInfo.IsWindows ? null : Rpcs3Layout.FirstGamepad("/sys/class/input"));
+                if (input != null)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                    File.WriteAllText(file, input);
+                }
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            return base.Launch(player, launchFile, language);
+        }
     }
 }

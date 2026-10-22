@@ -112,6 +112,58 @@ namespace GameVault.Core.Retro
             }
             return string.Join('\n', lines) + "\n";
         }
+        /// <summary>Its global input configuration ("Default"), which it reads before each game.</summary>
+        public string InputFile => Windows
+            ? Path.Combine(Directory, "config", "input_configs", "global", "Default.yml")
+            : Path.Combine(ConfigDirectory, "input_configs", "global", "Default.yml");
+
+        private const string InputMark = "# SanctuaryVault";
+
+        /// <summary>
+        /// Without one RPCS3 plays with the keyboard: the first controller as player 1 (XInput's on Windows, the Linux one by
+        /// its name), its buttons RPCS3's defaults. Null keeps the file: the player's own (saved from RPCS3's window), or no controller.
+        /// </summary>
+        /// <param name="linuxGamepad">The first gamepad's name on Linux (see <see cref="FirstGamepad"/>).</param>
+        public string? Input(string? existing, string? linuxGamepad)
+        {
+            if (existing != null && !existing.StartsWith(InputMark, StringComparison.Ordinal))
+                return null;
+            var (handler, device) = Windows ? ("XInput", "XInput Pad #1") : ("Evdev", linuxGamepad);
+            if (device == null)
+                return null;
+            return $"{InputMark}: the first controller as player 1; RPCS3's own controller settings replace this file\n"
+                + $"Player 1 Input:\n  Handler: {handler}\n  Device: \"{device.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"\n";
+        }
+
+        /// <summary>
+        /// The name of Linux's first gamepad (one with a south button, as SDL tells them), as RPCS3's evdev handler names it;
+        /// null without one. A keyboard's or a LED controller's input devices are not gamepads.
+        /// </summary>
+        /// <param name="inputClass">"/sys/class/input".</param>
+        public static string? FirstGamepad(string inputClass)
+        {
+            const int BtnSouth = 0x130;
+            if (!System.IO.Directory.Exists(inputClass))
+                return null;
+            foreach (string device in System.IO.Directory.EnumerateDirectories(inputClass, "event*")
+                .OrderBy(d => int.TryParse(Path.GetFileName(d)[5..], out int n) ? n : int.MaxValue))
+            {
+                try
+                {
+                    // The key bits in hexadecimal words of 64 bits, the highest first
+                    string[] words = File.ReadAllText(Path.Combine(device, "device", "capabilities", "key")).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    int word = words.Length - 1 - BtnSouth / 64;
+                    if (word < 0 || (Convert.ToUInt64(words[word], 16) >> (BtnSouth % 64) & 1) == 0)
+                        continue;
+                    string name = File.ReadAllText(Path.Combine(device, "device", "name")).Trim();
+                    if (name.Length > 0)
+                        return name;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException) { }
+            }
+            return null;
+        }
+
         public static IReadOnlyList<string> FirmwareArguments(string pup) => new[] { "--installfw", pup };
     }
 }

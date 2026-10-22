@@ -69,6 +69,10 @@ namespace gamevault.Helper
                 throw new RetroArchManager.MissingBiosException(Loc.T("The Switch firmware in RomM has no .nca file: an administrator replaces it with a zip of the firmware's files."));
         }
 
+        public override string? ControllerHint => File.Exists(Layout.SettingsFiles.Single()) && EdenLayout.HasController(File.ReadAllText(Layout.SettingsFiles.Single()))
+            ? null
+            : Loc.T("Controller: Eden plays with the keyboard until yours is chosen once in its window (Emulation > Configure > Controls > Input Device)");
+
         /// <summary>The player becomes the console's first user, the one the game is started as; the updates and DLC are the installed ones.</summary>
         public override Process Launch(string player, string launchFile, string language)
         {

@@ -117,6 +117,13 @@ namespace GameVault.Core.Retro
             MergeIni(existing, "UI", folders.Select((f, i) => ($"Paths\\external_content_dirs\\{i + 1}\\path", $"\"{f.Replace('\\', '/')}\""))
                 .Append(("Paths\\external_content_dirs\\size", folders.Count.ToString())));
 
+        /// <summary>
+        /// Eden plays with the keyboard until a controller is chosen in its window (its "Input Device"): no setting written
+        /// here could name it, Eden finds controllers by SDL's id of their model, driver and connection.
+        /// </summary>
+        public static bool HasController(string config) => config.Replace("\r\n", "\n").Split('\n')
+            .Any(l => l.StartsWith("player_0_button_a=", StringComparison.Ordinal) && !l.Contains("engine:keyboard", StringComparison.Ordinal));
+
         public override IReadOnlyList<string> Arguments(string player, string launchFile) => new[] { "-u", "0", "-g", launchFile };
 
         public override IEnumerable<string> ResolutionFiles => SettingsFiles;
