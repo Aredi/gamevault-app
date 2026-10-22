@@ -29,6 +29,16 @@ namespace gamevault.UserControls.SettingsComponents
             public bool IsOn { get; set; } = isOn;
         }
 
+        /// <summary>The 3D consoles of one emulator and the definition they are drawn at.</summary>
+        internal sealed class ResolutionRow(string core, string consoles, int[] scales, int scale)
+        {
+            public string Core { get; } = core;
+            public string Consoles { get; } = consoles;
+            public int[] Scales { get; } = scales;
+            public string[] Choices { get; } = scales.Select(s => s == 1 ? Loc.T("Native") : $"{s}x").ToArray();
+            public int Index { get; set; } = Math.Max(0, Array.IndexOf(scales, scale));
+        }
+
         public RetroSettingsUserControl()
         {
             InitializeComponent();
@@ -41,7 +51,7 @@ namespace gamevault.UserControls.SettingsComponents
             long size = await Task.Run(RetroArchManager.InstalledSize);
             uiRetroArch.Text = layout.IsInstalled
                 ? Loc.F("Version {0} installed · {1}", RetroArchLayout.Version, StorageCleanup.FormatSize(size))
-                : Loc.T("Not installed yet: it is installed with the first retro game.");
+                : Loc.T("Not installed");
             uiUninstall.IsEnabled = size > 0;
             var cores = RetroSystems.All.Values.Where(s => StandaloneEmulator.Of(s) is StandaloneEmulator emulator ? emulator.Layout.IsInstalled : File.Exists(layout.CoreFile(s.Core)))
                 .Select(s => StandaloneEmulator.Of(s) is StandaloneEmulator emulator ? $"{s.Name} ({emulator.Name})" : s.Name).Distinct().ToList();
@@ -52,16 +62,19 @@ namespace gamevault.UserControls.SettingsComponents
                 string folder = Path.Combine(layout.SystemDirectory, system.FirmwareFolder!);
                 var files = Directory.Exists(folder) ? Directory.EnumerateFiles(folder).Select(Path.GetFileName).Where(f => !f!.StartsWith('.')).ToList() : new();
                 return new BiosRow(system.Name,
-                    files.Count > 0 ? Loc.F("On this PC: {0}", string.Join(", ", files)) : Loc.T("Not on this PC yet: taken from RomM at the first game"));
+                    files.Count > 0 ? Loc.F("On this PC: {0}", string.Join(", ", files)) : Loc.T("Not downloaded yet"));
             }).Concat(RetroSystems.All.Values.Where(s => s.IsStandalone).Select(s => new BiosRow(s.Name, StandaloneEmulator.Of(s)!.FirmwareState))).ToList();
 
             await RefreshRommAsync();
             RefreshAchievements();
             var crt = RetroArchManager.CrtSystems;
             uiCrt.ItemsSource = RetroSystems.All.Values.Where(s => !s.IsStandalone).Select(s => new CrtRow(s.Slug, s.Name, crt.Contains(s.Slug))).ToList();
+            var resolutions = RetroArchManager.Resolutions;
+            uiResolution.ItemsSource = RetroResolution.Scales.Select(r => new ResolutionRow(r.Key,
+                string.Join(", ", RetroSystems.All.Values.Where(s => s.Core == r.Key).Select(s => s.Name)), r.Value, resolutions.GetValueOrDefault(r.Key, 1))).ToList();
             uiSavesState.Text = SettingsViewModel.Instance.CloudSaves
-                ? Loc.F("Each game's saves go to {0} after it is played and come back on your other PCs, as the cloud saves of the library.", RetroCloudSaves.Destination)
-                : Loc.T("Kept on this PC only: the cloud saves are off (Settings > Data).");
+                ? Loc.F("Cloud saves: {0}", RetroCloudSaves.Destination)
+                : Loc.T("Cloud saves off (Settings > Data)");
         }
 
         private string? rommPage;
@@ -70,8 +83,8 @@ namespace gamevault.UserControls.SettingsComponents
         {
             bool available = await RommAccount.UrlAsync() != null;
             uiRommState.Text = !available ? Loc.T("RomM is not set up on this server.")
-                : RommAccount.IsLinked ? Loc.F("Linked to RomM as {0}: the retro saves go to your RomM.", RommAccount.Username)
-                : Loc.T("Not linked: the retro saves go to SanctuaryVault.");
+                : RommAccount.IsLinked ? Loc.F("Linked as {0}", RommAccount.Username)
+                : Loc.T("Not linked");
             uiRommLink.IsVisible = available && !RommAccount.IsLinked;
             uiRommUnlink.IsVisible = RommAccount.IsLinked;
         }
@@ -118,8 +131,8 @@ namespace gamevault.UserControls.SettingsComponents
         {
             bool signedIn = RetroAchievementsAccount.IsSignedIn;
             uiAchievementsState.Text = signedIn
-                ? Loc.F("Signed in as {0}: the achievements unlock in RetroArch's games.", RetroAchievementsAccount.User)
-                : Loc.T("Not signed in: no achievements.");
+                ? Loc.F("Signed in as {0}", RetroAchievementsAccount.User)
+                : Loc.T("Not signed in");
             uiAchievementsForm.IsVisible = !signedIn;
             uiAchievementsSignOut.IsVisible = signedIn;
         }
@@ -155,6 +168,15 @@ namespace gamevault.UserControls.SettingsComponents
             RefreshAchievements();
         }
 
+        private void Resolution_Changed(object? sender, SelectionChangedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ResolutionRow row || sender is not ComboBox box || box.SelectedIndex < 0 || !IsLoaded)
+                return;
+            var resolutions = RetroArchManager.Resolutions;
+            resolutions[row.Core] = row.Scales[box.SelectedIndex];
+            RetroArchManager.Resolutions = resolutions;
+        }
+
         private void Crt_Changed(object? sender, RoutedEventArgs e)
         {
             if ((sender as Control)?.DataContext is not CrtRow row || sender is not CheckBox box)
@@ -188,7 +210,7 @@ namespace gamevault.UserControls.SettingsComponents
 
         private async void Uninstall_Click(object? sender, RoutedEventArgs e)
         {
-            if (!await DialogService.ConfirmAsync(Loc.T("Uninstall the emulators (RetroArch, its cores, RPCS3, Eden), the BIOS and the consoles' firmware? They come back at the next retro game; the saves are kept."), "RetroArch"))
+            if (!await DialogService.ConfirmAsync(Loc.T("Uninstall the emulators, the BIOS and the firmware? The saves are kept."), "RetroArch"))
                 return;
             try { await RetroArchManager.UninstallAsync(); }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }

@@ -62,9 +62,9 @@ namespace gamevault.Helper
     {
         /// <summary>
         /// What the client may do in the player's RomM: read the games, read and write their saves, their status and
-        /// rating of a game, and their RetroAchievements account (its name, for their progression).
+        /// rating of a game, their RetroAchievements account (its name, for their progression) and their collections.
         /// </summary>
-        private static readonly string[] Scopes = { "me.read", "me.write", "roms.read", "roms.user.read", "roms.user.write", "assets.read", "assets.write", "devices.read", "devices.write" };
+        private static readonly string[] Scopes = { "me.read", "me.write", "roms.read", "roms.user.read", "roms.user.write", "assets.read", "assets.write", "devices.read", "devices.write", "collections.read" };
 
         private static string Config => LoginManager.Instance.GetUserProfile().UserConfigFile;
         /// <summary>Kept encrypted, as the other secrets (a link made before was kept as it is: encrypted when read).</summary>
@@ -242,7 +242,7 @@ namespace gamevault.Helper
 
         #region The player's games
         /// <summary>A link made before the client asked for it (the status, the rating, the achievements): linked again.</summary>
-        public sealed class MissingScopeException() : Exception(Loc.T("Link your RomM account again (Settings > Retro): SanctuaryVault now also keeps your statuses, ratings and achievements in it."));
+        public sealed class MissingScopeException() : Exception(Loc.T("Link your RomM account again (Settings > Retro)."));
 
         private static async Task<JsonElement> JsonAsync(HttpMethod method, string path, HttpContent? content = null)
         {
@@ -279,6 +279,24 @@ namespace gamevault.Helper
             if (!string.Equals(me.TryGetProperty("ra_username", out JsonElement known) && known.ValueKind == JsonValueKind.String ? known.GetString() : null, raUser, StringComparison.OrdinalIgnoreCase))
                 await JsonAsync(HttpMethod.Put, $"/api/users/{id}", new FormUrlEncodedContent(new Dictionary<string, string> { ["ra_username"] = raUser }));
             await JsonAsync(HttpMethod.Post, $"/api/users/{id}/ra/refresh", Json(new { incremental = true }));
+        }
+        /// <summary>The player's collections in RomM (theirs and the public ones, the smart ones too); none without the link.</summary>
+        public static async Task<List<(string Name, int[] Games)>> CollectionsAsync()
+        {
+            var found = new List<(string, int[])>();
+            if (!IsLinked)
+                return found;
+            foreach (string path in new[] { "/api/collections", "/api/collections/smart" })
+            {
+                JsonElement list = await JsonAsync(HttpMethod.Get, path);
+                if (list.ValueKind != JsonValueKind.Array)
+                    continue;
+                foreach (JsonElement collection in list.EnumerateArray())
+                    if (collection.TryGetProperty("name", out JsonElement name) && name.ValueKind == JsonValueKind.String
+                        && collection.TryGetProperty("rom_ids", out JsonElement ids) && ids.ValueKind == JsonValueKind.Array)
+                        found.Add((name.GetString()!, ids.EnumerateArray().Where(i => i.ValueKind == JsonValueKind.Number).Select(i => i.GetInt32()).ToArray()));
+            }
+            return found.Where(c => c.Item2.Length > 0).OrderBy(c => c.Item1, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
         #endregion
 

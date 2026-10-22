@@ -47,6 +47,7 @@ namespace gamevault.ViewModels
                 // The cards show the downloads already going on (started before a reload or a change of page)
                 RetroDownloads.Attach(allGames);
                 RetroLibrary.Describe(allGames.Where(g => g.Installed));
+                LoadFilterChoices();
                 ApplyFilter();
             }
         }
@@ -68,8 +69,87 @@ namespace gamevault.ViewModels
         public bool OnlyFavorites { get => onlyFavorites; set { onlyFavorites = value; OnPropertyChanged(); ApplyFilter(); } }
 
         private List<string> collections = new();
-        /// <summary>"All collections", then the profile's retro collections.</summary>
+        /// <summary>"All collections", the profile's retro collections, then the player's RomM collections and the series.</summary>
         public List<string> Collections { get => collections; private set { collections = value; OnPropertyChanged(); } }
+        /// <summary>The games of each collection that is not the profile's, by name as <see cref="Collections"/> shows it.</summary>
+        private Dictionary<string, HashSet<int>> otherCollections = new();
+
+        /// <summary>The player's RomM collections and the series of games, shown after the profile's.</summary>
+        public void SetOtherCollections(IEnumerable<(string Name, IEnumerable<int> Games)> others)
+        {
+            otherCollections = new();
+            foreach (var (name, games) in others)
+                otherCollections.TryAdd(name, games.ToHashSet());
+            LoadCollections();
+        }
+
+        /// <summary>The chosen collection is the profile's, or one of RomM: across all the consoles.</summary>
+        public bool ShowsACollection => Collection > 0 && Collection < Collections.Count;
+
+        private bool showsAll;
+        /// <summary>The games of all the consoles (a collection, a search across them).</summary>
+        public bool ShowsAll { get => showsAll; set { showsAll = value; OnPropertyChanged(); } }
+
+        #region Filters
+        public string[] PlayerOptions { get; } = { Loc.T("All players"), Loc.T("2 players or more"), Loc.T("4 players or more"), Loc.T("Co-op") };
+        public string[] RatingOptions { get; } = { Loc.T("Any rating"), "70 %+", "80 %+", "90 %+" };
+
+        private List<string> genres = new();
+        /// <summary>"All genres", then the genres of the games shown, the most common first.</summary>
+        public List<string> Genres { get => genres; private set { genres = value; OnPropertyChanged(); } }
+        private List<string> decades = new();
+        public List<string> Decades { get => decades; private set { decades = value; OnPropertyChanged(); } }
+
+        private int genre, players, decade, rating;
+        public int Genre { get => genre; set { if (value < 0 || value == genre) return; genre = value; OnPropertyChanged(); FiltersChanged(); } }
+        public int Players { get => players; set { if (value < 0 || value == players) return; players = value; OnPropertyChanged(); FiltersChanged(); } }
+        public int Decade { get => decade; set { if (value < 0 || value == decade) return; decade = value; OnPropertyChanged(); FiltersChanged(); } }
+        public int Rating { get => rating; set { if (value < 0 || value == rating) return; rating = value; OnPropertyChanged(); FiltersChanged(); } }
+
+        private bool showFilters;
+        public bool ShowFilters { get => showFilters; set { showFilters = value; OnPropertyChanged(); } }
+        public bool HasFilters => Genre > 0 || Players > 0 || Decade > 0 || Rating > 0;
+
+        private void FiltersChanged()
+        {
+            OnPropertyChanged(nameof(HasFilters));
+            ApplyFilter();
+        }
+
+        public void ClearFilters()
+        {
+            genre = players = decade = rating = 0;
+            OnPropertyChanged(nameof(Genre));
+            OnPropertyChanged(nameof(Players));
+            OnPropertyChanged(nameof(Decade));
+            OnPropertyChanged(nameof(Rating));
+            FiltersChanged();
+        }
+
+        /// <summary>The most players a game takes: RomM writes "1-4".</summary>
+        internal static int MaxPlayers(RetroGame game) =>
+            game.Players?.Split('-').Select(p => int.TryParse(p.Trim(), out int n) ? n : 0).DefaultIfEmpty(0).Max() ?? 0;
+
+        private static int? DecadeOf(RetroGame game) => game.ReleaseDate?.Year / 10 * 10;
+
+        /// <summary>The genres and decades of the games of the list, kept chosen when still there.</summary>
+        private void LoadFilterChoices()
+        {
+            string? shownGenre = Genre > 0 && Genre < Genres.Count ? Genres[Genre] : null;
+            string? shownDecade = Decade > 0 && Decade < Decades.Count ? Decades[Decade] : null;
+            var genreNames = AllGames.SelectMany(g => g.Genres).GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(g => g.Count()).Select(g => g.Key).Prepend(Loc.T("All genres")).ToList();
+            var decadeNames = AllGames.Select(DecadeOf).OfType<int>().Distinct().OrderBy(d => d)
+                .Select(d => Loc.F("{0}s", d)).Prepend(Loc.T("All decades")).ToList();
+            genre = shownGenre != null ? Math.Max(0, genreNames.IndexOf(shownGenre)) : 0;
+            decade = shownDecade != null ? Math.Max(0, decadeNames.IndexOf(shownDecade)) : 0;
+            Genres = genreNames;
+            Decades = decadeNames;
+            OnPropertyChanged(nameof(Genre));
+            OnPropertyChanged(nameof(Decade));
+            OnPropertyChanged(nameof(HasFilters));
+        }
+        #endregion
         private int collection;
         public int Collection
         {
@@ -92,6 +172,7 @@ namespace gamevault.ViewModels
             var names = new List<string> { Loc.T("All collections") };
             try { names.AddRange(RetroLibrary.Collections.Load().Select(c => c.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)); }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+            names.AddRange(otherCollections.Keys.Where(n => !names.Contains(n)));
             collection = shown != null ? Math.Max(0, names.IndexOf(shown)) : 0;
             if (!names.SequenceEqual(Collections))
                 Collections = names;
@@ -118,11 +199,25 @@ namespace gamevault.ViewModels
                 shown = shown.Where(g => g.Installed);
             if (OnlyFavorites)
                 shown = shown.Where(g => g.IsFavorite);
-            if (Collection > 0 && Collection < Collections.Count)
+            if (ShowsACollection)
             {
-                var members = RetroLibrary.Collections.Load().FirstOrDefault(c => c.Name == Collections[Collection])?.GameIds.ToHashSet() ?? new();
+                var members = otherCollections.TryGetValue(Collections[Collection], out HashSet<int>? others) ? others
+                    : RetroLibrary.Collections.Load().FirstOrDefault(c => c.Name == Collections[Collection])?.GameIds.ToHashSet() ?? new();
                 shown = shown.Where(g => members.Contains(g.Id));
             }
+            if (Genre > 0 && Genre < Genres.Count)
+                shown = shown.Where(g => g.Genres.Contains(Genres[Genre], StringComparer.OrdinalIgnoreCase));
+            shown = Players switch
+            {
+                1 => shown.Where(g => MaxPlayers(g) >= 2),
+                2 => shown.Where(g => MaxPlayers(g) >= 4),
+                3 => shown.Where(g => g.Modes.Contains("Co-operative", StringComparer.OrdinalIgnoreCase)),
+                _ => shown,
+            };
+            if (Decade > 0 && Decade < Decades.Count)
+                shown = shown.Where(g => DecadeOf(g) is int d && Loc.F("{0}s", d) == Decades[Decade]);
+            if (Rating > 0)
+                shown = shown.Where(g => g.Rating >= 60 + 10 * Rating);
             shown = SortBy switch
             {
                 1 => shown.OrderByDescending(g => g.Released ?? long.MinValue),

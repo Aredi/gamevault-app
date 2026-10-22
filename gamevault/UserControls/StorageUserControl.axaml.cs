@@ -185,7 +185,7 @@ namespace gamevault.UserControls
             if (row.Retro != null || row.IsEmulator)
             {
                 string question = row.IsEmulator
-                    ? Loc.T("Uninstall the emulators (RetroArch, its cores, RPCS3, Eden), the BIOS and the consoles' firmware? They come back at the next retro game; the saves are kept.")
+                    ? Loc.T("Uninstall the emulators, the BIOS and the firmware? The saves are kept.")
                     : Loc.F("Delete '{0}' from this PC? Its saves are kept.", row.Title);
                 if (!await DialogService.ConfirmAsync(question, Loc.T("Storage")))
                     return;

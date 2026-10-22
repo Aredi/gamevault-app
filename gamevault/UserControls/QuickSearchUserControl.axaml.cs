@@ -63,6 +63,20 @@ namespace gamevault.UserControls
             uiQuery.Text = "";
             Refresh("");
             Dispatcher.UIThread.Post(() => uiQuery.Focus(), DispatcherPriority.Input);
+            _ = LoadAllRetroGamesAsync();
+        }
+
+        /// <summary>The games of every retro platform, asked once: found as soon as they are there.</summary>
+        private async Task LoadAllRetroGamesAsync()
+        {
+            int known = retroGames.Count;
+            try { await MainWindowViewModel.Instance.Retro.AllGamesAsync(); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            if (!IsVisible)
+                return;
+            retroGames = RetroGames();
+            if (retroGames.Count != known && !string.IsNullOrWhiteSpace(uiQuery.Text))
+                Refresh(uiQuery.Text);
         }
 
         public void Close()
@@ -162,19 +176,21 @@ namespace gamevault.UserControls
             };
         }
 
-        /// <summary>The retro games installed here and the ones of the platform the Retro page shows.</summary>
+        /// <summary>The retro games installed here and the ones of every platform the Retro page listed.</summary>
         internal static List<QuickSearchItem> RetroGames()
         {
             try
             {
                 var installed = RetroLibrary.InstalledGames();
-                var shown = MainWindowViewModel.Instance.Retro.ViewModel.AllGames;
-                return installed.Concat(shown).DistinctBy(RetroLibrary.Key).Select(game => new QuickSearchItem
+                var listed = MainWindowViewModel.Instance.Retro.KnownGames;
+                // Not asked to each game (a look on disk): thousands of them
+                var here = installed.Select(RetroLibrary.Key).ToHashSet();
+                return installed.Concat(listed).DistinctBy(RetroLibrary.Key).Select(game => new QuickSearchItem
                 {
                     Title = game.Name,
                     Subtitle = string.Join(" · ", new[] { game.Platform.Name, game.ReleaseDate?.Year.ToString() }.Where(p => !string.IsNullOrEmpty(p))),
                     Icon = Icon("IconNavRetro"),
-                    Kind = game.Installed ? Loc.T("Installed") : Loc.T("Retro"),
+                    Kind = here.Contains(RetroLibrary.Key(game)) ? Loc.T("Installed") : Loc.T("Retro"),
                     Run = () => _ = MainWindowViewModel.Instance.Retro.ShowGameAsync(game.Platform.Slug, game.Id),
                 }).ToList();
             }

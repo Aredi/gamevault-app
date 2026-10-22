@@ -87,7 +87,7 @@ namespace gamevault.UserControls
         {
             if (!RommAccount.IsLinked)
             {
-                ViewModel.RommNote = Loc.T("Link your RomM account (Settings > Retro) to keep your status, rating and achievements of the games.");
+                ViewModel.RommNote = Loc.T("Link your RomM account (Settings > Retro).");
                 return;
             }
             try
@@ -97,23 +97,16 @@ namespace gamevault.UserControls
                 JsonElement me = default;
                 try { me = await RommAccount.MeAsync(); }
                 catch (Exception ex) { Log.Ignored(ex); }
-                ViewModel.Achievements = RommProgress.AchievementsOf(rom, me).Select(a => new RetroAchievementRow(a)).ToList();
+                var achievements = RommProgress.AchievementsOf(rom, me);
+                ViewModel.Achievements = achievements.Select(a => new RetroAchievementRow(a)).ToList();
+                // Earned elsewhere too (another PC, RetroAchievements' site): the profile and the activity follow
+                _ = RetroLibrary.ShareAchievementsAsync(ViewModel.Game, achievements);
                 // The badges, a few at a time (a game has up to a few hundred)
                 await Parallel.ForEachAsync(ViewModel.Achievements.Where(a => a.BadgeUrl != null), new ParallelOptions { MaxDegreeOfParallelism = 6 }, async (row, _) =>
                 {
                     try
                     {
-                        // Kept on disk: a badge never changes, and a game's page is opened again and again
-                        string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", "badges", Path.GetFileName(new Uri(row.BadgeUrl!).AbsolutePath));
-                        if (!File.Exists(file))
-                        {
-                            byte[] png = await HttpClients.Shared.GetByteArrayAsync(row.BadgeUrl);
-                            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-                            string part = $"{file}.{Guid.NewGuid():N}.part";
-                            await File.WriteAllBytesAsync(part, png);
-                            File.Move(part, file, overwrite: true);
-                        }
-                        var badge = new Bitmap(file);
+                        var badge = await RetroService.BadgeImageAsync(row.BadgeUrl!);
                         Avalonia.Threading.Dispatcher.UIThread.Post(() => row.Badge = badge);
                     }
                     catch (Exception ex) { Log.Ignored(ex); }

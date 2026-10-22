@@ -75,6 +75,23 @@ namespace gamevault.UserControls
                     Items = Items.Concat(retro).OrderByDescending(i => i.At).Take(30).ToList();
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
+                // The achievements earned: one line per player, game and day (a session can earn a dozen)
+                try
+                {
+                    var unlocks = (await RetroLibrary.UnlocksAsync())
+                        .GroupBy(u => (u.UserId, u.Platform, u.RomId, u.Date.ToLocalTime().Date))
+                        .Select(g =>
+                        {
+                            var last = g.MaxBy(u => u.Date)!;
+                            string game = $"{last.Name} ({last.PlatformName})";
+                            string text = g.Count() == 1 ? Loc.F("{0} earned \"{1}\" in {2}", last.Username, last.Title, game)
+                                : Loc.F("{0} earned {1} achievements in {2}", last.Username, g.Count(), game);
+                            return new ActivityFeedItem(null, null, text, Converter.RelativeDate.Format(last.Date), last.Date.ToUniversalTime(),
+                                RetroLibrary.GameOf(last.RomId, last.Platform, last.PlatformName, last.Name, last.Cover));
+                        });
+                    Items = Items.Concat(unlocks).OrderByDescending(i => i.At).Take(30).ToList();
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
             }
             catch (Exception ex) { Log.Ignored(ex); }
             uiItems.ItemsSource = Items;

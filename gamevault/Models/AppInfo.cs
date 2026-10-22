@@ -98,6 +98,8 @@ namespace gamevault.Models
         RetroAchievementsToken,
         //Retro consoles shown with the CRT look (profileconfig): "nes,snes"
         RetroCrtSystems,
+        //Definition of the 3D consoles (profileconfig): "dolphin=2;eden=1"
+        RetroResolution,
         //Download queue
         MaxConcurrentDownloads,
         //Interface language (profileconfig): "", "en", "fr"

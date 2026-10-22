@@ -63,8 +63,16 @@ namespace GameVault.Core.Retro
         /// The folder RetroArch keeps a core's saves in (its saves are sorted by core): the core's name in its
         /// description ("Mesen", "mGBA"), else the core.
         /// </summary>
+        /// <summary>The cores whose description (.info) gives another name than the one RetroArch names their folders after.</summary>
+        private static readonly IReadOnlyDictionary<string, string> LibraryNames = new Dictionary<string, string> { ["dolphin"] = "dolphin-emu" };
+
+        /// <summary>A core's options file (what the player chose in RetroArch's menu, and the definition chosen here).</summary>
+        public string CoreOptionsFile(string core) => Path.Combine(MenuSettingsDirectory, SaveFolderName(core), $"{SaveFolderName(core)}.opt");
+
         public string SaveFolderName(string core)
         {
+            if (LibraryNames.TryGetValue(core, out string? name))
+                return name;
             string info = Path.Combine(DataDirectory, windows ? "info" : "cores", $"{core}_libretro.info");
             try
             {

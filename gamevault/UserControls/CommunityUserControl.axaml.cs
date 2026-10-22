@@ -328,19 +328,57 @@ namespace gamevault.UserControls
             ShowProfile();
         }
 
+        /// <summary>The shown player's retro games, for the figures at the top of the profile.</summary>
+        private List<RetroLibrary.Play> retroPlays = new();
+
+        private static string Time(int minutes) => (string)new gamevault.Converter.GameTimeConverter().Convert(minutes, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture)!;
+
+        /// <summary>The player's retro games, their time on all the games (PC and retro), their achievements.</summary>
         private async Task LoadRetroPlaysAsync(int userId, int generation)
         {
             ViewModel.RetroPlays = new();
-            try
-            {
-                var plays = await RetroLibrary.PlaysOfAsync(userId);
-                if (generation != profileGeneration)
-                    return;
-                ViewModel.RetroPlays = plays.OrderByDescending(p => p.Minutes).Select(p => new RetroPlayRow(
-                    RetroLibrary.GameOf(p.RomId, p.Platform, p.PlatformName, p.Name, p.Cover),
-                    $"{(string)new gamevault.Converter.GameTimeConverter().Convert(p.Minutes, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture)!} · {gamevault.Converter.RelativeDate.Format(p.LastPlayed)}")).ToList();
-            }
+            retroPlays = new();
+            ViewModel.Unlocks = new();
+            ViewModel.AchievementsTotal = "";
+            RetroLibrary.Player player = new();
+            try { player = await RetroLibrary.PlayerOfAsync(userId); }
             catch (Exception ex) { Log.Ignored(ex); }
+            if (generation != profileGeneration)
+                return;
+            var plays = player.Plays;
+            // The figures at the top count them too (once the profile is shown: else it takes them when it is)
+            retroPlays = plays;
+            if (shownGeneration == generation)
+                ShowProfile();
+            ViewModel.RetroPlays = plays.OrderByDescending(p => p.Minutes).Select(p =>
+            {
+                var game = RetroLibrary.GameOf(p.RomId, p.Platform, p.PlatformName, p.Name, p.Cover);
+                string text = $"{Time(p.Minutes)} · {gamevault.Converter.RelativeDate.Format(p.LastPlayed)}";
+                if (player.Achievements.TryGetValue($"{p.Platform}:{p.RomId}", out var earned))
+                    text += " · " + Loc.F("{0}/{1} achievements", earned.Earned, earned.Total);
+                return new RetroPlayRow(game, text);
+            }).ToList();
+
+            int pc = ViewModel.UserProgresses.Sum(p => Math.Max(0, p.MinutesPlayed ?? 0));
+            var parts = GameVault.Core.Library.PlaytimeBreakdown.Compute(plays.Select(p => (p.PlatformName, p.Minutes)).Prepend((Loc.T("PC"), pc)), kept: 6, others: Loc.T("Others"));
+            ViewModel.PlaytimeTotal = parts.Count == 0 ? "" : Time(parts.Sum(p => p.Minutes));
+            ViewModel.Playtime = parts.Select(p => new PlaytimeBar(p.Name, Time(p.Minutes), p.Share)).ToList();
+
+            var games = player.Achievements.Values.ToList();
+            if (games.Count == 0)
+                return;
+            int mastered = games.Count(g => g.Total > 0 && g.Earned == g.Total);
+            ViewModel.AchievementsTotal = mastered > 0
+                ? Loc.F("{0} achievements · {1} games at 100 %", games.Sum(g => g.Earned), mastered)
+                : Loc.F("{0} achievements", games.Sum(g => g.Earned));
+            var rows = games.SelectMany(g => g.Unlocks.Select(u => (Game: g, Unlock: u))).OrderByDescending(u => u.Unlock.Date).Take(8)
+                .Select(u => new UnlockRow(u.Unlock.Title, $"{u.Game.Name} ({u.Game.PlatformName})", gamevault.Converter.RelativeDate.Format(u.Unlock.Date), u.Unlock.Badge)).ToList();
+            ViewModel.Unlocks = rows;
+            foreach (UnlockRow row in rows.Where(r => r.BadgeUrl != null))
+            {
+                try { row.Badge = await RetroService.BadgeImageAsync(row.BadgeUrl!); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
         }
 
         private void RetroGame_Click(object? sender, RoutedEventArgs e)
@@ -366,10 +404,15 @@ namespace gamevault.UserControls
         }
 
         /// <summary>Shows the profile, or the draft while it is changed.</summary>
+        /// <summary>The profile's load whose sections are shown.</summary>
+        private int shownGeneration = -1;
+
         private void ShowProfile()
         {
+            shownGeneration = profileGeneration;
             ProfileDocument shown = draft ?? profile;
-            List<ProfileModuleView> views = ProfileModuleFactory.Build(shown, ViewModel.UserProgresses, chosenGames, ViewModel.CurrentShownUser, DateTime.UtcNow);
+            List<ProfileModuleView> views = ProfileModuleFactory.Build(shown, ViewModel.UserProgresses, chosenGames, ViewModel.CurrentShownUser, DateTime.UtcNow,
+                retroPlays.Select(p => (p.Minutes, p.LastPlayed)));
             foreach (ProfileModuleView view in views)
                 view.IsEditing = draft != null;
             ViewModel.Modules = new System.Collections.ObjectModel.ObservableCollection<ProfileModuleView>(views);

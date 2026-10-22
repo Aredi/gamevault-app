@@ -93,6 +93,7 @@ namespace GameVault.Uploader.Tests
                     hltb_metadata = new { main_story = 32400 }, regions = new[] { "Europe" }, languages = new[] { "French" },
                     merged_screenshots = new[] { "/assets/romm/resources/roms/3/40/screenshots/0.jpg", "/assets/romm/resources/roms/3/40/../../9/secret.jpg" },
                     path_manual = "roms/3/40/manual/40.pdf", youtube_video_id = "abc123", ss_metadata = new { box2d_url = "https://example?devpassword=secret" } } } }) },
+                "/api/collections/virtual?type=collection" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new object[] { new { name = "The Legend of Zelda", rom_ids = new[] { 40, 41 } }, new { name = "Alone", rom_ids = new[] { 40 } } }) },
                 "/api/roms?order_by=id&order_dir=desc&limit=30" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", platform_slug = "nes", platform_display_name = "NES" } } }) },
                 "/api/roms/40" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 40, fs_name = "Zelda (E).nes" }) },
                 // A game in a folder: RomM names the file it sends
@@ -478,6 +479,43 @@ namespace GameVault.Uploader.Tests
             // The newest games of RomM, for the notification
             using (JsonDocument latest = JsonDocument.Parse(await player.GetStringAsync("/retro/latest")))
                 Assert.Equal("nes", Assert.Single(latest.RootElement.EnumerateArray()).GetProperty("platform").GetString());
+        }
+
+        [Fact]
+        public async Task RetroAchievements_OfEachPlayer_ShowOnTheirProfileAndInTheActivity()
+        {
+            var player = Client("user");
+            var admin = Client("admin");
+            object Game(int earned, params object[] unlocks) => new { name = "Zelda", platformName = "NES", cover = "roms/3/40/cover/big.png", earned, total = 50, unlocks };
+            var first = new { title = "First Sword", badge = "https://media.retroachievements.org/Badge/1.png", date = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc) };
+            // A badge elsewhere than RetroAchievements is not shown to the others
+            var second = new { title = "Triforce", badge = "https://tracker.example.com/pixel.png", date = new DateTime(2026, 10, 2, 12, 0, 0, DateTimeKind.Utc) };
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/retro/players/me/achievements/nes/40", Game(2, first, second))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PutAsJsonAsync("/retro/players/me/achievements/nes/40", Game(51))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PutAsJsonAsync("/retro/players/me/achievements/x..y/40", Game(1))).StatusCode);
+
+            using (JsonDocument theirs = JsonDocument.Parse(await admin.GetStringAsync("/retro/players/2")))
+            {
+                JsonElement zelda = theirs.RootElement.GetProperty("achievements").GetProperty("nes:40");
+                Assert.Equal((2, 50, 2), (zelda.GetProperty("earned").GetInt32(), zelda.GetProperty("total").GetInt32(), zelda.GetProperty("unlocks").GetArrayLength()));
+            }
+            using (JsonDocument activity = JsonDocument.Parse(await admin.GetStringAsync("/retro/activity/achievements")))
+            {
+                var unlocks = activity.RootElement.EnumerateArray().ToList();
+                Assert.Equal(new[] { "Triforce", "First Sword" }, unlocks.Select(u => u.GetProperty("title").GetString()));
+                Assert.Equal(("player", "Zelda", "nes", 40), (unlocks[0].GetProperty("username").GetString(), unlocks[0].GetProperty("name").GetString(), unlocks[0].GetProperty("platform").GetString(), unlocks[0].GetProperty("romId").GetInt32()));
+                Assert.Equal(JsonValueKind.Null, unlocks[0].GetProperty("badge").ValueKind);
+                Assert.Equal("https://media.retroachievements.org/Badge/1.png", unlocks[1].GetProperty("badge").GetString());
+            }
+            // None earned any more (account changed): the game goes
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/retro/players/me/achievements/nes/40", Game(0))).StatusCode);
+            Assert.Equal("[]", await admin.GetStringAsync("/retro/activity/achievements"));
+
+            // The series of games, from RomM (one game alone is no series)
+            using JsonDocument series = JsonDocument.Parse(await player.GetStringAsync("/retro/series"));
+            JsonElement zeldas = Assert.Single(series.RootElement.EnumerateArray());
+            Assert.Equal("The Legend of Zelda", zeldas.GetProperty("name").GetString());
+            Assert.Equal(new long[] { 40, 41 }, zeldas.GetProperty("romIds").EnumerateArray().Select(i => i.GetInt64()));
         }
 
         [Fact]

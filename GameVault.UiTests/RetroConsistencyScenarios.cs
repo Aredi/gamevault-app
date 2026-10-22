@@ -44,9 +44,55 @@ namespace GameVault.UiTests
             session.Server.RetroFavorites = "[]";
             session.Server.RetroSaves.Clear();
             session.Server.RetroSavesHistory.Clear();
+            session.Server.RetroAchievements.Clear();
             File.Delete(Path.Combine(Path.GetDirectoryName(LoginManager.Instance.GetUserProfile().CollectionsFile)!, "retro-collections.json"));
             try { Directory.Delete(RetroArchManager.Layout.Directory, true); } catch { }
             try { Directory.Delete(Path.Combine(session.LibraryRoot, "GameVault", "Retro"), true); } catch { }
+        }
+
+        [AvaloniaFact]
+        public async Task APlayersAchievements_AndTheirTimeOnEveryPlatform_ShowOnTheirProfile_AndInTheActivity()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            try
+            {
+                session.Server.RetroMinutes["nes:40"] = 90;
+                var zelda = new RetroGame { Id = 40, Name = "Zelda", FileName = "Zelda (E).nes", Platform = new RetroPlatform { Slug = "nes", Name = "NES" } };
+                DateTime earned = DateTime.UtcNow.AddHours(-2);
+                await RetroLibrary.ShareAchievementsAsync(zelda, new[]
+                {
+                    new RommProgress.Achievement("1", "First Sword", "", 5, null, null, true, earned),
+                    new RommProgress.Achievement("2", "Triforce", "", 10, null, null, true, earned.AddMinutes(5)),
+                    new RommProgress.Achievement("3", "Ganon", "", 25, null, null, false),
+                });
+                // None earned: nothing is sent
+                await RetroLibrary.ShareAchievementsAsync(new RetroGame { Id = 41, Name = "Other", Platform = zelda.Platform }, new[] { new RommProgress.Achievement("9", "x", "", 1, null, null, false) });
+                Assert.Equal(new[] { "nes:40" }, session.Server.RetroAchievements.Keys);
+
+                // The activity: the achievements of a game on one day are one line
+                var activity = new ActivityUserControl();
+                await activity.LoadAsync();
+                Assert.Contains(activity.Items, i => i.Text == gamevault.Localization.Loc.F("{0} earned {1} achievements in {2}", "Mario", 2, "Zelda (NES)") && i.Retro?.Id == 40);
+
+                // The profile: the time on the PC games and on the NES, the achievements earned last (opened again: loaded again)
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+                MainWindowViewModel.Instance.Community.Reset();
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Community);
+                var model = (CommunityViewModel)MainWindowViewModel.Instance.Community.DataContext!;
+                await TestSession.WaitUntil(() => model.HasAchievements && model.Playtime.Any(p => p.Name == "NES"), TimeSpan.FromSeconds(15), "the retro part of the profile");
+                Assert.Equal(gamevault.Localization.Loc.F("{0} achievements", 2), model.AchievementsTotal);
+                Assert.Equal(new[] { "Triforce", "First Sword" }, model.Unlocks.Select(u => u.Title));
+                Assert.Contains(gamevault.Localization.Loc.F("{0}/{1} achievements", 2, 3), model.RetroPlays.Single().Text);
+                Assert.Equal(1, model.Playtime.Max(p => p.Width));
+            }
+            finally
+            {
+                // The next tests open the profile page themselves, and load it
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+                MainWindowViewModel.Instance.Community.Reset();
+                CleanUp(session);
+            }
         }
 
         [AvaloniaFact]
@@ -87,7 +133,7 @@ namespace GameVault.UiTests
                 var activity = new ActivityUserControl();
                 await activity.LoadAsync();
                 Assert.Contains(activity.Items, i => i.Retro?.Name == "Zelda" && i.Text.Contains("Mario"));
-                Assert.Single(await RetroLibrary.PlaysOfAsync(2));
+                Assert.Single((await RetroLibrary.PlayerOfAsync(2)).Plays);
             }
             finally { CleanUp(session); }
         }

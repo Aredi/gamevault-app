@@ -291,7 +291,7 @@
                     <!-- Waiting in the queue -->
                     <StackPanel Spacing="8" IsVisible="{Binding IsQueued}">
                         <Button Classes="action small" HorizontalAlignment="Stretch" Click="StartQueuedNow_Click" Content="{l:T 'Start now'}"
-                                ToolTip.Tip="{l:T 'Start this download now, regardless of the queue and the schedule'}"
+                                ToolTip.Tip="{l:T 'Ignores the queue and the schedule'}"
                                 Background="{Binding #uiCover.AccentColor, Converter={StaticResource accentBrushConv}}" />
                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Stretch">
                             <Button Classes="round small" Click="QueueUp_Click" ToolTip.Tip="{l:T 'Earlier in the queue'}">

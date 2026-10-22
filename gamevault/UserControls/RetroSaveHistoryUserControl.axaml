@@ -17,7 +17,7 @@
                 </Button>
             </Grid>
             <TextBlock Grid.Row="1" Classes="muted" FontSize="12.5" TextWrapping="Wrap" Margin="0,10,0,12"
-                       Text="{l:T 'Restoring an older save first keeps a copy of the current one on this computer, then makes the restored save the current cloud save.'}" />
+                       Text="{l:T 'The current save is kept on this computer before a restore.'}" />
             <Panel Grid.Row="2" MinHeight="160" MaxHeight="460">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl x:Name="uiVersions">

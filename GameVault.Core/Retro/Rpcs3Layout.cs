@@ -74,6 +74,38 @@ namespace GameVault.Core.Retro
         }
 
         public override IReadOnlyList<string> Arguments(string player, string launchFile) => new[] { "--no-gui", "--user-id", UserId(player), BootTarget(launchFile) };
+
+        /// <summary>Its config.yml (in config/ too on Windows, as its GUI settings).</summary>
+        public override IEnumerable<string> ResolutionFiles => Windows
+            ? new[] { Path.Combine(Directory, "config.yml"), Path.Combine(Directory, "config", "config.yml") }
+            : new[] { Path.Combine(ConfigDirectory, "config.yml") };
+
+        /// <summary>Its "Resolution Scale" (a percentage) under "Video:", the rest of the YAML kept; RPCS3 adds what is missing.</summary>
+        public override string Resolution(string existing, int scale)
+        {
+            var lines = existing.Replace("\r\n", "\n").Split('\n').ToList();
+            while (lines.Count > 0 && lines[^1].Length == 0)
+                lines.RemoveAt(lines.Count - 1);
+            string line = $"  Resolution Scale: {scale * 100}";
+            int video = lines.IndexOf("Video:");
+            if (video < 0)
+            {
+                lines.Add("Video:");
+                lines.Add(line);
+            }
+            else
+            {
+                int end = lines.FindIndex(video + 1, l => l.Length > 0 && !l.StartsWith(' '));
+                if (end < 0)
+                    end = lines.Count;
+                int at = lines.FindIndex(video + 1, end - video - 1, l => l.StartsWith("  Resolution Scale:", StringComparison.Ordinal));
+                if (at >= 0)
+                    lines[at] = line;
+                else
+                    lines.Insert(video + 1, line);
+            }
+            return string.Join('\n', lines) + "\n";
+        }
         public static IReadOnlyList<string> FirmwareArguments(string pup) => new[] { "--installfw", pup };
     }
 }

@@ -20,8 +20,6 @@
 
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="BIOS" />
-                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,0,0,8"
-                           Text="{l:T 'Some platforms need the BIOS of the console. An administrator adds it in RomM (the Firmware of the platform); it is taken at the first game.'}" />
                 <ItemsControl x:Name="uiBios">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -37,8 +35,6 @@
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'RomM account'}" />
                 <TextBlock x:Name="uiRommState" TextWrapping="Wrap" FontSize="14" />
-                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,4,0,0"
-                           Text="{l:T 'With your RomM account linked, the saves of the retro games go to your RomM: its web page plays with them too, and the ones made there come here. The cloud saves of the PC games RomM has go there too, instead of the GameVault server (the others stay on it). Without it, nothing goes to RomM.'}" />
                 <Border x:Name="uiRommCode" IsVisible="False" Background="{DynamicResource Brush.Surface}" CornerRadius="12" Padding="16,12" Margin="0,12,0,0" HorizontalAlignment="Left">
                     <StackPanel Spacing="6">
                         <TextBlock Text="{l:T 'Approve this code on the page of RomM that opened:'}" FontSize="13" />
@@ -59,8 +55,6 @@
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="RetroAchievements" />
                 <TextBlock x:Name="uiAchievementsState" TextWrapping="Wrap" FontSize="14" />
-                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,4,0,0"
-                           Text="{l:T 'With your RetroAchievements account, the achievements unlock as you play the RetroArch games (not in hardcore mode: the save states stay). Your password is only sent to RetroAchievements. With your RomM account linked, the pages of the games show what you earned.'}" />
                 <WrapPanel x:Name="uiAchievementsForm" Margin="0,12,0,0">
                     <TextBox x:Name="uiAchievementsUser" Watermark="{l:T 'Username'}" Width="210" Height="40" Margin="0,0,10,8" VerticalContentAlignment="Center" />
                     <TextBox x:Name="uiAchievementsPassword" Watermark="{l:T 'Password'}" PasswordChar="●" Classes="revealPasswordButton" Width="210" Height="40" Margin="0,0,10,8"
@@ -74,8 +68,7 @@
 
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'Picture'}" />
-                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,0,0,10"
-                           Text="{l:T 'The CRT look: the lines and glow of an old TV screen, for the consoles you choose (RetroArch\&#x27;s games). A shader chosen for a game in RetroArch\&#x27;s menu stays first.'}" />
+                <TextBlock Text="{l:T 'CRT look'}" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8" />
                 <ItemsControl x:Name="uiCrt">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -85,6 +78,17 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <CheckBox Content="{Binding Name}" IsChecked="{Binding IsOn}" MinWidth="200" Margin="0,0,12,6" IsCheckedChanged="Crt_Changed" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{l:T 'Definition'}" FontWeight="SemiBold" FontSize="14" Margin="0,14,0,8" />
+                <ItemsControl x:Name="uiResolution">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="260,Auto" Margin="0,0,0,8">
+                                <TextBlock Text="{Binding Consoles}" FontSize="13.5" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <ComboBox Grid.Column="1" MinWidth="120" ItemsSource="{Binding Choices}" SelectedIndex="{Binding Index}" SelectionChanged="Resolution_Changed" />
+                            </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -99,8 +103,6 @@
                     <controls:IconButton Text="{l:T 'Open the backups'}" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
                                          ToolTip.Tip="{l:T 'The saves of this PC kept when newer ones came from another PC'}" Click="OpenBackups_Click" />
                 </WrapPanel>
-                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,8,0,0"
-                           Text="{l:T 'Each game has its cloud saves: send them, take them back or restore an older version from the page of the game.'}" />
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

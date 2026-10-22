@@ -112,7 +112,11 @@ namespace GameVault.Uploader
         private static readonly ConcurrentDictionary<int, (DateTime Until, Task<object> Games)> lists = new();
         internal static readonly TimeSpan ListTime = TimeSpan.FromMinutes(5);
 
-        internal static void ClearCache() => lists.Clear();
+        internal static void ClearCache()
+        {
+            lists.Clear();
+            series = default;
+        }
 
         public Task<object> GamesAsync(int platformId, CancellationToken cancellationToken)
         {
@@ -163,6 +167,33 @@ namespace GameVault.Uploader
                     multi = r.TryGetProperty("has_multiple_files", out JsonElement multi) && multi.ValueKind == JsonValueKind.True,
                 };
             }).ToList();
+        }
+
+        private static (DateTime Until, Task<object> Series) series;
+
+        /// <summary>The series of games (IGDB's, as RomM groups them), kept a few minutes as the games.</summary>
+        public Task<object> SeriesAsync(CancellationToken cancellationToken)
+        {
+            var known = series;
+            if (known.Series == null || known.Until <= DateTime.UtcNow || known.Series.IsFaulted || known.Series.IsCanceled)
+                series = known = (DateTime.UtcNow + ListTime, ReadSeriesAsync());
+            return known.Series.WaitAsync(cancellationToken);
+        }
+
+        private async Task<object> ReadSeriesAsync()
+        {
+            using JsonDocument all = await GetJsonAsync("api/collections/virtual?type=collection", CancellationToken.None);
+            return all.RootElement.EnumerateArray()
+                .Select(c => new
+                {
+                    name = Text(c, "name"),
+                    romIds = c.TryGetProperty("rom_ids", out JsonElement ids) && ids.ValueKind == JsonValueKind.Array
+                        ? ids.EnumerateArray().Where(i => i.ValueKind == JsonValueKind.Number).Select(i => i.GetInt64()).ToArray()
+                        : Array.Empty<long>(),
+                })
+                .Where(c => c.name != null && c.romIds.Length > 1)
+                .OrderBy(c => c.name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         /// <summary>The BIOS RomM keeps for a platform.</summary>

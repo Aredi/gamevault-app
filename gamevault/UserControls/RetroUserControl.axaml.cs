@@ -43,6 +43,11 @@ namespace gamevault.UserControls
                 // an old card, which it then leaves drawn where it was, at its old size, over the others (ItemsRepeater 11.1)
                 if (e.PropertyName == nameof(RetroViewModel.Games))
                     uiScroll.Offset = default;
+                // As the collections' list: new items, the chosen one set back
+                else if (e.PropertyName == nameof(RetroViewModel.Genres))
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => uiGenres.SelectedIndex = ViewModel.Genre);
+                else if (e.PropertyName == nameof(RetroViewModel.Decades))
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => uiDecades.SelectedIndex = ViewModel.Decade);
             };
         }
 
@@ -68,6 +73,7 @@ namespace gamevault.UserControls
             lists.Clear();
             LoadCollections();
             _ = RetroLibrary.LoadAsync();
+            _ = LoadOtherCollectionsAsync();
             List<RetroPlatform>? platforms = null;
             string? failure = null;
             try
@@ -109,8 +115,60 @@ namespace gamevault.UserControls
             await SelectPlatformAsync(platforms[0]);
         }
 
+        /// <summary>The player's RomM collections (with their account linked) and the series of games, in the collections' list.</summary>
+        private async Task LoadOtherCollectionsAsync()
+        {
+            var others = new List<(string, IEnumerable<int>)>();
+            try { others.AddRange((await RommAccount.CollectionsAsync()).Select(c => (Loc.F("{0} (RomM)", c.Name), (IEnumerable<int>)c.Games))); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            try { others.AddRange((await RetroService.SeriesAsync()).Select(c => (Loc.F("{0} (series)", c.Name), (IEnumerable<int>)c.Games))); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            ViewModel.SetOtherCollections(others);
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => uiCollections.SelectedIndex = ViewModel.Collection);
+        }
+
+        /// <summary>The games of every platform, each asked once (the quick search, a collection, "All").</summary>
+        internal async Task<List<RetroGame>> AllGamesAsync()
+        {
+            await EnsureLoadedAsync();
+            if (offlineGames != null)
+                return offlineGames;
+            await Task.WhenAll(ViewModel.Platforms.Where(p => !lists.ContainsKey(p.Id)).Select(async platform =>
+            {
+                try { lists[platform.Id] = await RetroService.ListGamesAsync(platform); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }));
+            return ViewModel.Platforms.SelectMany(p => lists.GetValueOrDefault(p.Id) ?? new()).ToList();
+        }
+
+        /// <summary>The games already listed here, whatever their platform.</summary>
+        internal IEnumerable<RetroGame> KnownGames => offlineGames ?? lists.Values.SelectMany(l => l);
+
+        /// <summary>"All": the games of every platform at once.</summary>
+        internal async Task SelectAllAsync()
+        {
+            foreach (RetroPlatform platform in ViewModel.Platforms)
+                platform.IsSelected = false;
+            ViewModel.ShowsAll = true;
+            SizeCards(null);
+            ViewModel.SelectedGame = null;
+            Show(null, loading: true);
+            var games = await AllGamesAsync();
+            if (!ViewModel.ShowsAll)
+                return;
+            ViewModel.AllGames = games;
+            Show(offlineGames != null ? Loc.T("Offline: only the retro games installed on this PC are shown.") : null);
+        }
+
         internal async Task SelectPlatformAsync(RetroPlatform platform)
         {
+            ViewModel.ShowsAll = false;
+            // A collection is across the platforms: choosing one platform leaves it
+            if (ViewModel.ShowsACollection)
+            {
+                ViewModel.Collection = 0;
+                uiCollections.SelectedIndex = 0;
+            }
             foreach (RetroPlatform other in ViewModel.Platforms)
                 other.IsSelected = other == platform;
             SizeCards(platform);
@@ -141,12 +199,29 @@ namespace gamevault.UserControls
         }
 
         /// <summary>As the library's cards (170 wide, the title and info below), with the shape of the platform's boxes.</summary>
-        internal void SizeCards(RetroPlatform platform)
+        /// <param name="platform">None: all the platforms (their boxes are mostly 3:4).</param>
+        internal void SizeCards(RetroPlatform? platform)
         {
             var layout = (UniformGridLayout)uiGames.Layout!;
             layout.MinItemWidth = CardWidth + 16;
-            layout.MinItemHeight = CardWidth * platform.System.CoverRatio + 70;
+            layout.MinItemHeight = CardWidth * (platform?.System.CoverRatio ?? 4 / 3.0) + 70;
         }
+
+        private async void All_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is Avalonia.Controls.Primitives.ToggleButton chip)
+                chip.IsChecked = true;
+            await SelectAllAsync();
+        }
+
+        /// <summary>A collection holds games of several platforms: all of them are shown, then filtered.</summary>
+        private async void Collections_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (ViewModel.ShowsACollection && !ViewModel.ShowsAll && ViewModel.Platforms.Count > 0)
+                await SelectAllAsync();
+        }
+
+        private void ClearFilters_Click(object? sender, RoutedEventArgs e) => ViewModel.ClearFilters();
 
         private async void Platform_Click(object? sender, RoutedEventArgs e)
         {
@@ -163,7 +238,7 @@ namespace gamevault.UserControls
             await EnsureLoadedAsync();
             if (ViewModel.Platforms.FirstOrDefault(p => p.Slug == platformSlug) is not RetroPlatform platform)
                 return;
-            if (!platform.IsSelected)
+            if (!platform.IsSelected && !(ViewModel.ShowsAll && ViewModel.AllGames.Any(g => g.Id == romId && g.Platform == platform)))
                 await SelectPlatformAsync(platform);
             if (ViewModel.AllGames.FirstOrDefault(g => g.Id == romId) is not RetroGame game)
                 return;
@@ -172,6 +247,7 @@ namespace gamevault.UserControls
                 ViewModel.Search = "";
                 ViewModel.OnlyInstalled = ViewModel.OnlyFavorites = false;
                 ViewModel.Collection = 0;
+                ViewModel.ClearFilters();
             }
             Select(game);
             // As the library's games opened from the search or the activity: their page

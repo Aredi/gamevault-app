@@ -16,7 +16,7 @@
                 </Button>
             </Grid>
             <TextBlock Grid.Row="1" Classes="muted" FontSize="12.5" TextWrapping="Wrap" Margin="0,10,0,12"
-                       Text="{l:T 'If clicking Play opens a launcher, an error or nothing, try another program of the game. The first ones are the most likely. Your choice is kept for the next times.'}" />
+                       Text="{l:T 'If the game does not start, try another program.'}" />
             <Panel Grid.Row="2" MinHeight="160" MaxHeight="460">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <ItemsControl x:Name="uiExecutables">

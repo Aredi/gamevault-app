@@ -77,6 +77,23 @@ namespace gamevault.Helper
             set => Preferences.Set(Models.AppConfigKey.RetroCrtSystems, string.Join(",", value.Order()), ProfileConfig);
         }
 
+        /// <summary>The definition of the 3D consoles, by their core (Settings > Retro).</summary>
+        public static Dictionary<string, int> Resolutions
+        {
+            get => RetroResolution.Parse(Preferences.Get(Models.AppConfigKey.RetroResolution, ProfileConfig));
+            set => Preferences.Set(Models.AppConfigKey.RetroResolution, RetroResolution.Format(value), ProfileConfig);
+        }
+
+        /// <summary>The definition chosen here, in the core's options (the others, chosen in RetroArch's menu, kept).</summary>
+        private static void SetResolution(RetroSystem system)
+        {
+            if (!Resolutions.TryGetValue(system.Core, out int scale) || RetroResolution.CoreOption(system.Core, scale) is not var (key, value))
+                return;
+            string file = Layout.CoreOptionsFile(system.Core);
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllText(file, RetroResolution.MergeOptions(File.Exists(file) ? File.ReadAllText(file) : "", key, value));
+        }
+
         /// <summary>The game's CRT preset written when its console has the look, removed when it no longer has it.</summary>
         private static void SetPicture(RetroSystem system, string rom)
         {
@@ -216,7 +233,11 @@ namespace gamevault.Helper
         /// <param name="stateSlot">The save state the game starts from, or none.</param>
         public static Process Launch(RetroSystem system, string rom, int? stateSlot = null)
         {
-            try { SetPicture(system, rom); }
+            try
+            {
+                SetPicture(system, rom);
+                SetResolution(system);
+            }
             catch (Exception ex) { Log.Ignored(ex); }
             return Start(Layout.Arguments(system.Core, rom, stateSlot));
         }

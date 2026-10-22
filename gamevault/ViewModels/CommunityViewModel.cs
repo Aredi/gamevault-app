@@ -40,6 +40,20 @@ namespace gamevault.ViewModels
         public List<RetroPlayRow> RetroPlays { get => retroPlays; set { retroPlays = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasRetroPlays)); } }
         public bool HasRetroPlays => RetroPlays.Count > 0;
 
+        private List<PlaytimeBar> playtime = new();
+        /// <summary>The time on the PC games and on each retro platform.</summary>
+        public List<PlaytimeBar> Playtime { get => playtime; set { playtime = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPlaytime)); } }
+        public bool HasPlaytime => Playtime.Count > 0;
+        private string playtimeTotal = "";
+        public string PlaytimeTotal { get => playtimeTotal; set { playtimeTotal = value; OnPropertyChanged(); } }
+
+        private List<UnlockRow> unlocks = new();
+        /// <summary>The retro achievements earned last.</summary>
+        public List<UnlockRow> Unlocks { get => unlocks; set { unlocks = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasAchievements)); } }
+        public bool HasAchievements => !string.IsNullOrEmpty(AchievementsTotal);
+        private string achievementsTotal = "";
+        public string AchievementsTotal { get => achievementsTotal; set { achievementsTotal = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasAchievements)); } }
+
         public List<Progress> UserProgresses
         {
             get
@@ -204,6 +218,28 @@ namespace gamevault.ViewModels
     /// <summary>A line of the activity feed: "Zoé played Hades · 2 h ago".</summary>
     /// <summary>A retro game on a profile: the game, "12 h · yesterday".</summary>
     internal sealed record RetroPlayRow(Helper.RetroGame Game, string Text);
+
+    /// <summary>A bar of the play time: the PC games, or a retro platform.</summary>
+    internal sealed record PlaytimeBar(string Name, string Time, double Width);
+
+    /// <summary>An achievement earned, with its badge once it is there.</summary>
+    internal sealed class UnlockRow : ViewModelBase
+    {
+        public UnlockRow(string title, string game, string date, string? badgeUrl)
+        {
+            Title = title;
+            Game = game;
+            Date = date;
+            BadgeUrl = badgeUrl;
+        }
+
+        public string Title { get; }
+        public string Game { get; }
+        public string Date { get; }
+        public string? BadgeUrl { get; }
+        private Avalonia.Media.Imaging.Bitmap? badge;
+        public Avalonia.Media.Imaging.Bitmap? Badge { get => badge; set { badge = value; OnPropertyChanged(); } }
+    }
 
     /// <param name="Retro">A retro game (from RomM) instead of a game of the library.</param>
     internal sealed record ActivityFeedItem(User? User, Game? Game, string Text, string When, DateTime At = default, Helper.RetroGame? Retro = null);

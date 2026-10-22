@@ -335,6 +335,12 @@ namespace gamevault.Helper
             return start[..read];
         }
 
+        private sealed record Series([property: JsonPropertyName("name")] string Name, [property: JsonPropertyName("romIds")] int[] RomIds);
+
+        /// <summary>The series of games (Zelda, Pokémon...), as RomM groups them; none from an older service.</summary>
+        public static async Task<List<(string Name, int[] Games)>> SeriesAsync() =>
+            (await TryGetAsync<List<Series>>("/retro/series") ?? new()).Select(s => (s.Name, s.RomIds)).ToList();
+
         internal sealed record Firmware([property: JsonPropertyName("id")] int Id, [property: JsonPropertyName("fileName")] string FileName, [property: JsonPropertyName("size")] long Size);
 
         /// <summary>The BIOS RomM keeps for the platform.</summary>
@@ -385,6 +391,21 @@ namespace gamevault.Helper
                 await WebHelper.DownloadImageFromUrlAsync($"{Service}/retro/media/{media}", file);
             }
             return file;
+        }
+
+        /// <summary>A RetroAchievements badge, kept on disk: a badge never changes, and pages show it again and again.</summary>
+        public static async Task<Bitmap> BadgeImageAsync(string url)
+        {
+            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", "badges", Path.GetFileName(new Uri(url).AbsolutePath));
+            if (!File.Exists(file))
+            {
+                byte[] png = await HttpClients.Shared.GetByteArrayAsync(url);
+                Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                string part = $"{file}.{Guid.NewGuid():N}.part";
+                await File.WriteAllBytesAsync(part, png);
+                File.Move(part, file, overwrite: true);
+            }
+            return await Task.Run(() => new Bitmap(file));
         }
 
         public static async Task<Bitmap> MediaImageAsync(string media, int width)

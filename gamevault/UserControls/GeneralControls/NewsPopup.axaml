@@ -103,7 +103,6 @@
 
                     <StackPanel x:Name="uiEmpty" IsVisible="False" HorizontalAlignment="Center" Spacing="6" Margin="0,40">
                         <TextBlock Classes="sectionTitle" Text="{l:T 'Nothing new lately'}" HorizontalAlignment="Center" />
-                        <TextBlock Classes="muted" FontSize="13" Text="{l:T 'Games added to the server and their new versions show up here.'}" HorizontalAlignment="Center" />
                     </StackPanel>
                     <local:ProgressRing x:Name="uiLoading" IsActive="True" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,30" />
                 </StackPanel>

@@ -26,7 +26,6 @@
               <StackPanel Width="820">
                 <StackPanel Spacing="2" IsEnabled="{Binding IsIdle}">
                     <TextBlock Text="{l:T 'Publish a Game'}" FontSize="26" FontWeight="Bold" />
-                    <TextBlock Classes="hint" Text="{l:T 'Turns a game folder, an installer or an archive into a ready-to-play entry of the server: correct file name, main executable and silent installation are set for all users.'}" />
 
                     <TextBlock Classes="label" Text="{l:T '1. Game files'}" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
@@ -34,7 +33,6 @@
                         <controls:IconButton Text="{l:T 'Installer or archive'}" MinWidth="170" Height="32" FontSize="14" Click="PickFile_Click" />
                         <TextBlock Text="{Binding SourcePath}" VerticalAlignment="Center" Width="480" TextTrimming="CharacterEllipsis" FontSize="13" />
                     </StackPanel>
-                    <TextBlock Classes="hint" Text="{l:T 'Folder: an installed game (best: portable) or an extracted installer. Installer: its folder is published with it. Archive or ISO (.zip, .7z, .rar, .iso, ...): copied as it is.'}" />
 
                     <StackPanel IsVisible="{Binding HasSource}">
                         <TextBlock Classes="label" Text="{l:T '2. Game'}" />
@@ -103,8 +101,8 @@
 
                         <TextBlock Classes="label" Text="{l:T '4. Destination on the server'}" />
                         <ComboBox SelectedIndex="{Binding DestinationIndex}" Width="420" Margin="0,0,0,6">
-                            <ComboBoxItem Content="{l:T 'Copy into the server games folder (this computer can open it)'}" />
-                            <ComboBoxItem Content="{l:T 'Upload to the server (SanctuaryVault Uploader)'}" />
+                            <ComboBoxItem Content="{l:T 'Copy into the server games folder'}" />
+                            <ComboBoxItem Content="{l:T 'Upload to the server'}" />
                         </ComboBox>
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" IsVisible="{Binding !IsUpload}">
                             <TextBox Text="{Binding TargetDirectory}" Watermark="{l:T 'Folder mounted as /files in the SanctuaryVault server'}" />
@@ -112,9 +110,8 @@
                         </Grid>
                         <StackPanel IsVisible="{Binding IsUpload}" Spacing="4">
                             <TextBlock Classes="hint" Text="{Binding UploaderStatus, Converter={x:Static l:LocConverter.Instance}}" />
-                            <TextBlock Classes="hint" Text="{l:T 'The archive is created on this computer, then sent. Interrupted uploads continue where they stopped.'}" />
                         </StackPanel>
-                        <CheckBox Content="{l:T 'Compress the archive (smaller, much slower to create; games are usually compressed already)'}" IsChecked="{Binding Compress}" Margin="0,6,0,0" IsVisible="{Binding !IsArchiveSource}" />
+                        <CheckBox Content="{l:T 'Compress the archive (slower)'}" IsChecked="{Binding Compress}" Margin="0,6,0,0" IsVisible="{Binding !IsArchiveSource}" />
 
                         <TextBlock Classes="label" Text="{l:T 'File on the server'}" />
                         <SelectableTextBlock Text="{Binding FileName}" FontSize="14" />

@@ -15,9 +15,7 @@
                     <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
                 </Button>
             </Grid>
-            <TextBlock Grid.Row="1" Classes="muted" FontSize="12.5" TextWrapping="Wrap" Margin="0,10,0,12"
-                       Text="{l:T 'Choose one of your game folders, or another folder (another disk for example). SanctuaryVault creates a GameVault folder in it.'}" />
-            <ScrollViewer Grid.Row="2" MaxHeight="340" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Grid.Row="2" Margin="0,14,0,0" MaxHeight="340" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl x:Name="uiLocations">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

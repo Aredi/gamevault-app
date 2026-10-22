@@ -51,6 +51,20 @@ namespace gamevault.Helper
             Preferences.DeleteKey(AppConfigKey.RetroAchievementsToken, Config);
         }
 
+        /// <summary>After a game: its achievements as RomM has them now, for the player's profile and the activity.</summary>
+        public static async Task ShareAsync(RetroGame game)
+        {
+            if (!IsSignedIn || !RommAccount.IsLinked)
+                return;
+            try
+            {
+                var rom = await RommAccount.RomAsync(game.Id);
+                var me = await RommAccount.MeAsync();
+                await RetroLibrary.ShareAchievementsAsync(game, GameVault.Core.Retro.RommProgress.AchievementsOf(rom, me));
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
         /// <summary>RomM takes the account's progression again (after a game, after the sign-in); nothing without RomM linked.</summary>
         public static async Task SyncRommAsync()
         {

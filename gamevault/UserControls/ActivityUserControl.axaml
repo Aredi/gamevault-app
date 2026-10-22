@@ -7,8 +7,7 @@
     <!-- What the players of the server played lately: a page of its own, under Community -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
-            <TextBlock Classes="pageTitle" Text="{l:T 'Recent activity'}" />
-            <TextBlock Classes="muted" FontSize="13" Margin="0,0,0,16" Text="{l:T 'The games the players of the server played lately'}" />
+            <TextBlock Classes="pageTitle" Text="{l:T 'Recent activity'}" Margin="0,0,0,16" />
             <ItemsControl x:Name="uiItems">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>

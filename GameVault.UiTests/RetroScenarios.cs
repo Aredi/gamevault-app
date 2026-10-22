@@ -73,6 +73,72 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AllThePlatforms_TheirSeries_TheFilters_AndTheQuickSearch_ReachEveryConsole()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            RetroUserControl page = MainWindowViewModel.Instance.Retro;
+            try
+            {
+                await page.LoadPlatformsAsync();
+                Assert.Equal("nes", page.ViewModel.Platforms.Single(p => p.IsSelected).Slug);
+                // The quick search finds the games of the platforms not shown
+                var quick = new QuickSearchUserControl();
+                quick.Open();
+                await TestSession.WaitUntil(() => QuickSearchUserControl.RetroGames().Any(i => i.Title == "Castlevania"), TimeSpan.FromSeconds(10), "the PS1 games in the quick search");
+                quick.Close();
+
+                // "All": every platform at once
+                await page.SelectAllAsync();
+                Assert.True(page.ViewModel.ShowsAll);
+                Assert.Contains(page.Shown, g => g.Name == "Zelda");
+                Assert.Contains(page.Shown, g => g.Name == "Castlevania");
+
+                // A series of RomM, across the platforms
+                await TestSession.WaitUntil(() => page.ViewModel.Collections.Any(c => c.StartsWith("Castlevania")), TimeSpan.FromSeconds(10), "the series");
+                page.ViewModel.Collection = page.ViewModel.Collections.FindIndex(c => c.StartsWith("Castlevania"));
+                Assert.Equal(new[] { "Castlevania" }, page.Shown.Select(g => g.Name));
+                page.ViewModel.Collection = 0;
+
+                // The filters: genre, players, decade, rating
+                RetroGame zelda = page.ViewModel.AllGames.First(g => g.Name == "Zelda"), castlevania = page.ViewModel.AllGames.First(g => g.Name == "Castlevania");
+                zelda.Genres = new[] { "Adventure" };
+                zelda.Players = "1";
+                zelda.Rating = 92;
+                zelda.Released = new DateTimeOffset(1986, 2, 21, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds();
+                castlevania.Genres = new[] { "Platform", "Adventure" };
+                castlevania.Players = "1-2";
+                castlevania.Rating = 75;
+                castlevania.Released = new DateTimeOffset(1997, 3, 20, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds();
+                page.ViewModel.AllGames = page.ViewModel.AllGames;
+                Assert.Equal("Adventure", page.ViewModel.Genres[1]);
+                page.ViewModel.Genre = page.ViewModel.Genres.IndexOf("Platform");
+                Assert.Equal(new[] { "Castlevania" }, page.Shown.Select(g => g.Name));
+                page.ViewModel.ClearFilters();
+                page.ViewModel.Players = 1;
+                Assert.Equal(new[] { "Castlevania" }, page.Shown.Select(g => g.Name));
+                page.ViewModel.ClearFilters();
+                page.ViewModel.Decade = page.ViewModel.Decades.FindIndex(d => d.Contains("1980"));
+                Assert.Equal(new[] { "Zelda" }, page.Shown.Select(g => g.Name));
+                page.ViewModel.ClearFilters();
+                page.ViewModel.Rating = 3;
+                Assert.Equal(new[] { "Zelda" }, page.Shown.Select(g => g.Name));
+                page.ViewModel.ClearFilters();
+                Assert.False(page.ViewModel.HasFilters);
+
+                // One platform again: "All" is left
+                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
+                Assert.False(page.ViewModel.ShowsAll);
+                Assert.All(page.Shown, g => Assert.Equal("nes", g.Platform.Slug));
+            }
+            finally
+            {
+                SanctuaryService.Current = SanctuaryService.Url;
+                page.ViewModel.ClearFilters();
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AnotherPlatform_ChosenFarDownTheGrid_LeavesNoCardDrawnOverTheOthers()
         {
             var session = await TestSession.GetAsync();

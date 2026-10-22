@@ -37,14 +37,42 @@ namespace GameVault.Uploader
             [JsonPropertyName("lastPlayed")] public DateTime LastPlayed { get; set; }
         }
 
+        /// <summary>An achievement earned (RetroAchievements), with its badge.</summary>
+        public sealed class Unlock
+        {
+            [JsonPropertyName("title")] public string Title { get; set; } = "";
+            [JsonPropertyName("badge")] public string? Badge { get; set; }
+            [JsonPropertyName("date")] public DateTime Date { get; set; }
+        }
+
+        /// <summary>A game's achievements of a player: how many earned, and the last ones.</summary>
+        public sealed class GameAchievements
+        {
+            [JsonPropertyName("name")] public string Name { get; set; } = "";
+            [JsonPropertyName("platformName")] public string PlatformName { get; set; } = "";
+            [JsonPropertyName("cover")] public string? Cover { get; set; }
+            [JsonPropertyName("earned")] public int Earned { get; set; }
+            [JsonPropertyName("total")] public int Total { get; set; }
+            [JsonPropertyName("unlocks")] public List<Unlock> Unlocks { get; set; } = new();
+        }
+
         public sealed class Player
         {
             [JsonPropertyName("username")] public string Username { get; set; } = "";
             [JsonPropertyName("plays")] public List<Play> Plays { get; set; } = new();
             [JsonPropertyName("favorites")] public List<string> Favorites { get; set; } = new();
+            /// <summary>By game ("psx:2161").</summary>
+            [JsonPropertyName("achievements")] public Dictionary<string, GameAchievements> Achievements { get; set; } = new();
         }
 
         public sealed record Activity(int UserId, string Username, Play Play);
+        public sealed record UnlockActivity(int UserId, string Username, string Key, GameAchievements Game, Unlock Unlock);
+
+        /// <summary>The badges are RetroAchievements' pictures: nothing else is shown to the other players.</summary>
+        public static bool IsBadge(string? url) => url != null && Uri.TryCreate(url, UriKind.Absolute, out Uri? uri)
+            && uri.Scheme == Uri.UriSchemeHttps && uri.Host == "media.retroachievements.org";
+
+        public const int KeptUnlocks = 20;
 
         /// <summary>"psx:2161": a game of RomM, by platform and id.</summary>
         [GeneratedRegex("^[a-z0-9]{1,20}:[0-9]{1,10}$")]
@@ -100,6 +128,37 @@ namespace GameVault.Uploader
                 player.Favorites = favorites.Where(IsValidKey).Distinct().Take(MaxFavorites).ToList();
                 Write(userId, player);
             }
+        }
+
+        /// <summary>A game's achievements of the player, as RetroAchievements has them now.</summary>
+        public void SetAchievements(int userId, string username, string key, GameAchievements game)
+        {
+            lock (writing)
+            {
+                Player player = Get(userId);
+                player.Username = username;
+                if (game.Earned == 0)
+                    player.Achievements.Remove(key);
+                else
+                    player.Achievements[key] = game;
+                Write(userId, player);
+            }
+        }
+
+        /// <summary>The achievements earned lately by all the players, newest first.</summary>
+        public List<UnlockActivity> RecentUnlocks(int count)
+        {
+            if (!Enabled)
+                return new();
+            var all = new List<UnlockActivity>();
+            foreach (string file in Directory.EnumerateFiles(directory, "*.json"))
+            {
+                if (!int.TryParse(Path.GetFileNameWithoutExtension(file), out int userId))
+                    continue;
+                Player player = Get(userId);
+                all.AddRange(player.Achievements.SelectMany(a => a.Value.Unlocks.Select(u => new UnlockActivity(userId, player.Username, a.Key, a.Value, u))));
+            }
+            return all.OrderByDescending(a => a.Unlock.Date).Take(count).ToList();
         }
 
         /// <summary>Who played a game, the last one first (the game's page shows the friends who played it).</summary>

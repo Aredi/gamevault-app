@@ -58,10 +58,30 @@ namespace gamevault.Helper
             public string Key => $"{Platform}:{RomId}";
         }
 
-        private sealed class Player
+        internal sealed class Unlock
+        {
+            [JsonPropertyName("title")] public string Title { get; set; } = "";
+            [JsonPropertyName("badge")] public string? Badge { get; set; }
+            [JsonPropertyName("date")] public DateTime Date { get; set; }
+        }
+
+        /// <summary>A game's achievements of a player: how many earned, the last ones.</summary>
+        internal sealed class GameAchievements
+        {
+            [JsonPropertyName("name")] public string Name { get; set; } = "";
+            [JsonPropertyName("platformName")] public string PlatformName { get; set; } = "";
+            [JsonPropertyName("cover")] public string? Cover { get; set; }
+            [JsonPropertyName("earned")] public int Earned { get; set; }
+            [JsonPropertyName("total")] public int Total { get; set; }
+            [JsonPropertyName("unlocks")] public List<Unlock> Unlocks { get; set; } = new();
+        }
+
+        internal sealed class Player
         {
             [JsonPropertyName("plays")] public List<Play> Plays { get; set; } = new();
             [JsonPropertyName("favorites")] public List<string> Favorites { get; set; } = new();
+            /// <summary>By game ("psx:2161").</summary>
+            [JsonPropertyName("achievements")] public Dictionary<string, GameAchievements> Achievements { get; set; } = new();
         }
 
         private static Dictionary<string, Play> plays = new();
@@ -189,8 +209,48 @@ namespace gamevault.Helper
             }
         }
 
-        /// <summary>Another player's times, for their profile.</summary>
-        public static async Task<List<Play>> PlaysOfAsync(int userId) => (await RetroService.TryGetAsync<Player>($"/retro/players/{userId}"))?.Plays ?? new();
+        /// <summary>Another player's times and achievements, for their profile.</summary>
+        public static async Task<Player> PlayerOfAsync(int userId) => await RetroService.TryGetAsync<Player>($"/retro/players/{userId}") ?? new();
+
+        /// <summary>A game's achievements of the player, for their profile and the activity of all; nothing when none is earned.</summary>
+        public static async Task ShareAchievementsAsync(RetroGame game, IReadOnlyList<RommProgress.Achievement> achievements)
+        {
+            int earned = achievements.Count(a => a.Earned);
+            if (earned == 0)
+                return;
+            var shared = new GameAchievements
+            {
+                Name = game.Name,
+                PlatformName = game.Platform.Name,
+                Cover = game.Cover,
+                Earned = earned,
+                Total = achievements.Count,
+                Unlocks = achievements.Where(a => a.EarnedAt != null).OrderByDescending(a => a.EarnedAt).Take(20)
+                    .Select(a => new Unlock { Title = a.Title, Badge = a.Badge, Date = a.EarnedAt!.Value }).ToList(),
+            };
+            try
+            {
+                using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Put, $"/retro/players/me/achievements/{game.Platform.Slug}/{game.Id}", RetroService.Json(shared));
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        internal sealed class UnlockEntry
+        {
+            [JsonPropertyName("userId")] public int UserId { get; set; }
+            [JsonPropertyName("username")] public string Username { get; set; } = "";
+            [JsonPropertyName("romId")] public int RomId { get; set; }
+            [JsonPropertyName("platform")] public string Platform { get; set; } = "";
+            [JsonPropertyName("platformName")] public string PlatformName { get; set; } = "";
+            [JsonPropertyName("name")] public string Name { get; set; } = "";
+            [JsonPropertyName("cover")] public string? Cover { get; set; }
+            [JsonPropertyName("title")] public string Title { get; set; } = "";
+            [JsonPropertyName("badge")] public string? Badge { get; set; }
+            [JsonPropertyName("date")] public DateTime Date { get; set; }
+        }
+
+        /// <summary>The achievements all the players earned lately; none from an older service.</summary>
+        public static async Task<List<UnlockEntry>> UnlocksAsync() => await RetroService.TryGetAsync<List<UnlockEntry>>("/retro/activity/achievements") ?? new();
 
         internal sealed class ActivityEntry
         {

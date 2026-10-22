@@ -56,7 +56,7 @@ namespace GameVault.UiTests
         {
             var session = await TestSession.GetAsync();
             for (int i = 0; i < 60; i++)
-                session.Server.AddGame(1180 + i, $"Grid Check Game {i:00}", GameType.LINUX_PORTABLE, Array.Empty<byte>(), $"Grid Check Game {i:00} (L_P).tar.gz");
+                session.Server.AddGame(1380 + i, $"Grid Check Game {i:00}", GameType.LINUX_PORTABLE, Array.Empty<byte>(), $"Grid Check Game {i:00} (L_P).tar.gz");
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
             var library = MainWindowViewModel.Instance.Library;
             await library.LoadLibrary();

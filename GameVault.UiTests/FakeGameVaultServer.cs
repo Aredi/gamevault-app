@@ -84,6 +84,8 @@ namespace GameVault.UiTests
         /// <summary>The retro plays sent (JSON), and the time kept per game key ("nes:40").</summary>
         public ConcurrentQueue<string> RetroPlaysSent { get; } = new();
         public ConcurrentDictionary<string, int> RetroMinutes { get; } = new();
+        /// <summary>The games' achievements a player shared, by game ("nes:40"), as the client sent them.</summary>
+        public ConcurrentDictionary<string, JsonElement> RetroAchievements { get; } = new();
         public string RetroFavorites { get; set; } = "[]";
         /// <summary>RomM answers here too (its public address is this server's): the player's saves and the pairing.</summary>
         public bool RommLinkable { get; set; }
@@ -336,6 +338,8 @@ namespace GameVault.UiTests
                     await Json(response, Ps3Firmware == null ? Array.Empty<object>() : new object[] { new { id = 8, fileName = "PS3UPDAT.PUP", size = Ps3Firmware.LongLength } });
                 else if (path == "/retro/firmware/8/content" && Ps3Firmware != null)
                     await response.OutputStream.WriteAsync(Ps3Firmware);
+                else if (path == "/retro/series")
+                    await Json(response, new[] { new { name = "Castlevania", romIds = new[] { 50, 9050 } } });
                 else if (path == "/retro/platforms/19/games" && await Delayed(PsxListDelay))
                     await Json(response, new[] { new { id = 50, name = "Castlevania", fileName = "Castlevania", size = RetroCdGame.LongLength, cover = (string?)null, summary = (string?)null, multi = true } });
                 else if (path == "/retro/games/50/content")
@@ -372,7 +376,19 @@ namespace GameVault.UiTests
                 else if (path == "/retro/activity")
                     await Json(response, RetroMinutes.Select(m => new { userId = 2, username = "Mario", romId = int.Parse(m.Key.Split(':')[1]), platform = m.Key.Split(':')[0], platformName = "NES", name = "Zelda", cover = (string?)null, minutes = m.Value, lastPlayed = DateTime.UtcNow }));
                 else if ((match = Regex.Match(path, @"^/retro/players/(\d+)$")).Success)
-                    await Json(response, new { plays = RetroMinutes.Select(m => new { romId = int.Parse(m.Key.Split(':')[1]), platform = m.Key.Split(':')[0], platformName = "NES", name = "Zelda", minutes = m.Value, lastPlayed = DateTime.UtcNow }) });
+                    await Json(response, new { plays = RetroMinutes.Select(m => new { romId = int.Parse(m.Key.Split(':')[1]), platform = m.Key.Split(':')[0], platformName = "NES", name = "Zelda", minutes = m.Value, lastPlayed = DateTime.UtcNow }), achievements = RetroAchievements });
+                else if ((match = Regex.Match(path, @"^/retro/players/me/achievements/([a-z0-9]+)/(\d+)$")).Success && request.HttpMethod == "PUT")
+                {
+                    using var reader = new StreamReader(request.InputStream);
+                    RetroAchievements[$"{match.Groups[1].Value}:{match.Groups[2].Value}"] = JsonDocument.Parse(await reader.ReadToEndAsync()).RootElement.Clone();
+                    response.StatusCode = 204;
+                }
+                else if (path == "/retro/activity/achievements")
+                    await Json(response, RetroAchievements.SelectMany(a => a.Value.GetProperty("unlocks").EnumerateArray().Select(u => new
+                    {
+                        userId = 2, username = "Mario", romId = int.Parse(a.Key.Split(':')[1]), platform = a.Key.Split(':')[0], platformName = a.Value.GetProperty("platformName").GetString(),
+                        name = a.Value.GetProperty("name").GetString(), title = u.GetProperty("title").GetString(), date = u.GetProperty("date").GetDateTime(),
+                    })));
                 else if ((match = Regex.Match(path, @"^/retro/games/([a-z0-9]+)/(\d+)/players$")).Success)
                     await Json(response, RetroMinutes.Where(m => m.Key == $"{match.Groups[1].Value}:{match.Groups[2].Value}")
                         .Select(m => new { userId = 2, username = "Mario", minutes = m.Value, lastPlayed = DateTime.UtcNow }));

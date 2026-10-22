@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace GameVault.Core.Retro
@@ -13,7 +14,7 @@ namespace GameVault.Core.Retro
 
         public sealed record Mine(string Status, int Rating);
 
-        public sealed record Achievement(string Id, string Title, string Description, int Points, string? Badge, string? LockedBadge, bool Earned);
+        public sealed record Achievement(string Id, string Title, string Description, int Points, string? Badge, string? LockedBadge, bool Earned, DateTime? EarnedAt = null);
 
         private static string? Text(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
         private static long? Number(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out JsonElement v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : null;
@@ -33,12 +34,18 @@ namespace GameVault.Core.Retro
         public static List<Achievement> AchievementsOf(JsonElement rom, JsonElement me)
         {
             long? game = Number(rom, "ra_id");
-            var earned = new HashSet<string>();
+            // By badge, when it was earned (RetroAchievements' time, UTC)
+            var earned = new Dictionary<string, DateTime?>();
             JsonElement results = Child(Child(me, "ra_progression"), "results");
             if (game != null && results.ValueKind == JsonValueKind.Array)
                 foreach (JsonElement progress in results.EnumerateArray().Where(p => Number(p, "rom_ra_id") == game))
                     if (Child(progress, "earned_achievements") is { ValueKind: JsonValueKind.Array } list)
-                        earned.UnionWith(list.EnumerateArray().Select(a => Child(a, "id")).Select(id => id.ValueKind == JsonValueKind.Number ? id.GetInt64().ToString() : id.ToString()));
+                        foreach (JsonElement a in list.EnumerateArray())
+                        {
+                            JsonElement id = Child(a, "id");
+                            earned[id.ValueKind == JsonValueKind.Number ? id.GetInt64().ToString() : id.ToString()] =
+                                DateTime.TryParse(Text(a, "date"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime date) ? date : null;
+                        }
             JsonElement achievements = Child(Child(rom, "merged_ra_metadata"), "achievements");
             if (achievements.ValueKind != JsonValueKind.Array)
                 return new();
@@ -48,9 +55,10 @@ namespace GameVault.Core.Retro
                 {
                     string id = Number(a, "ra_id")?.ToString() ?? "";
                     // RomM keeps an earned one by its badge's name ("379571"), not its id
-                    bool done = Text(a, "badge_id") is string badge && earned.Contains(badge);
+                    DateTime? at = null;
+                    bool done = Text(a, "badge_id") is string badge && earned.TryGetValue(badge, out at);
                     return new Achievement(id, Text(a, "title") ?? "", Text(a, "description") ?? "", (int)(Number(a, "points") ?? 0),
-                        Text(a, "badge_url"), Text(a, "badge_url_lock"), done);
+                        Text(a, "badge_url"), Text(a, "badge_url_lock"), done, at);
                 }).ToList();
         }
     }

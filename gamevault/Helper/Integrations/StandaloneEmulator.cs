@@ -101,7 +101,24 @@ namespace gamevault.Helper
             return Start(Array.Empty<string>());
         }
 
-        public virtual Process Launch(string player, string launchFile) => Start(Layout.Arguments(player, launchFile));
+        /// <summary>Its platform's core, as the settings know it ("rpcs3").</summary>
+        public abstract string Core { get; }
+
+        public virtual Process Launch(string player, string launchFile)
+        {
+            // The definition chosen in Settings > Retro; none chosen, the emulator's own setting stays
+            if (RetroArchManager.Resolutions.TryGetValue(Core, out int scale))
+                foreach (string file in Layout.ResolutionFiles)
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                        File.WriteAllText(file, Layout.Resolution(File.Exists(file) ? File.ReadAllText(file) : "", scale));
+                    }
+                    catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+                }
+            return Start(Layout.Arguments(player, launchFile));
+        }
 
         protected Process Start(IReadOnlyList<string> arguments)
         {

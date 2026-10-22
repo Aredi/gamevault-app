@@ -18,6 +18,8 @@ namespace GameVault.Uploader
     /// GET  /savefiles/{gameId}/{name}            one of them (to restore an older save)
     /// POST /auth/login, POST /auth/refresh       the GameVault sign-in for the web page (forwarded to the server)
     /// GET  /me, GET /games?search=, /games/{id}  the signed-in user, the games already on the server (web page)
+    /// GET  /retro/series                         the series of games (RomM's virtual collections)
+    /// PUT  /retro/players/me/achievements/{platform}/{romId}, GET /retro/activity/achievements   a game's achievements of the player / the last ones of all
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
@@ -102,7 +104,36 @@ namespace GameVault.Uploader
             app.MapGet("/retro/players/me", (HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, check => Results.Json(players.Get(check.Id))));
             app.MapGet("/retro/players/{userId:int}", (int userId, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
-                AsRetroPlayerAsync(request, users, players, ct, _ => Results.Json(new { plays = players.Get(userId).Plays })));
+                AsRetroPlayerAsync(request, users, players, ct, _ =>
+                {
+                    var player = players.Get(userId);
+                    return Results.Json(new { plays = player.Plays, achievements = player.Achievements });
+                }));
+            app.MapPut("/retro/players/me/achievements/{platform}/{romId:int}", (string platform, int romId, RetroPlayerStore.GameAchievements game, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+                AsRetroPlayerAsync(request, users, players, ct, check =>
+                {
+                    string key = $"{platform}:{romId}";
+                    if (!RetroPlayerStore.IsValidKey(key) || string.IsNullOrWhiteSpace(game.Name) || game.Total is < 0 or > 10000 || game.Earned < 0 || game.Earned > game.Total)
+                        return Results.Json(new { error = "Achievements need a game and 0 to its total earned." }, statusCode: StatusCodes.Status400BadRequest);
+                    game.Name = game.Name.Trim()[..Math.Min(game.Name.Trim().Length, 200)];
+                    game.PlatformName = (game.PlatformName ?? "")[..Math.Min((game.PlatformName ?? "").Length, 80)];
+                    game.Cover = RommProxy.IsMedia(game.Cover) ? game.Cover : null;
+                    game.Unlocks = (game.Unlocks ?? new()).Where(u => !string.IsNullOrWhiteSpace(u.Title))
+                        .OrderByDescending(u => u.Date).Take(RetroPlayerStore.KeptUnlocks)
+                        .Select(u => new RetroPlayerStore.Unlock { Title = u.Title.Trim()[..Math.Min(u.Title.Trim().Length, 200)], Badge = RetroPlayerStore.IsBadge(u.Badge) ? u.Badge : null, Date = u.Date })
+                        .ToList();
+                    players.SetAchievements(check.Id, check.User, key, game);
+                    return Results.NoContent();
+                }));
+            app.MapGet("/retro/activity/achievements", (HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+                AsRetroPlayerAsync(request, users, players, ct, _ => Results.Json(players.RecentUnlocks(30).Select(a => new
+                {
+                    userId = a.UserId, username = a.Username, romId = int.Parse(a.Key.Split(':')[1]), platform = a.Key.Split(':')[0],
+                    platformName = a.Game.PlatformName, name = a.Game.Name, cover = a.Game.Cover, title = a.Unlock.Title, badge = a.Unlock.Badge, date = a.Unlock.Date,
+                }))));
+            // The series of games (IGDB's, as RomM groups them): Zelda, Pokémon...
+            app.MapGet("/retro/series", (HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.SeriesAsync(ct))));
             app.MapPost("/retro/players/me/plays", (RetroPlayerStore.Play played, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, check =>
                 {

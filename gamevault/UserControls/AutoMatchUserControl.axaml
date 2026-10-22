@@ -10,8 +10,6 @@
         <Grid ColumnDefinitions="*,Auto">
             <StackPanel Spacing="4">
                 <TextBlock Classes="sectionTitle" Text="{l:T 'Automatic mapping'}" />
-                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="13"
-                           Text="{l:T 'Reads the title in each file name (without tags, version and release group), searches the provider and proposes the closest game. Check the proposals, then map them.'}" />
             </StackPanel>
             <Button Grid.Column="1" Classes="round small" VerticalAlignment="Top" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
                 <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />

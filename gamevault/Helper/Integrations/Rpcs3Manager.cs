@@ -18,12 +18,13 @@ namespace gamevault.Helper
     internal sealed class Rpcs3Manager : StandaloneEmulator
     {
         public override string Name => "RPCS3";
+        public override string Core => "rpcs3";
         public override string Console => "PS3";
         public override Rpcs3Layout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "rpcs3"), PlatformInfo.IsWindows);
 
         public override string FirmwareState => Layout.HasFirmware
             ? Loc.T("Firmware installed in RPCS3")
-            : Loc.T("Not on this PC yet: PS3UPDAT.PUP is taken from RomM at the first game, RPCS3 asks to install it");
+            : Loc.T("Not downloaded yet");
 
         /// <summary>PS3UPDAT.PUP from RomM, installed by RPCS3: its window asks first; it is closed once its log tells it is done.</summary>
         protected override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)

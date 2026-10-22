@@ -28,12 +28,14 @@ namespace GameVault.Core.Tests
                 """);
             var me = Json("""
                 {"ra_progression":{"total":2,"results":[
-                  {"rom_ra_id":5626,"earned_achievements":[{"id":"379571","date":"2026-10-01"}]},
+                  {"rom_ra_id":5626,"earned_achievements":[{"id":"379571","date":"2026-10-01 18:22:10"}]},
                   {"rom_ra_id":42,"earned_achievements":[{"id":"379572","date":"2026-10-01"}]}]}}
                 """);
             var achievements = RommProgress.AchievementsOf(rom, me);
             Assert.Equal(new[] { "Mission 1", "Mission 2" }, achievements.Select(a => a.Title));
             Assert.True(achievements[0].Earned);
+            Assert.Equal(new DateTime(2026, 10, 1, 18, 22, 10, DateTimeKind.Utc), achievements[0].EarnedAt);
+            Assert.Equal(DateTimeKind.Utc, achievements[0].EarnedAt!.Value.Kind);
             Assert.False(achievements[1].Earned);
             Assert.Equal(3, achievements[0].Points);
             Assert.Equal("https://media.retroachievements.org/Badge/2_lock.png", achievements[1].LockedBadge);

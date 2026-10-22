@@ -18,12 +18,13 @@ namespace gamevault.Helper
     internal sealed class EdenManager : StandaloneEmulator
     {
         public override string Name => "Eden";
+        public override string Core => "eden";
         public override string Console => "Switch";
         public override EdenLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "eden"), PlatformInfo.IsWindows);
 
         public override string FirmwareState => Layout.HasFirmware
             ? Loc.T("Keys and firmware installed in Eden")
-            : Loc.T("Not on this PC yet: prod.keys and the firmware are taken from RomM at the first game");
+            : Loc.T("Not downloaded yet");
 
         /// <summary>prod.keys (title.keys too when there), and the firmware: a zip of its .nca files, or the files themselves.</summary>
         protected override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)

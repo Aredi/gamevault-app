@@ -93,7 +93,10 @@ namespace gamevault.Helper
                 try { await RommAccount.PlayedAsync(game.Id); }
                 catch (Exception ex) { Log.Ignored(ex); }
                 if (StandaloneEmulator.Of(game.Platform.System) == null)
+                {
                     await RetroAchievementsAccount.SyncRommAsync();
+                    await RetroAchievementsAccount.ShareAsync(game);
+                }
             }
             game.Status = "";
             game.Busy = false;

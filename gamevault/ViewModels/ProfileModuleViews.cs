@@ -225,9 +225,12 @@ namespace gamevault.ViewModels
     internal static class ProfileModuleFactory
     {
         /// <summary>The sections of a profile, from what the player chose and what they played.</summary>
-        public static List<ProfileModuleView> Build(ProfileDocument profile, IReadOnlyList<Progress> progresses, IReadOnlyDictionary<int, Game> games, User? user, DateTime nowUtc)
+        /// <param name="retro">The retro games played (minutes, last session): counted in the figures with the server's games.</param>
+        public static List<ProfileModuleView> Build(ProfileDocument profile, IReadOnlyList<Progress> progresses, IReadOnlyDictionary<int, Game> games, User? user, DateTime nowUtc,
+            IEnumerable<(int Minutes, DateTime LastPlayed)>? retro = null)
         {
-            ProfileStats stats = ProfileStats.Compute(progresses.Select(p => (p.MinutesPlayed ?? 0, p.LastPlayedAt, p.State)), nowUtc);
+            ProfileStats stats = ProfileStats.Compute(progresses.Select(p => (p.MinutesPlayed ?? 0, p.LastPlayedAt, p.State))
+                .Concat((retro ?? Enumerable.Empty<(int, DateTime)>()).Select(r => (r.Item1, (DateTime?)r.Item2, (string?)null))), nowUtc);
             var byGame = progresses.Where(p => p.Game != null).GroupBy(p => p.Game!.ID).ToDictionary(g => g.Key, g => g.First());
             string TimeOf(Progress? progress) => progress?.MinutesPlayed > 0
                 ? (string)new GameTimeConverter().Convert(progress.MinutesPlayed, typeof(string), null, CultureInfo.CurrentCulture)!

@@ -46,6 +46,7 @@
             <!-- Platforms, then the filters and the sorting -->
             <Grid ColumnDefinitions="*,Auto">
                 <WrapPanel Classes="chips" Margin="0,0,0,-8">
+                    <ToggleButton x:Name="uiAll" Classes="chip" IsChecked="{Binding ShowsAll, Mode=OneWay}" Click="All_Click" Content="{l:T 'All'}" />
                     <ItemsControl x:Name="uiPlatforms" ItemsSource="{Binding Platforms}" Margin="0">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -66,15 +67,22 @@
                     <Border Width="1" Height="20" Background="{DynamicResource Brush.Line}" Margin="4,6,12,14" />
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyInstalled}" Content="{l:T 'Installed'}" />
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyFavorites}" Content="{l:T 'Bookmarks'}" />
+                    <ToggleButton Classes="chip" IsChecked="{Binding ShowFilters}" Content="{l:T 'Filters'}" />
                 </WrapPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-                    <ComboBox x:Name="uiCollections" MinWidth="170" MinHeight="32" ItemsSource="{Binding Collections}" SelectedIndex="{Binding Collection}" ToolTip.Tip="{l:T 'Collections'}" />
+                    <ComboBox x:Name="uiCollections" MinWidth="170" MaxWidth="260" MinHeight="32" ItemsSource="{Binding Collections}" SelectedIndex="{Binding Collection}"
+                              SelectionChanged="Collections_SelectionChanged" ToolTip.Tip="{l:T 'Collections'}" />
                     <TextBlock Classes="muted" Text="{l:T 'Sort by'}" FontSize="13" VerticalAlignment="Center" />
                     <ComboBox MinWidth="160" MinHeight="32" ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortBy}" />
                 </StackPanel>
             </Grid>
-            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                       Text="{l:T 'Select+Start quits the game, L3+R3 opens its menu. The saves follow you from PC to PC.'}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowFilters}">
+                <ComboBox x:Name="uiGenres" MinWidth="170" MinHeight="32" ItemsSource="{Binding Genres}" SelectedIndex="{Binding Genre}" />
+                <ComboBox MinWidth="160" MinHeight="32" ItemsSource="{Binding PlayerOptions}" SelectedIndex="{Binding Players}" />
+                <ComboBox x:Name="uiDecades" MinWidth="140" MinHeight="32" ItemsSource="{Binding Decades}" SelectedIndex="{Binding Decade}" />
+                <ComboBox MinWidth="130" MinHeight="32" ItemsSource="{Binding RatingOptions}" SelectedIndex="{Binding Rating}" />
+                <Button Classes="link" VerticalAlignment="Center" Click="ClearFilters_Click" IsVisible="{Binding HasFilters}" Content="{l:T 'Clear'}" />
+            </StackPanel>
         </StackPanel>
 
         <!-- ===== Games ===== -->

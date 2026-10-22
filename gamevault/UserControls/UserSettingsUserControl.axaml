@@ -98,7 +98,6 @@
                             <Path Data="{DynamicResource IconGameSettingsEditImages}" Fill="{DynamicResource Brush.Foreground}" Margin="0,1,0,0" />
                             <TextBlock Text="{l:T 'Edit Images'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <TextBlock Text="{l:T 'Here, you can update the images of the user profile.'}" VerticalAlignment="Top" FontSize="15" Margin="10,35,0,0" />
                         <Grid ColumnDefinitions="*,*" Margin="10,70,10,40">
                             <Border Grid.Column="0" CornerRadius="5" Margin="0,0,5,0" Background="{DynamicResource Brush.Background}">
                                 <StackPanel>
@@ -116,7 +115,7 @@
                                             <StackPanel HorizontalAlignment="Center" Margin="0,65,0,0">
                                                 <TextBlock Text="{l:T 'Click to Upload, Paste or Drag and Drop'}" FontWeight="Bold" />
                                                 <TextBlock Text="{l:T 'JPG, PNG, GIF, TIF, ICO or BMP'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                                <TextBlock Text="{l:T 'For optimal display, use an image that is 1920px wide and 1080px high.'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                                                <TextBlock Text="{l:T 'Recommended: 1920 × 1080'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
@@ -149,7 +148,7 @@
                                             <StackPanel HorizontalAlignment="Center" Margin="0,65,0,0">
                                                 <TextBlock Text="{l:T 'Click to Upload, Paste or Drag and Drop'}" FontWeight="Bold" />
                                                 <TextBlock Text="{l:T 'JPG, PNG, GIF, TIF, ICO or BMP'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                                                <TextBlock Text="{l:T 'For optimal display, use an image that is 264px wide and 264px high.'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
+                                                <TextBlock Text="{l:T 'Recommended: 264 × 264'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
@@ -176,7 +175,6 @@
                             <Path Data="{DynamicResource IconGameSettingsEditDetails}" Fill="{DynamicResource Brush.Foreground}" Margin="0,1,0,0" />
                             <TextBlock Text="{l:T 'Edit Details'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <TextBlock Text="{l:T 'Here, you can update the details of the user profile.'}" VerticalAlignment="Top" FontSize="15" Margin="10,35,0,0" />
                         <Grid Classes="details" ColumnDefinitions="Auto,Auto" RowDefinitions="Auto,Auto,Auto" Margin="10,80,10,0" VerticalAlignment="Top">
                             <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,40,20">
                                 <TextBlock Classes="section" Text="{l:T 'Username'}" />
