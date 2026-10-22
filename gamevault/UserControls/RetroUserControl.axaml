@@ -14,6 +14,13 @@
         <Style Selector="WrapPanel.chips > :is(Control)">
             <Setter Property="Margin" Value="0,0,8,8" />
         </Style>
+        <!-- The shape of the platform's boxes; "All": one shape for every card (the covers whole in it), the rows even -->
+        <Style Selector="ItemsRepeater#uiGames local|AspectBox.cover">
+            <Setter Property="Ratio" Value="{Binding Platform.System.CoverRatio}" />
+        </Style>
+        <Style Selector="ItemsRepeater#uiGames.all local|AspectBox.cover">
+            <Setter Property="Ratio" Value="1.3333" />
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
@@ -133,7 +140,7 @@
                         <DataTemplate>
                             <Button Classes="gameCard" Margin="8,8,8,0" VerticalAlignment="Top" Click="GameCard_Click">
                                 <StackPanel Spacing="8">
-                                    <local:AspectBox Ratio="{Binding Platform.System.CoverRatio}">
+                                    <local:AspectBox Classes="cover">
                                         <Panel Classes="lift">
                                             <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
                                                     BoxShadow="{Binding Accent, Converter={StaticResource accentShadowConv}, ConverterParameter='16 36 -8 0.75'}" />

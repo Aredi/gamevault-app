@@ -1,5 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Avalonia.Headless.XUnit;
 using GameVault.Core.Retro;
 using gamevault.Helper;
@@ -93,6 +95,11 @@ namespace GameVault.UiTests
                 Assert.True(page.ViewModel.ShowsAll);
                 Assert.Contains(page.Shown, g => g.Name == "Zelda");
                 Assert.Contains(page.Shown, g => g.Name == "Castlevania");
+                // Every card of one shape there, the covers whole in it
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
+                IEnumerable<double> Shapes() => page.FindControl<ItemsRepeater>("uiGames")!.GetVisualDescendants().OfType<AspectBox>().Where(b => b.Classes.Contains("cover") && b.DataContext is RetroGame && b.IsEffectivelyVisible).Select(b => b.Ratio);
+                await TestSession.WaitUntil(() => Shapes().Count() >= 2, TimeSpan.FromSeconds(10), "the cards");
+                Assert.All(Shapes(), r => Assert.Equal(1.3333, r));
 
                 // A series of RomM, across the platforms
                 await TestSession.WaitUntil(() => page.ViewModel.Collections.Any(c => c.StartsWith("Castlevania")), TimeSpan.FromSeconds(10), "the series");
@@ -130,6 +137,8 @@ namespace GameVault.UiTests
                 await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
                 Assert.False(page.ViewModel.ShowsAll);
                 Assert.All(page.Shown, g => Assert.Equal("nes", g.Platform.Slug));
+                Dispatcher.UIThread.RunJobs();
+                Assert.All(Shapes(), r => Assert.Equal(page.ViewModel.Platforms.Single(p => p.Slug == "nes").System.CoverRatio, r));
 
                 // Its chip clicked again: back to "All"
                 await page.TogglePlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));

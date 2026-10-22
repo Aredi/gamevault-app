@@ -89,10 +89,12 @@
         <Style Selector="ListBox#uiNavigation ListBoxItem:selected:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Brush.Accent2}" />
         </Style>
+        <!-- The icons keep their 24 x 24 box (Uniform would stretch a wide icon and put it at the top), shown at 20 x 20 -->
         <Style Selector=":is(Control).navRow Path">
-            <Setter Property="Stretch" Value="Uniform" />
-            <Setter Property="Width" Value="20" />
-            <Setter Property="Height" Value="20" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="-2" />
+            <Setter Property="RenderTransform" Value="scale(0.8333)" />
             <Setter Property="Fill" Value="{Binding $parent[ContentControl].Foreground}" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
@@ -107,8 +109,8 @@
             <Setter Property="FontSize" Value="13" />
         </Style>
         <Style Selector="ListBox#uiNavigation ListBoxItem.sub :is(Control).navRow Path">
-            <Setter Property="Width" Value="16" />
-            <Setter Property="Height" Value="16" />
+            <Setter Property="Margin" Value="-4" />
+            <Setter Property="RenderTransform" Value="scale(0.6667)" />
         </Style>
         <Style Selector="Border#uiSidebar.folded ListBox#uiNavigation ListBoxItem.sub">
             <Setter Property="Margin" Value="0,0,0,2" />
@@ -176,7 +178,7 @@
                         <TextBlock Grid.Column="1" Classes="wide" Text="SanctuaryVault" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="16.5"
                                    LetterSpacing="-0.3" Margin="11,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Brush.Foreground}" />
                         <Button Grid.Column="2" Classes="round small wide" Width="28" Height="28" CornerRadius="8" Background="Transparent" Click="FoldSidebar_Click" ToolTip.Tip="{l:T 'Fold the menu'}">
-                            <Path Data="{StaticResource IconChevronLeft}" Width="12" Height="12" />
+                            <Path Data="{StaticResource IconChevronLeft}" Width="12" Height="12" Stretch="Uniform" Margin="0" RenderTransform="none" />
                         </Button>
                     </Grid>
                     <Button Grid.Row="1" x:Name="uiUnfold" Classes="round small" Width="34" Height="26" CornerRadius="8" HorizontalAlignment="Center" Margin="0,-12,0,12" Background="Transparent"

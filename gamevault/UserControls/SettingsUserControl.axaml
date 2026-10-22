@@ -62,9 +62,10 @@
             <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
         </Style>
         <Style Selector="TabControl#uiTabControl > TabItem Path.tabIcon">
-            <Setter Property="Width" Value="18" />
-            <Setter Property="Height" Value="18" />
-            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="-3" />
+            <Setter Property="RenderTransform" Value="scale(0.75)" />
             <Setter Property="Fill" Value="{Binding $parent[TabItem].Foreground}" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>

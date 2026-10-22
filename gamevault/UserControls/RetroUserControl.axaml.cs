@@ -205,6 +205,7 @@ namespace gamevault.UserControls
             var layout = (UniformGridLayout)uiGames.Layout!;
             layout.MinItemWidth = CardWidth + 16;
             layout.MinItemHeight = CardWidth * (platform?.System.CoverRatio ?? 4 / 3.0) + 70;
+            uiGames.Classes.Set("all", platform == null);
         }
 
         private async void All_Click(object? sender, RoutedEventArgs e)
