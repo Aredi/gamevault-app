@@ -47,6 +47,66 @@ namespace GameVault.UiTests
             }
         }
     
+        /// <summary>
+        /// The grid measures its cards with the first game's; far down the page that card is not shown, and an old one
+        /// taken for it stayed drawn at its old place over the others (the retro grid did). Whatever changes, none overlaps.
+        /// </summary>
+        [AvaloniaFact]
+        public async Task FarDownTheLibrary_NoCardIsDrawnOverAnother_WhenTheCardsOrTheListChange()
+        {
+            var session = await TestSession.GetAsync();
+            for (int i = 0; i < 60; i++)
+                session.Server.AddGame(1180 + i, $"Grid Check Game {i:00}", GameType.LINUX_PORTABLE, Array.Empty<byte>(), $"Grid Check Game {i:00} (L_P).tar.gz");
+            MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+            var library = MainWindowViewModel.Instance.Library;
+            await library.LoadLibrary();
+            var model = library.Model;
+            var scroll = library.FindControl<ScrollViewer>("uiMainScrollBar")!;
+            var grid = library.FindControl<ItemsRepeater>("uiServerGamesItemsControl")!;
+            double width = model.CardWidth;
+            await TestSession.WaitUntil(() => scroll.Extent.Height > scroll.Viewport.Height + 1500, TimeSpan.FromSeconds(10), "a long library");
+
+            async Task FarDown()
+            {
+                scroll.Offset = new Avalonia.Vector(0, scroll.Extent.Height - scroll.Viewport.Height);
+                Dispatcher.UIThread.RunJobs();
+                await Task.Delay(50);
+                Dispatcher.UIThread.RunJobs();
+            }
+            void NoneOverlaps(string after)
+            {
+                Dispatcher.UIThread.RunJobs();
+                var cards = grid.Children.Where(c => c.IsVisible && c.DataContext != null && c.Bounds.X >= 0 && c.Bounds.Width > 0).ToList();
+                Assert.NotEmpty(cards);
+                foreach (var card in cards)
+                    Assert.False(cards.Any(other => other != card && other.Bounds.Intersects(card.Bounds)), $"{after}: a card is drawn over another at {card.Bounds}");
+            }
+            try
+            {
+                await FarDown();
+                model.CardWidth = 240;
+                NoneOverlaps("bigger cards");
+                await FarDown();
+                model.CardWidth = 130;
+                NoneOverlaps("smaller cards");
+                await FarDown();
+                model.IsShelfMode = true;
+                NoneOverlaps("the shelf");
+                model.IsShelfMode = false;
+                await FarDown();
+                library.FindControl<TextBox>("uiSearch")!.Text = "Grid Check Game";
+                await TestSession.WaitUntil(() => model.GameCards.Count > 20 && model.GameCards.All(g => g.Title.StartsWith("Grid Check Game")), TimeSpan.FromSeconds(10), "the search result");
+                NoneOverlaps("a search");
+            }
+            finally
+            {
+                model.CardWidth = width;
+                model.IsShelfMode = false;
+                library.FindControl<TextBox>("uiSearch")!.Text = "";
+                await library.LoadLibrary();
+            }
+        }
+
         /// <summary>Searching while far down the page: the page goes back to the top of the results.</summary>
         [AvaloniaFact]
         public async Task ASearch_FarDownThePage_ShowsTheTopOfTheResults()
