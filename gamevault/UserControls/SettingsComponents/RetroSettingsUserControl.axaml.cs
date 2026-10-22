@@ -72,6 +72,11 @@ namespace gamevault.UserControls.SettingsComponents
             var resolutions = RetroArchManager.Resolutions;
             uiResolution.ItemsSource = RetroResolution.Scales.Select(r => new ResolutionRow(r.Key,
                 string.Join(", ", RetroSystems.All.Values.Where(s => s.Core == r.Key).Select(s => s.Name)), r.Value, resolutions.GetValueOrDefault(r.Key, 1))).ToList();
+            uiLanguageConsoles.Text = Loc.F("The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.",
+                string.Join(", ", RetroSystems.All.Values.Where(s => RetroLanguage.Cores.Contains(s.Core)).Select(s => s.Name)));
+            uiLanguage.ItemsSource = RetroLanguage.All.Select(RetroGameViewModel.LanguageName)
+                .Prepend(Loc.F("As the client ({0})", RetroGameViewModel.Lower(RetroGameViewModel.LanguageName(RetroArchManager.ClientLanguage)))).ToList();
+            uiLanguage.SelectedIndex = Array.IndexOf(RetroLanguage.All, RetroArchManager.LanguageSetting) + 1;
             uiSavesState.Text = SettingsViewModel.Instance.CloudSaves
                 ? Loc.F("Cloud saves: {0}", RetroCloudSaves.Destination)
                 : Loc.T("Cloud saves off (Settings > Data)");
@@ -166,6 +171,13 @@ namespace gamevault.UserControls.SettingsComponents
         {
             RetroAchievementsAccount.SignOut();
             RefreshAchievements();
+        }
+
+        private void Language_Changed(object? sender, SelectionChangedEventArgs e)
+        {
+            if (uiLanguage.SelectedIndex < 0 || !IsLoaded)
+                return;
+            RetroArchManager.LanguageSetting = uiLanguage.SelectedIndex == 0 ? "" : RetroLanguage.All[uiLanguage.SelectedIndex - 1];
         }
 
         private void Resolution_Changed(object? sender, SelectionChangedEventArgs e)

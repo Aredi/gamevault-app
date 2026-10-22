@@ -100,6 +100,10 @@ namespace gamevault.Models
         RetroCrtSystems,
         //Definition of the 3D consoles (profileconfig): "dolphin=2;eden=1"
         RetroResolution,
+        //Language of the consoles that have one (profileconfig): RomM's name, "French"; "" for the client's
+        RetroLanguage,
+        //Language chosen for games (profileconfig): "559=French;12=Japanese"
+        RetroGameLanguages,
         //Download queue
         MaxConcurrentDownloads,
         //Interface language (profileconfig): "", "en", "fr"

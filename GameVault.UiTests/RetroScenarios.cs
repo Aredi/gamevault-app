@@ -425,10 +425,12 @@ namespace GameVault.UiTests
                 Assert.Equal(2, Directory.GetFiles(layout.FirmwareDirectory, "*.nca").Length);
 
                 // The player is the console's first user when the game starts (Eden itself is not run here), the updates and DLC read from the games' folders
-                Assert.ThrowsAny<Exception>(() => StandaloneEmulator.Eden.Launch(RetroArchManager.Player, game.RomFile!));
+                Assert.ThrowsAny<Exception>(() => StandaloneEmulator.Eden.Launch(RetroArchManager.Player, game.RomFile!, "French"));
                 Assert.Equal(EdenLayout.UserId(RetroArchManager.Player), File.ReadAllBytes(layout.ProfilesFile)[0x10..0x20]);
                 string config = File.ReadAllText(layout.SettingsFiles.Single());
                 Assert.Contains("Paths\\external_content_dirs\\size=3", config);
+                // The console's language: the one the game starts in
+                Assert.Contains("[System]\nlanguage_index\\default=false\nlanguage_index=2\n", config);
                 Assert.Contains(Path.GetDirectoryName(dlc.RomFile)!.Replace('\\', '/'), config);
 
                 // Its saves are what it writes in the player's user folder

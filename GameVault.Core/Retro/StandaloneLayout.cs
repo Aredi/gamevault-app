@@ -32,9 +32,10 @@ namespace GameVault.Core.Retro
 
         public abstract IReadOnlyList<string> Arguments(string player, string launchFile);
 
-        /// <summary>Where it keeps its definition (a multiple of the console's), and that file with one: see <see cref="RetroResolution"/>.</summary>
+        /// <summary>Where it keeps its definition (a multiple of the console's) and its console's language, and that file with one: see <see cref="RetroResolution"/>, <see cref="RetroLanguage"/>.</summary>
         public abstract IEnumerable<string> ResolutionFiles { get; }
         public abstract string Resolution(string existing, int scale);
+        public abstract string Language(string existing, string language);
 
         /// <summary>An INI with these values in their section, the others kept.</summary>
         protected static string MergeIni(string existing, string section, IEnumerable<(string Key, string Value)> values)

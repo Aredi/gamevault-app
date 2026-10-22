@@ -393,11 +393,11 @@ namespace GameVault.UiTests
                 }
                 RetroArchManager.CrtSystems = new() { "nes" };
                 // RetroArch itself is not run here
-                Assert.ThrowsAny<Exception>(() => RetroArchManager.Launch(zelda.Platform.System, zelda.RomFile!));
+                Assert.ThrowsAny<Exception>(() => RetroArchManager.Launch(zelda.Platform.System, zelda.RomFile!, "French"));
                 Assert.Equal(layout.CrtPreset("slang"), File.ReadAllText(layout.GamePreset("mesen", zelda.RomFile!, "slang")));
                 Assert.True(File.Exists(layout.GamePreset("mesen", zelda.RomFile!, "glsl")));
                 RetroArchManager.CrtSystems = new();
-                Assert.ThrowsAny<Exception>(() => RetroArchManager.Launch(zelda.Platform.System, zelda.RomFile!));
+                Assert.ThrowsAny<Exception>(() => RetroArchManager.Launch(zelda.Platform.System, zelda.RomFile!, "French"));
                 Assert.False(File.Exists(layout.GamePreset("mesen", zelda.RomFile!, "slang")));
 
                 // Continue playing: the game played last, whatever the console

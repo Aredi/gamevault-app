@@ -150,6 +150,9 @@
                                             <TextBlock Text="{Binding Game.Platform.Name}" />
                                         </StackPanel>
                                     </Border>
+                                    <Border Classes="chip" Background="{DynamicResource Brush.Glass}" IsVisible="{Binding HasLanguages}" ToolTip.Tip="{Binding LanguagesText}">
+                                        <TextBlock Text="{Binding LanguageCodes}" />
+                                    </Border>
                                     <ItemsControl ItemsSource="{Binding Game.Genres}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -250,6 +253,12 @@
                             <StackPanel Classes="stat" IsVisible="{Binding !HasRomm}">
                                 <TextBlock Classes="label" Text="{l:T 'MY GAME'}" />
                                 <TextBlock Text="{Binding RommNote}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="300" />
+                            </StackPanel>
+                            <!-- The console's language the game starts in (Settings > Retro, or this game's own) -->
+                            <StackPanel Classes="stat" IsVisible="{Binding HasConsoleLanguage}">
+                                <TextBlock Classes="label" Text="{l:T 'LANGUAGE'}" />
+                                <ComboBox x:Name="uiLanguage" MinWidth="170" MinHeight="30" ItemsSource="{Binding LanguageOptions}" SelectedIndex="{Binding LanguageIndex}"
+                                          ToolTip.Tip="{l:T 'The language of the console the game starts in; a game without it keeps its own'}" />
                             </StackPanel>
                             <StackPanel Classes="stat">
                                 <TextBlock Classes="label" Text="{l:T 'CLOUD SAVES'}" />

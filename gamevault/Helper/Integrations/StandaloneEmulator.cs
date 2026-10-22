@@ -104,19 +104,21 @@ namespace gamevault.Helper
         /// <summary>Its platform's core, as the settings know it ("rpcs3").</summary>
         public abstract string Core { get; }
 
-        public virtual Process Launch(string player, string launchFile)
+        /// <param name="language">The console's: see <see cref="RetroArchManager.LanguageOf"/>.</param>
+        public virtual Process Launch(string player, string launchFile, string language)
         {
             // The definition chosen in Settings > Retro; none chosen, the emulator's own setting stays
-            if (RetroArchManager.Resolutions.TryGetValue(Core, out int scale))
-                foreach (string file in Layout.ResolutionFiles)
+            bool scaled = RetroArchManager.Resolutions.TryGetValue(Core, out int scale);
+            foreach (string file in Layout.ResolutionFiles)
+            {
+                try
                 {
-                    try
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-                        File.WriteAllText(file, Layout.Resolution(File.Exists(file) ? File.ReadAllText(file) : "", scale));
-                    }
-                    catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+                    Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                    string config = Layout.Language(File.Exists(file) ? File.ReadAllText(file) : "", language);
+                    File.WriteAllText(file, scaled ? Layout.Resolution(config, scale) : config);
                 }
+                catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+            }
             return Start(Layout.Arguments(player, launchFile));
         }
 

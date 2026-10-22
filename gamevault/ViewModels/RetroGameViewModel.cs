@@ -68,6 +68,45 @@ namespace gamevault.ViewModels
         public string RegionsText => Join(Game.Regions);
         public string LanguagesText => Join(Game.Languages);
         public string AgeRatingsText => Join(Game.AgeRatings);
+        /// <summary>"EN · FR · DE": the header's chip of the languages the game has (RomM's, from its file's name).</summary>
+        public string LanguageCodes => string.Join(" · ", Game.Languages.Select(name =>
+            CultureInfo.GetCultures(CultureTypes.NeutralCultures).FirstOrDefault(c => c.EnglishName == name)?.TwoLetterISOLanguageName.ToUpperInvariant() ?? name));
+        public bool HasLanguages => Game.Languages.Length > 0;
+
+        /// <summary>Its console has a language (Settings > Retro): the page can choose the game's.</summary>
+        public bool HasConsoleLanguage => GameVault.Core.Retro.RetroLanguage.Cores.Contains(Game.Platform.System.Core);
+        /// <summary>The ones the game has (all when RomM does not know them), after "Automatic".</summary>
+        private string[] LanguageChoices => GameVault.Core.Retro.RetroLanguage.All.Where(l => Game.Languages.Length == 0 || Game.Languages.Contains(l)).ToArray();
+        public List<string> LanguageOptions => LanguageChoices.Select(LanguageName)
+            .Prepend(Loc.F("Automatic ({0})", Lower(LanguageName(GameVault.Core.Retro.RetroLanguage.Pick(null, RetroArchManager.Language, Game.Languages))))).ToList();
+        public int LanguageIndex
+        {
+            get => RetroArchManager.GameLanguages.TryGetValue(Game.Id, out string? chosen) ? Array.IndexOf(LanguageChoices, chosen) + 1 : 0;
+            set
+            {
+                if (value < 0 || value == LanguageIndex)
+                    return;
+                var games = RetroArchManager.GameLanguages;
+                if (value == 0)
+                    games.Remove(Game.Id);
+                else
+                    games[Game.Id] = LanguageChoices[value - 1];
+                RetroArchManager.GameLanguages = games;
+                OnPropertyChanged();
+            }
+        }
+        /// <summary>"in French", inside a sentence.</summary>
+        public static string Lower(string text) => text.Length > 0 ? char.ToLower(text[0], CultureInfo.CurrentCulture) + text[1..] : text;
+        /// <summary>"In French": RomM's name, in the client's language.</summary>
+        public static string LanguageName(string language) => language switch
+        {
+            "French" => Loc.T("In French"),
+            "German" => Loc.T("In German"),
+            "Spanish" => Loc.T("In Spanish"),
+            "Italian" => Loc.T("In Italian"),
+            "Japanese" => Loc.T("In Japanese"),
+            _ => Loc.T("In English"),
+        };
         /// <summary>The settings of the game's emulator.</summary>
         public string MenuText => Loc.F("Controls and picture: {0} settings", StandaloneEmulator.Of(Game.Platform.System)?.Name ?? "RetroArch");
         public string PlayersText => string.IsNullOrEmpty(Game.Players) || Game.Players == "null" ? "—" : Game.Players;

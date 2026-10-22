@@ -53,7 +53,9 @@ namespace gamevault.Helper
                 var saves = RetroCloudSaves.Of(game);
                 var before = saves.Snapshot();
                 StandaloneEmulator? emulator = StandaloneEmulator.Of(game.Platform.System);
-                Process process = emulator != null ? emulator.Launch(RetroArchManager.Player, rom) : RetroArchManager.Launch(game.Platform.System, rom, stateSlot);
+                Process process = emulator != null
+                    ? emulator.Launch(RetroArchManager.Player, rom, RetroArchManager.LanguageOf(game))
+                    : RetroArchManager.Launch(game.Platform.System, rom, RetroArchManager.LanguageOf(game), stateSlot);
                 game.Status = emulator != null ? Loc.T("Playing: close the game's window to quit") : Loc.T("Playing: Select+Start to quit");
                 DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
                 _ = WhenClosedAsync(process, game, before);

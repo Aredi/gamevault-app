@@ -95,6 +95,12 @@
             </StackPanel>
 
             <StackPanel Classes="section">
+                <TextBlock Classes="h1" Text="{l:T 'Game language'}" />
+                <TextBlock x:Name="uiLanguageConsoles" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,10" />
+                <ComboBox x:Name="uiLanguage" MinWidth="220" SelectionChanged="Language_Changed" />
+            </StackPanel>
+
+            <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'Saves'}" />
                 <TextBlock x:Name="uiSavesState" TextWrapping="Wrap" FontSize="14" />
                 <WrapPanel Margin="0,12,0,0">

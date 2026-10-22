@@ -70,7 +70,7 @@ namespace gamevault.Helper
         }
 
         /// <summary>The player becomes the console's first user, the one the game is started as; the updates and DLC are the installed ones.</summary>
-        public override Process Launch(string player, string launchFile)
+        public override Process Launch(string player, string launchFile, string language)
         {
             string config = Layout.SettingsFiles.Single();
             File.WriteAllText(config, EdenLayout.ContentFolders(File.ReadAllText(config),
@@ -78,7 +78,7 @@ namespace gamevault.Helper
             byte[]? existing = File.Exists(Layout.ProfilesFile) ? File.ReadAllBytes(Layout.ProfilesFile) : null;
             Directory.CreateDirectory(Path.GetDirectoryName(Layout.ProfilesFile)!);
             File.WriteAllBytes(Layout.ProfilesFile, EdenLayout.Profiles(existing, player, LoginManager.Instance.GetCurrentUser()?.Username ?? "Player"));
-            return base.Launch(player, launchFile);
+            return base.Launch(player, launchFile, language);
         }
     }
 }

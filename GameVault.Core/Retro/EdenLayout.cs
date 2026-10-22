@@ -124,5 +124,9 @@ namespace GameVault.Core.Retro
         /// <summary>Its [Renderer] resolution_setup: Res1_4X, Res1_2X, Res3_4X, Res1X (3), Res5_4X, Res3_2X, Res2X (6), Res3X, Res4X.</summary>
         public override string Resolution(string existing, int scale) =>
             MergeIni(existing, "Renderer", new[] { ("resolution_setup\\default", "false"), ("resolution_setup", (scale switch { >= 4 => 8, 3 => 7, 2 => 6, _ => 3 }).ToString()) });
+
+        /// <summary>Its [System] language_index: Japanese, EnglishAmerican, French, German, Italian, Spanish...</summary>
+        public override string Language(string existing, string language) =>
+            MergeIni(existing, "System", new[] { ("language_index\\default", "false"), ("language_index", (language switch { "Japanese" => 0, "French" => 2, "German" => 3, "Italian" => 4, "Spanish" => 5, _ => 1 }).ToString()) });
     }
 }

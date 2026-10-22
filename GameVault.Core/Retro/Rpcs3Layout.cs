@@ -81,28 +81,34 @@ namespace GameVault.Core.Retro
             : new[] { Path.Combine(ConfigDirectory, "config.yml") };
 
         /// <summary>Its "Resolution Scale" (a percentage) under "Video:", the rest of the YAML kept; RPCS3 adds what is missing.</summary>
-        public override string Resolution(string existing, int scale)
+        public override string Resolution(string existing, int scale) => MergeYaml(existing, "Video", "Resolution Scale", (scale * 100).ToString());
+
+        /// <summary>Its "Language" under "System:", by its own names ("English (US)").</summary>
+        public override string Language(string existing, string language) => MergeYaml(existing, "System", "Language", language == "English" ? "English (US)" : language);
+
+        /// <summary>A setting of its config.yml in its section, the rest kept.</summary>
+        private static string MergeYaml(string existing, string section, string key, string value)
         {
             var lines = existing.Replace("\r\n", "\n").Split('\n').ToList();
             while (lines.Count > 0 && lines[^1].Length == 0)
                 lines.RemoveAt(lines.Count - 1);
-            string line = $"  Resolution Scale: {scale * 100}";
-            int video = lines.IndexOf("Video:");
-            if (video < 0)
+            string line = $"  {key}: {value}";
+            int start = lines.IndexOf(section + ":");
+            if (start < 0)
             {
-                lines.Add("Video:");
+                lines.Add(section + ":");
                 lines.Add(line);
             }
             else
             {
-                int end = lines.FindIndex(video + 1, l => l.Length > 0 && !l.StartsWith(' '));
+                int end = lines.FindIndex(start + 1, l => l.Length > 0 && !l.StartsWith(' '));
                 if (end < 0)
                     end = lines.Count;
-                int at = lines.FindIndex(video + 1, end - video - 1, l => l.StartsWith("  Resolution Scale:", StringComparison.Ordinal));
+                int at = lines.FindIndex(start + 1, end - start - 1, l => l.StartsWith($"  {key}:", StringComparison.Ordinal));
                 if (at >= 0)
                     lines[at] = line;
                 else
-                    lines.Insert(video + 1, line);
+                    lines.Insert(start + 1, line);
             }
             return string.Join('\n', lines) + "\n";
         }

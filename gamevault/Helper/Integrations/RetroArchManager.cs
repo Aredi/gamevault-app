@@ -84,12 +84,31 @@ namespace gamevault.Helper
             set => Preferences.Set(Models.AppConfigKey.RetroResolution, RetroResolution.Format(value), ProfileConfig);
         }
 
-        /// <summary>The definition chosen here, in the core's options (the others, chosen in RetroArch's menu, kept).</summary>
-        private static void SetResolution(RetroSystem system)
+        /// <summary>The language of the consoles chosen in Settings > Retro (RomM's name, "French"), or "" for the client's.</summary>
+        public static string LanguageSetting
         {
-            if (!Resolutions.TryGetValue(system.Core, out int scale) || RetroResolution.CoreOption(system.Core, scale) is not var (key, value))
+            get => Preferences.Get(Models.AppConfigKey.RetroLanguage, ProfileConfig);
+            set => Preferences.Set(Models.AppConfigKey.RetroLanguage, value, ProfileConfig);
+        }
+        public static string ClientLanguage => Loc.Language == "fr" ? "French" : "English";
+        public static string Language => RetroLanguage.All.Contains(LanguageSetting) ? LanguageSetting : ClientLanguage;
+
+        /// <summary>The language chosen on games' pages, by their RomM id.</summary>
+        public static Dictionary<int, string> GameLanguages
+        {
+            get => RetroLanguage.Parse(Preferences.Get(Models.AppConfigKey.RetroGameLanguages, ProfileConfig));
+            set => Preferences.Set(Models.AppConfigKey.RetroGameLanguages, RetroLanguage.Format(value), ProfileConfig);
+        }
+
+        /// <summary>The language the game starts in.</summary>
+        public static string LanguageOf(RetroGame game) => RetroLanguage.Pick(GameLanguages.GetValueOrDefault(game.Id), Language, game.Languages);
+
+        /// <summary>A value of the core's options (the others, chosen in RetroArch's menu, kept).</summary>
+        private static void SetOption(string core, (string Key, string Value)? option)
+        {
+            if (option is not var (key, value))
                 return;
-            string file = Layout.CoreOptionsFile(system.Core);
+            string file = Layout.CoreOptionsFile(core);
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             File.WriteAllText(file, RetroResolution.MergeOptions(File.Exists(file) ? File.ReadAllText(file) : "", key, value));
         }
@@ -230,13 +249,16 @@ namespace gamevault.Helper
                 await emulator.UninstallAsync();
         }
 
+        /// <param name="language">The console's, when it has one: see <see cref="LanguageOf"/>.</param>
         /// <param name="stateSlot">The save state the game starts from, or none.</param>
-        public static Process Launch(RetroSystem system, string rom, int? stateSlot = null)
+        public static Process Launch(RetroSystem system, string rom, string language, int? stateSlot = null)
         {
             try
             {
                 SetPicture(system, rom);
-                SetResolution(system);
+                if (Resolutions.TryGetValue(system.Core, out int scale))
+                    SetOption(system.Core, RetroResolution.CoreOption(system.Core, scale));
+                SetOption(system.Core, RetroLanguage.CoreOption(system.Core, language));
             }
             catch (Exception ex) { Log.Ignored(ex); }
             return Start(Layout.Arguments(system.Core, rom, stateSlot));

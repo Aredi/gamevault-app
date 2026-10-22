@@ -1227,5 +1227,17 @@
   "Ignores the queue and the schedule": "Ignore la file et les horaires",
   "Link your RomM account (Settings > Retro).": "Liez votre compte RomM (Paramètres > Rétro).",
   "Link your RomM account again (Settings > Retro).": "Liez de nouveau votre compte RomM (Paramètres > Rétro).",
-  "Uninstall the emulators, the BIOS and the firmware? The saves are kept.": "Désinstaller les émulateurs, les BIOS et les firmwares ? Les sauvegardes sont conservées."
+  "Uninstall the emulators, the BIOS and the firmware? The saves are kept.": "Désinstaller les émulateurs, les BIOS et les firmwares ? Les sauvegardes sont conservées.",
+  "In English": "En anglais",
+  "In French": "En français",
+  "In German": "En allemand",
+  "In Spanish": "En espagnol",
+  "In Italian": "En italien",
+  "In Japanese": "En japonais",
+  "Automatic ({0})": "Automatique ({0})",
+  "As the client ({0})": "Comme le client ({0})",
+  "Game language": "Langue des jeux",
+  "LANGUAGE": "LANGUE",
+  "The language of the console the game starts in; a game without it keeps its own": "La langue de la console au lancement du jeu ; un jeu qui ne l'a pas garde la sienne",
+  "The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.": "Les consoles qui ont une langue démarrent dans celle-ci : {0}. Un jeu qui ne l'a pas garde la sienne ; la page d'un jeu peut en choisir une autre."
 }
