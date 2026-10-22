@@ -23,14 +23,6 @@ namespace gamevault.Helper
         private static Timer? timer;
         private static readonly SemaphoreSlim checking = new(1, 1);
 
-        private sealed class Latest
-        {
-            [JsonPropertyName("id")] public int Id { get; set; }
-            [JsonPropertyName("name")] public string Name { get; set; } = "";
-            [JsonPropertyName("platform")] public string Platform { get; set; } = "";
-            [JsonPropertyName("platformName")] public string? PlatformName { get; set; }
-        }
-
         public static void Start()
         {
             timer ??= new Timer(async _ => await CheckAsync(), null, TimeSpan.FromSeconds(45), TimeSpan.FromMinutes(15));
@@ -44,8 +36,7 @@ namespace gamevault.Helper
                 return;
             try
             {
-                var newest = (await RetroService.TryGetAsync<List<Latest>>("/retro/latest") ?? new())
-                    .Where(g => RetroSystems.All.ContainsKey(g.Platform)).ToList();
+                var newest = await RetroService.LatestAsync();
                 if (newest.Count == 0)
                     return;
                 string configFile = LoginManager.Instance.GetUserProfile().UserConfigFile;

@@ -197,6 +197,31 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheRetroGamesAddedToRomm_AreInTheNews_AmongTheServersGames()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            try
+            {
+                session.Server.RetroLatest.Add(new { id = 41, name = "Metroid", platform = "nes", platformName = "NES", cover = (string?)null, addedAt = DateTime.UtcNow.AddHours(-3) });
+                // An unknown platform, and a game older than the news
+                session.Server.RetroLatest.Add(new { id = 42, name = "Halo", platform = "xbox", platformName = "Xbox", cover = (string?)null, addedAt = DateTime.UtcNow.AddHours(-2) });
+                session.Server.RetroLatest.Add(new { id = 40, name = "Zelda", platform = "nes", platformName = "NES", cover = (string?)null, addedAt = DateTime.UtcNow.AddDays(-90) });
+
+                ServerNewsData news = await ServerNewsService.LoadAsync();
+                var retro = news.Groups.SelectMany(g => g.Items).Where(i => i.Retro != null).ToList();
+                NewsItem metroid = Assert.Single(retro);
+                Assert.Equal(("Metroid", "NES", 41), (metroid.Title, metroid.Info, metroid.Retro!.Id));
+                Assert.Equal(gamevault.Localization.Loc.T("This week"), news.Groups.First(g => g.Items.Contains(metroid)).Title);
+            }
+            finally
+            {
+                session.Server.RetroLatest.Clear();
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheGamesPage_ShowsItsFriends_AndRestoresAnOlderVersionOfItsSaves()
         {
             var (session, page, zelda) = await InstallZeldaAsync();

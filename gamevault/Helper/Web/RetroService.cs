@@ -335,6 +335,22 @@ namespace gamevault.Helper
             return start[..read];
         }
 
+        /// <summary>A game added to RomM lately.</summary>
+        internal sealed class LatestGame
+        {
+            [JsonPropertyName("id")] public int Id { get; set; }
+            [JsonPropertyName("name")] public string Name { get; set; } = "";
+            [JsonPropertyName("platform")] public string Platform { get; set; } = "";
+            [JsonPropertyName("platformName")] public string? PlatformName { get; set; }
+            [JsonPropertyName("cover")] public string? Cover { get; set; }
+            /// <summary>When RomM got it; none from an older service.</summary>
+            [JsonPropertyName("addedAt")] public DateTime? AddedAt { get; set; }
+        }
+
+        /// <summary>The games added to RomM last, of the platforms played here.</summary>
+        public static async Task<List<LatestGame>> LatestAsync() =>
+            (await TryGetAsync<List<LatestGame>>("/retro/latest") ?? new()).Where(g => RetroSystems.All.ContainsKey(g.Platform)).ToList();
+
         private sealed record Series([property: JsonPropertyName("name")] string Name, [property: JsonPropertyName("romIds")] int[] RomIds);
 
         /// <summary>The series of games (Zelda, Pokémon...), as RomM groups them; none from an older service.</summary>

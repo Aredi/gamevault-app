@@ -79,7 +79,10 @@
                                                 <Button Classes="newsItem" Click="Item_Click">
                                                     <Grid ColumnDefinitions="Auto,*,Auto">
                                                         <Border Width="54" Height="81" CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
-                                                            <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" />
+                                                            <Panel>
+                                                                <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                                <Image Source="{Binding Retro.CoverImage}" Stretch="Uniform" IsVisible="{Binding Retro, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                            </Panel>
                                                         </Border>
                                                         <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="5">
                                                             <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Bold" TextTrimming="CharacterEllipsis" />

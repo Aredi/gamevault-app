@@ -18,7 +18,10 @@ namespace gamevault.Helper
     /// <summary>A line of the news, ready to show.</summary>
     internal sealed class NewsItem
     {
-        public Game Game { get; init; } = null!;
+        /// <summary>A game of the server, or <see cref="Retro"/>.</summary>
+        public Game? Game { get; init; }
+        /// <summary>A retro game added to RomM.</summary>
+        public RetroGame? Retro { get; init; }
         public bool IsUpdate { get; init; }
         /// <summary>"New" or "Update · v1.40"</summary>
         public string KindText { get; init; } = "";
@@ -87,7 +90,14 @@ namespace gamevault.Helper
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
 
-                return new ServerNewsData(string.IsNullOrWhiteSpace(announcement) ? null : announcement, Group(feed, games), ServerNews.Unread(feed, LastSeen() ?? DateTime.UtcNow.AddDays(-7)));
+                // The retro games added to RomM lately, among the server's by date
+                var retro = new List<RetroService.LatestGame>();
+                try { retro = (await RetroService.LatestAsync()).Where(g => g.AddedAt is DateTime added && DateTime.UtcNow - added.ToUniversalTime() <= ServerNews.Window).ToList(); }
+                catch (Exception ex) { Log.Ignored(ex); }
+
+                DateTime seen = LastSeen() ?? DateTime.UtcNow.AddDays(-7);
+                return new ServerNewsData(string.IsNullOrWhiteSpace(announcement) ? null : announcement, Group(feed, games, retro),
+                    ServerNews.Unread(feed, seen) + retro.Count(g => g.AddedAt!.Value.ToUniversalTime() > seen));
             }
             finally
             {
@@ -108,12 +118,22 @@ namespace gamevault.Helper
             }
         }
 
-        private static List<NewsGroup> Group(List<NewsEntry> feed, Dictionary<int, Game> games)
+        private static List<NewsGroup> Group(List<NewsEntry> feed, Dictionary<int, Game> games, List<RetroService.LatestGame> retro)
         {
             DateTime now = DateTime.Now;
             var size = new GameSizeConverter();
-            return feed
-                .GroupBy(e => ServerNews.PeriodOf(e.DateUtc.ToLocalTime(), now))
+            var items = feed.Select(e => (Date: e.DateUtc, Item: ServerItem(e)))
+                .Concat(retro.Select(g => (Date: g.AddedAt!.Value.ToUniversalTime(), Item: new NewsItem
+                {
+                    Retro = RetroLibrary.GameOf(g.Id, g.Platform, g.PlatformName ?? g.Platform, g.Name, g.Cover),
+                    Title = g.Name,
+                    KindText = Loc.T("New"),
+                    Info = g.PlatformName ?? g.Platform,
+                    DateText = RelativeDate.Format(g.AddedAt.Value),
+                })))
+                .OrderByDescending(i => i.Date);
+            return items
+                .GroupBy(i => ServerNews.PeriodOf(i.Date.ToLocalTime(), now))
                 .OrderBy(g => g.Key)
                 .Select(g => new NewsGroup
                 {
@@ -124,30 +144,32 @@ namespace gamevault.Helper
                         ServerNews.Period.ThisMonth => Loc.T("Earlier this month"),
                         _ => Loc.T("Before"),
                     },
-                    Items = g.Select(e =>
-                    {
-                        Game game = games[e.GameId];
-                        bool update = e.Kind == NewsKind.Updated;
-                        var info = new[]
-                        {
-                            game.Metadata?.Genres?.FirstOrDefault()?.Name,
-                            game.Metadata?.ReleaseDate?.Year.ToString(CultureInfo.InvariantCulture),
-                            string.IsNullOrEmpty(game.Size) ? null : (string)size.Convert(game.Size, typeof(string), null, CultureInfo.CurrentCulture)!,
-                        };
-                        return new NewsItem
-                        {
-                            Game = game,
-                            IsUpdate = update,
-                            Title = game.Metadata?.Title is { Length: > 0 } title && SettingsViewModel.Instance.ShowMappedTitle ? title : game.Title,
-                            KindText = update
-                                ? (string.IsNullOrEmpty(e.Version) ? Loc.T("New version") : Loc.F("Update · {0}", e.Version))
-                                : Loc.T("New"),
-                            Info = string.Join(" · ", info.Where(p => !string.IsNullOrEmpty(p))),
-                            DateText = RelativeDate.Format(e.DateUtc),
-                        };
-                    }).ToList(),
+                    Items = g.Select(i => i.Item).ToList(),
                 })
                 .ToList();
+
+            NewsItem ServerItem(NewsEntry e)
+            {
+                Game game = games[e.GameId];
+                bool update = e.Kind == NewsKind.Updated;
+                var info = new[]
+                {
+                    game.Metadata?.Genres?.FirstOrDefault()?.Name,
+                    game.Metadata?.ReleaseDate?.Year.ToString(CultureInfo.InvariantCulture),
+                    string.IsNullOrEmpty(game.Size) ? null : (string)size.Convert(game.Size, typeof(string), null, CultureInfo.CurrentCulture)!,
+                };
+                return new NewsItem
+                {
+                    Game = game,
+                    IsUpdate = update,
+                    Title = game.Metadata?.Title is { Length: > 0 } title && SettingsViewModel.Instance.ShowMappedTitle ? title : game.Title,
+                    KindText = update
+                        ? (string.IsNullOrEmpty(e.Version) ? Loc.T("New version") : Loc.F("Update · {0}", e.Version))
+                        : Loc.T("New"),
+                    Info = string.Join(" · ", info.Where(p => !string.IsNullOrEmpty(p))),
+                    DateText = RelativeDate.Format(e.DateUtc),
+                };
+            }
         }
 
         public static DateTime? LastSeen()

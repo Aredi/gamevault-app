@@ -94,7 +94,7 @@ namespace GameVault.Uploader.Tests
                     merged_screenshots = new[] { "/assets/romm/resources/roms/3/40/screenshots/0.jpg", "/assets/romm/resources/roms/3/40/../../9/secret.jpg" },
                     path_manual = "roms/3/40/manual/40.pdf", youtube_video_id = "abc123", ss_metadata = new { box2d_url = "https://example?devpassword=secret" } } } }) },
                 "/api/collections/virtual?type=collection" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new object[] { new { name = "The Legend of Zelda", rom_ids = new[] { 40, 41 } }, new { name = "Alone", rom_ids = new[] { 40 } } }) },
-                "/api/roms?order_by=id&order_dir=desc&limit=30" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", platform_slug = "nes", platform_display_name = "NES" } } }) },
+                "/api/roms?order_by=id&order_dir=desc&limit=40" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = 40, name = "Zelda", platform_slug = "nes", platform_display_name = "NES", path_cover_large = "/assets/romm/resources/roms/3/40/cover/big.png?ts=1", created_at = "2026-10-20T18:00:00+00:00" } } }) },
                 "/api/roms/40" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 40, fs_name = "Zelda (E).nes" }) },
                 // A game in a folder: RomM names the file it sends
                 "/api/roms/41" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 41, fs_name = "Bleach [RBLP8P]" }) },
@@ -478,7 +478,10 @@ namespace GameVault.Uploader.Tests
 
             // The newest games of RomM, for the notification
             using (JsonDocument latest = JsonDocument.Parse(await player.GetStringAsync("/retro/latest")))
-                Assert.Equal("nes", Assert.Single(latest.RootElement.EnumerateArray()).GetProperty("platform").GetString());
+            {
+                JsonElement newest = Assert.Single(latest.RootElement.EnumerateArray());
+                Assert.Equal(("nes", "roms/3/40/cover/big.png", "2026-10-20T18:00:00+00:00"), (newest.GetProperty("platform").GetString(), newest.GetProperty("cover").GetString(), newest.GetProperty("addedAt").GetString()));
+            }
         }
 
         [Fact]

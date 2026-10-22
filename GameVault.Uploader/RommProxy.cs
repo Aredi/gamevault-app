@@ -286,16 +286,18 @@ namespace GameVault.Uploader
             }
         }
 
-        /// <summary>The games added to RomM last, for the new games notification.</summary>
+        /// <summary>The games added to RomM last, for the new games notification and the news.</summary>
         public async Task<object> LatestAsync(CancellationToken cancellationToken)
         {
-            using JsonDocument page = await GetJsonAsync("api/roms?order_by=id&order_dir=desc&limit=30", cancellationToken);
+            using JsonDocument page = await GetJsonAsync("api/roms?order_by=id&order_dir=desc&limit=40", cancellationToken);
             return page.RootElement.GetProperty("items").EnumerateArray().Select(r => new
             {
                 id = Number(r, "id"),
                 name = Text(r, "name") ?? Text(r, "fs_name_no_ext"),
                 platform = Text(r, "platform_slug"),
                 platformName = Text(r, "platform_display_name") ?? Text(r, "platform_custom_name"),
+                cover = Media(Text(r, "path_cover_large") ?? Text(r, "path_cover_small")),
+                addedAt = Text(r, "created_at"),
             }).ToList();
         }
     }

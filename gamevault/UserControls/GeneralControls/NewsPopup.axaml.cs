@@ -50,11 +50,13 @@ namespace gamevault.UserControls
 
         private void Item_Click(object? sender, RoutedEventArgs e)
         {
-            if (((Control)sender!).DataContext is NewsItem item)
-            {
-                MainWindowViewModel.Instance.ClosePopup();
+            if (((Control)sender!).DataContext is not NewsItem item)
+                return;
+            MainWindowViewModel.Instance.ClosePopup();
+            if (item.Retro is RetroGame retro)
+                _ = MainWindowViewModel.Instance.Retro.ShowGameAsync(retro.Platform.Slug, retro.Id);
+            else if (item.Game != null)
                 MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(item.Game));
-            }
         }
 
         private void OnClose(object? sender, RoutedEventArgs e)
