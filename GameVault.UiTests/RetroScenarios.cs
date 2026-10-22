@@ -130,6 +130,12 @@ namespace GameVault.UiTests
                 await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
                 Assert.False(page.ViewModel.ShowsAll);
                 Assert.All(page.Shown, g => Assert.Equal("nes", g.Platform.Slug));
+
+                // Its chip clicked again: back to "All"
+                await page.TogglePlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
+                Assert.True(page.ViewModel.ShowsAll);
+                Assert.Contains(page.Shown, g => g.Name == "Castlevania");
+                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
             }
             finally
             {

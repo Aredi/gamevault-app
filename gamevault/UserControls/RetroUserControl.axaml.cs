@@ -226,8 +226,11 @@ namespace gamevault.UserControls
         private async void Platform_Click(object? sender, RoutedEventArgs e)
         {
             if ((sender as Control)?.DataContext is RetroPlatform platform)
-                await SelectPlatformAsync(platform);
+                await TogglePlatformAsync(platform);
         }
+
+        /// <summary>The chip of a platform: chosen again, it is left for "All".</summary>
+        internal Task TogglePlatformAsync(RetroPlatform platform) => platform.IsSelected ? SelectAllAsync() : SelectPlatformAsync(platform);
 
         private void Reload_Click(object? sender, RoutedEventArgs e) => loading = LoadPlatformsAsync();
 
