@@ -41,6 +41,16 @@ namespace GameVault.UiTests
         public bool StandardRanges { get; set; }
         /// <summary>How long images take to arrive (a slow server or connection).</summary>
         public TimeSpan MediaDelay { get; set; } = TimeSpan.Zero;
+        /// <summary>Delay before the PS1 games are listed (a platform chosen, then another one at once).</summary>
+        private static async Task<bool> Delayed(TimeSpan delay)
+        {
+            await Task.Delay(delay);
+            return true;
+        }
+
+        public TimeSpan PsxListDelay { get; set; } = TimeSpan.Zero;
+        /// <summary>The NES games have one more, a file the emulator does not start (its preparation fails).</summary>
+        public bool NesBrokenGame { get; set; }
         /// <summary>The games the "igdb" provider knows: its search returns those sharing a word with the query.</summary>
         public ConcurrentBag<MinimalGame> ProviderCatalog { get; } = new();
         /// <summary>The SanctuaryVault service part: the players' profiles (JSON) it keeps.</summary>
@@ -326,7 +336,7 @@ namespace GameVault.UiTests
                     await Json(response, Ps3Firmware == null ? Array.Empty<object>() : new object[] { new { id = 8, fileName = "PS3UPDAT.PUP", size = Ps3Firmware.LongLength } });
                 else if (path == "/retro/firmware/8/content" && Ps3Firmware != null)
                     await response.OutputStream.WriteAsync(Ps3Firmware);
-                else if (path == "/retro/platforms/19/games")
+                else if (path == "/retro/platforms/19/games" && await Delayed(PsxListDelay))
                     await Json(response, new[] { new { id = 50, name = "Castlevania", fileName = "Castlevania", size = RetroCdGame.LongLength, cover = (string?)null, summary = (string?)null, multi = true } });
                 else if (path == "/retro/games/50/content")
                 {
@@ -391,7 +401,14 @@ namespace GameVault.UiTests
                 else if ((match = Regex.Match(path, @"^/retro/saves/([a-z0-9-]+)$")).Success && RetroSaves.TryGetValue(match.Groups[1].Value, out var current))
                     await response.OutputStream.WriteAsync(current.Zip);
                 else if (path == "/retro/platforms/3/games")
-                    await Json(response, new[] { new { id = 40, name = "Zelda", fileName = "Zelda (E).nes", size = RetroRom.LongLength, cover = (string?)null, summary = "A sword" } });
+                    await Json(response, new[] { new { id = 40, name = "Zelda", fileName = "Zelda (E).nes", size = RetroRom.LongLength, cover = (string?)null, summary = "A sword" } }
+                        .Concat(NesBrokenGame ? new[] { new { id = 41, name = "Readme", fileName = "Readme.txt", size = 4L, cover = (string?)null, summary = "Not a game" } } : []));
+                else if (path == "/retro/games/41/content")
+                {
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''Readme.txt");
+                    response.ContentLength64 = 4;
+                    await response.OutputStream.WriteAsync("text"u8.ToArray());
+                }
                 else if (path == "/retro/games/40/content")
                 {
                     response.ContentType = "application/octet-stream";

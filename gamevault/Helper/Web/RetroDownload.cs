@@ -31,7 +31,7 @@ namespace gamevault.Helper
         private HttpClientDownloadWithProgress? client;
         private DownloadSpeedCalculator speed = new();
         private DateTime startTime;
-        private bool paused, cancelled;
+        private bool paused, cancelled, downloaded;
         private readonly List<RetroGame> watchers = new();
 
         public RetroDownload(RetroGame game, string folder)
@@ -94,7 +94,9 @@ namespace gamevault.Helper
             {
                 game.Busy = busy;
                 game.Status = shown;
-                game.Refresh();
+                // Looking for the game's file reads its whole folder: once it settled, not at each percent
+                if (!busy)
+                    game.Refresh();
             }
         }
 
@@ -220,10 +222,12 @@ namespace gamevault.Helper
                 client.ProgressChanged += Client_ProgressChanged;
                 speed = new DownloadSpeedCalculator();
                 startTime = DateTime.Now;
-                // A download stopped half way goes on from where it was
-                await client.StartDownload(tryResume: File.Exists(Metadata));
+                // A download stopped half way goes on from where it was; a retry after a failed preparation does not download again
+                if (!downloaded)
+                    await client.StartDownload(tryResume: File.Exists(Metadata));
                 if (paused || cancelled)
                     return;
+                downloaded = true;
                 IsActive = false;
                 BypassesQueue = false;
                 DownloadQueue.Advance();

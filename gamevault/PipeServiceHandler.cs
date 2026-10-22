@@ -214,6 +214,11 @@ namespace gamevault
                     new System.Security.Principal.SecurityIdentifier(System.Security.Principal.WellKnownSidType.WorldSid, null),
                     PipeAccessRights.ReadWrite | PipeAccessRights.CreateNewInstance,
                     System.Security.AccessControl.AccessControlType.Allow));
+                // Only from this PC: a pipe is reachable from the network otherwise (it installs, starts and uninstalls games)
+                pipeSecurity.AddAccessRule(new PipeAccessRule(
+                    new System.Security.Principal.SecurityIdentifier(System.Security.Principal.WellKnownSidType.NetworkSid, null),
+                    PipeAccessRights.FullControl,
+                    System.Security.AccessControl.AccessControlType.Deny));
                 return NamedPipeServerStreamAcl.Create(GAMEVAULT_PIPE_NAME, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances,
                     PipeTransmissionMode.Byte, PipeOptions.None, 0, 0, pipeSecurity);
             }

@@ -162,11 +162,11 @@ namespace gamevault.Helper
             HttpClient.SendLongAsync(request, cancellationToken);
         public static async Task DownloadImageFromUrlAsync(string imageUrl, string cacheFile)
         {
-            var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);
+            using var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             var imageBytes = await response.Content.ReadAsByteArrayAsync();
-            // Written aside then moved: a cover being read never is a half-written file
-            string part = cacheFile + ".part";
+            // Written aside then moved: a cover being read never is a half-written file; two cards asking for the same one each write their own
+            string part = $"{cacheFile}.{Guid.NewGuid():N}.part";
             await File.WriteAllBytesAsync(part, imageBytes);
             File.Move(part, cacheFile, overwrite: true);
         }

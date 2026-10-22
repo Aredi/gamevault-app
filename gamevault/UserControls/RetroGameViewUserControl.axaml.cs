@@ -103,8 +103,17 @@ namespace gamevault.UserControls
                 {
                     try
                     {
-                        byte[] png = await HttpClients.Shared.GetByteArrayAsync(row.BadgeUrl);
-                        var badge = new Bitmap(new MemoryStream(png));
+                        // Kept on disk: a badge never changes, and a game's page is opened again and again
+                        string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", "badges", Path.GetFileName(new Uri(row.BadgeUrl!).AbsolutePath));
+                        if (!File.Exists(file))
+                        {
+                            byte[] png = await HttpClients.Shared.GetByteArrayAsync(row.BadgeUrl);
+                            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                            string part = $"{file}.{Guid.NewGuid():N}.part";
+                            await File.WriteAllBytesAsync(part, png);
+                            File.Move(part, file, overwrite: true);
+                        }
+                        var badge = new Bitmap(file);
                         Avalonia.Threading.Dispatcher.UIThread.Post(() => row.Badge = badge);
                     }
                     catch (Exception ex) { Log.Ignored(ex); }

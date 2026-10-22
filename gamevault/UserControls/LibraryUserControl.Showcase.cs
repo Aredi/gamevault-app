@@ -101,7 +101,8 @@ namespace gamevault.UserControls
 
             heroTimer.Tick += (_, _) =>
             {
-                if (!pointerOverHero && IsEffectivelyVisible && ViewModel.HeroItems.Count > 1)
+                // Not behind a game or minimized: its animation would take the GPU from the game
+                if (!pointerOverHero && IsEffectivelyVisible && TopLevel.GetTopLevel(this) is Window { IsActive: true } && ViewModel.HeroItems.Count > 1)
                     ViewModel.HeroIndex = (ViewModel.HeroIndex + 1) % ViewModel.HeroItems.Count;
             };
             heroTimer.Start();

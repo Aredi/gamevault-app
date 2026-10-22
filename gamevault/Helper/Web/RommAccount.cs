@@ -67,7 +67,20 @@ namespace gamevault.Helper
         private static readonly string[] Scopes = { "me.read", "me.write", "roms.read", "roms.user.read", "roms.user.write", "assets.read", "assets.write", "devices.read", "devices.write" };
 
         private static string Config => LoginManager.Instance.GetUserProfile().UserConfigFile;
-        public static string Token => Preferences.Get(AppConfigKey.RommToken, Config);
+        /// <summary>Kept encrypted, as the other secrets (a link made before was kept as it is: encrypted when read).</summary>
+        public static string Token
+        {
+            get
+            {
+                try { return Preferences.Get(AppConfigKey.RommToken, Config, true); }
+                catch (Exception ex) when (ex is FormatException or System.Security.Cryptography.CryptographicException)
+                {
+                    string plain = Preferences.Get(AppConfigKey.RommToken, Config);
+                    Preferences.Set(AppConfigKey.RommToken, plain, Config, true);
+                    return plain;
+                }
+            }
+        }
         public static string Username => Preferences.Get(AppConfigKey.RommUsername, Config);
         public static string DeviceId => Preferences.Get(AppConfigKey.RommDeviceId, Config);
         public static bool IsLinked => Token.Length > 0;
@@ -149,7 +162,7 @@ namespace gamevault.Helper
                 if (answer.IsSuccessStatusCode)
                 {
                     using JsonDocument token = JsonDocument.Parse(body);
-                    Preferences.Set(AppConfigKey.RommToken, token.RootElement.GetProperty("access_token").GetString()!, Config);
+                    Preferences.Set(AppConfigKey.RommToken, token.RootElement.GetProperty("access_token").GetString()!, Config, true);
                     Preferences.Set(AppConfigKey.RommDeviceId, token.RootElement.TryGetProperty("device_id", out JsonElement device) ? device.ToString() : "", Config);
                     using (HttpResponseMessage me = await SendAsync(HttpMethod.Get, "/api/users/me"))
                         if (me.IsSuccessStatusCode)

@@ -72,6 +72,57 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task APlatformsGames_AreAskedOnce_TheLastPlatformChosenIsShown_AndARetryDoesNotDownloadAgain()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            RetroArchLayout layout = RetroArchManager.Layout;
+            Directory.CreateDirectory(layout.AppDirectory);
+            Directory.CreateDirectory(layout.CoresDirectory);
+            File.WriteAllText(layout.Executable, "");
+            File.WriteAllText(layout.VersionFile, RetroArchLayout.Version);
+            File.WriteAllText(layout.CoreFile("mesen"), "");
+            session.Server.NesBrokenGame = true;
+            int Asked(string path) => session.Server.Requests.Count(r => r == $"GET {path}");
+            try
+            {
+                var page = new RetroUserControl();
+                await page.LoadPlatformsAsync();
+                RetroPlatform nes = page.ViewModel.Platforms.Single(p => p.Slug == "nes"), psx = page.ViewModel.Platforms.Single(p => p.Slug == "psx");
+                int nesAsked = Asked("/retro/platforms/3/games");
+
+                // The PS1 games come late: the NES, chosen meanwhile, stays shown with its games (asked once)
+                session.Server.PsxListDelay = TimeSpan.FromSeconds(1.5);
+                Task late = page.SelectPlatformAsync(psx);
+                await page.SelectPlatformAsync(nes);
+                await late;
+                Assert.True(nes.IsSelected);
+                Assert.All(page.Shown, g => Assert.Equal("nes", g.Platform.Slug));
+                Assert.Equal(nesAsked, Asked("/retro/platforms/3/games"));
+
+                // Its preparation fails (no file the emulator starts): tried again without downloading it again
+                RetroGame readme = page.Shown.Single(g => g.Id == 41);
+                await RetroPlay.InstallAsync(readme);
+                RetroDownload download = Assert.Single(DownloadsViewModel.Instance.RetroDownloads);
+                await TestSession.WaitUntil(() => download.IsFailed, TimeSpan.FromSeconds(20), "the failed preparation");
+                download.Retry();
+                await TestSession.WaitUntil(() => download.IsFailed && !download.IsRunning, TimeSpan.FromSeconds(20), "the retry");
+                Assert.Equal(1, Asked("/retro/games/41/content"));
+            }
+            finally
+            {
+                session.Server.NesBrokenGame = false;
+                session.Server.PsxListDelay = TimeSpan.Zero;
+                SanctuaryService.Current = SanctuaryService.Url;
+                DownloadsViewModel.Instance.RetroDownloads.Clear();
+                Directory.Delete(layout.Directory, true);
+                string folder = Path.Combine(session.LibraryRoot, "GameVault", "Retro", "nes", "41");
+                if (Directory.Exists(folder))
+                    Directory.Delete(folder, true);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task ARetroGame_IsListedAndInstalled_OnlyForThePlatformsRetroArchPlays()
         {
             var session = await TestSession.GetAsync();
@@ -109,8 +160,8 @@ namespace GameVault.UiTests
                 await TestSession.WaitUntil(() => page.Shown.Any(g => g.Name == "Castlevania"), TimeSpan.FromSeconds(10), "the PS1 games");
                 RetroGame castlevania = Assert.Single(page.Shown);
                 await RetroPlay.InstallAsync(castlevania);
-                // The page reloads its games (another platform and back): the download is not forgotten
-                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
+                // The page reloads its games (Reload, then the platform again): the download is not forgotten
+                await page.LoadPlatformsAsync();
                 await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "psx"));
                 RetroGame shownAgain = Assert.Single(page.Shown);
                 Assert.NotSame(castlevania, shownAgain);

@@ -24,6 +24,8 @@ namespace gamevault.UserControls
         private Task? loading;
         /// <summary>Set when the service can not be reached: the games installed on this PC, found on disk.</summary>
         private List<RetroGame>? offlineGames;
+        /// <summary>Each platform's games, asked once (RomM sends megabytes for a big one); Reload asks again.</summary>
+        private readonly Dictionary<int, List<RetroGame>> lists = new();
 
         public RetroUserControl()
         {
@@ -56,6 +58,7 @@ namespace gamevault.UserControls
         internal async Task LoadPlatformsAsync()
         {
             Show(null, loading: true);
+            lists.Clear();
             LoadCollections();
             _ = RetroLibrary.LoadAsync();
             List<RetroPlatform>? platforms = null;
@@ -115,10 +118,19 @@ namespace gamevault.UserControls
             Show(null, loading: true);
             try
             {
-                ViewModel.AllGames = await RetroService.ListGamesAsync(platform);
+                if (!lists.TryGetValue(platform.Id, out List<RetroGame>? games))
+                    games = lists[platform.Id] = await RetroService.ListGamesAsync(platform);
+                // Another platform was chosen meanwhile: its games are the ones shown
+                if (!platform.IsSelected)
+                    return;
+                ViewModel.AllGames = games;
                 Show(null);
             }
-            catch (Exception ex) { Show(WebExceptionHelper.TryGetServerMessage(ex)); }
+            catch (Exception ex)
+            {
+                if (platform.IsSelected)
+                    Show(WebExceptionHelper.TryGetServerMessage(ex));
+            }
         }
 
         /// <summary>As the library's cards (170 wide, the title and info below), with the shape of the platform's boxes.</summary>
