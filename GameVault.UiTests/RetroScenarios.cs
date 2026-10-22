@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using Avalonia.Headless.XUnit;
 using GameVault.Core.Retro;
 using gamevault.Helper;
@@ -68,6 +69,52 @@ namespace GameVault.UiTests
                 SanctuaryService.Current = SanctuaryService.Url;
                 session.Server.RetroSaves.Clear();
                 Directory.Delete(RetroArchManager.Layout.Directory, true);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task AnotherPlatform_ChosenFarDownTheGrid_LeavesNoCardDrawnOverTheOthers()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            try
+            {
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
+                RetroUserControl page = MainWindowViewModel.Instance.Retro;
+                await page.EnsureLoadedAsync();
+                // Square boxes, then 3:4 ones: the grid measured its cards with an old one and left it where it was, bigger, over the others
+                var gba = new RetroPlatform { Id = 7, Slug = "gba", Name = "GBA" };
+                var wii = new RetroPlatform { Id = 15, Slug = "wii", Name = "Wii" };
+                List<RetroGame> Games(RetroPlatform platform) => Enumerable.Range(1, 80).Select(i => new RetroGame { Id = platform.Id * 1000 + i, Name = $"{platform.Name} {i:00}", FileName = "x", Platform = platform }).ToList();
+                page.ViewModel.Platforms = new() { gba, wii };
+                page.SizeCards(gba);
+                page.ViewModel.AllGames = Games(gba);
+                var scroll = page.GetLogicalDescendants().OfType<ScrollViewer>().First(s => s.Name == "uiScroll");
+                var grid = page.GetLogicalDescendants().OfType<ItemsRepeater>().First(r => r.Name == "uiGames");
+                for (int i = 0; i < 4; i++)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    scroll.Offset = scroll.Offset.WithY(scroll.Offset.Y + 400);
+                }
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.True(scroll.Offset.Y > 1000);
+
+                page.SizeCards(wii);
+                page.ViewModel.AllGames = new();
+                page.ViewModel.AllGames = Games(wii);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                var cards = grid.Children.Where(c => c.Bounds.X >= 0 && c.Bounds.Width > 0).ToList();
+                Assert.NotEmpty(cards);
+                foreach (var card in cards)
+                {
+                    Assert.Equal("wii", ((RetroGame)card.DataContext!).Platform.Slug);
+                    Assert.DoesNotContain(cards, other => other != card && other.Bounds.Intersects(card.Bounds));
+                }
+            }
+            finally
+            {
+                SanctuaryService.Current = SanctuaryService.Url;
+                MainWindowViewModel.Instance.Retro.ViewModel.AllGames = new();
             }
         }
 

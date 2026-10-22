@@ -137,8 +137,8 @@
                     <Grid ColumnDefinitions="Auto,*">
                         <Border x:Name="uiCoverFrame" Width="220" CornerRadius="14" ClipToBounds="True" VerticalAlignment="Bottom"
                                 BoxShadow="0 30 60 -20 #E6000000" Background="{DynamicResource Brush.Surface}">
-                            <local:AspectBox Ratio="{Binding Game.Platform.System.CoverRatio}">
-                                <Image Source="{Binding Game.CoverImage}" Stretch="UniformToFill" />
+                            <local:AspectBox Ratio="{Binding Game.CoverRatio}">
+                                <Image Source="{Binding Game.CoverImage}" Stretch="Uniform" />
                             </local:AspectBox>
                         </Border>
                         <StackPanel Grid.Column="1" Margin="30,0,0,4" VerticalAlignment="Bottom" Spacing="12">

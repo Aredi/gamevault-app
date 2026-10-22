@@ -37,6 +37,13 @@ namespace gamevault.UserControls
                 _ = EnsureLoadedAsync();
             };
             KeyDown += Page_KeyDown;
+            ViewModel.PropertyChanged += (_, e) =>
+            {
+                // Another list (platform, search, filter, sort) starts at the top. Below it, the grid measures its cards with
+                // an old card, which it then leaves drawn where it was, at its old size, over the others (ItemsRepeater 11.1)
+                if (e.PropertyName == nameof(RetroViewModel.Games))
+                    uiScroll.Offset = default;
+            };
         }
 
         /// <summary>A list whose items change loses its selection (Avalonia does not take the bound index again): set back.</summary>

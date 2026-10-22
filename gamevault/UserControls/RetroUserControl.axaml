@@ -78,7 +78,7 @@
         </StackPanel>
 
         <!-- ===== Games ===== -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="uiScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="0,8,0,40">
                 <TextBlock Classes="muted" FontSize="13.5" Margin="28,16" TextWrapping="Wrap" Text="{Binding Message}"
                            IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -100,8 +100,9 @@
                                             <local:AspectBox Ratio="{Binding Platform.System.CoverRatio}">
                                                 <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
                                                     <Panel>
-                                                        <TextBlock Text="{Binding Name}" Classes="muted" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" Margin="8" />
-                                                        <Image Source="{Binding CoverImage}" Stretch="UniformToFill" />
+                                                        <TextBlock Text="{Binding Name}" Classes="muted" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" Margin="8"
+                                                                   IsVisible="{Binding CoverImage, Converter={x:Static ObjectConverters.IsNull}}" />
+                                                        <Image Source="{Binding CoverImage}" Stretch="Uniform" />
                                                     </Panel>
                                                 </Border>
                                             </local:AspectBox>
@@ -130,8 +131,10 @@
                                                     BoxShadow="{Binding Accent, Converter={StaticResource accentShadowConv}, ConverterParameter='16 36 -8 0.75'}" />
                                             <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
                                                 <Panel>
-                                                    <TextBlock Text="{Binding Name}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" Margin="14" />
-                                                    <Image Source="{Binding CoverImage}" Stretch="UniformToFill" />
+                                                    <TextBlock Text="{Binding Name}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" Margin="14"
+                                                               IsVisible="{Binding CoverImage, Converter={x:Static ObjectConverters.IsNull}}" />
+                                                    <!-- Whole: a cover of another shape than the platform's is not cut -->
+                                                    <Image Source="{Binding CoverImage}" Stretch="Uniform" />
                                                 </Panel>
                                             </Border>
                                             <Border Classes="selection" BorderBrush="{Binding Accent, Converter={StaticResource accentBrushConv}}" IsVisible="{Binding IsSelected}" />

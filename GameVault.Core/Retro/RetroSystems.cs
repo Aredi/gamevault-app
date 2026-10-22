@@ -7,8 +7,8 @@ namespace GameVault.Core.Retro
     /// <param name="Extensions">The files the emulator starts, best first: a game in several files is given its first match. A name with a dot is a whole file name ("EBOOT.BIN").</param>
     /// <param name="SystemFiles">The core's data files from libretro (assets/system/&lt;name&gt;.zip), unpacked in the system folder.</param>
     /// <param name="FirmwareFolder">Where the BIOS kept in RomM go, inside the system folder ("" for its root); null when none is needed.</param>
-    /// <param name="CoverRatio">Height / width of the platform's box art (the median of RomM's covers): the cards take it.</param>
-    public sealed record RetroSystem(string Slug, string Name, string Core, string[] Extensions, string? SystemFiles = null, string? FirmwareFolder = null, double CoverRatio = 1.4)
+    /// <param name="CoverRatio">Height / width of the platform's box art (the median of RomM's covers, measured: IGDB's are 3:4): the cards take it, a cover of another shape is shown whole in it.</param>
+    public sealed record RetroSystem(string Slug, string Name, string Core, string[] Extensions, string? SystemFiles = null, string? FirmwareFolder = null, double CoverRatio = 4 / 3.0)
     {
         /// <summary>Played with RPCS3, not RetroArch.</summary>
         public bool IsRpcs3 => Core == "rpcs3";
@@ -21,20 +21,20 @@ namespace GameVault.Core.Retro
     {
         public static readonly IReadOnlyDictionary<string, RetroSystem> All = new[]
         {
-            new RetroSystem("nes", "NES", "mesen", new[] { "nes", "fds", "unf", "zip" }, CoverRatio: 1.41),
-            new RetroSystem("snes", "Super Nintendo", "snes9x", new[] { "sfc", "smc", "fig", "swc", "bs", "zip" }, CoverRatio: 1.5),
+            new RetroSystem("nes", "NES", "mesen", new[] { "nes", "fds", "unf", "zip" }),
+            new RetroSystem("snes", "Super Nintendo", "snes9x", new[] { "sfc", "smc", "fig", "swc", "bs", "zip" }),
             new RetroSystem("gba", "Game Boy Advance", "mgba", new[] { "gba", "gb", "gbc", "zip" }, CoverRatio: 1.0),
-            new RetroSystem("nds", "Nintendo DS", "melondsds", new[] { "nds", "dsi", "zip" }, CoverRatio: 1.5),
+            new RetroSystem("nds", "Nintendo DS", "melondsds", new[] { "nds", "dsi", "zip" }),
             // GameCube and Wii: Dolphin needs its own data folder (Sys)
-            new RetroSystem("ngc", "GameCube", "dolphin", new[] { "rvz", "iso", "gcm", "gcz", "ciso", "wia", "m3u" }, SystemFiles: "Dolphin", CoverRatio: 1.41),
-            new RetroSystem("wii", "Wii", "dolphin", new[] { "wbfs", "rvz", "iso", "wia", "ciso", "gcz", "wad" }, SystemFiles: "Dolphin", CoverRatio: 1.4),
-            new RetroSystem("psx", "PlayStation", "swanstation", new[] { "m3u", "cue", "chd", "pbp", "iso", "img", "bin", "ecm", "mds" }, FirmwareFolder: "", CoverRatio: 1.33),
-            new RetroSystem("ps2", "PlayStation 2", "pcsx2", new[] { "m3u", "chd", "iso", "cso", "zso", "cue", "bin", "img", "mdf", "nrg", "gz" }, SystemFiles: "LRPS2", FirmwareFolder: "pcsx2/bios", CoverRatio: 1.5),
+            new RetroSystem("ngc", "GameCube", "dolphin", new[] { "rvz", "iso", "gcm", "gcz", "ciso", "wia", "m3u" }, SystemFiles: "Dolphin"),
+            new RetroSystem("wii", "Wii", "dolphin", new[] { "wbfs", "rvz", "iso", "wia", "ciso", "gcz", "wad" }, SystemFiles: "Dolphin"),
+            new RetroSystem("psx", "PlayStation", "swanstation", new[] { "m3u", "cue", "chd", "pbp", "iso", "img", "bin", "ecm", "mds" }, FirmwareFolder: ""),
+            new RetroSystem("ps2", "PlayStation 2", "pcsx2", new[] { "m3u", "chd", "iso", "cso", "zso", "cue", "bin", "img", "mdf", "nrg", "gz" }, SystemFiles: "LRPS2", FirmwareFolder: "pcsx2/bios"),
             // The game stays a zip: FinalBurn Neo reads MAME sets, with neogeo.zip as BIOS
-            new RetroSystem("neogeoaes", "Neo Geo", "fbneo", new[] { "zip", "7z" }, FirmwareFolder: "fbneo", CoverRatio: 1.5),
+            new RetroSystem("neogeoaes", "Neo Geo", "fbneo", new[] { "zip", "7z" }, FirmwareFolder: "fbneo"),
             // Azahar plays decrypted games only; a CIA is given as its main content (.cxi), see CiaReader
             // RPCS3, not RetroArch: an ISO (encrypted ones too), or a game in a folder started by its EBOOT.BIN's folder
-            new RetroSystem("ps3", "PlayStation 3", "rpcs3", new[] { "iso", "EBOOT.BIN" }, CoverRatio: 1.16),
+            new RetroSystem("ps3", "PlayStation 3", "rpcs3", new[] { "iso", "EBOOT.BIN" }),
             // Eden, not RetroArch: a game card (.xci) or an eShop package (.nsp), compressed ones (.nsz, .xcz) made .nsp at their download; its updates and DLC are read from the games' folders
             new RetroSystem("switch", "Nintendo Switch", "eden", new[] { "xci", "nsp" }),
             new RetroSystem("3ds", "Nintendo 3DS", "azahar", new[] { "cxi", "zcxi", "3ds", "cci", "zcci", "3dsx", "z3dsx", "app", "elf", "cia" }, CoverRatio: 0.89),

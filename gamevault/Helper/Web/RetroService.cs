@@ -171,12 +171,17 @@ namespace gamevault.Helper
             }
         }
 
+        /// <summary>The cover's own shape once it is there (the platform's before): one game's cover is shown whole, without bands.</summary>
+        [JsonIgnore]
+        public double CoverRatio => coverImage is { } cover ? (double)cover.PixelSize.Height / cover.PixelSize.Width : Platform.System.CoverRatio;
+
         private async Task LoadCoverAsync()
         {
             try
             {
                 coverImage = await RetroService.MediaImageAsync(Cover!, 240);
                 OnPropertyChanged(nameof(CoverImage));
+                OnPropertyChanged(nameof(CoverRatio));
                 OnPropertyChanged(nameof(Banner));
                 Bitmap cover = coverImage;
                 Accent = await Task.Run(() => CoverColors.Get(cover, "retro:" + Cover));
