@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -104,8 +105,28 @@ namespace GameVault.Uploader
                 .ToList();
         }
 
-        public async Task<object> GamesAsync(int platformId, CancellationToken cancellationToken)
+        /// <summary>
+        /// Each platform's games, kept a few minutes for all the players: RomM takes seconds to list a big platform
+        /// (849 GBA games: 20 MB). A game added to RomM shows up after that time at the latest.
+        /// </summary>
+        private static readonly ConcurrentDictionary<int, (DateTime Until, Task<object> Games)> lists = new();
+        internal static readonly TimeSpan ListTime = TimeSpan.FromMinutes(5);
+
+        internal static void ClearCache() => lists.Clear();
+
+        public Task<object> GamesAsync(int platformId, CancellationToken cancellationToken)
         {
+            DateTime now = DateTime.UtcNow;
+            // Players asking at the same time share one request; a failed one is asked again by the next player
+            var list = lists.AddOrUpdate(platformId, _ => (now + ListTime, ReadGamesAsync(platformId)),
+                (_, known) => known.Until > now && !known.Games.IsFaulted && !known.Games.IsCanceled ? known : (now + ListTime, ReadGamesAsync(platformId)));
+            return list.Games.WaitAsync(cancellationToken);
+        }
+
+        /// <summary>Not stopped when the player who asked goes away: the others wait for it too.</summary>
+        private async Task<object> ReadGamesAsync(int platformId)
+        {
+            CancellationToken cancellationToken = CancellationToken.None;
             using JsonDocument page = await GetJsonAsync($"api/roms?platform_ids={platformId}&limit=10000&order_by=name", cancellationToken);
             return page.RootElement.GetProperty("items").EnumerateArray().Select(r =>
             {

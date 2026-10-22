@@ -75,12 +75,16 @@ namespace GameVault.Uploader.Tests
     internal sealed class FakeRomm : HttpMessageHandler
     {
         public static readonly byte[] Rom = System.Text.Encoding.ASCII.GetBytes("NES-ROM-CONTENT");
+        /// <summary>How many times the NES games were listed.</summary>
+        public int GamesListed;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (request.Headers.Authorization?.Parameter != Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("viewer:pass")))
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
             string path = request.RequestUri!.PathAndQuery;
+            if (path == "/api/roms?platform_ids=3&limit=10000&order_by=name")
+                Interlocked.Increment(ref GamesListed);
             HttpResponseMessage answer = path switch
             {
                 "/api/platforms" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new object[] { new { id = 3, slug = "nes", name = "Nintendo Entertainment System", display_name = "NES", rom_count = 1 }, new { id = 4, slug = "dos", name = "DOS", display_name = (string?)null, rom_count = 0 } }) },
@@ -144,6 +148,7 @@ namespace GameVault.Uploader.Tests
             Directory.CreateDirectory(Path.Combine(saves, "users", "1", "games", "7"));
             File.WriteAllText(Path.Combine(saves, "users", "1", "games", "7", "1760300000000_cccc-3333.zip"), "admin's");
             AdminCheck.ClearCache();
+            RommProxy.ClearCache();
             factory = new WebApplicationFactory<Program>().WithWebHostBuilder(host =>
             {
                 host.UseSetting("GAMEVAULT_URL", "http://gamevault.test");
@@ -400,6 +405,10 @@ namespace GameVault.Uploader.Tests
                 Assert.DoesNotContain("devpassword", games.RootElement.GetRawText());
                 Assert.Single(zelda.GetProperty("companies").EnumerateArray());
             }
+            // Asked again, by any player, even at the same time: RomM is not asked again for a while
+            string[] again = await Task.WhenAll(player.GetStringAsync("/retro/platforms/3/games"), Client("admin").GetStringAsync("/retro/platforms/3/games"));
+            Assert.All(again, list => Assert.Contains("Zelda (E).nes", list));
+            Assert.Equal(1, romm.GamesListed);
 
             // Covers only: no other path of RomM goes through
             Assert.Equal("image/png", (await player.GetAsync("/retro/media/roms/3/40/cover/big.png")).Content.Headers.ContentType!.MediaType);
