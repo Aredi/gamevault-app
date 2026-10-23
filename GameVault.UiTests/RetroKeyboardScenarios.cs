@@ -104,6 +104,15 @@ namespace GameVault.UiTests
                 controls.Give("up", RetroPad.Hat(0, "up"));
                 Assert.Equal("down", controls.Listening);
 
+                // A button of the plan clicked: it waits (the SNES's X, drawn at 310,113 on its 420×280 board)
+                var diagram = controls.FindControl<PadDiagram>("uiDiagram")!;
+                double scale = Math.Min(diagram.Bounds.Width / 420, diagram.Bounds.Height / 280);
+                Assert.Equal("x", diagram.ButtonAt(new Avalonia.Point(310 * scale + (diagram.Bounds.Width - 420 * scale) / 2, 113 * scale + (diagram.Bounds.Height - 280 * scale) / 2)));
+                Assert.Null(diagram.ButtonAt(new Avalonia.Point(1, 1)));
+                controls.Diagram_Clicked("x");
+                Assert.Equal("x", controls.Listening);
+                controls.Diagram_Clicked("x");
+
                 // The SNES's A on the top button (Y): X, which had it, takes A's previous one
                 controls.Give("a", RetroPad.Button(3));
                 Assert.Equal("3", RetroArchManager.Pad["snes"]["a"].Name);
@@ -119,6 +128,18 @@ namespace GameVault.UiTests
                 Assert.Contains("input_player1_a_btn = \"3\"", config);
                 Assert.Contains("input_player1_up_btn = \"h0up\"", config);
                 Assert.Contains("input_player1_l2_axis = \"+4\"", config);
+
+                // A stick of the plan: its four directions one after the other
+                controls.Diagram_Clicked("lstick");
+                Assert.Null(controls.Listening);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                var psxButton = controls.FindControl<ItemsControl>("uiConsoles")!.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>()
+                    .First(b => b.DataContext is RetroControlsUserControl.ConsoleChip chip && chip.System.Slug == "psx");
+                psxButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                controls.Diagram_Clicked("lstick");
+                Assert.Equal("l_y_minus", controls.Listening);
+                controls.Give("l_y_minus", RetroPad.Axis(1, false));
+                Assert.Equal("l_y_plus", controls.Listening);
 
                 // Another console: RetroArch's own driver
                 File.WriteAllText(RetroArchManager.Layout.ConfigFile, "video_fullscreen = \"true\"\n");

@@ -12,8 +12,11 @@ namespace gamevault.UserControls
     /// The plan of a console's gamepad (Régler mes touches): simple shapes on a 420×280 board, scaled to the control, each
     /// button named by the RetroPad input it is (<see cref="GameVault.Core.Retro.RetroKeyboard.Of"/>), the highlighted one lit.
     /// </summary>
-    public class PadDiagram : Control
+    public class PadDiagram : Control, Avalonia.Rendering.ICustomHitTest
     {
+        /// <summary>Clicked anywhere on it (between the buttons too): <see cref="ButtonAt"/> finds the button.</summary>
+        public bool HitTest(Point point) => true;
+
         public static readonly StyledProperty<string?> KindProperty = AvaloniaProperty.Register<PadDiagram, string?>(nameof(Kind));
         public static readonly StyledProperty<string?> HighlightProperty = AvaloniaProperty.Register<PadDiagram, string?>(nameof(Highlight));
 
@@ -23,6 +26,46 @@ namespace gamevault.UserControls
         public string? Highlight { get => GetValue(HighlightProperty); set => SetValue(HighlightProperty, value); }
 
         static PadDiagram() => AffectsRender<PadDiagram>(KindProperty, HighlightProperty);
+
+        /// <summary>A button of the plan clicked: its RetroPad input ("b", "lstick"...).</summary>
+        public event Action<string>? ButtonClicked;
+
+        /// <summary>The board's scale and place in the control, as drawn.</summary>
+        private double Scale => Math.Min(Bounds.Width / 420, Bounds.Height / 280);
+        private Point ToBoard(Point point) => new((point.X - (Bounds.Width - 420 * Scale) / 2) / Scale, (point.Y - (Bounds.Height - 280 * Scale) / 2) / Scale);
+
+        /// <summary>The button under a point of the control (the topmost, a label on it counts as it); null for none.</summary>
+        internal string? ButtonAt(Point point)
+        {
+            if (Kind == null || !Plans.TryGetValue(Kind, out Shape[]? shapes) || Scale <= 0)
+                return null;
+            Point p = ToBoard(point);
+            static bool Inside(Shape s, Point p) => s.Form switch
+            {
+                Form.Rect => p.X >= s.X && p.X <= s.X + s.W && p.Y >= s.Y && p.Y <= s.Y + s.H,
+                Form.Circle => Math.Pow(p.X - s.X, 2) + Math.Pow(p.Y - s.Y, 2) <= s.R * s.R,
+                Form.Ellipse => Math.Pow((p.X - s.X) / s.W, 2) + Math.Pow((p.Y - s.Y) / s.H, 2) <= 1,
+                Form.Poly => p.X >= s.Points!.Min(q => q.X) && p.X <= s.Points.Max(q => q.X) && p.Y >= s.Points.Min(q => q.Y) && p.Y <= s.Points.Max(q => q.Y),
+                _ => false,
+            };
+            return shapes.Reverse().FirstOrDefault(s => s.Id is not (null or "screen" or "center") && Inside(s, p))?.Id;
+        }
+
+        protected override void OnPointerMoved(Avalonia.Input.PointerEventArgs e)
+        {
+            base.OnPointerMoved(e);
+            Cursor = ButtonAt(e.GetPosition(this)) != null ? new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand) : Avalonia.Input.Cursor.Default;
+        }
+
+        protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e)
+        {
+            base.OnPointerPressed(e);
+            if (ButtonAt(e.GetPosition(this)) is string id)
+            {
+                e.Handled = true;
+                ButtonClicked?.Invoke(id);
+            }
+        }
 
         private enum Form { Rect, Circle, Ellipse, Poly, Text }
         /// <param name="Id">The button's RetroPad input; null for the gamepad's body, "screen" for a screen.</param>
@@ -134,7 +177,7 @@ namespace gamevault.UserControls
         {
             if (Kind == null || !Plans.TryGetValue(Kind, out Shape[]? shapes))
                 return;
-            double scale = Math.Min(Bounds.Width / 420, Bounds.Height / 280);
+            double scale = Scale;
             using var _ = context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation((Bounds.Width - 420 * scale) / 2, (Bounds.Height - 280 * scale) / 2));
             foreach (Shape shape in shapes)
             {

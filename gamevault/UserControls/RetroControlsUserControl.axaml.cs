@@ -35,7 +35,8 @@ namespace gamevault.UserControls
         private bool keyboard;
         /// <summary>The button waiting for a key or a gamepad's button.</summary>
         private string? listening;
-        /// <summary>"Set them all": the row being set.</summary>
+        /// <summary>The buttons set one after the other ("Set them all", a stick's directions) and the one being set.</summary>
+        private List<string>? sequence;
         private int? guided;
         private string? message;
         private RetroGamepad? gamepad;
@@ -53,6 +54,7 @@ namespace gamevault.UserControls
             if (game != null)
                 uiSubtitle.Text = Loc.F("Opened from {0}. Set once for each console, used by all its games.", game.Name);
             // On the window, before the buttons: Enter and Space are keys to give, not clicks
+            uiDiagram.ButtonClicked += Diagram_Clicked;
             AttachedToVisualTree += (_, _) =>
             {
                 TopLevel.GetTopLevel(this)?.AddHandler(KeyDownEvent, Key_Pressed, RoutingStrategies.Tunnel);
@@ -138,7 +140,7 @@ namespace gamevault.UserControls
             else
             {
                 string name = Shown(current.Name);
-                uiPrompt.Text = guided is int step ? Loc.F("Button {0} of {1}: {2}", step + 1, buttons.Length, name)
+                uiPrompt.Text = guided is int step ? Loc.F("Button {0} of {1}: {2}", step + 1, sequence!.Count, name)
                     : keyboard ? Loc.F("Press the key for: {0}", name) : Loc.F("Press the gamepad's button for: {0}", name);
                 uiHint.Text = message ?? (guided != null ? Loc.T("Escape keeps the current one and goes on.") : Loc.T("Escape or Cancel keeps the current one."));
             }
@@ -305,11 +307,11 @@ namespace gamevault.UserControls
         /// <summary>Done with this button: the next one in "Set them all", else none waits.</summary>
         private void Next()
         {
-            if (guided is int step && step + 1 < Buttons.Length)
+            if (guided is int step && step + 1 < sequence!.Count)
                 Listen(step + 1);
             else
             {
-                if (guided != null)
+                if (guided != null && sequence!.Count == Buttons.Length)
                     message = Loc.T("All the buttons are set.");
                 Stop(keepMessage: true);
             }
@@ -318,14 +320,23 @@ namespace gamevault.UserControls
         private void Listen(int? step, string? bind = null)
         {
             guided = step;
-            listening = step is int i ? Buttons[i].Bind : bind;
+            listening = step is int i ? sequence![i] : bind;
             gamepad?.Rest();
             Refresh();
+        }
+
+        /// <summary>These buttons one after the other.</summary>
+        private void ListenAll(IEnumerable<string> binds)
+        {
+            sequence = binds.ToList();
+            message = null;
+            Listen(0);
         }
 
         private void Stop(bool keepMessage = false)
         {
             guided = null;
+            sequence = null;
             listening = null;
             if (!keepMessage)
                 message = null;
@@ -379,17 +390,37 @@ namespace gamevault.UserControls
             if ((sender as Control)?.DataContext is ControlRow row)
             {
                 message = null;
+                sequence = null;
                 Listen(null, row.Bind == listening ? null : row.Bind);
             }
         }
 
         private void Cancel_Click(object? sender, RoutedEventArgs e) => Stop();
-        private void Guided_Click(object? sender, RoutedEventArgs e)
+        private void Guided_Click(object? sender, RoutedEventArgs e) => ListenAll(Buttons.Select(b => b.Bind));
+        private void GuidedBack_Click(object? sender, RoutedEventArgs e) => Listen(Math.Max(0, (guided ?? 0) - 1));
+
+        /// <summary>A button of the plan clicked: it waits for its key or button; a stick (or the Wiimote's tilt), its four directions.</summary>
+        internal void Diagram_Clicked(string id)
         {
             message = null;
-            Listen(0);
+            var binds = Buttons.Select(b => b.Bind).ToList();
+            if (id is "lstick" or "rstick")
+            {
+                var directions = binds.Where(b => b.StartsWith(id[0] + "_")).ToList();
+                if (directions.Count > 0)
+                    ListenAll(directions);
+                else if (binds.Contains(id[0] + "3"))
+                {
+                    sequence = null;
+                    Listen(null, id[0] + "3");
+                }
+            }
+            else if (binds.Contains(id))
+            {
+                sequence = null;
+                Listen(null, id);
+            }
         }
-        private void GuidedBack_Click(object? sender, RoutedEventArgs e) => Listen(Math.Max(0, (guided ?? 0) - 1));
         private void GuidedKeep_Click(object? sender, RoutedEventArgs e) => Next();
         private void GuidedNone_Click(object? sender, RoutedEventArgs e)
         {
