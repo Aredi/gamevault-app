@@ -1,0 +1,117 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.RetroControlsUserControl"
+             Focusable="True">
+    <!-- Régler mes touches: each console's buttons, on the gamepad or the keyboard, and the controller of the Wii and the PS1 -->
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" Margin="26,20,26,18">
+        <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="4">
+                <TextBlock Classes="sectionTitle" Text="{l:T 'Set my controls'}" />
+                <TextBlock x:Name="uiSubtitle" Classes="muted" FontSize="13.5" TextWrapping="Wrap"
+                           Text="{l:T 'Set once for each console, used by all its games. Kept as soon as a button is changed.'}" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="round small" VerticalAlignment="Top" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+            </Button>
+        </Grid>
+
+        <ItemsControl Grid.Row="1" x:Name="uiConsoles" Margin="0,16,0,0">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <ToggleButton Classes="chip" Content="{Binding Name}" IsChecked="{Binding Selected, Mode=OneWay}" Margin="0,0,8,8" Click="Console_Click" />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <WrapPanel Grid.Row="2" Margin="0,6,0,0">
+            <ToggleButton x:Name="uiPadTab" Classes="chip" Content="{l:T 'Gamepad'}" Margin="0,0,6,8" Click="Source_Click" />
+            <ToggleButton x:Name="uiKeyboardTab" Classes="chip" Content="{l:T 'Keyboard'}" Margin="0,0,16,8" Click="Source_Click" />
+            <TextBlock x:Name="uiDevice" Classes="muted" FontSize="13.5" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,8" />
+            <Button x:Name="uiInstall" Classes="chip" Content="{l:T 'Install RetroArch now'}" Margin="0,0,0,8" IsVisible="False" Click="Install_Click" />
+        </WrapPanel>
+
+        <Border Grid.Row="3" x:Name="uiControllerRow" CornerRadius="12" Padding="12,10,12,4" Margin="0,4,0,0" Background="{DynamicResource Brush.Background2}">
+            <WrapPanel>
+                <TextBlock x:Name="uiControllerLabel" FontSize="12" FontWeight="Bold" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,6" />
+                <ItemsControl x:Name="uiControllers">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ToggleButton Classes="chip" Content="{Binding Name}" IsChecked="{Binding Selected, Mode=OneWay}" Margin="0,0,8,6" Click="Controller_Click" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel x:Name="uiGameController" Orientation="Horizontal" Spacing="8" Margin="8,0,0,6" VerticalAlignment="Center">
+                    <TextBlock x:Name="uiGameControllerLabel" FontSize="13" Classes="muted" VerticalAlignment="Center" />
+                    <ComboBox x:Name="uiGameControllerChoice" MinWidth="200" SelectionChanged="GameController_Changed" />
+                </StackPanel>
+            </WrapPanel>
+        </Border>
+
+        <Grid Grid.Row="4" ColumnDefinitions="520,*" Margin="0,14,0,0">
+            <Border CornerRadius="14" Background="{DynamicResource Brush.Background2}" Padding="16">
+                <StackPanel VerticalAlignment="Center" Spacing="16">
+                    <local:PadDiagram x:Name="uiDiagram" Width="480" Height="320" />
+                    <TextBlock x:Name="uiPrompt" FontSize="17" FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock x:Name="uiHint" Classes="muted" FontSize="13" TextAlignment="Center" TextWrapping="Wrap" />
+                    <WrapPanel x:Name="uiGuidedButtons" HorizontalAlignment="Center">
+                        <Button Classes="chip" Content="{l:T 'Previous button'}" Margin="0,0,8,8" Click="GuidedBack_Click" />
+                        <Button Classes="chip" Content="{l:T 'Keep the current one'}" Margin="0,0,8,8" Click="GuidedKeep_Click" />
+                        <Button Classes="chip" Content="{l:T 'None for this button'}" Margin="0,0,8,8" Click="GuidedNone_Click" />
+                        <Button Classes="chip" Content="{l:T 'Stop'}" Margin="0,0,8,8" Click="GuidedStop_Click" />
+                    </WrapPanel>
+                    <Button x:Name="uiCancel" Classes="chip" HorizontalAlignment="Center" Content="{l:T 'Cancel'}" Click="Cancel_Click" />
+                </StackPanel>
+            </Border>
+            <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="24,0,0,0">
+                <Grid ColumnDefinitions="*,200,110" Margin="12,0,12,8">
+                    <TextBlock Text="{l:T 'BUTTON OF THE CONSOLE'}" FontSize="11" FontWeight="Bold" Classes="muted" />
+                    <TextBlock Grid.Column="1" x:Name="uiColumn" FontSize="11" FontWeight="Bold" Classes="muted" />
+                </Grid>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="uiRows">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="10" Padding="12,6" Margin="0,0,8,4" Background="{DynamicResource Brush.Background2}" Classes.lit="{Binding Lit}">
+                                    <Grid ColumnDefinitions="*,200,110">
+                                        <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <Border CornerRadius="7" Padding="10,4" BorderThickness="1" BorderBrush="{DynamicResource Brush.Border}">
+                                                <TextBlock Text="{Binding Input}" FontSize="13" FontWeight="SemiBold" />
+                                            </Border>
+                                            <TextBlock Text="{Binding Changed}" FontSize="11" Foreground="{DynamicResource Brush.Accent}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Classes="chip" Content="{l:T 'Change'}" HorizontalAlignment="Right" Click="Change_Click" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.Styles>
+                            <Style Selector="Border.lit">
+                                <Setter Property="Background" Value="{DynamicResource Brush.Accent4}" />
+                            </Style>
+                        </ItemsControl.Styles>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,16,0,0">
+            <Button x:Name="uiDefaults" Classes="chip" Content="{l:T 'Default keys'}" Click="Defaults_Click" />
+            <TextBlock Grid.Column="1" x:Name="uiSummary" Classes="muted" FontSize="13" VerticalAlignment="Center" Margin="12,0" TextWrapping="Wrap" />
+            <local:IconButton Grid.Column="2" x:Name="uiGuided" Text="{l:T 'Set them all, one by one'}" Icon="{StaticResource IconReload}" IconMargin="0,0,6,0" Height="40" Padding="16,0" Margin="0,0,10,0" Click="Guided_Click" />
+            <Button Grid.Column="3" Classes="chip" Content="{l:T 'Close'}" Click="Close_Click" />
+        </Grid>
+    </Grid>
+</UserControl>

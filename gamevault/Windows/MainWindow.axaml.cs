@@ -273,7 +273,7 @@ namespace gamevault.Windows
                 uiPopupFrame.Height = videoWidth * 9 / 16 + titleBar;
                 return;
             }
-            if (popup is GameSettingsUserControl or UserSettingsUserControl or UserControls.SettingsComponents.PublishGameUserControl or AutoMatchUserControl or StorageUserControl)
+            if (popup is GameSettingsUserControl or UserSettingsUserControl or UserControls.SettingsComponents.PublishGameUserControl or AutoMatchUserControl or StorageUserControl or RetroControlsUserControl)
             {
                 popup.Width = popup.Height = double.NaN;
                 uiPopupFrame.Background = (Avalonia.Media.IBrush?)this.FindResource("Brush.Background");

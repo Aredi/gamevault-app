@@ -254,11 +254,16 @@
                                 <TextBlock Classes="label" Text="{l:T 'MY GAME'}" />
                                 <TextBlock Text="{Binding RommNote}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="300" />
                             </StackPanel>
-                            <!-- The controller of its first port, for the consoles that have several (Settings > Retro, or this game's own) -->
-                            <StackPanel Classes="stat" IsVisible="{Binding HasControllerChoice}">
-                                <TextBlock Classes="label" Text="{l:T 'CONTROLLER'}" />
-                                <ComboBox x:Name="uiController" MinWidth="190" MinHeight="30" ItemsSource="{Binding ControllerOptions}" SelectedIndex="{Binding ControllerIndex}"
-                                          ToolTip.Tip="{l:T 'The controller the game is played with: RetroArch gives it to the console at the start'}" />
+                            <!-- Régler mes touches: its console's buttons and controller (and this game's own controller) -->
+                            <StackPanel Classes="stat" IsVisible="{Binding HasControls}">
+                                <TextBlock Classes="label" Text="{l:T 'CONTROLS'}" />
+                                <Button x:Name="uiControls" Classes="ghost small" Click="Controls_Click" ToolTip.Tip="{l:T 'The buttons of its console, on the gamepad or the keyboard, and its controller'}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Path Data="{StaticResource IconNavRetro}" Fill="{DynamicResource Brush.Foreground}" Width="16" Height="16" Stretch="Uniform" />
+                                        <TextBlock Text="{l:T 'Set my controls'}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{Binding ControlsSummary}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="300" />
                             </StackPanel>
                             <!-- The console's language the game starts in (Settings > Retro, or this game's own) -->
                             <StackPanel Classes="stat" IsVisible="{Binding HasConsoleLanguage}">

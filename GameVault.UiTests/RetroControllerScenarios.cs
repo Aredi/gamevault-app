@@ -1,61 +1,73 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
+using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using gamevault.Helper;
 using gamevault.UserControls;
-using gamevault.UserControls.SettingsComponents;
 
 namespace GameVault.UiTests
 {
     public class RetroControllerScenarios
     {
         /// <summary>
-        /// A Wii game starts with the Wiimote + Nunchuk, the controller of Settings > Retro, or the one chosen on its page:
-        /// written in the game's remap file, which RetroArch reads at its start.
+        /// A Wii game starts with the Wiimote + Nunchuk, the controller chosen for the Wii in Régler mes touches, or the one
+        /// chosen there for the game (opened from its page): written in the game's remap file, which RetroArch reads at its start.
         /// </summary>
         [AvaloniaFact]
-        public async Task AWiiGame_StartsWithTheControllerOfTheSettings_OrTheOneChosenOnItsPage()
+        public async Task AWiiGame_StartsWithTheConsolesController_OrTheOneChosenForIt()
         {
             await TestSession.GetAsync();
             var consoles = RetroArchManager.Controllers;
             var games = RetroArchManager.GameControllers;
             string remap = RetroArchManager.Layout.GameRemapFile("dolphin", "/nowhere/zelda.rvz");
+            var window = new Window { Width = 1300, Height = 900 };
             try
             {
                 RetroArchManager.Controllers = new();
                 RetroArchManager.GameControllers = new();
                 var zelda = new RetroGame { Id = 812, Name = "Zelda Twilight Princess", Platform = new RetroPlatform { Slug = "wii", Name = "Wii" } };
 
-                // Settings > Retro: a row per console with several controllers, the default chosen
-                var settings = new RetroSettingsUserControl();
-                await settings.RefreshAsync();
-                var rows = settings.FindControl<ItemsControl>("uiControllers")!.Items.Cast<RetroSettingsUserControl.ControllerRow>().ToList();
-                Assert.Equal(new[] { "wii", "psx" }, rows.Select(r => r.Slug));
-                Assert.All(rows, r => Assert.Equal(0, r.Index));
-
-                // Its page: "Automatic" (the Nunchuk), then the Wii's controllers
+                // Its page: the controls' button, with what it is played with
                 var view = new RetroGameViewUserControl(zelda);
-                Assert.True(view.ViewModel.HasControllerChoice);
-                Assert.Equal(6, view.ViewModel.ControllerOptions.Count);
-                Assert.Contains("Nunchuk", view.ViewModel.ControllerOptions[0]);
+                Assert.True(view.ViewModel.HasControls);
+                Assert.Contains("Nunchuk", view.ViewModel.ControlsSummary);
                 Assert.Equal(769, RetroArchManager.ControllerOf(zelda));
 
-                // The console's own, then the game's: written for RetroArch before it starts (it is not run here)
-                RetroArchManager.Controllers = new() { ["wii"] = 513 };
+                // Opened from it: the Wii, its controllers, the Nunchuk's plan
+                var controls = new RetroControlsUserControl(zelda);
+                window.Content = controls;
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal("wii", controls.CurrentSystem.Slug);
+                Assert.True(controls.FindControl<Border>("uiControllerRow")!.IsVisible);
+                Assert.Equal("wiiNunchuk", controls.FindControl<PadDiagram>("uiDiagram")!.Kind);
+                ToggleButton Chip(int device) => controls.FindControl<ItemsControl>("uiControllers")!.GetVisualDescendants().OfType<ToggleButton>()
+                    .First(b => b.DataContext is RetroControlsUserControl.ControllerChip { Device: var d } && d == device);
+
+                // The console's controller, then the game's own
+                Chip(513).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Dispatcher.UIThread.RunJobs();
                 Assert.Equal(513, RetroArchManager.ControllerOf(zelda));
-                view.ViewModel.ControllerIndex = 4;
+                var forGame = controls.FindControl<ComboBox>("uiGameControllerChoice")!;
+                forGame.SelectedIndex = 4;
                 Assert.Equal(1025, RetroArchManager.ControllerOf(zelda));
-                Assert.Equal(4, new RetroGameViewUserControl(zelda).ViewModel.ControllerIndex);
+                Assert.Equal("wiiClassic", controls.FindControl<PadDiagram>("uiDiagram")!.Kind);
+                Assert.Contains("ZL", controls.FindControl<ItemsControl>("uiRows")!.Items.Cast<RetroControlsUserControl.ControlRow>().Select(r => r.Name));
                 Assert.ThrowsAny<Exception>(() => RetroArchManager.Launch(zelda.Platform.System, "/nowhere/zelda.rvz", "French", RetroArchManager.ControllerOf(zelda)));
                 Assert.EndsWith("\ninput_libretro_device_p1 = \"1025\"\n", File.ReadAllText(remap));
-                view.ViewModel.ControllerIndex = 0;
+                forGame.SelectedIndex = 0;
                 Assert.Equal(513, RetroArchManager.ControllerOf(zelda));
 
                 // A GameCube game (Dolphin too) and a NES game: one controller, nothing to choose
-                Assert.False(new RetroGameViewUserControl(new RetroGame { Platform = new RetroPlatform { Slug = "ngc", Name = "GameCube" } }).ViewModel.HasControllerChoice);
+                var gameCube = new RetroControlsUserControl(new RetroGame { Platform = new RetroPlatform { Slug = "ngc", Name = "GameCube" } });
+                Assert.False(gameCube.FindControl<Border>("uiControllerRow")!.IsVisible);
                 Assert.Null(RetroArchManager.ControllerOf(new RetroGame { Platform = new RetroPlatform { Slug = "nes", Name = "NES" } }));
             }
             finally
             {
+                window.Close();
                 RetroArchManager.Controllers = consoles;
                 RetroArchManager.GameControllers = games;
                 if (File.Exists(remap))

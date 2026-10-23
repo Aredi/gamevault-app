@@ -271,6 +271,13 @@ namespace gamevault.UserControls
         }
 
         #region Cloud saves, per game as the library's
+        private void Controls_Click(object? sender, RoutedEventArgs e)
+        {
+            var controls = new RetroControlsUserControl(ViewModel.Game);
+            controls.DetachedFromVisualTree += (_, _) => ViewModel.ControlsChanged();
+            MainWindowViewModel.Instance.OpenPopup(controls);
+        }
+
         private async void RestoreCloudSaves_Click(object? sender, RoutedEventArgs e)
         {
             if (ViewModel.Game.Busy)

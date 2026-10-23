@@ -95,29 +95,25 @@ namespace gamevault.ViewModels
                 OnPropertyChanged();
             }
         }
-        /// <summary>Its console has several controllers (Settings > Retro): the page can choose the game's.</summary>
-        public bool HasControllerChoice => Controllers.Length > 0;
-        private GameVault.Core.Retro.RetroControllers.Controller[] Controllers =>
-            GameVault.Core.Retro.RetroControllers.BySystem.GetValueOrDefault(Game.Platform.Slug) ?? Array.Empty<GameVault.Core.Retro.RetroControllers.Controller>();
-        /// <summary>"Automatic (its console's)", then the console's controllers.</summary>
-        public List<string> ControllerOptions => Controllers.Select(c => ControllerName(c.Name))
-            .Prepend(Loc.F("Automatic ({0})", ControllerName(Controllers.FirstOrDefault(c => c.Device == RetroArchManager.Controllers.GetValueOrDefault(Game.Platform.Slug))?.Name ?? Controllers.FirstOrDefault()?.Name ?? ""))).ToList();
-        public int ControllerIndex
+        /// <summary>Played in RetroArch: its page opens Régler mes touches.</summary>
+        public bool HasControls => GameVault.Core.Retro.RetroKeyboard.Of(Game.Platform.Slug).Length > 0;
+        /// <summary>What it is played with: its controller (a console with several), and the buttons set for its console.</summary>
+        public string ControlsSummary
         {
-            get => RetroArchManager.GameControllers.TryGetValue(Game.Id.ToString(), out int chosen) ? Array.FindIndex(Controllers, c => c.Device == chosen) + 1 : 0;
-            set
+            get
             {
-                if (value < 0 || value == ControllerIndex)
-                    return;
-                var games = RetroArchManager.GameControllers;
-                if (value == 0)
-                    games.Remove(Game.Id.ToString());
-                else
-                    games[Game.Id.ToString()] = Controllers[value - 1].Device;
-                RetroArchManager.GameControllers = games;
-                OnPropertyChanged();
+                var parts = new List<string>();
+                if (GameVault.Core.Retro.RetroControllers.BySystem.TryGetValue(Game.Platform.Slug, out var controllers))
+                    parts.Add(ControllerName(controllers.FirstOrDefault(c => c.Device == RetroArchManager.ControllerOf(Game))?.Name ?? controllers[0].Name));
+                if (RetroArchManager.Pad.ContainsKey(Game.Platform.Slug))
+                    parts.Add(Loc.T("gamepad set"));
+                if (RetroArchManager.Keyboard.ContainsKey(Game.Platform.Slug))
+                    parts.Add(Loc.T("keyboard set"));
+                return parts.Count > 0 ? string.Join(" · ", parts) : Loc.T("RetroArch's default buttons");
             }
         }
+        /// <summary>Régler mes touches closed: what it is played with may have changed.</summary>
+        public void ControlsChanged() => OnPropertyChanged(nameof(ControlsSummary));
         /// <summary>A controller of <see cref="GameVault.Core.Retro.RetroControllers"/>, in the client's language.</summary>
         public static string ControllerName(string name) => name switch
         {

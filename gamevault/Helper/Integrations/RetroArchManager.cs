@@ -125,10 +125,21 @@ namespace gamevault.Helper
             set => Preferences.Set(Models.AppConfigKey.RetroKeyboard, RetroKeyboard.Format(value), ProfileConfig);
         }
 
-        /// <summary>The console's keys in the client's config, written again before each game (<see cref="EnsureReadyAsync"/>): the previous console's are gone.</summary>
+        /// <summary>The gamepad's buttons chosen by console in Régler mes touches: see <see cref="RetroPad"/>.</summary>
+        public static Dictionary<string, Dictionary<string, RetroPad.Input>> Pad
+        {
+            get => RetroPad.Parse(Preferences.Get(Models.AppConfigKey.RetroPad, ProfileConfig));
+            set => Preferences.Set(Models.AppConfigKey.RetroPad, RetroPad.Format(value), ProfileConfig);
+        }
+
+        /// <summary>The console's keys and buttons in the client's config, written again before each game (<see cref="EnsureReadyAsync"/>): the previous console's are gone.</summary>
         private static void SetKeyboard(RetroSystem system, int? controller)
         {
-            var lines = RetroKeyboard.Config(system.Slug, controller, Keyboard.GetValueOrDefault(system.Slug)).ToList();
+            var pad = RetroPad.Config(system.Slug, controller, Pad.GetValueOrDefault(system.Slug)).ToList();
+            // The gamepad set, not a LED controller or a KVM SDL lists before it
+            if (pad.Count > 0 && Sdl2Library is string library && RetroGamepad.FirstControllerIndex(library) is int index)
+                pad.Add(("input_player1_joypad_index", index.ToString()));
+            var lines = RetroKeyboard.Config(system.Slug, controller, Keyboard.GetValueOrDefault(system.Slug)).Concat(pad).ToList();
             if (lines.Count == 0)
                 return;
             string config = File.ReadAllText(Layout.ConfigFile);
@@ -218,6 +229,65 @@ namespace gamevault.Helper
             return Start(Layout.MenuArguments);
         }
 
+        /// <summary>RetroArch alone, without a console's core (Régler mes touches reads the gamepad with its SDL2).</summary>
+        public static async Task EnsureRetroArchAsync(Action<string> status)
+        {
+            await preparing.WaitAsync();
+            try { await InstallRetroArchAsync(status); }
+            finally { preparing.Release(); }
+        }
+
+        /// <summary>
+        /// The SDL2 library RetroArch is played with (its SDL2 driver's numbers are the client's): beside it on Windows, taken
+        /// out of its AppImage once on Linux (with the libraries it needs, found beside it). Null when it can not be had.
+        /// </summary>
+        public static async Task<string?> Sdl2LibraryAsync()
+        {
+            if (OperatingSystem.IsWindows() || Sdl2Library != null)
+                return Sdl2Library;
+            string folder = Path.Combine(Layout.Directory, "sdl2"), library = Path.Combine(folder, "libSDL2-2.0.so.0"), version = Path.Combine(folder, "version");
+            string work = Path.Combine(Layout.Directory, ".sdl2");
+            try
+            {
+                if (Directory.Exists(work))
+                    Directory.Delete(work, true);
+                Directory.CreateDirectory(work);
+                using (Process unpack = Process.Start(new ProcessStartInfo(Layout.Executable) { ArgumentList = { "--appimage-extract", "usr/lib/*" }, WorkingDirectory = work, UseShellExecute = false, RedirectStandardOutput = true })!)
+                {
+                    _ = unpack.StandardOutput.ReadToEndAsync();
+                    await unpack.WaitForExitAsync();
+                }
+                if (Directory.Exists(folder))
+                    Directory.Delete(folder, true);
+                Directory.Move(Path.Combine(work, "squashfs-root", "usr", "lib"), folder);
+                File.WriteAllText(version, RetroArchLayout.Version);
+                return File.Exists(library) ? library : null;
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return null;
+            }
+            finally
+            {
+                if (Directory.Exists(work))
+                    Directory.Delete(work, true);
+            }
+        }
+
+        /// <summary>RetroArch's SDL2 library when it is there (see <see cref="Sdl2LibraryAsync"/>), else null.</summary>
+        public static string? Sdl2Library
+        {
+            get
+            {
+                if (OperatingSystem.IsWindows())
+                    return File.Exists(Path.Combine(Layout.AppDirectory, "SDL2.dll")) ? Path.Combine(Layout.AppDirectory, "SDL2.dll") : null;
+                string folder = Path.Combine(Layout.Directory, "sdl2"), version = Path.Combine(folder, "version");
+                return File.Exists(Path.Combine(folder, "libSDL2-2.0.so.0")) && File.Exists(version) && File.ReadAllText(version) == RetroArchLayout.Version
+                    ? Path.Combine(folder, "libSDL2-2.0.so.0") : null;
+            }
+        }
+
         /// <summary>RetroArch at the pinned version, the player's folders, and the configuration written again.</summary>
         private static async Task InstallRetroArchAsync(Action<string> status)
         {
@@ -276,7 +346,7 @@ namespace gamevault.Helper
         }
 
         /// <summary>RetroArch, its cores, their files, the BIOS and the CRT look: what goes with "Uninstall" (the saves stay).</summary>
-        public static IEnumerable<string> InstalledParts => new[] { Layout.AppDirectory, Layout.CoresDirectory, Layout.SystemDirectory, Layout.ShadersDirectory };
+        public static IEnumerable<string> InstalledParts => new[] { Layout.AppDirectory, Layout.CoresDirectory, Layout.SystemDirectory, Layout.ShadersDirectory, Path.Combine(Layout.Directory, "sdl2") };
 
         /// <summary>RetroArch, RPCS3 and Eden, as one "emulators" line of the storage.</summary>
         public static long InstalledSize() => InstalledParts.Where(Directory.Exists).Sum(GameVault.Core.Storage.StorageCleanup.DirectorySize) + StandaloneEmulator.All.Sum(e => e.InstalledSize());
