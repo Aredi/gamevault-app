@@ -112,7 +112,7 @@ namespace gamevault.UserControls
                 return;
             }
             ViewModel.Platforms = platforms;
-            await SelectPlatformAsync(platforms[0]);
+            await SelectAllAsync();
         }
 
         /// <summary>The player's RomM collections (with their account linked) and the series of games, in the collections' list.</summary>
@@ -131,6 +131,12 @@ namespace gamevault.UserControls
         internal async Task<List<RetroGame>> AllGamesAsync()
         {
             await EnsureLoadedAsync();
+            return await ListAllGamesAsync();
+        }
+
+        /// <summary><see cref="AllGamesAsync"/> once the platforms are known (the first visit shows "All" while loading them).</summary>
+        private async Task<List<RetroGame>> ListAllGamesAsync()
+        {
             if (offlineGames != null)
                 return offlineGames;
             await Task.WhenAll(ViewModel.Platforms.Where(p => !lists.ContainsKey(p.Id)).Select(async platform =>
@@ -153,7 +159,7 @@ namespace gamevault.UserControls
             SizeCards(null);
             ViewModel.SelectedGame = null;
             Show(null, loading: true);
-            var games = await AllGamesAsync();
+            var games = await ListAllGamesAsync();
             if (!ViewModel.ShowsAll)
                 return;
             ViewModel.AllGames = games;

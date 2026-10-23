@@ -27,6 +27,7 @@ namespace GameVault.UiTests
             File.WriteAllText(layout.CoreFile("mesen"), "core");
             var page = new RetroUserControl();
             await page.LoadPlatformsAsync();
+            await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
             await TestSession.WaitUntil(() => page.Shown.Any(), TimeSpan.FromSeconds(10), "the NES games");
             RetroGame zelda = page.Shown.Single(g => g.Name == "Zelda");
             await RetroPlay.InstallAsync(zelda);

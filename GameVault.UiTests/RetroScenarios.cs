@@ -82,8 +82,10 @@ namespace GameVault.UiTests
             RetroUserControl page = MainWindowViewModel.Instance.Retro;
             try
             {
+                // The first visit shows "All", no platform chosen
                 await page.LoadPlatformsAsync();
-                Assert.Equal("nes", page.ViewModel.Platforms.Single(p => p.IsSelected).Slug);
+                Assert.True(page.ViewModel.ShowsAll);
+                Assert.DoesNotContain(page.ViewModel.Platforms, p => p.IsSelected);
                 // The quick search finds the games of the platforms not shown
                 var quick = new QuickSearchUserControl();
                 quick.Open();
@@ -266,6 +268,7 @@ namespace GameVault.UiTests
             {
                 var page = new RetroUserControl();
                 await page.LoadPlatformsAsync();
+                await page.SelectPlatformAsync(page.ViewModel.Platforms.Single(p => p.Slug == "nes"));
                 await TestSession.WaitUntil(() => page.Shown.Any(), TimeSpan.FromSeconds(10), "the NES games");
 
                 Assert.Equal(new[] { "nes", "ps3", "psx", "switch" }, page.ViewModel.Platforms.Select(p => p.Slug).Order());
