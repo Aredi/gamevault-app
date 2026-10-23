@@ -11,12 +11,48 @@ namespace GameVault.Core.Retro
     /// </summary>
     public sealed class EdenLayout(string directory, bool windows) : StandaloneLayout(directory, windows)
     {
-        private const string Tag = "v1792353251.de7e6e01d4", Commit = "de7e6e01d4";
+        /// <summary>The nightly the client's settings were checked with: the oldest one it plays with.</summary>
+        public const string Pinned = "v1792353251.de7e6e01d4";
+        /// <summary>Eden's nightly builds, newest first (Forgejo's API).</summary>
+        public const string LatestNightlyApi = "https://git.eden-emu.dev/api/v1/repos/eden-ci/nightly/releases/latest";
 
-        public override string Version => Commit;
-        public override string PackageUrl => Windows
-            ? $"https://nightly.eden-emu.dev/{Tag}/Eden-Windows-{Commit}-amd64-clang-pgo.zip"
-            : $"https://nightly.eden-emu.dev/{Tag}/Eden-Linux-{Commit}-amd64-clang-pgo.AppImage";
+        private string? chosen;
+        /// <summary>The nightly played with: one the player updated to, else the newer of the installed one and <see cref="Pinned"/>.</summary>
+        public string Tag
+        {
+            get => chosen ?? (InstalledTag is string installed && IsNewer(installed, Pinned) ? installed : Pinned);
+            set => chosen = value;
+        }
+
+        public override string Version => Tag;
+        /// <summary>The nightly in the folder: its tag (before 1.26.3, the commit of <see cref="Pinned"/>).</summary>
+        private string? InstalledTag => File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() is string text
+            ? (Pinned.EndsWith("." + text, StringComparison.Ordinal) ? Pinned : text)
+            : null;
+        public override bool IsInstalled => File.Exists(Executable) && InstalledTag == Tag;
+
+        /// <summary>"v1792353251.de7e6e01d4": built at that Unix time.</summary>
+        public static DateTimeOffset BuiltAt(string tag) => DateTimeOffset.FromUnixTimeSeconds(long.TryParse(tag.TrimStart('v').Split('.')[0], out long time) ? time : 0);
+        public static bool IsNewer(string tag, string than) => BuiltAt(tag) > BuiltAt(than);
+
+        /// <summary>The latest nightly of <see cref="LatestNightlyApi"/>'s answer when it is newer than the one played with and has this PC's build; else null.</summary>
+        public string? NewerNightly(string json)
+        {
+            var release = System.Text.Json.Nodes.JsonNode.Parse(json);
+            if (release?["tag_name"]?.GetValue<string>() is not string tag || !IsNewer(tag, Tag) || release["assets"] is not System.Text.Json.Nodes.JsonArray assets)
+                return null;
+            string package = Path.GetFileName(PackageUrlOf(tag));
+            return assets.Any(a => a?["name"]?.GetValue<string>() == package) ? tag : null;
+        }
+
+        public override string PackageUrl => PackageUrlOf(Tag);
+        private string PackageUrlOf(string tag)
+        {
+            string commit = tag[(tag.IndexOf('.') + 1)..];
+            return Windows
+                ? $"https://nightly.eden-emu.dev/{tag}/Eden-Windows-{commit}-amd64-clang-pgo.zip"
+                : $"https://nightly.eden-emu.dev/{tag}/Eden-Linux-{commit}-amd64-clang-pgo.AppImage";
+        }
         protected override string WindowsExecutable => "eden.exe";
         /// <summary>On Linux Eden looks for its "user" folder in its working folder.</summary>
         public override string WorkingDirectory => Directory;

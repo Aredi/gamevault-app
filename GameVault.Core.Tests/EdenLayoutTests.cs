@@ -78,6 +78,33 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void ANewerNightly_IsOffered_WithThisPcsBuild_AndKeptOnceInstalled()
+        {
+            var layout = new EdenLayout(Path.Combine(Root, Guid.NewGuid().ToString("N")), windows: false);
+            string Feed(string tag, string file) => $"{{\"tag_name\":\"{tag}\",\"assets\":[{{\"name\":\"{file}\"}}]}}";
+            const string newer = "v1792500000.989768aa46";
+            Assert.Equal(newer, layout.NewerNightly(Feed(newer, "Eden-Linux-989768aa46-amd64-clang-pgo.AppImage")));
+            // Not newer, or without the build this PC takes: nothing offered
+            Assert.Null(layout.NewerNightly(Feed(EdenLayout.Pinned, "Eden-Linux-de7e6e01d4-amd64-clang-pgo.AppImage")));
+            Assert.Null(layout.NewerNightly(Feed(newer, "Eden-Windows-989768aa46-amd64-clang-pgo.zip")));
+
+            // Installed before 1.26.3: the pinned commit in the version file, nothing reinstalled
+            Directory.CreateDirectory(Path.Combine(layout.Directory, "app"));
+            File.WriteAllText(layout.Executable, "");
+            File.WriteAllText(layout.VersionFile, "de7e6e01d4");
+            Assert.True(layout.IsInstalled);
+            // Taken: installed over it, then kept by the next starts (until the client's own is newer)
+            layout.Tag = newer;
+            Assert.False(layout.IsInstalled);
+            Assert.Equal("https://nightly.eden-emu.dev/v1792500000.989768aa46/Eden-Linux-989768aa46-amd64-clang-pgo.AppImage", layout.PackageUrl);
+            File.WriteAllText(layout.VersionFile, layout.Version);
+            Assert.True(new EdenLayout(layout.Directory, windows: false).IsInstalled);
+            Assert.Equal(newer, new EdenLayout(layout.Directory, windows: false).Tag);
+            File.WriteAllText(layout.VersionFile, "v1700000000.0123456789");
+            Assert.Equal(EdenLayout.Pinned, new EdenLayout(layout.Directory, windows: false).Tag);
+        }
+
+        [Fact]
         public void ItsSettings_AreReadByEden_AndKeepItsOwn()
         {
             var layout = new EdenLayout(Root, windows: false);

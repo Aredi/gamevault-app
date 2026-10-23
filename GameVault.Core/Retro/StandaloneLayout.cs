@@ -16,7 +16,7 @@ namespace GameVault.Core.Retro
         public string AppDirectory => windows ? directory : Path.Combine(directory, "app");
         public virtual string WorkingDirectory => AppDirectory;
         public string VersionFile => Path.Combine(directory, "version");
-        public bool IsInstalled => File.Exists(Executable) && File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() == Version;
+        public virtual bool IsInstalled => File.Exists(Executable) && File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() == Version;
         public virtual IReadOnlyDictionary<string, string> Environment => new Dictionary<string, string>();
 
         /// <summary>The console's system files, from RomM, are in place.</summary>

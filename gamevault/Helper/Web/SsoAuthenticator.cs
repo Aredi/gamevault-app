@@ -32,6 +32,28 @@ namespace gamevault.Helper
             return string.IsNullOrEmpty(authResponse?.AccessToken) ? null : authResponse;
         }
 
+        /// <summary>The server refused the sign-in (its error page, as {"message":..,"statusCode":401}).</summary>
+        internal sealed class RefusedException(int statusCode, string message) : Exception(message)
+        {
+            public int StatusCode { get; } = statusCode;
+        }
+
+        /// <summary>The server's error page instead of the tokens: there is nothing more to wait for.</summary>
+        internal static RefusedException? ParseServerError(string body)
+        {
+            if (!body.TrimStart().StartsWith("{"))
+                return null;
+            try
+            {
+                using var json = JsonDocument.Parse(body);
+                if (!json.RootElement.TryGetProperty("statusCode", out JsonElement code) || !code.TryGetInt32(out int status) || status < 400)
+                    return null;
+                string message = json.RootElement.TryGetProperty("message", out JsonElement text) && text.ValueKind == JsonValueKind.String ? text.GetString()! : "";
+                return new RefusedException(status, message);
+            }
+            catch (JsonException) { return null; }
+        }
+
         internal static AuthResponse? TryReadTokensFromUrl(Uri? url)
         {
             if (url == null || string.IsNullOrEmpty(url.Query))
@@ -107,11 +129,19 @@ namespace gamevault.Helper
                 {
                     try
                     {
+                        string body = Unquote(await webView.InvokeScript("(document.getElementById('jsonData') || document.body || {}).textContent || ''"));
                         AuthResponse? authResponse = TryReadTokensFromUrl(Uri.TryCreate(Unquote(await webView.InvokeScript("window.location.href")), UriKind.Absolute, out Uri? href) ? href : null)
-                            ?? ParseTokenJson(Unquote(await webView.InvokeScript("(document.getElementById('jsonData') || document.body || {}).textContent || ''")));
+                            ?? ParseTokenJson(body);
                         if (authResponse != null)
                         {
                             tcs.TrySetResult(authResponse);
+                            window.Close();
+                            return;
+                        }
+                        // A refusal (a 401 at the server's return): the window closes on it, the login is not left waiting
+                        if (ParseServerError(body) is RefusedException refused)
+                        {
+                            tcs.TrySetException(refused);
                             window.Close();
                             return;
                         }

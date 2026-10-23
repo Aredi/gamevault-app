@@ -47,6 +47,8 @@ namespace gamevault.Helper
             game.Busy = true;
             try
             {
+                if (game.Platform.System.IsEden)
+                    await StandaloneEmulator.Eden.OfferUpdateAsync();
                 await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
                 if (await RetroCloudSaves.TakeAsync(game, text => game.Status = text) is string kept)
                     MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);

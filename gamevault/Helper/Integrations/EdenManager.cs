@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace gamevault.Helper
@@ -67,6 +68,34 @@ namespace gamevault.Helper
             }
             if (!Layout.HasFirmware)
                 throw new RetroArchManager.MissingBiosException(Loc.T("The Switch firmware in RomM has no .nca file: an administrator replaces it with a zip of the firmware's files."));
+        }
+
+        private bool updateOffered;
+
+        /// <summary>
+        /// A newer nightly than the installed one (often faster), offered once a session before a game: taken, it is
+        /// installed over this one, the console's storage kept. No answer from the forge: the installed one is played.
+        /// </summary>
+        public async Task OfferUpdateAsync()
+        {
+            if (updateOffered || !Layout.IsInstalled)
+                return;
+            updateOffered = true;
+            string? newer;
+            try
+            {
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                newer = Layout.NewerNightly(await HttpClients.Shared.GetStringAsync(EdenLayout.LatestNightlyApi, timeout.Token));
+            }
+            catch (Exception ex) { Log.Ignored(ex); return; }
+            if (newer == null)
+                return;
+            var answer = await App.Instance.MainWindow.ShowMessageAsync(Loc.T("Eden update available"),
+                Loc.F("A newer build of Eden ({0}) is available, often with better performance. The saves and settings are kept. Update it now?", EdenLayout.BuiltAt(newer).ToLocalTime().ToString("d")),
+                MessageDialogStyle.AffirmativeAndNegative,
+                new MetroDialogSettings { AffirmativeButtonText = Loc.T("Update"), NegativeButtonText = Loc.T("Later") });
+            if (answer == MessageDialogResult.Affirmative)
+                Layout.Tag = newer;
         }
 
         public override string? ControllerHint => File.Exists(Layout.SettingsFiles.Single()) && EdenLayout.HasController(File.ReadAllText(Layout.SettingsFiles.Single()))
