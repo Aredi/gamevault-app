@@ -19,9 +19,8 @@ namespace GameVault.Core.Retro
         public static readonly IReadOnlyDictionary<string, Key> Defaults = new Dictionary<string, Key>
         {
             ["up"] = new("up", "↑"), ["down"] = new("down", "↓"), ["left"] = new("left", "←"), ["right"] = new("right", "→"),
-            // A letter is where it is on a QWERTY keyboard: an AZERTY's Q is RetroArch's "a"
-            ["a"] = new("x", "X (QWERTY)"), ["b"] = new("z", "Z (QWERTY)"), ["x"] = new("s", "S (QWERTY)"), ["y"] = new("a", "A (QWERTY)"),
-            ["l"] = new("q", "Q (QWERTY)"), ["r"] = new("w", "W (QWERTY)"), ["start"] = new("enter", "Enter"), ["select"] = new("rshift", "Right Shift"),
+            ["a"] = new("x", "X"), ["b"] = new("z", "Z"), ["x"] = new("s", "S"), ["y"] = new("a", "A"),
+            ["l"] = new("q", "Q"), ["r"] = new("w", "W"), ["start"] = new("enter", "Enter"), ["select"] = new("rshift", "Right Shift"),
         };
 
         /// <summary>The keys of RetroArch's own menu, quitting and save states: kept for them.</summary>

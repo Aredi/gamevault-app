@@ -70,8 +70,9 @@ namespace gamevault.UserControls.SettingsComponents
             AttachedToVisualTree += (_, _) => _ = RefreshAsync();
             uiKeyboardConsole.ItemsSource = KeyboardSystems.Select(s => s.Name).ToList();
             uiKeyboardConsole.SelectedIndex = 0;
-            // Before the buttons: Enter and Space are keys to give, not clicks
-            AddHandler(KeyDownEvent, Key_Pressed, RoutingStrategies.Tunnel);
+            // On the window, before the buttons: the button clicked is rebuilt (its focus is lost), Enter and Space are keys to give
+            AttachedToVisualTree += (_, _) => TopLevel.GetTopLevel(this)?.AddHandler(KeyDownEvent, Key_Pressed, RoutingStrategies.Tunnel);
+            DetachedFromVisualTree += (_, e) => (e.Root as Interactive)?.RemoveHandler(KeyDownEvent, Key_Pressed);
         }
 
         /// <summary>The Wii's buttons are its controller's (Controllers above).</summary>

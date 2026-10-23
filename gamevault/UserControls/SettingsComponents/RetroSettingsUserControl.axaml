@@ -111,7 +111,7 @@
 
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'Keyboard'}" />
-                <TextBlock Text="{l:T 'The keys of each console played in RetroArch: click a button, then press its key (Escape cancels). RetroArch\'s default letters are where they are on a QWERTY keyboard.'}" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,10" />
+                <TextBlock Text="{l:T 'The keys of each console played in RetroArch: click a button, then press its key (Escape cancels).'}" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,10" />
                 <WrapPanel>
                     <ComboBox x:Name="uiKeyboardConsole" MinWidth="220" Margin="0,0,10,8" SelectionChanged="KeyboardConsole_Changed" />
                     <controls:IconButton x:Name="uiKeyboardDefaults" Text="{l:T 'Default keys'}" Kind="Skeleton" Icon="{StaticResource IconReload}" FontSize="15" IconMargin="0,0,5,2" MinWidth="160" Height="36" Margin="0,0,10,8"

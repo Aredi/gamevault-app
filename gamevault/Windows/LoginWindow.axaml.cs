@@ -502,10 +502,8 @@ namespace gamevault.Windows
                     throw new Exception(Loc.T("User Profile not found"));
                 if (profileToEdit.ServerUrl != ViewModel.EditUser.ServerUrl)
                 {
-                    ProfileManager.DeleteUserProfile(profileToEdit);
+                    UserProfile profile = ProfileManager.ChangeServer(profileToEdit, ViewModel.EditUser.ServerUrl);
                     ViewModel.UserProfiles.Remove(profileToEdit);
-                    string cleanedServerUrl = WebHelper.RemoveSpecialCharactersFromUrl(ViewModel.EditUser.ServerUrl);
-                    UserProfile profile = ProfileManager.CreateUserProfile(cleanedServerUrl);
                     profile.Name = ViewModel.EditUser.Username;
                     profile.ServerUrl = ViewModel.EditUser.ServerUrl;
                     ViewModel.UserProfiles.Add(profile);
