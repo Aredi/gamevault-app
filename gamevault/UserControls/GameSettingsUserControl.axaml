@@ -139,7 +139,9 @@
                             <Path Data="{DynamicResource IconGameSettingsFolder}" Fill="{DynamicResource Brush.Foreground}" Margin="0,2,0,0" />
                             <TextBlock Text="{l:T 'Installation'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
+                        <TextBlock Classes="text" Text="{l:T 'Here you can manage your Game Installation'}" />
                         <TextBlock Classes="section" Text="{l:T 'Installation'}" Margin="0,20,0,0" />
+                        <TextBlock Text="{l:T 'This Game was installed to:'}" FontSize="15" FontWeight="Bold" Margin="0,10,0,0" />
                         <Border CornerRadius="5" Background="{DynamicResource Brush.Background2}" Margin="0,5,0,10" Padding="10">
                             <SelectableTextBlock Text="{Binding Directory}" FontSize="15" TextWrapping="Wrap" />
                         </Border>
@@ -174,6 +176,7 @@
                         <!-- Linux: compatibility tool and prefix of this game -->
                         <StackPanel IsVisible="{Binding IsLinux}">
                             <TextBlock Classes="section" Text="{l:T 'Compatibility Tool'}" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="{l:T 'Proton or Wine version for this game.'}" />
                             <ComboBox x:Name="uiGameCompatibilityTool" ItemsSource="{Binding GameCompatibilityTools}" SelectedItem="{Binding SelectedGameCompatibilityTool}" HorizontalAlignment="Stretch" Margin="0,10,0,0"
                                       SelectionChanged="GameCompatibilityTool_SelectionChanged">
                                 <ComboBox.ItemTemplate>
@@ -186,6 +189,7 @@
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
                             <TextBlock Classes="section" Text="{l:T 'Wine Prefix'}" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="{l:T 'A separate prefix keeps this game\&#x27;s Windows settings and saves apart.'}" />
                             <ComboBox x:Name="uiGameWinePrefixMode" SelectedIndex="{Binding WinePrefixModeIndex}" HorizontalAlignment="Stretch" Margin="0,10,0,0" SelectionChanged="GameWinePrefixMode_SelectionChanged">
                                 <ComboBoxItem Content="{l:T 'Shared prefix (Settings → Linux)'}" />
                                 <ComboBoxItem Content="{l:T 'Separate prefix for this game'}" />
@@ -195,11 +199,12 @@
                             </Border>
                             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
                                 <local:IconButton Text="{l:T 'Open Prefix'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" FontSize="15" MinWidth="140" Height="33" Click="OpenGamePrefix_Click" />
-                                <local:IconButton Text="{l:T 'Wine Configuration'}" FontSize="15" MinWidth="170" Height="33" Click="GameWinecfg_Click" />
+                                <local:IconButton Text="{l:T 'Wine Configuration'}" FontSize="15" MinWidth="170" Height="33" Click="GameWinecfg_Click" ToolTip.Tip="{l:T 'Starts winecfg with this game\&#x27;s tool and prefix'}" />
                                 <local:IconButton Text="{l:T 'Delete Prefix'}" Kind="Danger" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" FontSize="15" MinWidth="150" Height="33" Click="DeleteGamePrefix_Click"
-                                                  IsVisible="{Binding IsSeparatePrefix}" />
+                                                  IsVisible="{Binding IsSeparatePrefix}" ToolTip.Tip="{l:T 'Deletes the separate prefix of this game (it is created again on the next start)'}" />
                             </StackPanel>
                             <TextBlock Classes="section" Text="{l:T 'Game Fixes'}" Margin="0,20,0,0" />
+                            <TextBlock Classes="text" Text="{l:T 'Applied automatically with Proton (umu-protonfixes).'}" />
                             <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
                                 <ComboBox SelectedIndex="{Binding UmuModeIndex}" HorizontalAlignment="Stretch" SelectionChanged="UmuMode_SelectionChanged">
                                     <ComboBoxItem Content="{l:T 'Automatic (umu database)'}" />
@@ -448,6 +453,7 @@
                             <TextBlock Text="{l:T 'Custom Metadata'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
                         <Grid>
+                            <TextBlock Classes="text" Text="{l:T 'Blank fields stay unchanged.'}" Margin="0,5,220,0" />
                             <local:IconButton Kind="Danger" Text="{l:T 'Wipe Custom Metadata'}" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" MinWidth="210" Height="30" HorizontalAlignment="Right" Click="ClearUserData_Click" />
                         </Grid>
                         <ScrollViewer Background="Transparent" Height="640" Margin="0,5,0,0">
@@ -494,6 +500,7 @@
                                     <StackPanel Grid.Column="4">
                                         <TextBlock Classes="section" Text="{l:T 'Early Access'}" />
                                         <CheckBox IsThreeState="True" IsChecked="{Binding UpdateGame.UserMetadata.EarlyAccess}"
+                                                  ToolTip.Tip="{l:T 'Undetermined keeps the provider value'}"
                                                   Content="{Binding Game.Metadata.EarlyAccess, StringFormat={l:T 'Provider: {0}'}, FallbackValue=''}" />
                                     </StackPanel>
                                 </Grid>

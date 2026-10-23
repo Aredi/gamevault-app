@@ -94,6 +94,8 @@ namespace gamevault.UserControls.SettingsComponents
             uiResolution.ItemsSource = RetroResolution.Scales.Select(r => new ResolutionRow(r.Key,
                 string.Join(", ", RetroSystems.All.Values.Where(s => s.Core == r.Key).Select(s => s.Name)), r.Value, resolutions.GetValueOrDefault(r.Key, 1))).ToList();
             RefreshControls();
+            uiLanguageConsoles.Text = Loc.F("The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.",
+                string.Join(", ", RetroSystems.All.Values.Where(s => RetroLanguage.Cores.Contains(s.Core)).Select(s => s.Name)));
             uiLanguage.ItemsSource = RetroLanguage.All.Select(RetroGameViewModel.LanguageName)
                 .Prepend(Loc.F("As the client ({0})", RetroGameViewModel.Lower(RetroGameViewModel.LanguageName(RetroArchManager.ClientLanguage)))).ToList();
             uiLanguage.SelectedIndex = Array.IndexOf(RetroLanguage.All, RetroArchManager.LanguageSetting) + 1;

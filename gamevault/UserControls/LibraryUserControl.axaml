@@ -156,11 +156,11 @@
                             <ToggleButton Classes="segment" x:Name="uiViewGallery" IsChecked="{Binding IsGalleryMode, Mode=OneWay}" Click="ViewGallery_Click" ToolTip.Tip="{l:T 'Gallery: large covers'}">
                                 <Path Data="{StaticResource IconViewGallery}" />
                             </ToggleButton>
-                            <ToggleButton Classes="segment" x:Name="uiViewShelf" IsChecked="{Binding IsShelfMode, Mode=OneWay}" Click="ViewShelf_Click" ToolTip.Tip="{l:T 'Shelf'}">
+                            <ToggleButton Classes="segment" x:Name="uiViewShelf" IsChecked="{Binding IsShelfMode, Mode=OneWay}" Click="ViewShelf_Click" ToolTip.Tip="{l:T 'Shelf: browse with the details beside the covers'}">
                                 <Path Data="{StaticResource IconViewShelf}" />
                             </ToggleButton>
                             <Border Width="1" Background="{DynamicResource Brush.Line}" Margin="3,4" />
-                            <ToggleButton Classes="segment" x:Name="uiShowcaseToggle" IsChecked="{Binding ShowcaseEnabled, Mode=OneWay}" Click="Showcase_Click" ToolTip.Tip="{l:T 'Showcase'}">
+                            <ToggleButton Classes="segment" x:Name="uiShowcaseToggle" IsChecked="{Binding ShowcaseEnabled, Mode=OneWay}" Click="Showcase_Click" ToolTip.Tip="{l:T 'Showcase: featured game, continue playing and new games above the library'}">
                                 <Path Data="{StaticResource IconShowcase}" />
                             </ToggleButton>
                         </StackPanel>
@@ -508,6 +508,8 @@
                         <TextBlock Classes="sectionTitle" Text="{l:T 'Failed to load Library'}" HorizontalAlignment="Center"
                                    IsVisible="{Binding !$parent[Window].DataContext.IsOffline}" />
                         <TextBlock Classes="sectionTitle" Text="{l:T 'You are offline'}" HorizontalAlignment="Center"
+                                   IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
+                        <TextBlock Classes="muted" Text="{l:T 'Installed games can still be played: play time and cloud saves are sent when the server is back.'}" FontSize="13" HorizontalAlignment="Center"
                                    IsVisible="{Binding $parent[Window].DataContext.IsOffline}" />
                         <Button Classes="link" HorizontalAlignment="Center" FontSize="12" Opacity="0.8" Tag="https://gamevau.lt/docs/troubleshooting/#unable-to-connect-to-server--500-internal-server-error" Click="Hyperlink_RequestNavigate">
                             <TextBlock Text="{l:T 'Troubleshooting'}" TextDecorations="Underline" Foreground="{DynamicResource Brush.Foreground}" />

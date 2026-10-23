@@ -124,7 +124,8 @@
                 <TextBlock DockPanel.Dock="Top" Classes="pageTitle" Text="{l:T 'Community'}" Margin="22,20,22,4" />
                 <TextBlock DockPanel.Dock="Top" Classes="muted" FontSize="13" Margin="22,0,22,14"
                            Text="{Binding Users.Length, Converter={StaticResource countConv}, ConverterParameter='{}{0} player|{0} players'}" />
-                <Button DockPanel.Dock="Top" Classes="ghost small" HorizontalAlignment="Left" Margin="22,0,22,14" Click="InviteFriend_Click">
+                <Button DockPanel.Dock="Top" Classes="ghost small" HorizontalAlignment="Left" Margin="22,0,22,14" Click="InviteFriend_Click"
+                        ToolTip.Tip="{l:T 'Copies a link to send: download and sign in'}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Path Data="{StaticResource IconAddSimple}" Width="12" Height="12" Stretch="Uniform" />
                         <TextBlock Text="{l:T 'Invite a friend'}" VerticalAlignment="Center" />
@@ -132,7 +133,8 @@
                 </Button>
                 <!-- Whether this player shows what they play (what everybody played lately: the Recent activity page) -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="12,6,12,14" Spacing="8">
-                    <ToggleSwitch FontSize="12.5" Margin="10,2,0,0" IsChecked="{Binding ShareActivity}" OnContent="{l:T 'Show what I play'}" OffContent="{l:T 'Show what I play'}" />
+                    <ToggleSwitch FontSize="12.5" Margin="10,2,0,0" IsChecked="{Binding ShareActivity}" OnContent="{l:T 'Show what I play'}" OffContent="{l:T 'Show what I play'}"
+                                  ToolTip.Tip="{l:T 'The other players see the game you are playing'}" />
                 </StackPanel>
                 <ListBox x:Name="uiSelectUser" ItemsSource="{Binding Users}" SelectionChanged="Users_SelectionChanged">
                     <ListBox.ItemTemplate>

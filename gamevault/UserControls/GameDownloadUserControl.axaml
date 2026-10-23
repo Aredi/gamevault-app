@@ -192,6 +192,8 @@
 
                             <!-- Windows setup -->
                             <StackPanel Spacing="8" IsVisible="{Binding Game.Type, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:GameType.WINDOWS_SETUP}}">
+                                <TextBlock Classes="help" FontWeight="SemiBold" Text="{l:T 'To install this game, please follow the steps below:'}" />
+                                <TextBlock Classes="help" Text="{l:T '1. Pick the correct installer from the dropdown menu below.'}" />
                                 <ComboBox x:Name="uiCbSetupExecutable" MinWidth="320" HorizontalAlignment="Left">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
@@ -199,7 +201,9 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <TextBlock Classes="help muted" Text="{l:T 'Install it into this folder:'}" />
+                                <TextBlock Classes="help" Text="{l:T '2. Hit the \&#x27;Install\&#x27; button to launch the games installer.'}" />
+                                <TextBlock Classes="help" Text="{l:T '3. Go through the game\&#x27;s setup process.'}" />
+                                <TextBlock Classes="help muted" Text="{l:T 'Make sure to select this folder as the installers destination:'}" />
                                 <Border Classes="path" HorizontalAlignment="Left" ToolTip.Tip="{l:T 'Copy to clipboard'}" PointerReleased="CopyInstallPathToClipboard_Click">
                                     <TextBlock Text="{Binding InstallerInstallPath}" FontSize="12.5" FontFamily="Cascadia Mono, Consolas, monospace" IsHitTestVisible="False" TextTrimming="CharacterEllipsis" />
                                 </Border>
@@ -215,12 +219,13 @@
                                         <Binding Path="Game.Type" Converter="{x:Static ObjectConverters.Equal}" ConverterParameter="{x:Static models:GameType.LINUX_PORTABLE}" />
                                     </MultiBinding>
                                 </StackPanel.IsVisible>
+                                <TextBlock Classes="help" Text="{l:T 'This is a Portable Game, so there\&#x27;s no need for any setup. Once you click \&#x27;Install\&#x27;, the files will be automatically moved to the installation folder.'}" />
                                 <Button x:Name="uiBtnInstallPortable" Classes="action small" HorizontalAlignment="Right" Click="Install_Click" Content="{l:T 'Install'}"
                                         Background="{Binding #uiCover.AccentColor, Converter={StaticResource accentBrushConv}}" />
                             </StackPanel>
                             <!-- Undetectable -->
                             <StackPanel Spacing="8" IsVisible="{Binding Game.Type, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static models:GameType.UNDETECTABLE}}">
-                                <TextBlock Classes="help" Text="{l:T 'Type of game not found: choose it.'}" />
+                                <TextBlock Classes="help" Text="{l:T 'Unable to detect game type. You can try forcing an installation procedure by selecting it from the options below.'}" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <ComboBox x:Name="uiCbOverwriteGameType" ItemsSource="{Binding GameTypes}" SelectedValueBinding="{Binding Key}" MinWidth="240">
                                         <ComboBox.ItemTemplate>
@@ -232,7 +237,7 @@
                                     <Button Classes="action small" Background="{DynamicResource Brush.Warning}" Foreground="{DynamicResource Brush.Background}" Click="ContinueOverwriteGameType_Click"
                                             IsEnabled="{Binding #uiCbOverwriteGameType.SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" Content="{l:T 'Force Install'}" />
                                 </StackPanel>
-                                <TextBlock Classes="help muted" Text="{l:T 'Or install it yourself into this folder:'}" />
+                                <TextBlock Classes="help muted" Text="{l:T 'Or alternatively install the game manually to this folder:'}" />
                                 <Border Classes="path" HorizontalAlignment="Left" ToolTip.Tip="{l:T 'Copy to clipboard'}" PointerReleased="CopyInstallPathToClipboard_Click">
                                     <TextBlock Text="{Binding InstallPath}" FontSize="12.5" FontFamily="Cascadia Mono, Consolas, monospace" IsHitTestVisible="False" TextTrimming="CharacterEllipsis" />
                                 </Border>

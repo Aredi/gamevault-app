@@ -51,6 +51,8 @@ namespace gamevault.UserControls
             InitializeComponent();
             this.game = game;
             system = game != null && Systems.Contains(game.Platform.System) ? game.Platform.System : Systems[0];
+            if (game != null)
+                uiSubtitle.Text = Loc.F("Opened from {0}. Set once for each console, used by all its games.", game.Name);
             // On the window, before the buttons: Enter and Space are keys to give, not clicks
             uiDiagram.ButtonClicked += Diagram_Clicked;
             AttachedToVisualTree += (_, _) =>
@@ -133,14 +135,14 @@ namespace gamevault.UserControls
             if (current == null)
             {
                 uiPrompt.Text = "";
-                uiHint.Text = message ?? "";
+                uiHint.Text = message ?? Loc.T("Choose a button on the right, then press its key or its gamepad's button. It lights up on the plan.");
             }
             else
             {
                 string name = Shown(current.Name);
                 uiPrompt.Text = guided is int step ? Loc.F("Button {0} of {1}: {2}", step + 1, sequence!.Count, name)
                     : keyboard ? Loc.F("Press the key for: {0}", name) : Loc.F("Press the gamepad's button for: {0}", name);
-                uiHint.Text = message ?? "";
+                uiHint.Text = message ?? (guided != null ? Loc.T("Escape keeps the current one and goes on.") : Loc.T("Escape or Cancel keeps the current one."));
             }
         }
 
@@ -148,17 +150,17 @@ namespace gamevault.UserControls
         {
             uiInstall.IsVisible = !keyboard && !RetroArchManager.Layout.IsInstalled && !starting;
             if (keyboard)
-                uiDevice.Text = "";
+                uiDevice.Text = Loc.T("Your keyboard's keys, as it writes them.");
             else if (starting)
                 uiDevice.Text = Loc.T("Getting the gamepads ready...");
             else if (gamepadError != null)
                 uiDevice.Text = gamepadError;
             else if (!RetroArchManager.Layout.IsInstalled)
-                uiDevice.Text = Loc.T("RetroArch is not installed yet.");
+                uiDevice.Text = Loc.T("The gamepad is read with RetroArch, installed with the first retro game.");
             else if (gamepad?.Name is string name)
-                uiDevice.Text = Loc.F("Gamepad: {0}", name);
+                uiDevice.Text = gamepad.IsStandard ? Loc.F("Gamepad: {0}", name) : Loc.F("Gamepad: {0} (not a common one: set all its buttons)", name);
             else
-                uiDevice.Text = Loc.T("No gamepad plugged");
+                uiDevice.Text = Loc.T("No gamepad plugged: plug one in.");
         }
 
         #region The gamepad

@@ -41,7 +41,7 @@
                     </TextBox.InnerLeftContent>
                 </TextBox>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <Button x:Name="uiMenu" Classes="round small" Click="Menu_Click" ToolTip.Tip="{l:T 'RetroArch'}">
+                    <Button x:Name="uiMenu" Classes="round small" Click="Menu_Click" ToolTip.Tip="{l:T 'RetroArch without a game: controls, picture, sound'}">
                         <Path Data="{StaticResource IconNavSettings}" Width="16" Height="16" />
                     </Button>
                     <Button Classes="round small" Click="Reload_Click" ToolTip.Tip="{l:T 'Reload'}">

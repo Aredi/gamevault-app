@@ -154,7 +154,7 @@ namespace gamevault.Helper
                 catch (SsoAuthenticator.RefusedException ex)
                 {
                     m_LoginState = LoginState.Error;
-                    m_LoginMessage = Loc.F("The server refused the SSO sign-in ({0} {1}).", ex.StatusCode, ex.Message);
+                    m_LoginMessage = Loc.F("The server refused the SSO sign-in ({0} {1}). If it keeps happening, the profile's server address must be the one the server's SSO returns to.", ex.StatusCode, ex.Message);
                     return LoginState.Error;
                 }
                 if (authResponse == null)

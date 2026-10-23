@@ -43,7 +43,7 @@
                         </Grid>
                         <!-- Already on the server: published as a new version of that game, not as a second game -->
                         <StackPanel IsVisible="{Binding HasExistingMatches}" Margin="0,8,0,0" Spacing="6">
-                            <TextBlock Classes="hint" Text="{l:T 'New version of a game already on the server:'}" />
+                            <TextBlock Classes="hint" Text="{l:T 'Already on the server? Choose the game to publish this file as its new version:'}" />
                             <ItemsControl ItemsSource="{Binding ExistingMatches}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>

@@ -171,6 +171,7 @@
                                     <TextBlock Text="{l:T 'to'}" VerticalAlignment="Center" />
                                     <TextBox Text="{Binding DownloadScheduleEnd}" Width="80" Watermark="07:00" />
                                 </StackPanel>
+                                <TextBlock Text="{l:T 'Outside these hours, downloads pause and resume on their own.'}" TextWrapping="Wrap" FontSize="12" Opacity="0.8" />
                             </StackPanel>
                         </Border>
                         <StackPanel Classes="section">
@@ -179,6 +180,7 @@
                             <Border Classes="group" Width="510">
                                 <StackPanel>
                                     <TextBlock Text="{l:T 'Default extraction password'}" FontWeight="Bold" />
+                                    <TextBlock Text="{l:T 'Tried when extracting games.'}" TextWrapping="Wrap" FontSize="14" />
                                     <TextBox x:Name="uiPwExtraction" PasswordChar="●" Classes="revealPasswordButton" Watermark="{l:T 'Optional Password'}" Margin="0,5,0,0" />
                                     <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{StaticResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="80" Height="30" Margin="0,5,0,0" HorizontalAlignment="Left" Click="ExtractionPasswordSave_Click" />
                                 </StackPanel>
@@ -224,7 +226,7 @@
                     <StackPanel Margin="36,0,28,40" MaxWidth="900" HorizontalAlignment="Left">
                         <TextBlock Classes="h1" Text="{l:T 'File System'}" />
                         <StackPanel Margin="10,10,0,0">
-                            <TextBlock Text="{l:T 'Root Directories'}" Margin="0,2,0,2" FontSize="15" />
+                            <TextBlock Text="{l:T 'Root Directories (A \&#x27;GameVault\&#x27; subfolder will be created)'}" Margin="0,2,0,2" FontSize="15" />
                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Width="560" HorizontalAlignment="Left">
                                 <ItemsControl ItemsSource="{Binding RootDirectories}">
                                     <ItemsControl.ItemTemplate>
@@ -274,6 +276,8 @@
                                 <TextBlock Classes="h1" Text="{l:T 'Free up disk space'}" />
                                 <local:IconButton Grid.Column="1" Text="{l:T 'Analyze'}" Icon="{StaticResource IconCleanup}" IconScale="0.06" IconMargin="-110,-100,-105,-100" FontSize="14" MinWidth="120" Height="32" Click="AnalyzeStorage_Click" IsEnabled="{Binding !IsStorageCleanupRunning}" />
                             </Grid>
+                            <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
+                                       Text="{l:T 'Leftover archives and downloads, unused prefixes and Proton/Wine builds. Nothing is deleted without confirmation.'}" />
                             <Border Classes="group" Width="900" HorizontalAlignment="Left" IsVisible="{Binding StorageCleanupSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <StackPanel Spacing="4">
                                     <ItemsControl ItemsSource="{Binding StorageCleanupItems}">
@@ -340,7 +344,7 @@
                                 <ToggleSwitch Margin="0,5,0,0" IsChecked="{Binding CloudSaves}" />
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{l:T 'Custom Ludusavi Manifests'}" Margin="0,2,0,2" FontSize="15" VerticalAlignment="Center" />
-                                    <CheckBox Content="{l:T 'Use Primary Manifest'}" IsChecked="{Binding UsePrimaryCloudSaveManifest}" Margin="15,0,0,0" />
+                                    <CheckBox Content="{l:T 'Use Primary Manifest'}" IsChecked="{Binding UsePrimaryCloudSaveManifest}" Margin="15,0,0,0" ToolTip.Tip="{l:T 'Disable primary Ludusavi manifest to only use the custom ones'}" />
                                 </StackPanel>
                                 <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Width="560" HorizontalAlignment="Left">
                                     <ItemsControl ItemsSource="{Binding CustomCloudSaveManifests}">
@@ -408,6 +412,8 @@
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
                         </StackPanel>
+                        <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
+                                   Text="{l:T 'Used by the games without a tool of their own (Game settings → Launch options).'}" />
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0" IsVisible="{Binding IsCustomRunner}">
                             <TextBlock Text="{l:T 'Custom command'}" FontSize="15" VerticalAlignment="Center" MinWidth="200" />
                             <TextBox Text="{Binding CustomRunnerCommand}" Watermark="{l:T 'gamemoderun wine {exe} {args}'}" Width="500" />
@@ -430,7 +436,7 @@
                                    Text="{l:T 'Proton and Wine builds found on this computer'}" />
                         <Border Classes="group" Width="900" HorizontalAlignment="Left" Margin="10,0,0,0">
                             <Panel>
-                                <TextBlock Text="{l:T 'No Proton or Wine build yet.'}" Opacity="0.7" IsVisible="{Binding !InstalledCompatibilityBuilds.Count}" />
+                                <TextBlock Text="{l:T 'No Proton or Wine build found yet. Download one below.'}" Opacity="0.7" IsVisible="{Binding !InstalledCompatibilityBuilds.Count}" />
                                 <ItemsControl x:Name="uiInstalledTools" ItemsSource="{Binding InstalledCompatibilityBuilds}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
