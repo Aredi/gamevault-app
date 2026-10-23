@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using GameVault.Core;
 using GameVault.Core.Retro;
@@ -49,10 +50,118 @@ namespace gamevault.UserControls.SettingsComponents
             public int Index { get; set; } = Math.Max(0, Array.FindIndex(controllers, c => c.Device == device));
         }
 
+        /// <summary>A button of the console chosen in Keyboard and its key; the one waiting for a key is listening.</summary>
+        internal sealed class KeyRow(RetroKeyboard.Button button, RetroKeyboard.Key? key, bool listening)
+        {
+            public RetroKeyboard.Button Button { get; } = button;
+            public string Name { get; } = Shown(button.Name);
+            public bool Listening { get; } = listening;
+            public string KeyText { get; } = listening ? Loc.T("Press a key...") : key == null || key == RetroKeyboard.None ? "—" : Shown(key.Label);
+        }
+
+        /// <summary>The consoles whose keys are chosen here: the ones RetroArch plays.</summary>
+        internal static readonly RetroSystem[] KeyboardSystems = RetroSystems.All.Values.Where(s => RetroKeyboard.Of(s.Slug).Length > 0).ToArray();
+        private RetroSystem KeyboardSystem => KeyboardSystems[Math.Max(0, uiKeyboardConsole.SelectedIndex)];
+        private string? listening;
+
         public RetroSettingsUserControl()
         {
             InitializeComponent();
             AttachedToVisualTree += (_, _) => _ = RefreshAsync();
+            uiKeyboardConsole.ItemsSource = KeyboardSystems.Select(s => s.Name).ToList();
+            uiKeyboardConsole.SelectedIndex = 0;
+            // Before the buttons: Enter and Space are keys to give, not clicks
+            AddHandler(KeyDownEvent, Key_Pressed, RoutingStrategies.Tunnel);
+        }
+
+        /// <summary>The Wii's buttons are its controller's (Controllers above).</summary>
+        private int? KeyboardDevice => RetroControllers.Pick(KeyboardSystem.Slug, null, RetroArchManager.Controllers.TryGetValue(KeyboardSystem.Slug, out int device) ? device : null);
+
+        internal void RefreshKeys()
+        {
+            var chosen = RetroArchManager.Keyboard.GetValueOrDefault(KeyboardSystem.Slug);
+            uiKeys.ItemsSource = RetroKeyboard.Of(KeyboardSystem.Slug, KeyboardDevice).Select(b => new KeyRow(b, RetroKeyboard.KeyOf(chosen, b.Bind), b.Bind == listening)).ToList();
+            uiKeyboardDefaults.IsEnabled = chosen?.Count > 0;
+        }
+
+        private void ShowKeyboardMessage(string? text)
+        {
+            uiKeyboardMessage.Text = text;
+            uiKeyboardMessage.IsVisible = text != null;
+        }
+
+        private void KeyboardConsole_Changed(object? sender, SelectionChangedEventArgs e)
+        {
+            listening = null;
+            ShowKeyboardMessage(null);
+            RefreshKeys();
+        }
+
+        private void Key_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not KeyRow row)
+                return;
+            listening = row.Listening ? null : row.Button.Bind;
+            ShowKeyboardMessage(null);
+            RefreshKeys();
+        }
+
+        private void Key_Pressed(object? sender, KeyEventArgs e)
+        {
+            if (listening == null)
+                return;
+            e.Handled = true;
+            Give(listening, e.Key == Key.Escape ? null : RetroKeys.Of(e.PhysicalKey, e.KeySymbol), e.Key == Key.Escape);
+        }
+
+        /// <summary>The key pressed for the button waiting for one: kept for the console, unless RetroArch keeps it or does not read it.</summary>
+        internal void Give(string bind, RetroKeyboard.Key? key, bool cancel = false)
+        {
+            listening = null;
+            ShowKeyboardMessage(null);
+            if (!cancel && key == null)
+                ShowKeyboardMessage(Loc.T("RetroArch does not read this key: choose another one."));
+            else if (key != null && RetroKeyboard.Reserved.TryGetValue(key.Name, out string? use))
+                ShowKeyboardMessage(Loc.F("{0} stays RetroArch's: {1}.", key.Label, Shown(use)));
+            else if (key != null)
+            {
+                var keyboard = RetroArchManager.Keyboard;
+                keyboard[KeyboardSystem.Slug] = RetroKeyboard.Assign(KeyboardSystem.Slug, KeyboardDevice, keyboard.GetValueOrDefault(KeyboardSystem.Slug), bind, key)!;
+                RetroArchManager.Keyboard = keyboard;
+            }
+            RefreshKeys();
+        }
+
+        private void KeyboardDefaults_Click(object? sender, RoutedEventArgs e)
+        {
+            var keyboard = RetroArchManager.Keyboard;
+            keyboard.Remove(KeyboardSystem.Slug);
+            RetroArchManager.Keyboard = keyboard;
+            listening = null;
+            ShowKeyboardMessage(null);
+            RefreshKeys();
+        }
+
+        /// <summary>A button's or a key's name in the player's language; a letter or a console's own name ("L1", "+") stays.</summary>
+        internal static string Shown(string text)
+        {
+            string arrow = text.Length > 2 && text[^2] == ' ' && "↑↓←→".Contains(text[^1]) ? text[^2..] : "";
+            string name = text[..^arrow.Length] switch
+            {
+                "Up" => Loc.T("Up"), "Down" => Loc.T("Down"), "Left" => Loc.T("Left"), "Right" => Loc.T("Right"),
+                "Cross" => Loc.T("Cross"), "Circle" => Loc.T("Circle"), "Square" => Loc.T("Square"), "Coin" => Loc.T("Coin"),
+                "Control Stick" => Loc.T("Control Stick"), "C Stick" => Loc.T("C Stick"), "Left Stick" => Loc.T("Left Stick"), "Right Stick" => Loc.T("Right Stick"),
+                "Circle Pad" => Loc.T("Circle Pad"), "Nunchuk Stick" => Loc.T("Nunchuk Stick"), "Tilt" => Loc.T("Tilt"),
+                "Shake Wiimote" => Loc.T("Shake Wiimote"), "Shake Nunchuk" => Loc.T("Shake Nunchuk"), "Home/Swap screens" => Loc.T("Home/Swap screens"),
+                "Enter" => Loc.T("Enter"), "Escape" => Loc.T("Escape"), "Backspace" => Loc.T("Backspace"), "Space" => Loc.T("Space"), "Caps Lock" => Loc.T("Caps Lock"),
+                "Left Shift" => Loc.T("Left Shift"), "Right Shift" => Loc.T("Right Shift"), "Left Ctrl" => Loc.T("Left Ctrl"), "Right Ctrl" => Loc.T("Right Ctrl"),
+                "Insert" => Loc.T("Insert"), "Delete" => Loc.T("Delete"), "End" => Loc.T("End"),
+                "Page Up" => Loc.T("Page Up"), "Page Down" => Loc.T("Page Down"), "Print Screen" => Loc.T("Print Screen"),
+                "Menu" => Loc.T("Menu"), "Quit" => Loc.T("Quit"), "Save state" => Loc.T("Save state"), "Load state" => Loc.T("Load state"),
+                "Previous slot" => Loc.T("Previous slot"), "Next slot" => Loc.T("Next slot"),
+                var other => other,
+            };
+            return name + arrow;
         }
 
         internal async Task RefreshAsync()
@@ -85,6 +194,7 @@ namespace gamevault.UserControls.SettingsComponents
             var controllers = RetroArchManager.Controllers;
             uiControllers.ItemsSource = RetroControllers.BySystem.Select(c => new ControllerRow(c.Key, RetroSystems.All[c.Key].Name, c.Value,
                 controllers.TryGetValue(c.Key, out int device) ? device : null)).ToList();
+            RefreshKeys();
             uiLanguageConsoles.Text = Loc.F("The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.",
                 string.Join(", ", RetroSystems.All.Values.Where(s => RetroLanguage.Cores.Contains(s.Core)).Select(s => s.Name)));
             uiLanguage.ItemsSource = RetroLanguage.All.Select(RetroGameViewModel.LanguageName)
@@ -193,6 +303,7 @@ namespace gamevault.UserControls.SettingsComponents
             var controllers = RetroArchManager.Controllers;
             controllers[row.Slug] = row.Controllers[box.SelectedIndex].Device;
             RetroArchManager.Controllers = controllers;
+            RefreshKeys();
         }
 
         private void Language_Changed(object? sender, SelectionChangedEventArgs e)

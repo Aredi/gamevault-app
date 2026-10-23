@@ -118,6 +118,25 @@ namespace gamevault.Helper
         }
 
         /// <summary>The controller the game starts with; null when its console has one only.</summary>
+        /// <summary>The keys chosen by console in Settings > Retro: see <see cref="RetroKeyboard"/>.</summary>
+        public static Dictionary<string, Dictionary<string, RetroKeyboard.Key>> Keyboard
+        {
+            get => RetroKeyboard.Parse(Preferences.Get(Models.AppConfigKey.RetroKeyboard, ProfileConfig));
+            set => Preferences.Set(Models.AppConfigKey.RetroKeyboard, RetroKeyboard.Format(value), ProfileConfig);
+        }
+
+        /// <summary>The console's keys in the client's config, written again before each game (<see cref="EnsureReadyAsync"/>): the previous console's are gone.</summary>
+        private static void SetKeyboard(RetroSystem system, int? controller)
+        {
+            var lines = RetroKeyboard.Config(system.Slug, controller, Keyboard.GetValueOrDefault(system.Slug)).ToList();
+            if (lines.Count == 0)
+                return;
+            string config = File.ReadAllText(Layout.ConfigFile);
+            foreach (var (key, value) in lines)
+                config = RetroResolution.MergeOptions(config, key, value);
+            File.WriteAllText(Layout.ConfigFile, config);
+        }
+
         public static int? ControllerOf(RetroGame game) => RetroControllers.Pick(game.Platform.Slug,
             GameControllers.TryGetValue(game.Id.ToString(), out int chosen) ? chosen : null,
             Controllers.TryGetValue(game.Platform.Slug, out int console) ? console : null);
@@ -292,6 +311,7 @@ namespace gamevault.Helper
                 SetOption(system.Core, RetroLanguage.CoreOption(system.Core, language));
                 if (controller is int device)
                     SetController(system.Core, rom, device);
+                SetKeyboard(system, controller);
             }
             catch (Exception ex) { Log.Ignored(ex); }
             return Start(Layout.Arguments(system.Core, rom, stateSlot));

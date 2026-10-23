@@ -108,6 +108,8 @@ namespace gamevault.Models
         RetroControllers,
         //Controller chosen for games (profileconfig): "559=1025"
         RetroGameControllers,
+        //Keyboard of the consoles played in RetroArch (profileconfig), RetroArch's key names by RetroPad button: {"snes":{"a":{"Name":"x","Label":"X"}}}
+        RetroKeyboard,
         //Download queue
         MaxConcurrentDownloads,
         //Interface language (profileconfig): "", "en", "fr"
