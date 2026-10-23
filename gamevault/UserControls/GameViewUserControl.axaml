@@ -222,8 +222,7 @@
                             <TextBlock Text="{Binding Subtitle}" FontSize="15" Opacity="0.85" TextWrapping="Wrap" />
                             <!-- Actions -->
                             <WrapPanel Margin="0,6,0,0" IsVisible="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNull}}">
-                                <Button Classes="action" Height="48" Padding="24,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="InstallAndPlay_Click" IsVisible="{Binding !IsInstalled}"
-                                        ToolTip.Tip="{l:T 'Download, install and start the game'}">
+                                <Button Classes="action" Height="48" Padding="24,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="InstallAndPlay_Click" IsVisible="{Binding !IsInstalled}">
                                     <StackPanel Orientation="Horizontal" Spacing="9">
                                         <Path Data="{StaticResource IconPlay}" Width="18" Height="18" />
                                         <TextBlock Text="{l:T 'Install &amp; Play'}" FontSize="15" VerticalAlignment="Center" />
@@ -237,7 +236,7 @@
                                 </Button>
                                 <!-- A newer build is on the server: replaces the installed files, keeps saves and settings -->
                                 <Button x:Name="uiBtnUpdate" Classes="action" Height="48" Margin="0,0,10,10" Background="{DynamicResource Brush.Warning}" Foreground="{DynamicResource Brush.Background}"
-                                        Click="UpdateGame_Click" IsVisible="{Binding IsUpdateAvailable}" ToolTip.Tip="{l:T 'Download and install the newest version. Saves and settings are kept.'}">
+                                        Click="UpdateGame_Click" IsVisible="{Binding IsUpdateAvailable}">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <Path Data="{StaticResource IconUpdate}" />
                                         <TextBlock FontSize="15" VerticalAlignment="Center" Text="{Binding Game.Version, StringFormat={l:T 'Update to {0}'}, TargetNullValue={l:T 'Update'}, FallbackValue={l:T 'Update'}}" />
@@ -323,7 +322,7 @@
                                             <TextBlock Text="{l:T 'Upload'}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Classes="ghost small" Click="SaveHistory_Click" ToolTip.Tip="{l:T 'The cloud saves the server keeps: restore an older one'}">
+                                    <Button Classes="ghost small" Click="SaveHistory_Click">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <Path Data="{StaticResource IconGameViewCalendar}" Width="14" Height="14" />
                                             <TextBlock Text="{l:T 'History'}" VerticalAlignment="Center" />

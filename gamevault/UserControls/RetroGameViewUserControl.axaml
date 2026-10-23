@@ -173,8 +173,7 @@
                             <TextBlock Text="{Binding Subtitle}" FontSize="15" Opacity="0.85" TextWrapping="Wrap" />
                             <!-- Actions -->
                             <WrapPanel Margin="0,6,0,0" IsEnabled="{Binding !Game.Busy}">
-                                <Button Classes="action" Height="48" Padding="24,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="InstallAndPlay_Click" IsVisible="{Binding !Game.Installed}"
-                                        ToolTip.Tip="{l:T 'Download, install and start the game'}">
+                                <Button Classes="action" Height="48" Padding="24,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="InstallAndPlay_Click" IsVisible="{Binding !Game.Installed}">
                                     <StackPanel Orientation="Horizontal" Spacing="9">
                                         <Path Data="{StaticResource IconPlay}" Width="18" Height="18" />
                                         <TextBlock Text="{l:T 'Install &amp; Play'}" FontSize="15" VerticalAlignment="Center" />
@@ -200,7 +199,7 @@
                                     <Path Data="{StaticResource IconCollection}" Width="18" Height="18" />
                                 </Button>
                                 <Button Classes="round" Width="48" Height="48" Margin="0,0,8,10" Click="Delete_Click" IsVisible="{Binding Game.Installed}"
-                                        ToolTip.Tip="{l:T 'Delete from this PC (the saves are kept)'}">
+                                        ToolTip.Tip="{l:T 'Delete from this PC'}">
                                     <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="18" Height="18" />
                                 </Button>
                             </WrapPanel>
@@ -234,7 +233,7 @@
                                 <TextBlock Classes="label" Text="{l:T 'LAST PLAYED'}" />
                                 <TextBlock Classes="value" Text="{Binding LastPlayedText}" />
                             </StackPanel>
-                            <StackPanel Classes="stat" ToolTip.Tip="{l:T 'To finish the main story (HowLongToBeat)'}">
+                            <StackPanel Classes="stat" ToolTip.Tip="{l:T 'HowLongToBeat'}">
                                 <TextBlock Classes="label" Text="{l:T 'DURATION'}" />
                                 <TextBlock Classes="value" Text="{Binding Game.DurationText}" />
                             </StackPanel>
@@ -246,8 +245,8 @@
                             <StackPanel Classes="stat" IsVisible="{Binding HasRomm}">
                                 <TextBlock Classes="label" Text="{l:T 'MY GAME'}" />
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <ComboBox MinWidth="150" MinHeight="30" ItemsSource="{Binding StatusOptions}" SelectedIndex="{Binding StatusIndex}" ToolTip.Tip="{l:T 'Your status of the game, kept in your RomM'}" />
-                                    <ComboBox MinWidth="96" MinHeight="30" ItemsSource="{Binding RatingOptions}" SelectedIndex="{Binding RatingIndex}" ToolTip.Tip="{l:T 'Your rating of the game, kept in your RomM'}" />
+                                    <ComboBox MinWidth="150" MinHeight="30" ItemsSource="{Binding StatusOptions}" SelectedIndex="{Binding StatusIndex}" />
+                                    <ComboBox MinWidth="96" MinHeight="30" ItemsSource="{Binding RatingOptions}" SelectedIndex="{Binding RatingIndex}" />
                                 </StackPanel>
                             </StackPanel>
                             <StackPanel Classes="stat" IsVisible="{Binding !HasRomm}">
@@ -257,7 +256,7 @@
                             <!-- Régler mes touches: its console's buttons and controller (and this game's own controller) -->
                             <StackPanel Classes="stat" IsVisible="{Binding HasControls}">
                                 <TextBlock Classes="label" Text="{l:T 'CONTROLS'}" />
-                                <Button x:Name="uiControls" Classes="ghost small" Click="Controls_Click" ToolTip.Tip="{l:T 'The buttons of its console, on the gamepad or the keyboard, and its controller'}">
+                                <Button x:Name="uiControls" Classes="ghost small" Click="Controls_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <Path Data="{StaticResource IconNavRetro}" Fill="{DynamicResource Brush.Foreground}" Width="16" Height="16" Stretch="Uniform" />
                                         <TextBlock Text="{l:T 'Set my controls'}" VerticalAlignment="Center" />
@@ -268,25 +267,24 @@
                             <!-- The console's language the game starts in (Settings > Retro, or this game's own) -->
                             <StackPanel Classes="stat" IsVisible="{Binding HasConsoleLanguage}">
                                 <TextBlock Classes="label" Text="{l:T 'LANGUAGE'}" />
-                                <ComboBox x:Name="uiLanguage" MinWidth="170" MinHeight="30" ItemsSource="{Binding LanguageOptions}" SelectedIndex="{Binding LanguageIndex}"
-                                          ToolTip.Tip="{l:T 'The language of the console the game starts in; a game without it keeps its own'}" />
+                                <ComboBox x:Name="uiLanguage" MinWidth="170" MinHeight="30" ItemsSource="{Binding LanguageOptions}" SelectedIndex="{Binding LanguageIndex}" />
                             </StackPanel>
                             <StackPanel Classes="stat">
                                 <TextBlock Classes="label" Text="{l:T 'CLOUD SAVES'}" />
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <Button Classes="ghost small" Click="RestoreCloudSaves_Click" ToolTip.Tip="{l:T 'Take the saves of the cloud (the ones of this PC are kept in a backup)'}">
+                                    <Button Classes="ghost small" Click="RestoreCloudSaves_Click">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <Path Data="{StaticResource IconCloudSaveUpload}" RenderTransform="rotate(180deg)" Width="14" Height="14" />
                                             <TextBlock Text="{l:T 'Restore'}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Classes="ghost small" Click="UploadCloudSaves_Click" ToolTip.Tip="{l:T 'Send the saves of this PC to the cloud now'}">
+                                    <Button Classes="ghost small" Click="UploadCloudSaves_Click">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <Path Data="{StaticResource IconCloudSaveUpload}" Width="14" Height="14" />
                                             <TextBlock Text="{l:T 'Upload'}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
-                                    <Button Classes="ghost small" Click="SaveHistory_Click" ToolTip.Tip="{l:T 'The cloud saves the server keeps: restore an older one'}">
+                                    <Button Classes="ghost small" Click="SaveHistory_Click">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <Path Data="{StaticResource IconGameViewCalendar}" Width="14" Height="14" />
                                             <TextBlock Text="{l:T 'History'}" VerticalAlignment="Center" />

@@ -74,7 +74,7 @@
                             <Border Margin="0,0,8,8" Padding="10" CornerRadius="12" Background="{DynamicResource Brush.Background2}">
                                 <Grid ColumnDefinitions="30,48,*,Auto,Auto">
                                     <CheckBox IsChecked="{Binding IsSelected}" IsVisible="{Binding Retro, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Center"
-                                              IsCheckedChanged="Selected_Changed" ToolTip.Tip="{l:T 'Select to delete several retro games at once'}" />
+                                              IsCheckedChanged="Selected_Changed" />
                                     <Border Grid.Column="1" Width="48" Height="72" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
                                         <Panel>
                                             <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNotNull}}" />

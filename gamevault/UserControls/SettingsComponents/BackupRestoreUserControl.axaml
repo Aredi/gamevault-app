@@ -12,7 +12,6 @@
                 <TabItem Header="{l:T 'Backup'}">
                     <StackPanel Spacing="10">
                         <TextBlock Text="{l:T 'An unencrypted file with all the server\&#x27;s data: keep it safe.'}" FontSize="15" TextWrapping="Wrap" />
-                        <TextBlock Text="{l:T 'Select a directory in which the backup file should be saved.'}" FontSize="15" TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <controls:IconButton Text="{l:T 'Select Directory'}" MinWidth="130" Height="28" FontSize="15" Click="ChooseBackupDirectory_Click" />
                             <TextBlock x:Name="uiBackupDirectory" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Width="370" TextTrimming="CharacterEllipsis" />
@@ -27,7 +26,6 @@
                 <TabItem Header="{l:T 'Restore'}">
                     <StackPanel Spacing="10">
                         <TextBlock Text="{l:T 'Restoring replaces the whole database. Use a backup of the same server version.'}" FontSize="13" TextWrapping="Wrap" />
-                        <TextBlock Text="{l:T 'Select the Database File to upload.'}" FontSize="13" TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <controls:IconButton Text="{l:T 'Select Database File'}" MinWidth="160" Height="28" FontSize="15" Click="ChooseRestoreFile_Click" />
                             <TextBlock x:Name="uiRestoreFile" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" />

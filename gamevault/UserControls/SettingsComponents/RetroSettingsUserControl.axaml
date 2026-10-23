@@ -10,10 +10,8 @@
             <TextBlock x:Name="uiRetroArch" TextWrapping="Wrap" FontSize="14" />
             <TextBlock x:Name="uiCores" Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,4,0,0" />
             <WrapPanel Margin="0,12,0,0">
-                <controls:IconButton Text="{l:T 'Open RetroArch'}" Icon="{StaticResource IconNavSettings}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
-                                     ToolTip.Tip="{l:T 'RetroArch without a game: controls, picture, sound'}" Click="OpenMenu_Click" />
-                <controls:IconButton Text="{l:T 'Reset its settings'}" Icon="{StaticResource IconReload}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
-                                     ToolTip.Tip="{l:T 'Forget the core options and controls changed in RetroArch\&#x27;s menu'}" Click="ResetSettings_Click" />
+                <controls:IconButton Text="{l:T 'Open RetroArch'}" Icon="{StaticResource IconNavSettings}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8" Click="OpenMenu_Click" />
+                <controls:IconButton Text="{l:T 'Reset its settings'}" Icon="{StaticResource IconReload}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8" Click="ResetSettings_Click" />
                 <controls:IconButton x:Name="uiUninstall" Text="{l:T 'Uninstall RetroArch'}" Kind="Danger" Icon="{StaticResource IconTrash}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
                                      Click="Uninstall_Click" />
             </WrapPanel>
@@ -96,7 +94,6 @@
 
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'Controls'}" />
-                <TextBlock Text="{l:T 'The buttons of each console, on the gamepad or the keyboard, and the controller of the Wii and the PlayStation: set once, for all its games.'}" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,10" />
                 <controls:IconButton x:Name="uiControls" Text="{l:T 'Set my controls'}" Icon="{StaticResource IconNavRetro}" FontSize="15" IconMargin="0,0,6,2" MinWidth="200" Height="40" HorizontalAlignment="Left" Margin="0,0,0,8"
                                      Click="Controls_Click" />
                 <ItemsControl x:Name="uiControlsSet">
@@ -117,7 +114,6 @@
 
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'Game language'}" />
-                <TextBlock x:Name="uiLanguageConsoles" TextWrapping="Wrap" FontSize="14" Margin="0,0,0,10" />
                 <ComboBox x:Name="uiLanguage" MinWidth="220" SelectionChanged="Language_Changed" />
             </StackPanel>
 
@@ -127,8 +123,7 @@
                 <WrapPanel Margin="0,12,0,0">
                     <controls:IconButton Text="{l:T 'Open the saves'}" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
                                          Click="OpenSaves_Click" />
-                    <controls:IconButton Text="{l:T 'Open the backups'}" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
-                                         ToolTip.Tip="{l:T 'The saves of this PC kept when newer ones came from another PC'}" Click="OpenBackups_Click" />
+                    <controls:IconButton Text="{l:T 'Open the backups'}" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8" Click="OpenBackups_Click" />
                 </WrapPanel>
             </StackPanel>
         </StackPanel>

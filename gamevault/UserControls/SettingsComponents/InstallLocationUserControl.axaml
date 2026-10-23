@@ -47,7 +47,7 @@
                         <TextBlock Text="{l:T 'Another folder…'}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
-                <CheckBox x:Name="uiDontAsk" Content="{l:T 'Do not ask again (can be changed in Settings → Data)'}" FontSize="13" />
+                <CheckBox x:Name="uiDontAsk" Content="{l:T 'Do not ask again'}" FontSize="13" />
             </StackPanel>
         </Grid>
     </Border>

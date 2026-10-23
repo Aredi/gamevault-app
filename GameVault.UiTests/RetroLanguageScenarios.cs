@@ -35,7 +35,6 @@ namespace GameVault.UiTests
                 var setting3ds = settings.FindControl<ComboBox>("uiLanguage")!;
                 Assert.Equal(0, setting3ds.SelectedIndex);
                 Assert.Equal(7, setting3ds.ItemCount);
-                Assert.Contains("Nintendo 3DS", settings.FindControl<TextBlock>("uiLanguageConsoles")!.Text);
 
                 // Its page: its languages in the header, "Automatic" and the ones it has that the emulators offer (not Dutch)
                 var view = new RetroGameViewUserControl(echoes);

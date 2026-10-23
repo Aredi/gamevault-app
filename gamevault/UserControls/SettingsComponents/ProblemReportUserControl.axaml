@@ -11,7 +11,6 @@
         <Border Background="{DynamicResource Brush.Background}" Padding="25" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" CornerRadius="10" Width="640">
             <StackPanel Spacing="12">
                 <TextBlock Text="{l:T 'Report a problem'}" FontSize="26" FontWeight="Bold" />
-                <TextBlock TextWrapping="Wrap" FontSize="14" Text="{l:T 'Create a report to send to the administrator.'}" />
                 <TextBlock TextWrapping="Wrap" FontSize="13" Opacity="0.75" Text="{l:T 'Passwords, tokens and keys are never included.'}" />
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <controls:IconButton x:Name="uiBtnCreate" Text="{l:T 'Create report'}" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="170" Height="36" FontSize="15" Click="Create_Click" />

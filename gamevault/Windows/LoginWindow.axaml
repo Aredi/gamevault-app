@@ -280,7 +280,6 @@
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="{l:T 'Your Account is pending Admin Approval'}" FontSize="30" HorizontalAlignment="Center" />
                     <uc:ProgressRing HorizontalAlignment="Center" IsActive="True" Margin="0,40,0,0" />
-                    <TextBlock Text="{l:T 'You can wait or close this screen and check again later.'}" HorizontalAlignment="Center" Margin="0,30,0,0" FontSize="20" />
                     <uc:IconButton Text="{l:T 'Back to Profile Selection'}" Height="30" Width="250" HorizontalAlignment="Center" Margin="0,20,0,0" FontSize="20" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
                 </StackPanel>
             </Grid>
