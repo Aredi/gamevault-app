@@ -98,28 +98,27 @@ namespace gamevault.UserControls
             ["nes"] = new[] { Body(30, 70, 360, 150, 12) }.Concat(Cross(100, 145))
                 .Concat(Bar("select", 165, 148, 34, 12, "")).Append(Text(182, 178, "SELECT", 9, true)).Concat(Bar("start", 215, 148, 34, 12, "")).Append(Text(232, 178, "START", 9, true))
                 .Concat(Round("b", 295, 150, 18, "B")).Concat(Round("a", 345, 150, 18, "A")).ToArray(),
-            ["snes"] = Bar("l", 50, 58, 90, 20, "L").Concat(Bar("r", 280, 58, 90, 20, "R")).Append(Body(30, 70, 360, 150, 75)).Concat(Cross(110, 145))
+            ["snes"] = new[] { Body(30, 70, 360, 150, 75) }.Concat(Bar("l", 50, 40, 90, 22, "L")).Concat(Bar("r", 280, 40, 90, 22, "R")).Concat(Cross(110, 145))
                 .Concat(Bar("select", 172, 150, 30, 11, "")).Append(Text(187, 176, "SELECT", 9, true)).Concat(Bar("start", 214, 150, 30, 11, "")).Append(Text(229, 176, "START", 9, true))
                 .Concat(Round("x", 310, 113, 16, "X")).Concat(Round("a", 342, 145, 16, "A")).Concat(Round("b", 310, 177, 16, "B")).Concat(Round("y", 278, 145, 16, "Y")).ToArray(),
-            ["gba"] = Bar("l", 30, 62, 74, 18, "L").Concat(Bar("r", 316, 62, 74, 18, "R")).Append(Body(20, 70, 380, 150, 44)).Append(Screen(135, 86, 150, 100)).Concat(Cross(78, 135, 0.8))
+            ["gba"] = new[] { Body(20, 70, 380, 150, 44) }.Concat(Bar("l", 30, 40, 80, 22, "L")).Concat(Bar("r", 310, 40, 80, 22, "R")).Append(Screen(135, 86, 150, 100)).Concat(Cross(78, 135, 0.8))
                 .Concat(Round("a", 352, 124, 15, "A")).Concat(Round("b", 322, 150, 15, "B"))
                 .Append(Circle("select", 186, 204, 6)).Append(Text(186, 196, "SELECT", 8, true)).Append(Circle("start", 234, 204, 6)).Append(Text(234, 196, "START", 8, true)).ToArray(),
-            ["nds"] = new[] { Body(60, 14, 300, 114, 12), Screen(150, 26, 120, 90) }.Concat(Bar("l", 60, 134, 64, 12, "L")).Concat(Bar("r", 296, 134, 64, 12, "R"))
-                .Append(Body(60, 142, 300, 124, 12)).Append(Screen(150, 154, 120, 90)).Concat(Cross(103, 195, 0.7))
+            ["nds"] = new[] { Body(60, 4, 300, 106, 12), Screen(150, 12, 120, 90), Body(60, 142, 300, 124, 12) }.Concat(Bar("l", 60, 116, 76, 20, "L")).Concat(Bar("r", 284, 116, 76, 20, "R"))
+                .Append(Screen(150, 154, 120, 90)).Concat(Cross(103, 195, 0.7))
                 .Concat(Round("x", 317, 174, 11, "X")).Concat(Round("a", 339, 196, 11, "A")).Concat(Round("b", 317, 218, 11, "B")).Concat(Round("y", 295, 196, 11, "Y"))
                 .Append(Circle("select", 300, 248, 5)).Append(Circle("start", 334, 248, 5)).Append(Text(300, 262, "SELECT", 7, true)).Append(Text(334, 262, "START", 7, true)).ToArray(),
-            ["n3ds"] = new[] { Body(50, 14, 320, 114, 12), Screen(130, 24, 160, 94) }.Concat(Bar("l", 50, 134, 56, 12, "L")).Concat(Bar("l2", 112, 134, 40, 10, "ZL"))
-                .Concat(Bar("r2", 268, 134, 40, 10, "ZR")).Concat(Bar("r", 314, 134, 56, 12, "R")).Append(Body(50, 142, 320, 126, 12)).Append(Screen(148, 150, 124, 88))
+            ["n3ds"] = new[] { Body(50, 4, 320, 106, 12), Screen(130, 11, 160, 92), Body(50, 142, 320, 126, 12) }.Concat(Bar("l", 50, 116, 66, 20, "L")).Concat(Bar("l2", 122, 116, 50, 20, "ZL"))
+                .Concat(Bar("r2", 248, 116, 50, 20, "ZR")).Concat(Bar("r", 304, 116, 66, 20, "R")).Append(Screen(148, 150, 124, 88))
                 .Concat(Round("lstick", 98, 172, 16, "PAD")).Concat(Cross(98, 230, 0.55)).Append(Circle("rstick", 300, 158, 5)).Append(Text(300, 150, "C", 7, true))
                 .Concat(Round("x", 324, 176, 10, "X")).Concat(Round("a", 344, 196, 10, "A")).Concat(Round("b", 324, 216, 10, "B")).Concat(Round("y", 304, 196, 10, "Y"))
                 .Append(Circle("select", 180, 252, 5)).Append(Circle("l3", 210, 252, 6)).Append(Circle("start", 240, 252, 5)).ToArray(),
-            ["ngc"] = Bar("l2", 58, 64, 96, 20, "L").Concat(Bar("r2", 266, 64, 96, 20, "R")).Concat(Bar("r", 282, 52, 62, 11, "Z"))
-                .Append(Body(40, 76, 340, 132, 62)).Append(new Shape(Form.Ellipse, 110, 232, 50, 34)).Append(new Shape(Form.Ellipse, 310, 232, 50, 34))
-                .Append(Circle("lstick", 108, 134, 25)).Concat(Cross(150, 200, 0.5)).Append(Circle("start", 210, 138, 7))
+            ["ngc"] = new[] { Body(40, 76, 340, 132, 62) }.Concat(Bar("l2", 58, 24, 96, 22, "L")).Concat(Bar("r2", 266, 24, 96, 22, "R")).Concat(Bar("r", 276, 50, 80, 20, "Z")).Append(new Shape(Form.Ellipse, 110, 232, 50, 34)).Append(new Shape(Form.Ellipse, 310, 232, 50, 34))
+                .Append(Circle("lstick", 108, 134, 25)).Concat(Cross(110, 238, 0.5)).Append(Circle("start", 210, 138, 7))
                 .Concat(Round("a", 300, 140, 22, "A")).Concat(Round("b", 264, 168, 12, "B")).Concat(Round("x", 338, 114, 12, "X")).Concat(Round("y", 288, 104, 12, "Y"))
-                .Concat(Round("rstick", 246, 200, 15, "C")).ToArray(),
-            ["psx"] = Bar("l2", 62, 38, 80, 14, "L2").Concat(Bar("l", 62, 56, 80, 14, "L1")).Concat(Bar("r2", 278, 38, 80, 14, "R2")).Concat(Bar("r", 278, 56, 80, 14, "R1"))
-                .Append(new Shape(Form.Ellipse, 92, 200, 50, 60)).Append(new Shape(Form.Ellipse, 328, 200, 50, 60)).Append(Body(30, 70, 360, 130, 60)).Concat(Cross(100, 128, 0.85))
+                .Concat(Round("rstick", 310, 238, 15, "C")).ToArray(),
+            ["psx"] = new[] { new Shape(Form.Ellipse, 92, 200, 50, 60), new Shape(Form.Ellipse, 328, 200, 50, 60), Body(30, 70, 360, 130, 60) }
+                .Concat(Bar("l2", 62, 18, 80, 20, "L2")).Concat(Bar("l", 62, 44, 80, 20, "L1")).Concat(Bar("r2", 278, 18, 80, 20, "R2")).Concat(Bar("r", 278, 44, 80, 20, "R1")).Concat(Cross(100, 128, 0.85))
                 .Concat(Bar("select", 172, 124, 26, 10, "")).Concat(Bar("start", 222, 124, 26, 10, "")).Append(Text(185, 148, "SELECT", 8, true)).Append(Text(235, 148, "START", 8, true))
                 .Concat(Round("x", 320, 100, 15, "△")).Concat(Round("a", 348, 128, 15, "○")).Concat(Round("b", 320, 156, 15, "✕")).Concat(Round("y", 292, 128, 15, "□"))
                 .Concat(Round("lstick", 160, 185, 22, "L3")).Concat(Round("rstick", 260, 185, 22, "R3")).ToArray(),
@@ -138,9 +137,8 @@ namespace gamevault.UserControls
                 .Append(Rect("b", 156, 92, 10, 34, 4)).Append(Text(176, 113, "B", 9, true))
                 .Append(Circle("l", 96, 146, 6)).Append(Circle("r3", 118, 146, 7)).Append(Circle("r", 140, 146, 6)).Append(Text(96, 165, "−", 9, true)).Append(Text(140, 165, "+", 9, true))
                 .Concat(Round("start", 118, 204, 10, "1")).Concat(Round("select", 118, 232, 10, "2"))
-                .Append(new Shape(Form.Ellipse, 306, 170, 52, 80)).Append(Circle("lstick", 306, 128, 22)).Concat(Round("x", 352, 104, 9, "C"))
-                .Append(Rect("y", 342, 120, 22, 16, 4)).Append(Text(353, 132, "Z", 9))
-                .Concat(Badge("r2", 200, 18, "Shake Wiimote")).Concat(Badge("l2", 310, 18, "Shake Nunchuk")).Concat(Badge("rstick", 200, 50, "Tilt")).ToArray(),
+                .Append(Body(302, 30, 90, 236, 45)).Concat(Round("x", 347, 66, 13, "C")).Concat(Bar("y", 321, 92, 52, 24, "Z")).Append(Circle("lstick", 347, 172, 28))
+                .Concat(Badge("r2", 190, 96, "Shake Wiimote")).Concat(Badge("l2", 190, 128, "Shake Nunchuk")).Concat(Badge("rstick", 190, 160, "Tilt")).ToArray(),
             ["wiiRemote"] = new[] { Body(172, 14, 76, 252, 30) }.Concat(Cross(210, 58, 0.7)).Concat(Round("a", 210, 108, 15, "A"))
                 .Append(Rect("b", 248, 92, 10, 34, 4)).Append(Text(290, 113, "B", 9, true))
                 .Append(Circle("select", 188, 146, 6)).Append(Circle("r3", 210, 146, 7)).Append(Circle("start", 232, 146, 6)).Append(Text(188, 165, "−", 9, true)).Append(Text(232, 165, "+", 9, true))
@@ -149,8 +147,7 @@ namespace gamevault.UserControls
                 .Append(Rect("y", 150, 176, 30, 10, 4)).Append(Text(165, 202, "B", 9, true))
                 .Append(Circle("select", 214, 118, 5)).Append(Circle("r3", 214, 136, 6)).Append(Circle("start", 214, 154, 5))
                 .Concat(Round("b", 300, 136, 13, "1")).Concat(Round("a", 340, 136, 13, "2")).Concat(Badge("r2", 96, 38, "Shake Wiimote")).Concat(Badge("lstick", 220, 38, "Tilt")).ToArray(),
-            ["wiiClassic"] = Bar("l", 92, 40, 44, 14, "ZL").Concat(Bar("r", 284, 40, 44, 14, "ZR")).Concat(Bar("l2", 50, 58, 90, 18, "L")).Concat(Bar("r2", 280, 58, 90, 18, "R"))
-                .Append(Body(30, 70, 360, 150, 75)).Concat(Cross(98, 122, 0.75))
+            ["wiiClassic"] = new[] { Body(30, 70, 360, 150, 75) }.Concat(Bar("l2", 40, 40, 86, 22, "L")).Concat(Bar("l", 132, 40, 52, 22, "ZL")).Concat(Bar("r", 236, 40, 52, 22, "ZR")).Concat(Bar("r2", 294, 40, 86, 22, "R")).Concat(Cross(98, 122, 0.75))
                 .Append(Circle("select", 186, 118, 6)).Append(Circle("r3", 210, 118, 7)).Append(Circle("start", 234, 118, 6))
                 .Concat(Round("x", 322, 96, 13, "x")).Concat(Round("a", 348, 122, 13, "a")).Concat(Round("b", 322, 148, 13, "b")).Concat(Round("y", 296, 122, 13, "y"))
                 .Append(Circle("lstick", 164, 178, 20)).Append(Circle("rstick", 256, 178, 20)).ToArray(),
@@ -159,7 +156,8 @@ namespace gamevault.UserControls
         /// <summary>The plan of a platform: the Wii's by its controller (RetroArch's id), the GameCube controller's for the 6th.</summary>
         public static string? KindOf(string slug, int? device) => slug switch
         {
-            "nes" or "snes" or "gba" or "nds" or "ngc" or "psx" or "neogeo" => slug,
+            "nes" or "snes" or "gba" or "nds" or "ngc" or "psx" => slug,
+            "neogeoaes" => "neogeo",
             "3ds" => "n3ds",
             "ps2" => "psx",
             "wii" => device switch { 1 => "wiiRemote", 513 => "wiiSideways", 1025 => "wiiClassic", 1537 => "ngc", _ => "wiiNunchuk" },
