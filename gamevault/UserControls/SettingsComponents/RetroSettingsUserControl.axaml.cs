@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using GameVault.Core;
 using GameVault.Core.Retro;
 using GameVault.Core.Storage;
@@ -225,7 +226,7 @@ namespace gamevault.UserControls.SettingsComponents
 
         private async void OpenMenu_Click(object? sender, RoutedEventArgs e)
         {
-            try { await RetroArchManager.OpenMenuAsync(text => uiRetroArch.Text = text); }
+            try { await RetroArchManager.OpenMenuAsync(text => Dispatcher.UIThread.Post(() => uiRetroArch.Text = text)); }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
             await RefreshAsync();
         }
