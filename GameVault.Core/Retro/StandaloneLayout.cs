@@ -37,8 +37,8 @@ namespace GameVault.Core.Retro
         public abstract string Resolution(string existing, int scale);
         public abstract string Language(string existing, string language);
 
-        /// <summary>An INI with these values in their section, the others kept.</summary>
-        protected static string MergeIni(string existing, string section, IEnumerable<(string Key, string Value)> values)
+        /// <summary>An INI with these values in their section, the others kept; a TOML too, its "key = value" in [tables].</summary>
+        protected static string MergeIni(string existing, string section, IEnumerable<(string Key, string Value)> values, string separator = "=")
         {
             var lines = existing.Replace("\r\n", "\n").Split('\n').Where(l => l.Length > 0).ToList();
             int start = lines.IndexOf($"[{section}]");
@@ -52,11 +52,11 @@ namespace GameVault.Core.Retro
                 end = lines.Count;
             foreach (var (key, value) in values)
             {
-                int line = lines.FindIndex(start + 1, end - start - 1, l => l.StartsWith(key + "=", StringComparison.Ordinal));
+                int line = lines.FindIndex(start + 1, end - start - 1, l => l.StartsWith(key + separator, StringComparison.Ordinal));
                 if (line >= 0)
-                    lines[line] = $"{key}={value}";
+                    lines[line] = $"{key}{separator}{value}";
                 else
-                    lines.Insert(end++, $"{key}={value}");
+                    lines.Insert(end++, $"{key}{separator}{value}");
             }
             return string.Join('\n', lines) + "\n";
         }

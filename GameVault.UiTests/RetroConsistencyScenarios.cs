@@ -184,10 +184,10 @@ namespace GameVault.UiTests
                 Assert.Equal("", MainWindowViewModel.Instance.AppBarText);
 
                 session.Server.RetroLatest.Insert(0, new { id = 41, name = "Metroid", platform = "nes", platformName = "NES" });
-                session.Server.RetroLatest.Insert(0, new { id = 42, name = "Halo", platform = "xbox", platformName = "Xbox" });
+                session.Server.RetroLatest.Insert(0, new { id = 42, name = "Shenmue", platform = "dc", platformName = "Dreamcast" });
                 await RetroNewGamesNotifier.CheckAsync();
                 Assert.Contains("Metroid (NES)", MainWindowViewModel.Instance.AppBarText);
-                Assert.DoesNotContain("Halo", MainWindowViewModel.Instance.AppBarText);
+                Assert.DoesNotContain("Shenmue", MainWindowViewModel.Instance.AppBarText);
             }
             finally
             {
@@ -206,7 +206,7 @@ namespace GameVault.UiTests
             {
                 session.Server.RetroLatest.Add(new { id = 41, name = "Metroid", platform = "nes", platformName = "NES", cover = (string?)null, addedAt = DateTime.UtcNow.AddHours(-3) });
                 // An unknown platform, and a game older than the news
-                session.Server.RetroLatest.Add(new { id = 42, name = "Halo", platform = "xbox", platformName = "Xbox", cover = (string?)null, addedAt = DateTime.UtcNow.AddHours(-2) });
+                session.Server.RetroLatest.Add(new { id = 42, name = "Shenmue", platform = "dc", platformName = "Dreamcast", cover = (string?)null, addedAt = DateTime.UtcNow.AddHours(-2) });
                 session.Server.RetroLatest.Add(new { id = 40, name = "Zelda", platform = "nes", platformName = "NES", cover = (string?)null, addedAt = DateTime.UtcNow.AddDays(-90) });
 
                 ServerNewsData news = await ServerNewsService.LoadAsync();

@@ -327,6 +327,18 @@ namespace gamevault.Helper
                     }));
                     File.Delete(compressed);
                 }
+            // xemu reads no full dump of an Xbox disc: its game's partition alone
+            if (Game.Platform.System.IsXemu)
+                foreach (string disc in Directory.EnumerateFiles(Folder, "*", SearchOption.AllDirectories).Where(f => string.Equals(Path.GetExtension(f), ".iso", StringComparison.OrdinalIgnoreCase) && XboxDisc.IsRedump(f)).ToList())
+                {
+                    int shown = -1;
+                    State = Loc.F("Preparing the Xbox disc... {0}%", 0);
+                    await Task.Run(() => XboxDisc.ToXiso(disc, done =>
+                    {
+                        if ((int)(done * 100) is int percent && percent != shown)
+                            Preparing(Loc.F("Preparing the Xbox disc... {0}%", shown = percent));
+                    }));
+                }
             await RetroArchManager.EnsureReadyAsync(Game.Platform, Preparing);
             if (Game.RomFile == null)
                 throw new IOException(Loc.T("None of this game's files can be started by the emulator."));

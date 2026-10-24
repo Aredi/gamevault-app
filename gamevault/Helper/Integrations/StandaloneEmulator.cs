@@ -12,15 +12,16 @@ using System.Threading.Tasks;
 namespace gamevault.Helper
 {
     /// <summary>
-    /// An emulator of its own for a console RetroArch does not play (RPCS3, Eden): installed the first time one of its
+    /// An emulator of its own for a console RetroArch does not play (RPCS3, Eden, xemu): installed the first time one of its
     /// games is played (in the client's data folder), with the console's system files from RomM, then started on the game.
     /// </summary>
     internal abstract class StandaloneEmulator
     {
         public static Rpcs3Manager Rpcs3 { get; } = new();
         public static EdenManager Eden { get; } = new();
-        public static IEnumerable<StandaloneEmulator> All => new StandaloneEmulator[] { Rpcs3, Eden };
-        public static StandaloneEmulator? Of(RetroSystem system) => system.IsRpcs3 ? Rpcs3 : system.IsEden ? Eden : null;
+        public static XemuManager Xemu { get; } = new();
+        public static IEnumerable<StandaloneEmulator> All => new StandaloneEmulator[] { Rpcs3, Eden, Xemu };
+        public static StandaloneEmulator? Of(RetroSystem system) => system.IsRpcs3 ? Rpcs3 : system.IsEden ? Eden : system.IsXemu ? Xemu : null;
 
         /// <summary>"RPCS3".</summary>
         public abstract string Name { get; }

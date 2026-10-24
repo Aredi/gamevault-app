@@ -6,7 +6,7 @@ namespace GameVault.Core.Retro
     /// </summary>
     public static class RetroResolution
     {
-        /// <summary>By the platform's core (RetroArch's, or "rpcs3", "eden"): the multiples offered, the console's own first.</summary>
+        /// <summary>By the platform's core (RetroArch's, or "rpcs3", "eden", "xemu"): the multiples offered, the console's own first.</summary>
         public static readonly IReadOnlyDictionary<string, int[]> Scales = new Dictionary<string, int[]>
         {
             ["dolphin"] = new[] { 1, 2, 3, 4 },
@@ -17,6 +17,7 @@ namespace GameVault.Core.Retro
             ["azahar"] = new[] { 1, 2, 3, 4 },
             ["rpcs3"] = new[] { 1, 2, 3 },
             ["eden"] = new[] { 1, 2, 3 },
+            ["xemu"] = new[] { 1, 2, 3 },
         };
 
         /// <summary>A RetroArch core's options for it; none for the cores that draw at the console's definition only.</summary>

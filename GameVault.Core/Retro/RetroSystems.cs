@@ -14,7 +14,9 @@ namespace GameVault.Core.Retro
         public bool IsRpcs3 => Core == "rpcs3";
         /// <summary>Played with Eden, not RetroArch.</summary>
         public bool IsEden => Core == "eden";
-        public bool IsStandalone => IsRpcs3 || IsEden;
+        /// <summary>Played with xemu, not RetroArch.</summary>
+        public bool IsXemu => Core == "xemu";
+        public bool IsStandalone => IsRpcs3 || IsEden || IsXemu;
     }
 
     public static class RetroSystems
@@ -37,6 +39,8 @@ namespace GameVault.Core.Retro
             new RetroSystem("ps3", "PlayStation 3", "rpcs3", new[] { "iso", "EBOOT.BIN" }),
             // Eden, not RetroArch: a game card (.xci) or an eShop package (.nsp), compressed ones (.nsz, .xcz) made .nsp at their download; its updates and DLC are read from the games' folders
             new RetroSystem("switch", "Nintendo Switch", "eden", new[] { "xci", "nsp" }),
+            // xemu, not RetroArch: an XISO (a full dump is made one at its download, see XboxDisc)
+            new RetroSystem("xbox", "Xbox", "xemu", new[] { "iso", "xiso" }),
             new RetroSystem("3ds", "Nintendo 3DS", "azahar", new[] { "cxi", "zcxi", "3ds", "cci", "zcci", "3dsx", "z3dsx", "app", "elf", "cia" }, CoverRatio: 0.89),
         }.ToDictionary(s => s.Slug);
 
