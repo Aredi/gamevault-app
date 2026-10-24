@@ -63,7 +63,8 @@ namespace GameVault.UiTests
         public sealed record RemoteInstall(int GameId, string Title, string DeviceId, string Status = "pending", string? Message = null);
         /// <summary>The SanctuaryVault service's LAN rooms (the signed-in player is user 1), and the games marked playable in LAN.</summary>
         public ConcurrentDictionary<string, FakeRoom> Rooms { get; } = new();
-        public ConcurrentDictionary<int, bool> LanGames { get; } = new();
+        /// <summary>The games playable in LAN, with their players when known.</summary>
+        public ConcurrentDictionary<int, int?> LanGames { get; } = new();
         public sealed class FakeRoom
         {
             public string Id = "", Code = "", Name = "", OwnerName = "";
@@ -608,11 +609,15 @@ namespace GameVault.UiTests
                     response.StatusCode = 204;
                 }
                 else if (path == "/lan-games" && request.HttpMethod == "GET")
-                    await Json(response, LanGames.Where(g => g.Value).Select(g => g.Key).ToArray());
+                    await Json(response, LanGames.Select(g => new { id = g.Key, players = g.Value }).ToArray());
                 else if ((match = Regex.Match(path, @"^/lan-games/(\d+)$")).Success)
                 {
                     using JsonDocument roomAsked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
-                    LanGames[int.Parse(match.Groups[1].Value)] = roomAsked.RootElement.GetProperty("lan").GetBoolean();
+                    int lanGame = int.Parse(match.Groups[1].Value);
+                    if (!roomAsked.RootElement.GetProperty("lan").GetBoolean())
+                        LanGames.TryRemove(lanGame, out _);
+                    else
+                        LanGames.TryAdd(lanGame, null);
                     response.StatusCode = 204;
                 }
                 // This PC's ZeroTier service

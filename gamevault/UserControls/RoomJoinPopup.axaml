@@ -24,7 +24,7 @@
                             <TextBox x:Name="uiName" MaxLength="60" />
                             <TextBlock FontSize="13" Text="{l:T 'Game (optional)'}" />
                             <ComboBox x:Name="uiGame" HorizontalAlignment="Stretch" PlaceholderText="{l:T 'No game'}" DisplayMemberBinding="{Binding Title}" />
-                            <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{l:T 'Only the games marked Playable in LAN are offered.'}" />
+                            <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{l:T 'Only the games playable in LAN are offered.'}" />
                             <CheckBox x:Name="uiPublic" IsChecked="True" Content="{l:T 'Seen by every player of the server'}" />
                         </StackPanel>
                     </DockPanel>

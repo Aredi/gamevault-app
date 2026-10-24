@@ -26,7 +26,7 @@ namespace GameVault.UiTests
             var session = await TestSession.GetAsync();
             var server = session.Server;
             session.Server.AddGame(NewGame(9801, "LAN Party Arena"), new byte[16]);
-            server.LanGames[9801] = true;
+            server.LanGames[9801] = 8;
             var friends = new FakeGameVaultServer.FakeRoom { Id = "c4576f0616000001", Code = "AB2CD3", Name = "Soirée Arena", OwnerId = 2, OwnerName = "Léa", GameId = 9801, GameTitle = "LAN Party Arena", Public = true };
             friends.Members.Add((2, "Léa", "bbbbbbbb02", "10.147.1.1"));
             server.Rooms[friends.Id] = friends;
@@ -41,6 +41,7 @@ namespace GameVault.UiTests
                 MainWindowViewModel.Instance.SetActiveControl(page);
                 await TestSession.WaitUntil(() => page.FindControl<Border>("uiLanRoom")!.IsVisible, TimeSpan.FromSeconds(30), "Léa's room on the game's page");
                 Assert.True(page.FindControl<Border>("uiLanChip")!.IsVisible);
+                Assert.Equal(gamevault.Localization.Loc.F("LAN · up to {0} players", 8), page.FindControl<TextBlock>("uiLanChipText")!.Text);
                 Assert.True(page.FindControl<Button>("uiLanPlay")!.IsVisible);
                 Assert.True(page.FindControl<CheckBox>("uiLanAdmin")!.IsChecked);
                 Assert.Contains("Soirée Arena", page.FindControl<TextBlock>("uiLanRoomText")!.Text);
@@ -76,7 +77,7 @@ namespace GameVault.UiTests
                 box.IsChecked = false;
                 box.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await TestSession.WaitUntil(() => !page.FindControl<Border>("uiLanChip")!.IsVisible, TimeSpan.FromSeconds(30), "the badge gone");
-                Assert.False(server.LanGames[9801]);
+                Assert.False(server.LanGames.ContainsKey(9801));
 
                 // Without ZeroTier: its setup instead of the room
                 ZeroTierAgent.TestToken = null;

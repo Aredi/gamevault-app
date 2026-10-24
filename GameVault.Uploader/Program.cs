@@ -35,6 +35,12 @@ builder.Services.AddHttpClient<ZeroTierController>(client =>
         client.BaseAddress = new Uri(options.ZeroTierControllerUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromSeconds(20);
 });
+builder.Services.AddHttpClient<PcGamingWiki>(client =>
+{
+    client.BaseAddress = new Uri("https://www.pcgamingwiki.com/w/");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd($"SanctuaryVault/{UploaderOptions.Version} (+https://github.com/Aredi/gamevault-app)");
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
 builder.Services.AddHttpClient<RommProxy>(client =>
 {
     if (!string.IsNullOrEmpty(options.RommUrl))

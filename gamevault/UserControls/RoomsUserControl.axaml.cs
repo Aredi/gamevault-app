@@ -152,10 +152,10 @@ namespace gamevault.UserControls
             catch (Exception ex) { Log.Ignored(ex); return null; }
         }
 
-        /// <summary>The games the administrators marked playable in LAN, by title.</summary>
+        /// <summary>The games playable in LAN, by title.</summary>
         internal static async Task<List<Game>> LanGamesAsync()
         {
-            HashSet<int> ids = await RoomsService.LanGamesAsync();
+            var ids = (await RoomsService.LanGamesAsync()).Keys;
             if (ids.Count == 0)
                 return new();
             string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?filter.id=$in:{string.Join(",", ids)}&limit=-1");

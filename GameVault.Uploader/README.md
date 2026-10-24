@@ -31,17 +31,20 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `RETRO_PLAYERS_DIRECTORY` | `/data/retro-players` | The players' time on the retro games and their favorites (profiles, recent activity) |
 | `ZEROTIER_CONTROLLER_URL` | - | The API of a [ZeroTier](https://github.com/zerotier/ZeroTierOne) 1.14.2 network controller (e.g. `http://zerotier-controller:9993`): the client's **LAN rooms** are off without it |
 | `ZEROTIER_API_SECRET` | - | The controller's API token (`ZEROTIER_API_SECRET` of its container, or its `authtoken.secret`) |
-| `ROOMS_DIRECTORY` | `/data/rooms` | The LAN rooms and the games marked playable in LAN |
+| `ROOMS_DIRECTORY` | `/data/rooms` | The LAN rooms and the games playable in LAN |
 
 ## LAN rooms
 
 The PC games made for a LAN, played over the Internet: each room is a private network of a ZeroTier controller
 (see `docker-compose.example.yml`), with broadcast on so that the games find each other's parties. In the client,
-**Community → LAN rooms**: create a room (its game among the ones an administrator marked **Playable in LAN** on their
-page) and send its code, or join a public room. The service lets each player's PC in the network with an address of
+**Community → LAN rooms**: create a room (its game among the ones playable in LAN) and send its code, or join a public room. The service lets each player's PC in the network with an address of
 the room's subnet (`10.147.<room>.<player>`); the client joins it with ZeroTier One, installed once on each PC
 (Windows: the client runs ZeroTier's installer; Linux: `curl -s https://install.zerotier.com | sudo bash`).
 On Windows the client also puts the room's network first and private (one prompt of the administrator's rights).
+
+The games playable in LAN are found on [PCGamingWiki](https://www.pcgamingwiki.com) (its "LAN play" and players),
+each game of the library read once in the background, again when its title changes. An administrator marks or
+unmarks a game on its page (**Playable in LAN**), and that choice wins.
 
 Use the controller of ZeroTier **1.14.2**: since 1.16 the controller is under a non-commercial license that excludes
 services like this one; 1.14.2's license turned into Apache 2.0 on 2026-01-01. ZeroTier One on the PCs (MPL 2.0)

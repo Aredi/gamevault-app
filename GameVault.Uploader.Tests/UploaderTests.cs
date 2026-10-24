@@ -36,7 +36,7 @@ namespace GameVault.Uploader.Tests
                     {
                         data = new object[]
                         {
-                            new { id = 5, title = "Escape from Duckov", version = (string?)null, release_date = (string?)null, deleted_at = (string?)null },
+                            new { id = 5, title = "Escape from Duckov", version = (string?)null, release_date = (string?)null, deleted_at = (string?)null, metadata = new { title = "Escape From Duckov" } },
                             new { id = 6, title = "Prey", version = "v1.0", release_date = "2017-01-01T00:00:00.000Z", deleted_at = (string?)null },
                             new { id = 7, title = "Old", version = (string?)null, release_date = (string?)null, deleted_at = "2025-01-01T00:00:00.000Z" },
                         },
@@ -54,6 +54,31 @@ namespace GameVault.Uploader.Tests
             return Task.FromResult(user == null
                 ? new HttpResponseMessage(HttpStatusCode.Unauthorized)
                 : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(user) });
+        }
+    }
+
+    /// <summary>PCGamingWiki's pages: Escape from Duckov plays in LAN with 4 players, Prey does not; its search; keeps the pages asked.</summary>
+    internal sealed class FakeWiki : HttpMessageHandler
+    {
+        public readonly System.Collections.Concurrent.ConcurrentBag<string> Asked = new();
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var query = System.Web.HttpUtility.ParseQueryString(request.RequestUri!.Query);
+            if (query["list"] == "search")
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new { query = new { search = query["srsearch"]!.Contains("Duckov") ? new[] { new { title = "Escape from Duckov 2" }, new { title = "Escape from Duckov" } } : Array.Empty<object>() } }),
+                });
+            string title = query["page"] ?? "";
+            Asked.Add(title);
+            object page = title switch
+            {
+                "Escape from Duckov" => new { parse = new { wikitext = "{{Network/Multiplayer\n|local play           = false\n|lan play             = true\n|lan play players     = 4\n}}" } },
+                "Prey" => new { parse = new { wikitext = "{{Network/Multiplayer\n|lan play             = false\n|lan play players     = \n}}" } },
+                _ => new { error = new { code = "missingtitle" } },
+            };
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(page) });
         }
     }
 
@@ -157,6 +182,7 @@ namespace GameVault.Uploader.Tests
         private readonly string retroPlayers = Path.Combine(Path.GetTempPath(), $"gv-retro-players-{Guid.NewGuid():N}");
         private readonly string rooms = Path.Combine(Path.GetTempPath(), $"gv-rooms-{Guid.NewGuid():N}");
         private readonly FakeZeroTier zeroTier = new();
+        private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
         private readonly FakeRequestsBot bot = new();
         private readonly FakeRomm romm = new();
@@ -201,6 +227,7 @@ namespace GameVault.Uploader.Tests
                     services.AddHttpClient<GameRequestsProxy>().ConfigurePrimaryHttpMessageHandler(() => bot);
                     services.AddHttpClient<RommProxy>().ConfigurePrimaryHttpMessageHandler(() => romm);
                     services.AddHttpClient<ZeroTierController>().ConfigurePrimaryHttpMessageHandler(() => zeroTier);
+                    services.AddHttpClient<PcGamingWiki>().ConfigurePrimaryHttpMessageHandler(() => wiki);
                 });
             });
         }
@@ -723,13 +750,24 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
-        public async Task OnlyAnAdministrator_MarksAGamePlayableInLan()
+        public async Task TheGamesPlayableInLan_AreFoundOnPcGamingWiki_ThenAnAdministratorDecides()
         {
+            // The library read on the wiki in the background, each game once, by its metadata's title: "Escape From Duckov" has
+            // no page, the wiki's search finds "Escape from Duckov" (not its sequel), in LAN with 4 players
+            string found = await Client("admin").GetStringAsync("/lan-games");
+            for (int i = 0; i < 200 && (found != """[{"id":5,"players":4}]""" || wiki.Asked.Count < 3); i++)
+            {
+                await Task.Delay(50);
+                found = await Client("admin").GetStringAsync("/lan-games");
+            }
+            Assert.Equal("""[{"id":5,"players":4}]""", found);
+            Assert.Equal(new[] { "Escape From Duckov", "Escape from Duckov", "Prey" }, wiki.Asked.Order(StringComparer.Ordinal));
+
+            // Only an administrator decides, and wins over the wiki both ways
             Assert.Equal(HttpStatusCode.Forbidden, (await Client("user").PutAsJsonAsync("/lan-games/6", new { lan = true })).StatusCode);
             Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PutAsJsonAsync("/lan-games/6", new { lan = true })).StatusCode);
-            Assert.Equal("[6]", await Client("user").GetStringAsync("/lan-games"));
-            Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PutAsJsonAsync("/lan-games/6", new { lan = false })).StatusCode);
-            Assert.Equal("[]", await Client("user").GetStringAsync("/lan-games"));
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PutAsJsonAsync("/lan-games/5", new { lan = false })).StatusCode);
+            Assert.Equal("""[{"id":6,"players":null}]""", await Client("user").GetStringAsync("/lan-games"));
         }
     }
 }

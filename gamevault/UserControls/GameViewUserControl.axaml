@@ -191,7 +191,7 @@
                                     </Border>
                                     <!-- Marked by an administrator: a LAN room can be made for it -->
                                     <Border x:Name="uiLanChip" Classes="chip" Background="{DynamicResource Brush.Glass}" IsVisible="False">
-                                        <TextBlock Text="{l:T 'Playable in LAN'}" Foreground="{DynamicResource Brush.Success}" />
+                                        <TextBlock x:Name="uiLanChipText" Foreground="{DynamicResource Brush.Success}" />
                                     </Border>
                                     <ItemsControl ItemsSource="{Binding Game.Metadata.Genres}">
                                         <ItemsControl.ItemsPanel>

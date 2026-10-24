@@ -23,7 +23,7 @@ namespace GameVault.Uploader
     /// GET  /rooms, POST /rooms                   the LAN rooms the player sees (public, or theirs) / makes one (its ZeroTier network)
     /// POST /rooms/join, POST /rooms/{id}/leave   lets the player's PC in a room (by its code, or a public room) / out of it
     /// PUT  /rooms/{id}/game                      the room's game (its owner)
-    /// GET  /lan-games, PUT /lan-games/{gameId}   the games playable in LAN / an administrator marks one
+    /// GET  /lan-games, PUT /lan-games/{gameId}   the games playable in LAN (PCGamingWiki, read in the background) / an administrator marks or unmarks one
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
@@ -232,8 +232,13 @@ namespace GameVault.Uploader
                         _ => Results.NotFound(),
                     }));
 
-            app.MapGet("/lan-games", (HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
-                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async _ => Results.Json(await rooms.LanGamesAsync())));
+            app.MapGet("/lan-games", (HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, GameVaultProxy gameVault, PcGamingWiki wiki, ILogger<RoomStore> logger, CancellationToken ct) =>
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async _ =>
+                {
+                    string authorization = context.Request.Headers.Authorization!;
+                    rooms.Detect(() => gameVault.AllGamesAsync(authorization, CancellationToken.None), wiki, logger);
+                    return Results.Json((await rooms.LanGamesAsync()).Select(g => new { id = g.Id, players = g.Players }));
+                }));
 
             app.MapPut("/lan-games/{gameId:int}", async (int gameId, LanGame asked, HttpContext context, AdminCheck admins, RoomStore rooms, CancellationToken ct) =>
             {

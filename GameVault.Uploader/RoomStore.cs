@@ -7,7 +7,7 @@ namespace GameVault.Uploader
     /// <summary>
     /// LAN rooms: players on the same ZeroTier network play the PC games made for a LAN together. A room is one network
     /// of the controller; joining lets the player's PC in with an address of the room's subnet. Also keeps which games
-    /// the administrators marked as playable in LAN. One JSON file, written whole.
+    /// are playable in LAN: found on PCGamingWiki, or marked (or unmarked) by the administrators. One JSON file, written whole.
     /// </summary>
     public sealed partial class RoomStore
     {
@@ -37,7 +37,14 @@ namespace GameVault.Uploader
         {
             public List<Room> Rooms { get; set; } = new();
             public List<int> LanGames { get; set; } = new();
+            public List<int> NotLanGames { get; set; } = new();
+            /// <summary>PCGamingWiki's answer per game, with the title it was read for: read again when the title changes.</summary>
+            public Dictionary<int, Detection> Detected { get; set; } = new();
         }
+
+        public sealed record Detection(string Title, bool Lan, int? Players);
+
+        public sealed record LanGame(int Id, int? Players);
 
         [GeneratedRegex("^[0-9a-f]{10}$")]
         private static partial Regex NodeIdPattern();
@@ -153,16 +160,58 @@ namespace GameVault.Uploader
                 return Task.FromResult(Outcome.Done);
             });
 
-        public Task<List<int>> LanGamesAsync() => WithStateAsync(state => Task.FromResult(state.LanGames.ToList()));
+        /// <summary>Marked by an administrator, or found on PCGamingWiki and not unmarked; with its players when the wiki gives them.</summary>
+        public Task<List<LanGame>> LanGamesAsync() =>
+            WithStateAsync(state => Task.FromResult(state.LanGames
+                .Union(state.Detected.Where(d => d.Value.Lan).Select(d => d.Key).Except(state.NotLanGames))
+                .Select(id => new LanGame(id, state.Detected.GetValueOrDefault(id)?.Players)).ToList()));
 
+        /// <summary>The administrator's choice wins over PCGamingWiki's, both ways.</summary>
         public Task SetLanGameAsync(int gameId, bool lan) =>
             WithStateAsync(state =>
             {
                 state.LanGames.Remove(gameId);
-                if (lan)
-                    state.LanGames.Add(gameId);
+                state.NotLanGames.Remove(gameId);
+                (lan ? state.LanGames : state.NotLanGames).Add(gameId);
                 Write(state);
                 return Task.FromResult(true);
             });
+
+        private int detecting;
+        private DateTime detectedAt = DateTime.MinValue;
+
+        /// <summary>
+        /// The library's games not read yet on PCGamingWiki, read in the background one by one, each saved as it comes.
+        /// shortcut: at most one pass per 10 minutes and per process, started by a player opening the LAN games; a
+        /// game the wiki did not answer for is read again at the next pass.
+        /// </summary>
+        public void Detect(Func<Task<List<GameVaultProxy.GameSummary>>> games, PcGamingWiki wiki, ILogger logger)
+        {
+            if (DateTime.UtcNow - detectedAt < TimeSpan.FromMinutes(10) || Interlocked.Exchange(ref detecting, 1) == 1)
+                return;
+            detectedAt = DateTime.UtcNow;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var known = await WithStateAsync(state => Task.FromResult(state.Detected));
+                    foreach (var game in (await games()).Where(g => g.Title.Length > 0 && known.GetValueOrDefault(g.Id)?.Title != g.Title))
+                    {
+                        if (await wiki.LanAsync(game.Title, CancellationToken.None) is not { } found)
+                            continue;
+                        await WithStateAsync(state =>
+                        {
+                            state.Detected[game.Id] = new Detection(game.Title, found.Lan, found.Players);
+                            Write(state);
+                            return Task.FromResult(true);
+                        });
+                        // Gentle with the wiki
+                        await Task.Delay(500);
+                    }
+                }
+                catch (Exception ex) { logger.LogWarning(ex, "The games playable in LAN were not all read on PCGamingWiki"); }
+                finally { detecting = 0; }
+            });
+        }
     }
 }

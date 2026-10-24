@@ -57,12 +57,15 @@ namespace gamevault.Helper
     }
 
     /// <summary>The LAN rooms, through the SanctuaryVault service (which lets the PCs in their ZeroTier networks).</summary>
+    /// <summary>A game playable in LAN, its players when PCGamingWiki gives them.</summary>
+    public sealed record LanGame([property: JsonPropertyName("id")] int Id, [property: JsonPropertyName("players")] int? Players);
+
     internal static class RoomsService
     {
         private static string Service => SanctuaryService.Current.TrimEnd('/');
 
-        /// <summary>The games marked playable in LAN, read once a while for the game pages.</summary>
-        private static (HashSet<int> Games, DateTime At)? lanGames;
+        /// <summary>The games playable in LAN with their players (when known), read once a while for the game pages.</summary>
+        private static (Dictionary<int, int?> Games, DateTime At)? lanGames;
 
         private static async Task<string> SendAsync(HttpMethod method, string path, object? body = null)
         {
@@ -91,11 +94,11 @@ namespace gamevault.Helper
 
         public static Task SetGameAsync(string roomId, int? gameId, string? gameTitle) => SendAsync(HttpMethod.Put, $"rooms/{roomId}/game", new { gameId, gameTitle });
 
-        public static async Task<HashSet<int>> LanGamesAsync()
+        public static async Task<Dictionary<int, int?>> LanGamesAsync()
         {
             if (lanGames is { } known && DateTime.UtcNow - known.At < TimeSpan.FromMinutes(5))
                 return known.Games;
-            var games = (JsonSerializer.Deserialize<List<int>>(await SendAsync(HttpMethod.Get, "lan-games")) ?? new()).ToHashSet();
+            var games = (JsonSerializer.Deserialize<List<LanGame>>(await SendAsync(HttpMethod.Get, "lan-games")) ?? new()).ToDictionary(g => g.Id, g => g.Players);
             lanGames = (games, DateTime.UtcNow);
             return games;
         }

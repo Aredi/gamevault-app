@@ -32,9 +32,16 @@ namespace GameVault.Uploader
         public sealed record GameSummary(int Id, string Title, string? Version, int? Year);
 
         /// <summary>Games of the server matching a search, for "publish as a new version of".</summary>
-        public async Task<List<GameSummary>> SearchGamesAsync(string authorization, string search, CancellationToken cancellationToken)
+        public Task<List<GameSummary>> SearchGamesAsync(string authorization, string search, CancellationToken cancellationToken) =>
+            GamesAsync(authorization, $"api/games?search={Uri.EscapeDataString(search)}&limit=10", cancellationToken);
+
+        /// <summary>All the games of the server, by their metadata's title when they have one (not their file's), for the games playable in LAN.</summary>
+        public Task<List<GameSummary>> AllGamesAsync(string authorization, CancellationToken cancellationToken) =>
+            GamesAsync(authorization, "api/games?limit=-1", cancellationToken, metadataTitle: true);
+
+        private async Task<List<GameSummary>> GamesAsync(string authorization, string path, CancellationToken cancellationToken, bool metadataTitle = false)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"api/games?search={Uri.EscapeDataString(search)}&limit=10");
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
             request.Headers.TryAddWithoutValidation("Authorization", authorization);
             Forwarded answer = await SendAsync(request, cancellationToken);
             var games = new List<GameSummary>();
@@ -48,9 +55,11 @@ namespace GameVault.Uploader
                 if (game.TryGetProperty("deleted_at", out var deleted) && deleted.ValueKind != JsonValueKind.Null)
                     continue;
                 int? year = game.TryGetProperty("release_date", out var date) && date.ValueKind == JsonValueKind.String && DateTime.TryParse(date.GetString(), out DateTime d) ? d.Year : null;
+                string? named = metadataTitle && game.TryGetProperty("metadata", out var metadata) && metadata.ValueKind == JsonValueKind.Object
+                    && metadata.TryGetProperty("title", out var metaTitle) && metaTitle.ValueKind == JsonValueKind.String ? metaTitle.GetString() : null;
                 games.Add(new GameSummary(
                     game.GetProperty("id").GetInt32(),
-                    game.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
+                    !string.IsNullOrWhiteSpace(named) ? named : game.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
                     game.TryGetProperty("version", out var version) && version.ValueKind == JsonValueKind.String ? version.GetString() : null,
                     year));
             }

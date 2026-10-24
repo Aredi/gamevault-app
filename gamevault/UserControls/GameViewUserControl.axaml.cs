@@ -278,15 +278,16 @@ namespace gamevault.UserControls
         }
         private RoomItem? lanRoom;
 
-        /// <summary>Playable in LAN (marked by an administrator): its badge and button, and a room of friends playing it.</summary>
+        /// <summary>Playable in LAN (PCGamingWiki, or an administrator): its badge with its players, its button, and a room of friends playing it.</summary>
         private async Task ShowLanAsync()
         {
             if (ViewModel.Game is not Game game)
                 return;
             try
             {
-                bool lan = (await RoomsService.LanGamesAsync()).Contains(game.ID);
+                bool lan = (await RoomsService.LanGamesAsync()).TryGetValue(game.ID, out int? players);
                 uiLanChip.IsVisible = uiLanPlay.IsVisible = lan;
+                uiLanChipText.Text = players > 1 ? Loc.F("LAN · up to {0} players", players) : Loc.T("Playable in LAN");
                 uiLanAdmin.IsVisible = LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN;
                 uiLanAdmin.IsChecked = lan;
                 lanRoom = lan ? (await RoomsService.ListAsync()).FirstOrDefault(r => r.GameId == game.ID && !r.Member && r.Members.Count is > 0 && r.Members.Count < r.MaxMembers) : null;
