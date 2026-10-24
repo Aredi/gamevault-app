@@ -100,6 +100,8 @@ namespace gamevault.Models
         RetroCrtSystems,
         //Definition of the 3D consoles (profileconfig): "dolphin=2;eden=1"
         RetroResolution,
+        //3D consoles drawn in 16:9, by their core (profileconfig): "dolphin,pcsx2"
+        RetroWidescreen,
         //Language of the consoles that have one (profileconfig): RomM's name, "French"; "" for the client's
         RetroLanguage,
         //Language chosen for games (profileconfig): "559=French;12=Japanese"

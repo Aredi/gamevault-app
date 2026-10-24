@@ -24,7 +24,7 @@ namespace gamevault.UserControls.SettingsComponents
     {
         internal sealed record BiosRow(string Platform, string State);
 
-        /// <summary>A console of RetroArch and whether it has the CRT look.</summary>
+        /// <summary>A console of RetroArch and whether it has the CRT look; the consoles of a core and whether they are in 16:9.</summary>
         internal sealed class CrtRow(string slug, string name, bool isOn)
         {
             public string Slug { get; } = slug;
@@ -94,6 +94,9 @@ namespace gamevault.UserControls.SettingsComponents
             var resolutions = RetroArchManager.Resolutions;
             uiResolution.ItemsSource = RetroResolution.Scales.Select(r => new ResolutionRow(r.Key,
                 string.Join(", ", RetroSystems.All.Values.Where(s => s.Core == r.Key).Select(s => s.Name)), r.Value, resolutions.GetValueOrDefault(r.Key, 1))).ToList();
+            var widescreen = RetroArchManager.WidescreenCores;
+            uiWidescreen.ItemsSource = RetroResolution.WidescreenCores.Select(core => new CrtRow(core,
+                string.Join(", ", RetroSystems.All.Values.Where(s => s.Core == core).Select(s => s.Name)), widescreen.Contains(core))).ToList();
             RefreshControls();
             uiLanguageConsoles.Text = Loc.F("The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.",
                 string.Join(", ", RetroSystems.All.Values.Where(s => RetroLanguage.Cores.Contains(s.Core)).Select(s => s.Name)));
@@ -210,6 +213,18 @@ namespace gamevault.UserControls.SettingsComponents
             var resolutions = RetroArchManager.Resolutions;
             resolutions[row.Core] = row.Scales[box.SelectedIndex];
             RetroArchManager.Resolutions = resolutions;
+        }
+
+        private void Widescreen_Changed(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not CrtRow row || sender is not CheckBox box)
+                return;
+            var cores = RetroArchManager.WidescreenCores;
+            if (box.IsChecked == true)
+                cores.Add(row.Slug);
+            else
+                cores.Remove(row.Slug);
+            RetroArchManager.WidescreenCores = cores;
         }
 
         private void Crt_Changed(object? sender, RoutedEventArgs e)

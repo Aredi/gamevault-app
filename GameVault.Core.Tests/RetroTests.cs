@@ -172,6 +172,24 @@ namespace GameVault.Core.Tests
             Assert.Equal("azahar", layout.SaveFolderName("azahar"));
         }
 
+        /// <summary>LRPS2 is "ParaLLEl PS2" since October 2026 while RetroArch's info file still says LRPS2: the core's own name counts.</summary>
+        [Fact]
+        public void ARenamedCore_KeepsTheNameOfTheVersionDownloaded()
+        {
+            var layout = new RetroArchLayout(root, windows: true);
+            Directory.CreateDirectory(Path.Combine(layout.AppDirectory, "info"));
+            File.WriteAllText(Path.Combine(layout.AppDirectory, "info", "pcsx2_libretro.info"), "corename = \"LRPS2\"\n");
+            // Not downloaded yet: the newest
+            Assert.Equal("ParaLLEl PS2", layout.SaveFolderName("pcsx2"));
+            Directory.CreateDirectory(layout.CoresDirectory);
+            File.WriteAllBytes(layout.CoreFile("pcsx2"), System.Text.Encoding.ASCII.GetBytes("\0\0LRPS2\0Git\0"));
+            Assert.Equal("LRPS2", layout.SaveFolderName("pcsx2"));
+            File.WriteAllBytes(layout.CoreFile("pcsx2"), System.Text.Encoding.ASCII.GetBytes("\0\0ParaLLEl PS2\0Git\0"));
+            File.SetLastWriteTimeUtc(layout.CoreFile("pcsx2"), DateTime.UtcNow.AddMinutes(1));
+            Assert.Equal("ParaLLEl PS2", layout.SaveFolderName("pcsx2"));
+            Assert.Equal(Path.Combine(layout.AppDirectory, "config", "ParaLLEl PS2", "ParaLLEl PS2.opt"), layout.CoreOptionsFile("pcsx2"));
+        }
+
         [Fact]
         public void ASavesZip_DoesNotWriteOutsideTheSavesFolders()
         {

@@ -7,11 +7,22 @@ namespace GameVault.Core.Tests
         [Fact]
         public void TheCores_TakeTheirOwnValues_InTheirOptionsFile_TheOthersKept()
         {
-            Assert.Equal(("dolphin_efb_scale", "3"), RetroResolution.CoreOption("dolphin", 3));
-            Assert.Equal(("pcsx2_upscale_multiplier", "1x (Native)"), RetroResolution.CoreOption("pcsx2", 1));
-            Assert.Equal(("pcsx2_upscale_multiplier", "4x"), RetroResolution.CoreOption("pcsx2", 4));
-            Assert.Equal(("citra_resolution_factor", "2"), RetroResolution.CoreOption("azahar", 2));
-            Assert.Null(RetroResolution.CoreOption("mesen", 2));
+            Assert.Equal(new[] { ("dolphin_efb_scale", "3") }, RetroResolution.CoreOptions("dolphin", 3));
+            Assert.Equal(new[] { ("pcsx2_upscale_multiplier", "1x (Native)") }, RetroResolution.CoreOptions("pcsx2", 1));
+            Assert.Equal(new[] { ("pcsx2_upscale_multiplier", "4x") }, RetroResolution.CoreOptions("pcsx2", 4));
+            Assert.Equal(new[] { ("citra_resolution_factor", "2") }, RetroResolution.CoreOptions("azahar", 2));
+            Assert.Equal(new[] { ("swanstation_GPU_ResolutionScale", "5") }, RetroResolution.CoreOptions("swanstation", 5));
+            // The DS: its OpenGL renderer above 1x, its software one at 1x
+            Assert.Equal(new[] { ("melonds_render_mode", "opengl"), ("melonds_opengl_resolution", "3") }, RetroResolution.CoreOptions("melondsds", 3));
+            Assert.Equal(("melonds_render_mode", "software"), RetroResolution.CoreOptions("melondsds", 1)[0]);
+            Assert.Empty(RetroResolution.CoreOptions("mesen", 2));
+
+            // 16:9 and back: written both ways
+            Assert.Equal(new[] { ("swanstation_GPU_WidescreenHack", "true"), ("swanstation_Display_AspectRatio", "16:9") }, RetroResolution.WidescreenOptions("swanstation", true));
+            Assert.Equal(new[] { ("swanstation_GPU_WidescreenHack", "false"), ("swanstation_Display_AspectRatio", "4:3") }, RetroResolution.WidescreenOptions("swanstation", false));
+            Assert.Equal(new[] { ("pcsx2_widescreen_hint", "enabled (16:9)") }, RetroResolution.WidescreenOptions("pcsx2", true));
+            Assert.Equal(new[] { ("dolphin_widescreen_hack", "disabled") }, RetroResolution.WidescreenOptions("dolphin", false));
+            Assert.Empty(RetroResolution.WidescreenOptions("mesen", true));
 
             string existing = "dolphin_renderer = \"Hardware\"\r\ndolphin_efb_scale = \"1\"\r\n";
             Assert.Equal("dolphin_renderer = \"Hardware\"\ndolphin_efb_scale = \"2\"\n", RetroResolution.MergeOptions(existing, "dolphin_efb_scale", "2"));

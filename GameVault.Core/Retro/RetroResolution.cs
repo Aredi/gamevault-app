@@ -10,6 +10,8 @@ namespace GameVault.Core.Retro
         public static readonly IReadOnlyDictionary<string, int[]> Scales = new Dictionary<string, int[]>
         {
             ["dolphin"] = new[] { 1, 2, 3, 4 },
+            ["swanstation"] = new[] { 1, 2, 3, 4, 5 },
+            ["melondsds"] = new[] { 1, 2, 3, 4 },
             // LRPS2 offers 1x, 2x and 4x
             ["pcsx2"] = new[] { 1, 2, 4 },
             ["azahar"] = new[] { 1, 2, 3, 4 },
@@ -17,13 +19,29 @@ namespace GameVault.Core.Retro
             ["eden"] = new[] { 1, 2, 3 },
         };
 
-        /// <summary>A RetroArch core's option for it; none for the cores that draw at the console's definition only.</summary>
-        public static (string Key, string Value)? CoreOption(string core, int scale) => core switch
+        /// <summary>A RetroArch core's options for it; none for the cores that draw at the console's definition only.</summary>
+        public static (string Key, string Value)[] CoreOptions(string core, int scale) => core switch
         {
-            "dolphin" => ("dolphin_efb_scale", scale.ToString()),
-            "pcsx2" => ("pcsx2_upscale_multiplier", scale >= 4 ? "4x" : scale >= 2 ? "2x" : "1x (Native)"),
-            "azahar" => ("citra_resolution_factor", scale.ToString()),
-            _ => null,
+            "dolphin" => new[] { ("dolphin_efb_scale", scale.ToString()) },
+            "pcsx2" => new[] { ("pcsx2_upscale_multiplier", scale >= 4 ? "4x" : scale >= 2 ? "2x" : "1x (Native)") },
+            "azahar" => new[] { ("citra_resolution_factor", scale.ToString()) },
+            "swanstation" => new[] { ("swanstation_GPU_ResolutionScale", scale.ToString()) },
+            // Only its OpenGL renderer draws above the DS's definition
+            "melondsds" => new[] { ("melonds_render_mode", scale > 1 ? "opengl" : "software"), ("melonds_opengl_resolution", scale.ToString()) },
+            _ => Array.Empty<(string, string)>(),
+        };
+
+        /// <summary>The cores that can draw their consoles' 3D games in 16:9 (Settings > Retro).</summary>
+        public static readonly string[] WidescreenCores = { "dolphin", "swanstation", "pcsx2" };
+
+        /// <summary>A core's options for 16:9 or the console's own picture: written both ways, the options file stays.</summary>
+        public static (string Key, string Value)[] WidescreenOptions(string core, bool on) => core switch
+        {
+            "dolphin" => new[] { ("dolphin_widescreen_hack", on ? "enabled" : "disabled") },
+            "swanstation" => new[] { ("swanstation_GPU_WidescreenHack", on ? "true" : "false"), ("swanstation_Display_AspectRatio", on ? "16:9" : "4:3") },
+            // The game's own widescreen patch, when the core's database has one
+            "pcsx2" => new[] { ("pcsx2_widescreen_hint", on ? "enabled (16:9)" : "disabled") },
+            _ => Array.Empty<(string, string)>(),
         };
 
         /// <summary>A core's options file as RetroArch writes it (key = "value"), with this value, the others kept.</summary>

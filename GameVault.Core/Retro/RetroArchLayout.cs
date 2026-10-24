@@ -81,6 +81,8 @@ namespace GameVault.Core.Retro
         {
             if (LibraryNames.TryGetValue(core, out string? name))
                 return name;
+            if (NewNames.TryGetValue(core, out string? renamed) && HasName(CoreFile(core), renamed))
+                return renamed;
             string info = Path.Combine(DataDirectory, windows ? "info" : "cores", $"{core}_libretro.info");
             try
             {
@@ -90,6 +92,22 @@ namespace GameVault.Core.Retro
             }
             catch (IOException) { }
             return core;
+        }
+
+        /// <summary>
+        /// Cores that took a new name after RetroArch's info files (LRPS2 is "ParaLLEl PS2" since October 2026): RetroArch
+        /// sorts saves and options by the core's own name, so a core downloaded before keeps the old one.
+        /// </summary>
+        private static readonly IReadOnlyDictionary<string, string> NewNames = new Dictionary<string, string> { ["pcsx2"] = "ParaLLEl PS2" };
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(string, DateTime), bool> named = new();
+
+        /// <summary>The core gives this name (in its file); a core not downloaded yet will be the newest.</summary>
+        private static bool HasName(string coreFile, string name)
+        {
+            if (!File.Exists(coreFile))
+                return true;
+            return named.GetOrAdd((coreFile, File.GetLastWriteTimeUtc(coreFile)), _ =>
+                File.ReadAllBytes(coreFile).AsSpan().IndexOf(System.Text.Encoding.ASCII.GetBytes(name + "\0")) >= 0);
         }
 
         public string CoreFile(string core) => Path.Combine(CoresDirectory, windows ? $"{core}_libretro.dll" : $"{core}_libretro.so");

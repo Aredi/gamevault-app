@@ -84,6 +84,13 @@ namespace gamevault.Helper
             set => Preferences.Set(Models.AppConfigKey.RetroResolution, RetroResolution.Format(value), ProfileConfig);
         }
 
+        /// <summary>The cores whose consoles are drawn in 16:9 (Settings > Retro).</summary>
+        public static HashSet<string> WidescreenCores
+        {
+            get => Preferences.Get(Models.AppConfigKey.RetroWidescreen, ProfileConfig).Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            set => Preferences.Set(Models.AppConfigKey.RetroWidescreen, string.Join(",", value.Order()), ProfileConfig);
+        }
+
         /// <summary>The language of the consoles chosen in Settings > Retro (RomM's name, "French"), or "" for the client's.</summary>
         public static string LanguageSetting
         {
@@ -377,7 +384,10 @@ namespace gamevault.Helper
             {
                 SetPicture(system, rom);
                 if (Resolutions.TryGetValue(system.Core, out int scale))
-                    SetOption(system.Core, RetroResolution.CoreOption(system.Core, scale));
+                    foreach (var option in RetroResolution.CoreOptions(system.Core, scale))
+                        SetOption(system.Core, option);
+                foreach (var option in RetroResolution.WidescreenOptions(system.Core, WidescreenCores.Contains(system.Core)))
+                    SetOption(system.Core, option);
                 SetOption(system.Core, RetroLanguage.CoreOption(system.Core, language));
                 if (controller is int device)
                     SetController(system.Core, rom, device);
