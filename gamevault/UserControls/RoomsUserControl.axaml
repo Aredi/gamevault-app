@@ -9,13 +9,14 @@
         <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0">
             <DockPanel Margin="24,24,20,20">
                 <StackPanel DockPanel.Dock="Top" Spacing="14">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Classes="pageTitle" Text="{l:T 'LAN rooms'}" />
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                            <Border x:Name="uiAgentDot" Width="8" Height="8" CornerRadius="4" Background="{DynamicResource Brush.Muted}" />
+                    <!-- The status under the title: beside it, "ZeroTier non installé" runs over "Rooms LAN" in this column -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="pageTitle" Text="{l:T 'LAN rooms'}" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border x:Name="uiAgentDot" Width="8" Height="8" CornerRadius="4" Background="{DynamicResource Brush.Muted}" VerticalAlignment="Center" />
                             <TextBlock x:Name="uiAgentState" FontSize="12" Classes="muted" />
                         </StackPanel>
-                    </Grid>
+                    </StackPanel>
                     <Grid ColumnDefinitions="*,8,*">
                         <Button x:Name="uiCreate" Classes="action" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="Create_Click" Content="{l:T 'Create'}" />
                         <Button x:Name="uiJoin" Grid.Column="2" Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="Join_Click" Content="{l:T 'Join'}" />
