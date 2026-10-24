@@ -20,10 +20,21 @@ namespace gamevault.UserControls
 
         /// <summary>"snes", "psx", "wiiNunchuk"...: see <see cref="Plans"/>.</summary>
         public string? Kind { get => GetValue(KindProperty); set => SetValue(KindProperty, value); }
-        /// <summary>The RetroPad input of the button lit ("b", "lstick"...).</summary>
+        /// <summary>The RetroPad input waiting for its key ("b", "l_x_plus"...): its button lit.</summary>
         public string? Highlight { get => GetValue(HighlightProperty); set => SetValue(HighlightProperty, value); }
 
         static PadDiagram() => AffectsRender<PadDiagram>(KindProperty, HighlightProperty);
+
+        /// <summary>The button of the plan lit for <see cref="Highlight"/>: a stick for its directions, and for its press (L3, R3) when it has no button of its own.</summary>
+        internal string? Lit => Highlight switch
+        {
+            null => null,
+            _ when Highlight.StartsWith("l_") || Highlight == "l3" && !Shows("l3") => "lstick",
+            _ when Highlight.StartsWith("r_") || Highlight == "r3" && !Shows("r3") => "rstick",
+            _ => Highlight,
+        };
+
+        internal bool Shows(string? id) => Kind != null && Plans.TryGetValue(Kind, out Shape[]? shapes) && shapes.Any(s => s.Id == id);
 
         /// <summary>A button of the plan clicked: its RetroPad input ("b", "lstick"...).</summary>
         public event Action<string>? ButtonClicked;
@@ -165,7 +176,7 @@ namespace gamevault.UserControls
         };
 
         private static readonly IBrush BodyFill = new SolidColorBrush(Color.Parse("#26223a")), ButtonFill = new SolidColorBrush(Color.Parse("#3b3558")),
-            ScreenFill = new SolidColorBrush(Color.Parse("#0b0a12")), Lit = new SolidColorBrush(Color.Parse("#7b6cf6")),
+            ScreenFill = new SolidColorBrush(Color.Parse("#0b0a12")), LitFill = new SolidColorBrush(Color.Parse("#7b6cf6")),
             Label = Brushes.White, MutedLabel = new SolidColorBrush(Color.Parse("#c4bfd8"));
         private static readonly IPen Outline = new Pen(new SolidColorBrush(Color.Parse("#4a4466")), 2);
 
@@ -176,10 +187,11 @@ namespace gamevault.UserControls
             if (Kind == null || !Plans.TryGetValue(Kind, out Shape[]? shapes))
                 return;
             double scale = Scale;
+            string? lit = Lit;
             using var _ = context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation((Bounds.Width - 420 * scale) / 2, (Bounds.Height - 280 * scale) / 2));
             foreach (Shape shape in shapes)
             {
-                IBrush fill = shape.Id == null ? BodyFill : shape.Id == "screen" ? ScreenFill : shape.Id == Highlight ? Lit : ButtonFill;
+                IBrush fill = shape.Id == null ? BodyFill : shape.Id == "screen" ? ScreenFill : shape.Id == lit ? LitFill : ButtonFill;
                 IPen? pen = shape.Id == null ? Outline : null;
                 switch (shape.Form)
                 {

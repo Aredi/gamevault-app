@@ -128,7 +128,7 @@ namespace gamevault.UserControls
 
             uiDiagram.Kind = PadDiagram.KindOf(slug, Device);
             var current = buttons.FirstOrDefault(b => b.Bind == listening);
-            uiDiagram.Highlight = current == null ? null : current.Bind.StartsWith("l_") ? "lstick" : current.Bind.StartsWith("r_") ? "rstick" : current.Bind;
+            uiDiagram.Highlight = current?.Bind;
             uiGuidedButtons.IsVisible = guided != null;
             uiCancel.IsVisible = listening != null && guided == null;
             uiGuided.IsEnabled = guided == null;

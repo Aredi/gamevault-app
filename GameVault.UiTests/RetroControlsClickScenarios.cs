@@ -166,6 +166,26 @@ namespace GameVault.UiTests
             }
         }
 
+        /// <summary>Each button of each console and controller, waiting for its key, lights a button of its plan (L3, R3: their stick).</summary>
+        [AvaloniaFact]
+        public void EachButton_LightsItsPlan()
+        {
+            var diagram = new PadDiagram();
+            var missing = new List<string>();
+            foreach (var system in RetroControlsUserControl.Systems)
+                foreach (int? device in RetroControllers.BySystem.TryGetValue(system.Slug, out var controllers) ? controllers.Select(c => (int?)c.Device) : new int?[] { null })
+                {
+                    diagram.Kind = PadDiagram.KindOf(system.Slug, device);
+                    foreach (var button in RetroKeyboard.Of(system.Slug, device))
+                    {
+                        diagram.Highlight = button.Bind;
+                        if (!diagram.Shows(diagram.Lit))
+                            missing.Add($"{system.Slug}/{device}: {button.Bind}");
+                    }
+                }
+            Assert.Empty(missing);
+        }
+
         /// <summary>
         /// "Installer RetroArch" in the window, for real (downloads RetroArch in the test's own folder): installed, then its
         /// SDL2 reads the gamepads. Run with SANCTUARYVAULT_NETWORK_TESTS=1.
