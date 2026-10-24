@@ -12,10 +12,8 @@ namespace gamevault.UserControls
     /// The plan of a console's gamepad (Régler mes touches): simple shapes on a 420×280 board, scaled to the control, each
     /// button named by the RetroPad input it is (<see cref="GameVault.Core.Retro.RetroKeyboard.Of"/>), the highlighted one lit.
     /// </summary>
-    public class PadDiagram : Control, Avalonia.Rendering.ICustomHitTest
+    public class PadDiagram : Control
     {
-        /// <summary>Clicked anywhere on it (between the buttons too): <see cref="ButtonAt"/> finds the button.</summary>
-        public bool HitTest(Point point) => true;
 
         public static readonly StyledProperty<string?> KindProperty = AvaloniaProperty.Register<PadDiagram, string?>(nameof(Kind));
         public static readonly StyledProperty<string?> HighlightProperty = AvaloniaProperty.Register<PadDiagram, string?>(nameof(Highlight));
@@ -175,6 +173,8 @@ namespace gamevault.UserControls
 
         public override void Render(DrawingContext context)
         {
+            // Clicked anywhere on it (between the buttons too), never outside it: ButtonAt finds the button
+            context.FillRectangle(Brushes.Transparent, new Rect(Bounds.Size));
             if (Kind == null || !Plans.TryGetValue(Kind, out Shape[]? shapes))
                 return;
             double scale = Scale;
