@@ -61,6 +61,27 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<string, string> RemoteDevices { get; } = new();
         public ConcurrentDictionary<string, RemoteInstall> RemoteInstalls { get; } = new();
         public sealed record RemoteInstall(int GameId, string Title, string DeviceId, string Status = "pending", string? Message = null);
+        /// <summary>The SanctuaryVault service's LAN rooms (the signed-in player is user 1), and the games marked playable in LAN.</summary>
+        public ConcurrentDictionary<string, FakeRoom> Rooms { get; } = new();
+        public ConcurrentDictionary<int, bool> LanGames { get; } = new();
+        public sealed class FakeRoom
+        {
+            public string Id = "", Code = "", Name = "", OwnerName = "";
+            public int OwnerId;
+            public int? GameId;
+            public string? GameTitle;
+            public bool Public;
+            public List<(int UserId, string UserName, string NodeId, string Ip)> Members = new();
+        }
+        /// <summary>This PC's ZeroTier service under /zt (its token "zt-test", its address aaaaaaaa01): the networks it joined, the PCs it reaches.</summary>
+        public ConcurrentDictionary<string, bool> ZeroTierNetworks { get; } = new();
+        public ConcurrentDictionary<string, (int Latency, bool Direct)> ZeroTierPeers { get; } = new();
+        private object RoomJson(FakeRoom r) => new
+        {
+            id = r.Id, code = r.Code, name = r.Name, ownerId = r.OwnerId, ownerName = r.OwnerName, gameId = r.GameId, gameTitle = r.GameTitle,
+            @public = r.Public, maxMembers = 8, member = r.Members.Any(m => m.UserId == 1),
+            members = r.Members.Select(m => new { userId = m.UserId, userName = m.UserName, nodeId = m.NodeId, ip = m.Ip }).ToArray(),
+        };
         /// <summary>Game requests sent through the service (to the RomM-ComM bot): name of the game.</summary>
         public ConcurrentQueue<string> GameRequests { get; } = new();
         public static readonly byte[] RetroRom = Encoding.ASCII.GetBytes("NES\x1A-test-rom");
@@ -539,6 +560,77 @@ namespace GameVault.UiTests
                     };
                     response.StatusCode = 204;
                 }
+                else if (path == "/rooms" && request.HttpMethod == "GET")
+                    await Json(response, Rooms.Values.Where(r => r.Public || r.Members.Any(m => m.UserId == 1)).Select(RoomJson).ToArray());
+                else if (path == "/rooms" && request.HttpMethod == "POST")
+                {
+                    using JsonDocument roomAsked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    var room = new FakeRoom
+                    {
+                        Id = $"c4576f06160000{Rooms.Count + 10}", Code = "K7Q4MX", Name = roomAsked.RootElement.GetProperty("name").GetString()!, OwnerId = 1, OwnerName = "admin",
+                        GameId = roomAsked.RootElement.GetProperty("gameId").ValueKind == JsonValueKind.Number ? roomAsked.RootElement.GetProperty("gameId").GetInt32() : null,
+                        GameTitle = roomAsked.RootElement.GetProperty("gameTitle").GetString(), Public = roomAsked.RootElement.GetProperty("public").GetBoolean(),
+                    };
+                    room.Members.Add((1, "admin", roomAsked.RootElement.GetProperty("nodeId").GetString()!, "10.147.9.1"));
+                    Rooms[room.Id] = room;
+                    response.StatusCode = 201;
+                    await Json(response, RoomJson(room));
+                }
+                else if (path == "/rooms/join")
+                {
+                    using JsonDocument roomAsked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string? code = roomAsked.RootElement.GetProperty("code").GetString(), id = roomAsked.RootElement.GetProperty("roomId").GetString();
+                    FakeRoom? room = Rooms.Values.FirstOrDefault(r => code != null ? r.Code == code.Replace("-", "").ToUpperInvariant() : r.Id == id);
+                    if (room == null)
+                    {
+                        response.StatusCode = 404;
+                        await Json(response, new { error = "No room has this code." });
+                    }
+                    else
+                    {
+                        room.Members.RemoveAll(m => m.UserId == 1);
+                        room.Members.Add((1, "admin", roomAsked.RootElement.GetProperty("nodeId").GetString()!, $"10.147.9.{room.Members.Count + 1}"));
+                        await Json(response, RoomJson(room));
+                    }
+                }
+                else if ((match = Regex.Match(path, @"^/rooms/(\w+)/leave$")).Success && Rooms.TryGetValue(match.Groups[1].Value, out var left))
+                {
+                    left.Members.RemoveAll(m => m.UserId == 1);
+                    if (left.Members.Count == 0)
+                        Rooms.TryRemove(left.Id, out _);
+                    response.StatusCode = 204;
+                }
+                else if ((match = Regex.Match(path, @"^/rooms/(\w+)/game$")).Success && Rooms.TryGetValue(match.Groups[1].Value, out var changed))
+                {
+                    using JsonDocument roomAsked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    changed.GameId = roomAsked.RootElement.GetProperty("gameId").GetInt32();
+                    changed.GameTitle = roomAsked.RootElement.GetProperty("gameTitle").GetString();
+                    response.StatusCode = 204;
+                }
+                else if (path == "/lan-games" && request.HttpMethod == "GET")
+                    await Json(response, LanGames.Where(g => g.Value).Select(g => g.Key).ToArray());
+                else if ((match = Regex.Match(path, @"^/lan-games/(\d+)$")).Success)
+                {
+                    using JsonDocument roomAsked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    LanGames[int.Parse(match.Groups[1].Value)] = roomAsked.RootElement.GetProperty("lan").GetBoolean();
+                    response.StatusCode = 204;
+                }
+                // This PC's ZeroTier service
+                else if (path.StartsWith("/zt/") && request.Headers["X-ZT1-Auth"] != "zt-test")
+                    response.StatusCode = 401;
+                else if (path == "/zt/status")
+                    await Json(response, new { address = "aaaaaaaa01", online = true });
+                else if (path == "/zt/peer")
+                    await Json(response, ZeroTierPeers.Select(p => new { address = p.Key, latency = p.Value.Latency, paths = p.Value.Direct ? new[] { new { active = true } } : Array.Empty<object>() }).ToArray());
+                else if (path == "/zt/network")
+                    await Json(response, ZeroTierNetworks.Keys.Select(id => new { id, status = "OK" }).ToArray());
+                else if ((match = Regex.Match(path, @"^/zt/network/(\w+)$")).Success && request.HttpMethod == "POST")
+                {
+                    ZeroTierNetworks[match.Groups[1].Value] = true;
+                    await Json(response, new { id = match.Groups[1].Value });
+                }
+                else if ((match = Regex.Match(path, @"^/zt/network/(\w+)$")).Success && request.HttpMethod == "DELETE")
+                    response.StatusCode = ZeroTierNetworks.TryRemove(match.Groups[1].Value, out _) ? 200 : 404;
                 else if (path == "/api/status")
                     await Json(response, new { status = "HEALTHY", version = "17.0.1", registration_enabled = true, required_registration_fields = Array.Empty<string>(), available_authentication_methods = new[] { "basic" } });
                 else if ((match = Regex.Match(path, @"^/api/games/(\d+)/download$")).Success)

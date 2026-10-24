@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.ZeroTierSetupPopup"
+             Width="640" Focusable="True">
+    <!-- Once per PC: ZeroTier installed, then SanctuaryVault allowed to use it -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="30,24,30,26" Spacing="18">
+            <StackPanel Spacing="8">
+                <TextBlock Classes="sectionTitle" FontSize="22" Text="{l:T 'One step before playing in LAN'}" />
+                <TextBlock FontSize="14" TextWrapping="Wrap" Text="{l:T 'The rooms use ZeroTier, a virtual local network (like Hamachi). It is set up once, with the rights of an administrator.'}" />
+            </StackPanel>
+
+            <StackPanel Spacing="10">
+                <Border CornerRadius="12" Padding="16,12" Background="{DynamicResource Brush.Surface}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border x:Name="uiInstallDot" Width="26" Height="26" CornerRadius="13" BorderThickness="2" BorderBrush="{DynamicResource Brush.Line}">
+                            <TextBlock x:Name="uiInstallMark" Text="1" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4">
+                            <TextBlock FontWeight="SemiBold" Text="{l:T 'Install ZeroTier'}" />
+                            <TextBlock x:Name="uiInstallText" Classes="muted" FontSize="13" TextWrapping="Wrap" />
+                            <SelectableTextBlock x:Name="uiLinuxCommand" FontFamily="monospace" FontSize="13" IsVisible="False" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Border CornerRadius="12" Padding="16,12" Background="{DynamicResource Brush.Surface}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border x:Name="uiAccessDot" Width="26" Height="26" CornerRadius="13" BorderThickness="2" BorderBrush="{DynamicResource Brush.Line}">
+                            <TextBlock x:Name="uiAccessMark" Text="2" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4">
+                            <TextBlock FontWeight="SemiBold" Text="{l:T 'Let SanctuaryVault use ZeroTier'}" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{l:T 'ZeroTier keeps its key for the administrators: a copy is made for you, once.'}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Border x:Name="uiPriority" CornerRadius="12" Padding="16,12" Background="{DynamicResource Brush.Surface}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border Width="26" Height="26" CornerRadius="13" BorderThickness="2" BorderBrush="{DynamicResource Brush.Line}">
+                            <TextBlock Text="3" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4">
+                            <TextBlock FontWeight="SemiBold" Text="{l:T 'Give the priority to the network of the rooms'}" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{l:T 'Done when you join a room, so that the games announce their parties at the right place.'}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <TextBlock x:Name="uiFirewall" Classes="muted" FontSize="13" TextWrapping="Wrap"
+                       Text="{l:T 'The first time each game starts, the Windows firewall also asks to allow it on private networks.'}" />
+            <TextBlock x:Name="uiStatus" FontSize="13" TextWrapping="Wrap" />
+
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                <Button Classes="ghost" Click="Later_Click" Content="{l:T 'Later'}" />
+                <Button x:Name="uiNext" Classes="action" Click="Next_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -189,6 +189,10 @@
                                         </Border.IsVisible>
                                         <TextBlock Text="{l:T 'Early Access'}" Foreground="{DynamicResource Brush.Special}" />
                                     </Border>
+                                    <!-- Marked by an administrator: a LAN room can be made for it -->
+                                    <Border x:Name="uiLanChip" Classes="chip" Background="{DynamicResource Brush.Glass}" IsVisible="False">
+                                        <TextBlock Text="{l:T 'Playable in LAN'}" Foreground="{DynamicResource Brush.Success}" />
+                                    </Border>
                                     <ItemsControl ItemsSource="{Binding Game.Metadata.Genres}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -254,6 +258,12 @@
                                         <TextBlock VerticalAlignment="Center" Opacity="0.7" FontWeight="Medium" Text="{Binding Game.Size, Converter={StaticResource sizeConv}}" />
                                     </StackPanel>
                                 </Button>
+                                <Button x:Name="uiLanPlay" Classes="ghost" Height="48" Margin="0,0,10,10" Click="LanPlay_Click" IsVisible="False" ToolTip.Tip="{l:T 'Create or join a LAN room for this game'}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Path Data="M3 15h7v5H3zM14 15h7v5h-7zM8.5 4h7v5h-7zM12 9v3M6.5 15v-3h11v3" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="2" Fill="Transparent" Width="18" Height="18" Stretch="Uniform" />
+                                        <TextBlock VerticalAlignment="Center" Text="{l:T 'Play in LAN'}" />
+                                    </StackPanel>
+                                </Button>
                                 <Border Background="{DynamicResource Brush.Glass}" CornerRadius="11" Width="48" Height="48" Margin="0,0,8,10">
                                     <ToggleButton Classes="icon bookmark" Width="48" Height="48" IsChecked="{Binding Game.BookmarkedUsers, Converter={StaticResource containsCurrentUserConv}, Mode=OneWay}"
                                                   Click="Bookmark_Click" ToolTip.Tip="{l:T 'Bookmark'}" />
@@ -279,6 +289,15 @@
                                     <TextBlock Text="{l:T 'Move the game to another disk or folder'}" />
                                 </Button>
                             </WrapPanel>
+                            <!-- Friends in a LAN room for this game -->
+                            <Border x:Name="uiLanRoom" IsVisible="False" CornerRadius="12" Padding="14,6" Background="{DynamicResource Brush.Glass}" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource Brush.Success}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="uiLanRoomText" VerticalAlignment="Center" FontSize="14" TextWrapping="Wrap" MaxWidth="520" />
+                                    <Button Classes="ghost small" Click="LanRoomJoin_Click" Content="{l:T 'Join'}" />
+                                </StackPanel>
+                            </Border>
+                            <CheckBox x:Name="uiLanAdmin" IsVisible="False" Click="LanAdmin_Click" Content="{l:T 'Playable in LAN (administrator)'}" />
                         </StackPanel>
                     </Grid>
 

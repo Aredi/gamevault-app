@@ -11,6 +11,7 @@ builder.Services.AddSingleton<SaveStore>();
 builder.Services.AddSingleton<RemoteInstallStore>();
 builder.Services.AddSingleton<RetroSaveStore>();
 builder.Services.AddSingleton<RetroPlayerStore>();
+builder.Services.AddSingleton<RoomStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
@@ -27,6 +28,12 @@ builder.Services.AddHttpClient<GameRequestsProxy>(client =>
     if (!string.IsNullOrEmpty(options.RommCommUrl))
         client.BaseAddress = new Uri(options.RommCommUrl.TrimEnd('/') + "/");
     client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddHttpClient<ZeroTierController>(client =>
+{
+    if (!string.IsNullOrEmpty(options.ZeroTierControllerUrl))
+        client.BaseAddress = new Uri(options.ZeroTierControllerUrl.TrimEnd('/') + "/");
+    client.Timeout = TimeSpan.FromSeconds(20);
 });
 builder.Services.AddHttpClient<RommProxy>(client =>
 {
@@ -62,6 +69,7 @@ _ = app.Services.GetRequiredService<SaveStore>();
 _ = app.Services.GetRequiredService<RemoteInstallStore>();
 _ = app.Services.GetRequiredService<RetroSaveStore>();
 _ = app.Services.GetRequiredService<RetroPlayerStore>();
+_ = app.Services.GetRequiredService<RoomStore>();
 app.Run();
 
 public partial class Program { }

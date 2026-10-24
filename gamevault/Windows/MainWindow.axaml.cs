@@ -123,6 +123,9 @@ namespace gamevault.Windows
                 case MainControl.Activity:
                     MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Activity;
                     break;
+                case MainControl.Rooms:
+                    MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Rooms;
+                    break;
                 case MainControl.AdminConsole:
                     MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.AdminConsole;
                     break;

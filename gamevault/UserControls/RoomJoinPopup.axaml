@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.RoomJoinPopup"
+             Width="860" Focusable="True">
+    <!-- Create a room, or join one by its code or from the open ones -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="28,22,28,26" Spacing="18">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="sectionTitle" FontSize="22" Text="{l:T 'Play in LAN with friends'}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,20,*">
+                <Border CornerRadius="14" Padding="20" Background="{DynamicResource Brush.Surface}">
+                    <DockPanel>
+                        <Button x:Name="uiCreate" DockPanel.Dock="Bottom" Classes="action" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,16,0,0"
+                                Click="Create_Click" Content="{l:T 'Create and invite'}" />
+                        <StackPanel Spacing="10">
+                            <TextBlock FontWeight="Bold" FontSize="17" Text="{l:T 'Create a room'}" />
+                            <TextBlock FontSize="13" Text="{l:T 'Name of the room'}" />
+                            <TextBox x:Name="uiName" MaxLength="60" />
+                            <TextBlock FontSize="13" Text="{l:T 'Game (optional)'}" />
+                            <ComboBox x:Name="uiGame" HorizontalAlignment="Stretch" PlaceholderText="{l:T 'No game'}" DisplayMemberBinding="{Binding Title}" />
+                            <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{l:T 'Only the games marked Playable in LAN are offered.'}" />
+                            <CheckBox x:Name="uiPublic" IsChecked="True" Content="{l:T 'Seen by every player of the server'}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Column="2" CornerRadius="14" Padding="20" Background="{DynamicResource Brush.Surface}">
+                    <DockPanel>
+                        <Button x:Name="uiJoin" DockPanel.Dock="Bottom" Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,16,0,0"
+                                Click="Join_Click" Content="{l:T 'Join'}" />
+                        <StackPanel Spacing="10">
+                            <TextBlock FontWeight="Bold" FontSize="17" Text="{l:T 'Join a room'}" />
+                            <TextBlock FontSize="13" Text="{l:T 'Invitation code'}" />
+                            <TextBox x:Name="uiCode" MaxLength="8" FontSize="20" LetterSpacing="2" Watermark="K7Q-4MX" KeyDown="Code_KeyDown" />
+                            <TextBlock x:Name="uiOpenTitle" Classes="muted" FontSize="12" Text="{l:T 'Or choose an open room of your server:'}" IsVisible="False" />
+                            <ItemsControl x:Name="uiOpen">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Classes="ghost" HorizontalAlignment="Stretch" Margin="0,0,0,6" Click="Open_Click">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="1" Classes="muted" FontSize="12" Margin="10,0,0,0" Text="{Binding Seats}" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+            </Grid>
+            <TextBlock x:Name="uiStatus" TextWrapping="Wrap" FontSize="13" />
+        </StackPanel>
+    </Border>
+</UserControl>

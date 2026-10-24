@@ -47,11 +47,35 @@ namespace GameVault.Uploader.Tests
             {
                 "admin" => new { id = 1, username = "admin", role = 3 },
                 "user" => new { id = 2, username = "player", role = 1 },
+                // More players: "p10" is the player 10
+                _ when token.StartsWith('p') && int.TryParse(token[1..], out int n) => new { id = n, username = token, role = 1 },
                 _ => null,
             };
             return Task.FromResult(user == null
                 ? new HttpResponseMessage(HttpStatusCode.Unauthorized)
                 : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(user) });
+        }
+    }
+
+    /// <summary>The ZeroTier controller's API: keeps the calls it receives (with the "zt-secret" token), makes networks.</summary>
+    internal sealed class FakeZeroTier : HttpMessageHandler
+    {
+        public readonly List<string> Calls = new();
+        private int networks;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (!request.Headers.TryGetValues("X-ZT1-Auth", out var token) || token.Single() != "zt-secret")
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            string path = request.RequestUri!.AbsolutePath;
+            string call = $"{request.Method} {path} {(request.Content == null ? "" : await request.Content.ReadAsStringAsync(cancellationToken))}".TrimEnd();
+            lock (Calls)
+                Calls.Add(call);
+            if (path == "/status")
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { address = "c4576f0616" }) };
+            if (request.Method == HttpMethod.Post && path == "/controller/network/c4576f0616______")
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = $"c4576f061600000{Interlocked.Increment(ref networks)}" }) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
         }
     }
 
@@ -131,6 +155,8 @@ namespace GameVault.Uploader.Tests
         private readonly string remote = Path.Combine(Path.GetTempPath(), $"gv-remote-{Guid.NewGuid():N}");
         private readonly string retroSaves = Path.Combine(Path.GetTempPath(), $"gv-retro-saves-{Guid.NewGuid():N}");
         private readonly string retroPlayers = Path.Combine(Path.GetTempPath(), $"gv-retro-players-{Guid.NewGuid():N}");
+        private readonly string rooms = Path.Combine(Path.GetTempPath(), $"gv-rooms-{Guid.NewGuid():N}");
+        private readonly FakeZeroTier zeroTier = new();
         private readonly FakeGameVault gameVault = new();
         private readonly FakeRequestsBot bot = new();
         private readonly FakeRomm romm = new();
@@ -165,12 +191,16 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("ROMM_USERNAME", "viewer");
                 host.UseSetting("ROMM_PASSWORD", "pass");
                 host.UseSetting("ROMM_PUBLIC_URL", "https://romm.example.com/");
+                host.UseSetting("ZEROTIER_CONTROLLER_URL", "http://zerotier.test:9993");
+                host.UseSetting("ZEROTIER_API_SECRET", "zt-secret");
+                host.UseSetting("ROOMS_DIRECTORY", rooms);
                 host.ConfigureServices(services =>
                 {
                     services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
                     services.AddHttpClient<GameVaultProxy>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
                     services.AddHttpClient<GameRequestsProxy>().ConfigurePrimaryHttpMessageHandler(() => bot);
                     services.AddHttpClient<RommProxy>().ConfigurePrimaryHttpMessageHandler(() => romm);
+                    services.AddHttpClient<ZeroTierController>().ConfigurePrimaryHttpMessageHandler(() => zeroTier);
                 });
             });
         }
@@ -184,6 +214,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(remote, true); } catch { }
             try { Directory.Delete(retroSaves, true); } catch { }
             try { Directory.Delete(retroPlayers, true); } catch { }
+            try { Directory.Delete(rooms, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -631,6 +662,74 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(2017, list[1].GetProperty("year").GetInt32());
             Assert.Equal("[]", await Client("admin").GetStringAsync("/games?search=e"));
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/games?search=escape")).StatusCode);
+        }
+
+        /// <summary>
+        /// A LAN room: made with its ZeroTier network (broadcast on) and its owner's PC let in; a private room is joined
+        /// by its code only; the 8th player fills it; leaving shuts the PC out, passes the room on, then deletes the network.
+        /// </summary>
+        [Fact]
+        public async Task ARoom_LetsItsPlayersPcsInItsNetwork_ThenGoesWithTheLast()
+        {
+            HttpClient owner = Client("user"), other = Client("admin");
+            Assert.Equal(HttpStatusCode.BadRequest, (await owner.PostAsJsonAsync("/rooms", new { name = "Soirée", nodeId = "not-a-node" })).StatusCode);
+            var made = await owner.PostAsJsonAsync("/rooms", new { name = "Soirée AoE", gameId = 6, gameTitle = "Age of Empires II", @public = false, nodeId = "aaaaaaaa01" });
+            Assert.Equal(HttpStatusCode.Created, made.StatusCode);
+            string id, code;
+            using (JsonDocument room = JsonDocument.Parse(await made.Content.ReadAsStringAsync()))
+            {
+                id = room.RootElement.GetProperty("id").GetString()!;
+                code = room.RootElement.GetProperty("code").GetString()!;
+                Assert.Equal("10.147.1.1", Assert.Single(room.RootElement.GetProperty("members").EnumerateArray()).GetProperty("ip").GetString());
+            }
+            Assert.Equal("c4576f0616000001", id);
+            Assert.Contains(zeroTier.Calls, c => c.StartsWith("POST /controller/network/c4576f0616______") && c.Contains("\"enableBroadcast\":true") && c.Contains("10.147.1.0/24"));
+            Assert.Contains("POST /controller/network/c4576f0616000001/member/aaaaaaaa01 {\"authorized\":true,\"ipAssignments\":[\"10.147.1.1\"]}", zeroTier.Calls);
+
+            // Private: the others do not see it, nor join it by its id; by its code (any case, any dash) they do
+            Assert.Equal("[]", await other.GetStringAsync("/rooms"));
+            Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsJsonAsync("/rooms/join", new { roomId = id, nodeId = "bbbbbbbb02" })).StatusCode);
+            var joined = await other.PostAsJsonAsync("/rooms/join", new { code = code[..3].ToLowerInvariant() + "-" + code[3..], nodeId = "bbbbbbbb02" });
+            Assert.Equal(HttpStatusCode.OK, joined.StatusCode);
+            Assert.Contains("POST /controller/network/c4576f0616000001/member/bbbbbbbb02 {\"authorized\":true,\"ipAssignments\":[\"10.147.1.2\"]}", zeroTier.Calls);
+            using (JsonDocument mine = JsonDocument.Parse(await other.GetStringAsync("/rooms")))
+                Assert.Equal(2, Assert.Single(mine.RootElement.EnumerateArray()).GetProperty("members").GetArrayLength());
+
+            // Full at 8
+            for (int n = 10; n < 16; n++)
+                Assert.Equal(HttpStatusCode.OK, (await Client($"p{n}").PostAsJsonAsync("/rooms/join", new { code, nodeId = $"cccccccc{n}" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await Client("p16").PostAsJsonAsync("/rooms/join", new { code, nodeId = "cccccccc16" })).StatusCode);
+
+            // Only the owner chooses the game; the owner leaves: shut out, the room passes on
+            Assert.Equal(HttpStatusCode.Forbidden, (await other.PutAsJsonAsync($"/rooms/{id}/game", new { gameId = 5, gameTitle = "Duckov" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await owner.PostAsync($"/rooms/{id}/leave", null)).StatusCode);
+            Assert.Contains("POST /controller/network/c4576f0616000001/member/aaaaaaaa01 {\"authorized\":false}", zeroTier.Calls);
+            Assert.Contains("DELETE /controller/network/c4576f0616000001/member/aaaaaaaa01", zeroTier.Calls);
+            Assert.Equal("[]", await owner.GetStringAsync("/rooms"));
+            Assert.Equal(HttpStatusCode.NoContent, (await other.PutAsJsonAsync($"/rooms/{id}/game", new { gameId = 5, gameTitle = "Duckov" })).StatusCode);
+
+            // The last one leaves: the network goes
+            for (int n = 10; n < 16; n++)
+                Assert.Equal(HttpStatusCode.NoContent, (await Client($"p{n}").PostAsync($"/rooms/{id}/leave", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await other.PostAsync($"/rooms/{id}/leave", null)).StatusCode);
+            Assert.Contains("DELETE /controller/network/c4576f0616000001", zeroTier.Calls);
+            Assert.Equal("[]", await other.GetStringAsync("/rooms"));
+
+            // A public room: seen and joined by its id
+            using (JsonDocument room = JsonDocument.Parse(await (await owner.PostAsJsonAsync("/rooms", new { name = "Ouverte", @public = true, nodeId = "aaaaaaaa01" })).Content.ReadAsStringAsync()))
+                id = room.RootElement.GetProperty("id").GetString()!;
+            Assert.Equal(HttpStatusCode.OK, (await other.PostAsJsonAsync("/rooms/join", new { roomId = id, nodeId = "bbbbbbbb02" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/rooms")).StatusCode);
+        }
+
+        [Fact]
+        public async Task OnlyAnAdministrator_MarksAGamePlayableInLan()
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, (await Client("user").PutAsJsonAsync("/lan-games/6", new { lan = true })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PutAsJsonAsync("/lan-games/6", new { lan = true })).StatusCode);
+            Assert.Equal("[6]", await Client("user").GetStringAsync("/lan-games"));
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PutAsJsonAsync("/lan-games/6", new { lan = false })).StatusCode);
+            Assert.Equal("[]", await Client("user").GetStringAsync("/lan-games"));
         }
     }
 }

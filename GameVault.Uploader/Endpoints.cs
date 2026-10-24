@@ -20,6 +20,10 @@ namespace GameVault.Uploader
     /// GET  /me, GET /games?search=, /games/{id}  the signed-in user, the games already on the server (web page)
     /// GET  /retro/series                         the series of games (RomM's virtual collections)
     /// PUT  /retro/players/me/achievements/{platform}/{romId}, GET /retro/activity/achievements   a game's achievements of the player / the last ones of all
+    /// GET  /rooms, POST /rooms                   the LAN rooms the player sees (public, or theirs) / makes one (its ZeroTier network)
+    /// POST /rooms/join, POST /rooms/{id}/leave   lets the player's PC in a room (by its code, or a public room) / out of it
+    /// PUT  /rooms/{id}/game                      the room's game (its owner)
+    /// GET  /lan-games, PUT /lan-games/{gameId}   the games playable in LAN / an administrator marks one
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
@@ -29,7 +33,7 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -182,6 +186,65 @@ namespace GameVault.Uploader
             app.MapGet("/remote/devices", (HttpRequest request, AdminCheck users, RemoteInstallStore remote, CancellationToken ct) =>
                 AsPlayerAsync(request, users, remote, ct, id =>
                     Results.Json(remote.Devices(id).Select(d => new { id = d.Id, name = d.Name, lastSeen = d.LastSeen, online = d.Online }))));
+
+            // LAN rooms: one ZeroTier network each, the players' PCs let in by the service
+            app.MapGet("/rooms", (HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player => Results.Json((await rooms.VisibleAsync(player.Id)).Select(r => RoomJson(r, player.Id)))));
+
+            app.MapPost("/rooms", (RoomRequest asked, HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player =>
+                {
+                    string name = (asked.Name ?? "").Trim();
+                    if (name.Length is 0 or > 60)
+                        return Results.Json(new { error = "Give the room a name." }, statusCode: StatusCodes.Status400BadRequest);
+                    if (!RoomStore.IsValidNodeId(asked.NodeId))
+                        return Results.Json(new { error = "This PC's ZeroTier address is missing." }, statusCode: StatusCodes.Status400BadRequest);
+                    var (outcome, room) = await rooms.CreateAsync(zeroTier, player.Id, player.User, asked.NodeId!, name, asked.GameId > 0 ? asked.GameId : null, GameTitle(asked.GameTitle), asked.Public, ct);
+                    return outcome == RoomStore.Outcome.Done
+                        ? Results.Json(RoomJson(room!, player.Id), statusCode: StatusCodes.Status201Created)
+                        : Results.Json(new { error = $"At most {RoomStore.MaxRoomsPerOwner} rooms per player: leave one first." }, statusCode: StatusCodes.Status409Conflict);
+                }));
+
+            app.MapPost("/rooms/join", (RoomJoin asked, HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player =>
+                {
+                    if (!RoomStore.IsValidNodeId(asked.NodeId))
+                        return Results.Json(new { error = "This PC's ZeroTier address is missing." }, statusCode: StatusCodes.Status400BadRequest);
+                    var (outcome, room) = await rooms.JoinAsync(zeroTier, player.Id, player.User, asked.NodeId!, asked.RoomId, asked.Code, ct);
+                    return outcome switch
+                    {
+                        RoomStore.Outcome.Done => Results.Json(RoomJson(room!, player.Id)),
+                        RoomStore.Outcome.Full => Results.Json(new { error = $"This room is full ({RoomStore.MaxMembers} players)." }, statusCode: StatusCodes.Status409Conflict),
+                        _ => Results.Json(new { error = "No room has this code." }, statusCode: StatusCodes.Status404NotFound),
+                    };
+                }));
+
+            app.MapPost("/rooms/{roomId}/leave", (string roomId, HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player =>
+                    await rooms.LeaveAsync(zeroTier, player.Id, roomId, ct) == RoomStore.Outcome.Done ? Results.NoContent() : Results.NotFound()));
+
+            app.MapPut("/rooms/{roomId}/game", (string roomId, RoomGame asked, HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player =>
+                    await rooms.SetGameAsync(player.Id, roomId, asked.GameId > 0 ? asked.GameId : null, GameTitle(asked.GameTitle)) switch
+                    {
+                        RoomStore.Outcome.Done => Results.NoContent(),
+                        RoomStore.Outcome.NotOwner => Results.Json(new { error = "Only the room's owner chooses its game." }, statusCode: StatusCodes.Status403Forbidden),
+                        _ => Results.NotFound(),
+                    }));
+
+            app.MapGet("/lan-games", (HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async _ => Results.Json(await rooms.LanGamesAsync())));
+
+            app.MapPut("/lan-games/{gameId:int}", async (int gameId, LanGame asked, HttpContext context, AdminCheck admins, RoomStore rooms, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(context.Request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!rooms.Enabled)
+                    return Results.Json(new { error = "LAN rooms are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                await rooms.SetLanGameAsync(gameId, asked.Lan);
+                return Results.NoContent();
+            });
 
             // The administrators see when each player last had the client open
             app.MapGet("/users/last-seen", async (HttpRequest request, AdminCheck admins, RemoteInstallStore remote, CancellationToken ct) =>
@@ -389,6 +452,37 @@ namespace GameVault.Uploader
             return action(check.Id);
         }
 
+        private static async Task<IResult> AsRoomPlayerAsync(HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct, Func<AdminCheck.Result, Task<IResult>> action)
+        {
+            var check = await users.CheckUserAsync(context.Request, ct);
+            if (!check.Allowed)
+                return Results.Json(new { error = check.Message }, statusCode: check.Status);
+            if (!rooms.Enabled || !zeroTier.Enabled)
+                return Results.Json(new { error = "LAN rooms are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            try
+            {
+                return await action(check);
+            }
+            catch (ZeroTierController.ControllerException ex)
+            {
+                return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status502BadGateway);
+            }
+        }
+
+        /// <summary>A room as a player sees it: its code only for its members (a private room is joined by its code).</summary>
+        private static object RoomJson(RoomStore.Room room, int userId)
+        {
+            bool member = room.Members.Any(m => m.UserId == userId);
+            return new
+            {
+                id = room.Id, code = member || room.Public ? room.Code : null, name = room.Name, ownerId = room.OwnerId, ownerName = room.OwnerName,
+                gameId = room.GameId, gameTitle = room.GameTitle, @public = room.Public, maxMembers = RoomStore.MaxMembers, member,
+                members = room.Members.Select(m => new { userId = m.UserId, userName = m.UserName, nodeId = m.NodeId, ip = m.Ip }),
+            };
+        }
+
+        private static string? GameTitle(string? title) => title?.Trim() is { Length: > 0 } t ? t[..Math.Min(t.Length, 200)] : null;
+
         private static async Task<IResult> AsRetroPlayerAsync(HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct, Func<AdminCheck.Result, IResult> action)
         {
             var check = await users.CheckUserAsync(request, ct);
@@ -449,4 +543,8 @@ namespace GameVault.Uploader
     public sealed record RemoteInstallReport(string? Status, string? Message);
     public sealed record RemoteDevice(string? Id, string? Name);
     public sealed record GameRequest(string? Game, string? Details);
+    public sealed record RoomRequest(string? Name, int? GameId, string? GameTitle, bool Public, string? NodeId);
+    public sealed record RoomJoin(string? RoomId, string? Code, string? NodeId);
+    public sealed record RoomGame(int? GameId, string? GameTitle);
+    public sealed record LanGame(bool Lan);
 }

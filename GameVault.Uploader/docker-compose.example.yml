@@ -17,6 +17,9 @@ services:
       # ROMM_URL: http://romm:8080
       # ROMM_USERNAME: sanctuaryvault
       # ROMM_PASSWORD: change-me
+      # Optional: LAN rooms (the PC games made for a LAN, played over the Internet) with the ZeroTier controller below
+      # ZEROTIER_CONTROLLER_URL: http://zerotier-controller:9993
+      # ZEROTIER_API_SECRET: change-me-to-a-long-random-string
     volumes:
       # The same folder the GameVault server has as /files
       - /path/to/your/games:/files
@@ -28,3 +31,18 @@ services:
       - "7477:8080"
     # Behind a reverse proxy (HTTPS), turn off request buffering for this host:
     #   proxy_request_buffering off;  client_max_body_size 80m;
+
+  # Optional: the ZeroTier network controller of the LAN rooms. Version 1.14.2: its license (BSL 1.1) became Apache 2.0
+  # on 2026-01-01; the controller of the later versions is not free for a service like this one.
+  # zerotier-controller:
+  #   image: zerotier/zerotier:1.14.2
+  #   restart: unless-stopped
+  #   environment:
+  #     ZEROTIER_API_SECRET: change-me-to-a-long-random-string
+  #   volumes:
+  #     # Its identity and networks; put a local.conf there so that the uploader may use its API:
+  #     #   {"settings": {"allowManagementFrom": ["172.16.0.0/12"]}}
+  #     - ./zerotier:/var/lib/zerotier-one
+  #   ports:
+  #     # The players' PCs reach it straight (otherwise through ZeroTier's relays)
+  #     - "9993:9993/udp"

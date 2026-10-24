@@ -11,7 +11,8 @@ ENV ASPNETCORE_HTTP_PORTS=8080 \
     FILES_DIRECTORY=/files \
     PROFILES_DIRECTORY=/data/profiles \
     SAVEFILES_DIRECTORY=/savefiles \
-    REMOTE_INSTALLS_DIRECTORY=/data/remote
+    REMOTE_INSTALLS_DIRECTORY=/data/remote \
+    ROOMS_DIRECTORY=/data/rooms
 EXPOSE 8080
 # Runs as the image's unprivileged user unless the compose file sets "user:" to the owner of the games folder
 USER $APP_UID

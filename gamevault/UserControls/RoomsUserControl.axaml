@@ -1,0 +1,130 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.RoomsUserControl"
+             Focusable="True">
+    <!-- LAN rooms: the players of a room are on the same ZeroTier network, the LAN games find each other's parties -->
+    <Grid ColumnDefinitions="330,*">
+        <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="24,24,20,20">
+                <StackPanel DockPanel.Dock="Top" Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="pageTitle" Text="{l:T 'LAN rooms'}" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <Border x:Name="uiAgentDot" Width="8" Height="8" CornerRadius="4" Background="{DynamicResource Brush.Muted}" />
+                            <TextBlock x:Name="uiAgentState" FontSize="12" Classes="muted" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,8,*">
+                        <Button x:Name="uiCreate" Classes="action" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="Create_Click" Content="{l:T 'Create'}" />
+                        <Button x:Name="uiJoin" Grid.Column="2" Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="Join_Click" Content="{l:T 'Join'}" />
+                    </Grid>
+                    <!-- ZeroTier missing, or not usable yet -->
+                    <Border x:Name="uiSetup" IsVisible="False" CornerRadius="12" Padding="14" Background="{DynamicResource Brush.Surface}">
+                        <StackPanel Spacing="8">
+                            <TextBlock TextWrapping="Wrap" FontSize="13" Text="{l:T 'The rooms use ZeroTier, a virtual local network (like Hamachi). It is set up once.'}" />
+                            <Button Classes="action small" Click="Setup_Click" Content="{l:T 'Set up ZeroTier'}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                <ScrollViewer Margin="0,14,0,0" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="8">
+                        <ListBox x:Name="uiRooms" SelectionMode="Single" SelectionChanged="Rooms_SelectionChanged" Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Spacing="4" Margin="2,4">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="15" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Seats}" FontSize="12" Classes="muted" Margin="8,0,0,0" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding Subtitle}" FontSize="12" Classes="muted" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock x:Name="uiEmpty" IsVisible="False" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{l:T 'No room yet: create one and send its code to your friends.'}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="36,28,36,28" MaxWidth="900" HorizontalAlignment="Left" Spacing="20">
+                <TextBlock x:Name="uiStatus" TextWrapping="Wrap" FontSize="13" IsVisible="False" />
+                <TextBlock x:Name="uiNothing" Classes="muted" FontSize="14" TextWrapping="Wrap" Text="{l:T 'Choose a room, or create one.'}" />
+
+                <StackPanel x:Name="uiDetail" Spacing="20" IsVisible="False">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="6">
+                            <TextBlock x:Name="uiName" Classes="sectionTitle" FontSize="26" TextWrapping="Wrap" />
+                            <TextBlock Classes="muted" FontSize="14" TextWrapping="Wrap" Text="{l:T 'You are on the same local network: the game sees the parties of the others in its LAN menu.'}" />
+                        </StackPanel>
+                        <StackPanel x:Name="uiCodePanel" Grid.Column="1" Spacing="6" Margin="20,0,0,0" HorizontalAlignment="Right">
+                            <TextBlock Classes="eyebrow" Text="{l:T 'INVITATION CODE'}" HorizontalAlignment="Right" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Border CornerRadius="10" Padding="14,8" Background="{DynamicResource Brush.Surface}">
+                                    <TextBlock x:Name="uiCode" FontSize="20" FontWeight="Bold" LetterSpacing="2" />
+                                </Border>
+                                <Button x:Name="uiCopyCode" Classes="round" Width="44" Height="44" Click="CopyCode_Click" ToolTip.Tip="{l:T 'Copy the code'}">
+                                    <Path Data="M9 9h12v12H9zM5 15V5a2 2 0 0 1 2-2h10" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="2" Fill="Transparent" Width="16" Height="16" Stretch="Uniform" />
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- The room's game -->
+                    <Border CornerRadius="14" Padding="16" Background="{DynamicResource Brush.Surface}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Border Width="72" Height="100" CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                <local:CacheImage x:Name="uiCover" ImageCacheType="GameCover" Stretch="UniformToFill" DecodeWidthOverride="160" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="16,0" Spacing="4" VerticalAlignment="Center">
+                                <TextBlock Classes="eyebrow" Text="{l:T 'GAME OF THE ROOM'}" />
+                                <TextBlock x:Name="uiGameTitle" FontSize="19" FontWeight="Bold" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="8" VerticalAlignment="Center">
+                                <Button x:Name="uiPlay" Classes="action" Click="Play_Click" Content="{l:T 'Start the game'}" />
+                                <Button x:Name="uiOpenGame" Classes="ghost" Click="OpenGame_Click" Content="{l:T 'Open the game'}" />
+                                <ComboBox x:Name="uiChangeGame" MinWidth="200" PlaceholderText="{l:T 'Change the game'}" DisplayMemberBinding="{Binding Title}" SelectionChanged="ChangeGame_SelectionChanged" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Spacing="10">
+                        <TextBlock FontWeight="Bold" FontSize="16" Text="{l:T 'Members'}" />
+                        <Border CornerRadius="14" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" ClipToBounds="True">
+                            <ItemsControl x:Name="uiMembers">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1" Padding="16,10">
+                                            <Grid ColumnDefinitions="40,*,150,170">
+                                                <Border Width="36" Height="36" CornerRadius="18" Background="{DynamicResource Brush.Accent}">
+                                                    <TextBlock Text="{Binding Initial}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Margin="12,0" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                <SelectableTextBlock Grid.Column="2" Text="{Binding Ip}" FontFamily="monospace" FontSize="13" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <Border Width="8" Height="8" CornerRadius="4" Background="{Binding Dot}" />
+                                                    <TextBlock Text="{Binding State}" FontSize="13" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <SelectableTextBlock x:Name="uiHostHint" Classes="muted" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="uiEnter" Classes="action" Click="Enter_Click" Content="{l:T 'Join this room'}" />
+                            <Button x:Name="uiLeave" Classes="ghost" Click="Leave_Click" Foreground="{DynamicResource Brush.Warning}" Content="{l:T 'Leave the room'}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

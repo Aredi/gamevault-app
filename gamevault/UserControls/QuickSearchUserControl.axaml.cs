@@ -235,6 +235,7 @@ namespace gamevault.UserControls
             };
             yield return Page("Community", "IconNavCommunity", MainControl.Community);
             yield return Page("Recent activity", "IconNavCommunity", MainControl.Activity, "The games the players of the server played lately");
+            yield return Page("LAN rooms", "IconNavCommunity", MainControl.Rooms, "Play the LAN games with friends, over the Internet");
             yield return Page("Settings", "IconNavSettings", MainControl.Settings, "Themes, language, installation folders");
             if (LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN)
                 yield return Page("Admin Console", "IconNavAdmin", MainControl.AdminConsole, "Users, publish a game, server");

@@ -93,6 +93,7 @@ namespace gamevault.UserControls
                     }
                     catch (Exception ex) { Log.Ignored(ex); }
                 }
+                _ = ShowLanAsync();
                 ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
                 ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
                 ViewModel.IsUpdateAvailable = HasUpdate(ViewModel.Game);
@@ -275,6 +276,65 @@ namespace gamevault.UserControls
         {
             MainWindowViewModel.Instance.UndoActiveControl();
         }
+        private RoomItem? lanRoom;
+
+        /// <summary>Playable in LAN (marked by an administrator): its badge and button, and a room of friends playing it.</summary>
+        private async Task ShowLanAsync()
+        {
+            if (ViewModel.Game is not Game game)
+                return;
+            try
+            {
+                bool lan = (await RoomsService.LanGamesAsync()).Contains(game.ID);
+                uiLanChip.IsVisible = uiLanPlay.IsVisible = lan;
+                uiLanAdmin.IsVisible = LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN;
+                uiLanAdmin.IsChecked = lan;
+                lanRoom = lan ? (await RoomsService.ListAsync()).FirstOrDefault(r => r.GameId == game.ID && !r.Member && r.Members.Count is > 0 && r.Members.Count < r.MaxMembers) : null;
+                uiLanRoom.IsVisible = lanRoom != null;
+                if (lanRoom != null)
+                    uiLanRoomText.Text = lanRoom.Members.Count == 1
+                        ? Loc.F("{0} plays in LAN in {1}", lanRoom.Members[0].UserName, lanRoom.Name)
+                        : Loc.F("{0} and {1} more play in LAN in {2}", lanRoom.Members[0].UserName, lanRoom.Members.Count - 1, lanRoom.Name);
+            }
+            // The server has no LAN rooms: nothing shown
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private void LanPlay_Click(object? sender, RoutedEventArgs e)
+        {
+            if (RoomsUserControl.Ready())
+                MainWindowViewModel.Instance.OpenPopup(new RoomJoinPopup(ViewModel.Game));
+        }
+
+        private async void LanRoomJoin_Click(object? sender, RoutedEventArgs e)
+        {
+            if (lanRoom is not RoomItem room || !RoomsUserControl.Ready())
+                return;
+            try
+            {
+                await RoomsService.EnterAsync(node => RoomsService.JoinAsync(room.Id, null, node), text => MainWindowViewModel.Instance.AppBarText = text);
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Rooms);
+                await MainWindowViewModel.Instance.Rooms.LoadAsync(room.Id);
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+        }
+
+        private async void LanAdmin_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game is not Game game)
+                return;
+            try
+            {
+                await RoomsService.SetLanGameAsync(game.ID, uiLanAdmin.IsChecked == true);
+                await ShowLanAsync();
+            }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                uiLanAdmin.IsChecked = !uiLanAdmin.IsChecked;
+            }
+        }
+
         private async void GamePlay_Click(object sender, RoutedEventArgs e)
         {
             ((Control)sender).IsEnabled = false;

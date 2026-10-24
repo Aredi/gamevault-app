@@ -248,6 +248,16 @@
                                     </StackPanel>
                                 </Panel>
                             </ListBoxItem>
+                            <!-- Under Community: the LAN rooms (ZeroTier) -->
+                            <ListBoxItem Classes="sub" ToolTip.Tip="{l:T 'LAN rooms'}">
+                                <Panel>
+                                    <Border Classes="mark" />
+                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="11">
+                                        <Path Data="M3 15h7v5H3zM14 15h7v5h-7zM8.5 4h7v5h-7zM12 9v3M6.5 15v-3h11v3" Stroke="{Binding $parent[ContentControl].Foreground}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                                        <TextBlock Classes="wide" Text="{l:T 'LAN rooms'}" />
+                                    </StackPanel>
+                                </Panel>
+                            </ListBoxItem>
                             <ListBoxItem ToolTip.Tip="{l:T 'Settings'}">
                                 <Panel>
                                     <Border Classes="mark" />
