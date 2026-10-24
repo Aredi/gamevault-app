@@ -217,7 +217,7 @@ namespace gamevault.UserControls
         {
             starting = true;
             uiInstall.IsVisible = false;
-            try { await RetroArchManager.EnsureRetroArchAsync(text => uiDevice.Text = text); }
+            try { await RetroArchManager.EnsureRetroArchAsync(text => Dispatcher.UIThread.Post(() => uiDevice.Text = text)); }
             catch (Exception ex)
             {
                 Log.Ignored(ex);
