@@ -59,7 +59,11 @@ namespace gamevault.Helper
                 Directory.CreateDirectory(Path.GetDirectoryName(disk)!);
                 File.Copy(Layout.BaseHardDisk, disk);
             }
-            File.WriteAllText(Layout.ConfigFile, Layout.WithHardDisk(File.ReadAllText(Layout.ConfigFile), player));
+            // The buttons of Régler mes touches, for the gamepad plugged in now too
+            var pad = RetroArchManager.Pad.GetValueOrDefault("xbox");
+            string? plugged = pad != null && RetroArchManager.Sdl2Library is string library ? RetroGamepad.FirstControllerGuid(library) : null;
+            string config = Layout.Controls(File.ReadAllText(Layout.ConfigFile), RetroArchManager.Keyboard.GetValueOrDefault("xbox"), pad, plugged);
+            File.WriteAllText(Layout.ConfigFile, Layout.WithHardDisk(config, player));
             return base.Launch(player, launchFile, language);
         }
     }

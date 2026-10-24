@@ -53,7 +53,7 @@ namespace GameVault.Core.Retro
 
         /// <summary>
         /// The buttons of a platform played in RetroArch, as its core names them (the Wii's by its controller, see
-        /// <see cref="RetroControllers"/>); none for the others.
+        /// <see cref="RetroControllers"/>), and of the Xbox, written in xemu's settings; none for the others.
         /// </summary>
         public static Button[] Of(string slug, int? device = null) => slug switch
         {
@@ -75,6 +75,9 @@ namespace GameVault.Core.Retro
                     .Concat(Stick("l", "Nunchuk Stick")).Concat(Stick("r", "Tilt")).ToArray(),
             },
             "psx" or "ps2" => PlayStation,
+            // xemu's Xbox: its A at the bottom like the RetroPad's B, White and Black on the shoulders (see XemuLayout.Controls)
+            "xbox" => Pad.Concat(Buttons(("b", "A"), ("a", "B"), ("y", "X"), ("x", "Y"), ("l", "White"), ("r", "Black"), ("l2", "Left Trigger"), ("r2", "Right Trigger"),
+                ("l3", "L3"), ("r3", "R3"), ("select", "Back"), ("start", "Start"))).Concat(Stick("l", "Left Stick")).Concat(Stick("r", "Right Stick")).ToArray(),
             // FinalBurn Neo's classic RetroPad
             "neogeoaes" => Pad.Concat(Buttons(("b", "A"), ("a", "B"), ("y", "C"), ("x", "D"), ("select", "Coin"), ("start", "Start"))).ToArray(),
             _ => Array.Empty<Button>(),

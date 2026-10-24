@@ -82,6 +82,94 @@ namespace GameVault.Core.Retro
         /// <summary>Its [display.quality] surface_scale: a multiple of the console's 480 lines.</summary>
         public override string Resolution(string existing, int scale) => MergeIni(existing, "display.quality", new[] { ("surface_scale", scale.ToString()) }, " = ");
 
+        /// <summary>xemu's Xbox buttons and the RetroPad's they are set as (<see cref="RetroKeyboard.Of"/>): its keyboard's names.</summary>
+        private static readonly (string Xemu, string Bind)[] KeyboardButtons =
+        {
+            ("a", "b"), ("b", "a"), ("x", "y"), ("y", "x"), ("white", "l"), ("black", "r"), ("back", "select"), ("start", "start"),
+            ("lstick_btn", "l3"), ("rstick_btn", "r3"), ("dpad_up", "up"), ("dpad_down", "down"), ("dpad_left", "left"), ("dpad_right", "right"),
+            ("ltrigger", "l2"), ("rtrigger", "r2"), ("lstick_up", "l_y_minus"), ("lstick_down", "l_y_plus"), ("lstick_left", "l_x_minus"), ("lstick_right", "l_x_plus"),
+            ("rstick_up", "r_y_minus"), ("rstick_down", "r_y_plus"), ("rstick_left", "r_x_minus"), ("rstick_right", "r_x_plus"),
+        };
+
+        /// <summary>The gamepad's: SDL's game controller numbers, as the client reads them (<see cref="RetroPad"/>); White and Black are its shoulders.</summary>
+        private static readonly (string Xemu, string Bind)[] PadButtons =
+        {
+            ("a", "b"), ("b", "a"), ("x", "y"), ("y", "x"), ("back", "select"), ("start", "start"), ("lstick_btn", "l3"), ("rstick_btn", "r3"),
+            ("lshoulder", "l"), ("rshoulder", "r"), ("dpad_up", "up"), ("dpad_down", "down"), ("dpad_left", "left"), ("dpad_right", "right"),
+        };
+
+        /// <summary>
+        /// The gamepad's axes: a stick's by its → and ↓ (its other side inverted, an axis pushed back).
+        /// shortcut: a stick's ← and ↑ given another axis than its → and ↓ are not read; xemu takes one axis a side, upgrade if players ask.
+        /// </summary>
+        private static readonly (string Xemu, string Bind, string? Invert)[] PadAxes =
+        {
+            ("axis_trigger_left", "l2", null), ("axis_trigger_right", "r2", null),
+            ("axis_left_x", "l_x_plus", "invert_axis_left_x"), ("axis_left_y", "l_y_plus", "invert_axis_left_y"),
+            ("axis_right_x", "r_x_plus", "invert_axis_right_x"), ("axis_right_y", "r_y_plus", "invert_axis_right_y"),
+        };
+
+        /// <summary>A button xemu plays with a stick or a trigger of the gamepad, not a button.</summary>
+        public static bool TakesAxis(string bind) => PadAxes.Any(a => a.Bind == bind) || bind.Length > 2 && bind[1] == '_';
+
+        /// <summary>SDL's scancodes (the USB keyboard's codes, xemu's) of RetroArch's names of the keys' places (<see cref="RetroKeyboard.Key"/>).</summary>
+        internal static int? Scancode(string name) => name switch
+        {
+            { Length: 1 } when name[0] is >= 'a' and <= 'z' => 4 + name[0] - 'a',
+            "num0" => 39,
+            _ when name.StartsWith("num") && name.Length == 4 && name[3] is >= '1' and <= '9' => 30 + name[3] - '1',
+            "keypad0" => 98,
+            _ when name.StartsWith("keypad") && name.Length == 7 && name[6] is >= '1' and <= '9' => 89 + name[6] - '1',
+            _ when name[0] == 'f' && int.TryParse(name[1..], out int f) && f is >= 1 and <= 15 => f <= 12 ? 57 + f : 91 + f,
+            _ => Named.TryGetValue(name, out int code) ? code : null,
+        };
+
+        private static readonly Dictionary<string, int> Named = new()
+        {
+            ["enter"] = 40, ["escape"] = 41, ["backspace"] = 42, ["tab"] = 43, ["space"] = 44, ["minus"] = 45, ["equals"] = 46, ["leftbracket"] = 47,
+            ["rightbracket"] = 48, ["backslash"] = 49, ["semicolon"] = 51, ["quote"] = 52, ["backquote"] = 53, ["comma"] = 54, ["period"] = 55, ["slash"] = 56,
+            ["capslock"] = 57, ["print_screen"] = 70, ["scroll_lock"] = 71, ["pause"] = 72, ["insert"] = 73, ["home"] = 74, ["pageup"] = 75, ["del"] = 76,
+            ["end"] = 77, ["pagedown"] = 78, ["right"] = 79, ["left"] = 80, ["down"] = 81, ["up"] = 82, ["numlock"] = 83, ["divide"] = 84, ["multiply"] = 85,
+            ["kp_minus"] = 86, ["kp_plus"] = 87, ["kp_enter"] = 88, ["kp_period"] = 99, ["oem102"] = 100, ["kp_equals"] = 103,
+            ["ctrl"] = 224, ["shift"] = 225, ["alt"] = 226, ["rctrl"] = 228, ["rshift"] = 229, ["ralt"] = 230,
+        };
+
+        private static readonly System.Text.RegularExpressions.Regex Mappings = new(@"^gamepad_mappings = \[[^\]]*\]\n?", System.Text.RegularExpressions.RegexOptions.Multiline);
+        private static readonly System.Text.RegularExpressions.Regex GamepadId = new(@"gamepad_id = '([0-9a-fA-F]+)'");
+
+        /// <summary>
+        /// The keys and the gamepad's buttons chosen in Régler mes touches, as the client shows them: a key none plays is
+        /// none (0) in xemu, never its own default. The gamepad's are written for each gamepad xemu knows (by SDL's id,
+        /// it adds one the first time it sees it) and the one plugged in now, read with RetroArch's SDL; none chosen, xemu's
+        /// own (the same buttons) stay.
+        /// </summary>
+        public string Controls(string existing, IReadOnlyDictionary<string, RetroKeyboard.Key>? keys, IReadOnlyDictionary<string, RetroPad.Input>? pad, string? plugged)
+        {
+            string config = MergeIni(existing, "input.keyboard_controller_scancode_map",
+                KeyboardButtons.Select(k => (k.Xemu, (RetroKeyboard.KeyOf(keys, k.Bind) is { } key ? Scancode(key.Name) ?? 0 : 0).ToString())), " = ");
+            if (pad == null)
+                return config;
+            var known = Mappings.Match(config) is { Success: true } block ? GamepadId.Matches(block.Value).Select(m => m.Groups[1].Value).ToList() : new List<string>();
+            if (plugged != null && !known.Contains(plugged, StringComparer.OrdinalIgnoreCase))
+                known.Add(plugged);
+            if (known.Count == 0)
+                return config;
+            static int? Number(RetroPad.Input? input) => input != null && int.TryParse(input.Name, out int n) ? Math.Abs(n) : null;
+            var mapping = PadButtons.Select(b => $"{b.Xemu} = {(RetroPad.InputOf(pad, b.Bind) is { IsAxis: false } input ? Number(input) ?? -1 : -1)}")
+                .Concat(PadAxes.SelectMany(a =>
+                {
+                    RetroPad.Input? input = RetroPad.InputOf(pad, a.Bind);
+                    input = input?.IsAxis == true ? input : null;
+                    var values = new List<string> { $"{a.Xemu} = {Number(input) ?? -1}" };
+                    if (a.Invert != null)
+                        values.Add($"{a.Invert} = {(input?.Name[0] == '-' ? "true" : "false")}");
+                    return values;
+                }));
+            string controller = string.Join(", ", mapping);
+            string mappings = "[" + string.Join(", ", known.Select(id => $"{{ gamepad_id = '{id}', controller_mapping = {{ {controller} }} }}")) + "]";
+            return MergeIni(Mappings.Replace(config, ""), "input", new[] { ("gamepad_mappings", mappings) }, " = ");
+        }
+
         /// <summary>shortcut: the console's language is in its EEPROM (with a checksum), not written: its games start in English, until asked.</summary>
         public override string Language(string existing, string language) => existing;
     }

@@ -26,6 +26,7 @@ namespace gamevault.Helper
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void VoidOfPtr(IntPtr value);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate byte ByteOfPtrInt(IntPtr device, int index);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate short ShortOfPtrInt(IntPtr device, int index);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate JoystickGuid GuidOfInt(int value);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int IntOfStrings([MarshalAs(UnmanagedType.LPUTF8Str)] string name, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         private readonly IntPtr library;
@@ -129,6 +130,29 @@ namespace gamevault.Helper
                 using var gamepad = new RetroGamepad(libraryFile);
                 gamepad.Refresh();
                 return gamepad.Name != null ? gamepad.Index : null;
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return null;
+            }
+        }
+
+        /// <summary>SDL's 16 bytes of a gamepad's id (SDL_JoystickGUID).</summary>
+        [StructLayout(LayoutKind.Sequential)]
+        private struct JoystickGuid { public ulong Low, High; }
+
+        /// <summary>SDL's id of the gamepad the first player plays with, as SDL writes it (xemu keeps its buttons by it), when SDL can be read.</summary>
+        public static string? FirstControllerGuid(string libraryFile)
+        {
+            try
+            {
+                using var gamepad = new RetroGamepad(libraryFile);
+                gamepad.Refresh();
+                if (gamepad.Name == null)
+                    return null;
+                JoystickGuid guid = gamepad.Function<GuidOfInt>("SDL_JoystickGetDeviceGUID")(gamepad.Index);
+                return Convert.ToHexString(BitConverter.GetBytes(guid.Low)).ToLowerInvariant() + Convert.ToHexString(BitConverter.GetBytes(guid.High)).ToLowerInvariant();
             }
             catch (Exception ex)
             {

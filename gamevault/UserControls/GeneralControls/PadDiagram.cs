@@ -133,6 +133,12 @@ namespace gamevault.UserControls
                 .Concat(Bar("select", 172, 124, 26, 10, "")).Concat(Bar("start", 222, 124, 26, 10, "")).Append(Text(185, 148, "SELECT", 8, true)).Append(Text(235, 148, "START", 8, true))
                 .Concat(Round("x", 320, 100, 15, "△")).Concat(Round("a", 348, 128, 15, "○")).Concat(Round("b", 320, 156, 15, "✕")).Concat(Round("y", 292, 128, 15, "□"))
                 .Concat(Round("lstick", 160, 185, 22, "L3")).Concat(Round("rstick", 260, 185, 22, "R3")).ToArray(),
+            // The Xbox's Controller S: the left stick above the cross, White and Black under the face buttons
+            ["xbox"] = new[] { new Shape(Form.Ellipse, 92, 200, 50, 62), new Shape(Form.Ellipse, 328, 200, 50, 62), Body(30, 66, 360, 138, 64) }
+                .Concat(Bar("l2", 62, 30, 88, 24, "LT")).Concat(Bar("r2", 270, 30, 88, 24, "RT")).Concat(Round("lstick", 104, 118, 24, "L3")).Concat(Cross(160, 176, 0.62))
+                .Append(Circle("select", 192, 120, 7)).Append(Text(192, 140, "BACK", 8, true)).Append(Circle("start", 228, 120, 7)).Append(Text(228, 140, "START", 8, true))
+                .Concat(Round("x", 318, 92, 14, "Y")).Concat(Round("a", 346, 118, 14, "B")).Concat(Round("b", 318, 144, 14, "A")).Concat(Round("y", 290, 118, 14, "X"))
+                .Concat(Round("rstick", 262, 176, 22, "R3")).Append(Circle("l", 304, 176, 9)).Append(Text(304, 196, "WHITE", 7, true)).Append(Circle("r", 336, 168, 9)).Append(Text(340, 188, "BLACK", 7, true)).ToArray(),
             ["neogeo"] = new[]
                 {
                     Body(20, 60, 380, 170, 18),
@@ -169,6 +175,7 @@ namespace gamevault.UserControls
         {
             "nes" or "snes" or "gba" or "nds" or "ngc" or "psx" => slug,
             "neogeoaes" => "neogeo",
+            "xbox" => "xbox",
             "3ds" => "n3ds",
             "ps2" => "psx",
             "wii" => device switch { 1 => "wiiRemote", 513 => "wiiSideways", 1025 => "wiiClassic", 1537 => "ngc", _ => "wiiNunchuk" },
@@ -229,6 +236,8 @@ namespace gamevault.UserControls
             "Shake Nunchuk" => Localization.Loc.T("Shake Nunchuk"),
             "Tilt" => Localization.Loc.T("Tilt"),
             "COIN" => Localization.Loc.T("Coin").ToUpperInvariant(),
+            "WHITE" => Localization.Loc.T("White").ToUpperInvariant(),
+            "BLACK" => Localization.Loc.T("Black").ToUpperInvariant(),
             _ => text,
         };
     }

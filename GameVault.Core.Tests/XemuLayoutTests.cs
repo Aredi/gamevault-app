@@ -48,6 +48,34 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void TheButtonsChosen_AreXemus_ForEachGamepadItKnows_AndThePluggedOne()
+        {
+            var layout = new XemuLayout("/xemu", windows: false);
+            // As xemu writes it back: the gamepad it has seen, by SDL's id
+            string written = "[input]\ngamepad_mappings = [\n    { gamepad_id = '03000000aa', controller_mapping = { a = 3}}\n    ]\n\n[input.bindings]\nport1 = '03000000aa'\n";
+            var keys = new Dictionary<string, RetroKeyboard.Key> { ["b"] = new("q", "A"), ["l2"] = new("num1", "1"), ["r2"] = new("f13", "F13") };
+            // The face buttons turned (the RetroPad's A on the bottom one), a trigger on a button (not read), the left stick upside down
+            var pad = new Dictionary<string, RetroPad.Input> { ["b"] = RetroPad.Button(1), ["a"] = RetroPad.Button(0), ["l2"] = RetroPad.Button(9), ["l_y_plus"] = RetroPad.Axis(1, false) };
+            string config = layout.Controls(written, keys, pad, "03000000bb");
+
+            Assert.Contains("a = 20\n", config);          // Xbox A: q
+            Assert.Contains("b = 27\n", config);          // B keeps RetroArch's x
+            Assert.Contains("ltrigger = 30\n", config);   // 1
+            Assert.Contains("rtrigger = 104\n", config);  // F13
+            Assert.Contains("lstick_up = 0\n", config);   // no key: none, not xemu's E
+            Assert.Contains("[input.bindings]\nport1 = '03000000aa'\n", config);
+            string mapping = "controller_mapping = { a = 1, b = 0, x = 2, y = 3, back = 4, start = 6, lstick_btn = 7, rstick_btn = 8, lshoulder = 9, rshoulder = 10, "
+                + "dpad_up = 11, dpad_down = 12, dpad_left = 13, dpad_right = 14, axis_trigger_left = -1, axis_trigger_right = 5, "
+                + "axis_left_x = 0, invert_axis_left_x = false, axis_left_y = 1, invert_axis_left_y = true, axis_right_x = 2, invert_axis_right_x = false, axis_right_y = 3, invert_axis_right_y = false }";
+            Assert.Contains($"gamepad_mappings = [{{ gamepad_id = '03000000aa', {mapping} }}, {{ gamepad_id = '03000000bb', {mapping} }}]\n", config);
+            Assert.DoesNotContain("a = 3}", config);
+            Assert.Equal(config, layout.Controls(config, keys, pad, "03000000BB"));
+            // Nothing chosen for the gamepad: xemu's own mapping stays
+            Assert.Contains("a = 3}", layout.Controls(written, null, null, null));
+            Assert.True(XemuLayout.TakesAxis("r2") && XemuLayout.TakesAxis("l_x_minus") && !XemuLayout.TakesAxis("l") && !XemuLayout.TakesAxis("l3"));
+        }
+
+        [Fact]
         public void AFullDump_BecomesItsGamesPartition_AnXisoStays()
         {
             string folder = Path.Combine(Path.GetTempPath(), $"xbox-disc-{Guid.NewGuid():N}");

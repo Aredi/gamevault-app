@@ -274,6 +274,13 @@ namespace gamevault.UserControls
         internal void Give(string bind, RetroPad.Input input)
         {
             message = null;
+            // xemu reads a button as a button, a stick or a trigger as an axis
+            if (system.IsXemu && input.IsAxis != XemuLayout.TakesAxis(bind))
+            {
+                message = input.IsAxis ? Loc.T("xemu plays this one with a button of the gamepad.") : Loc.T("xemu plays this one with a stick or a trigger of the gamepad.");
+                Refresh();
+                return;
+            }
             var pads = RetroArchManager.Pad;
             pads[system.Slug] = RetroPad.Assign(system.Slug, Device, pads.GetValueOrDefault(system.Slug), bind, input);
             RetroArchManager.Pad = pads;
@@ -466,6 +473,7 @@ namespace gamevault.UserControls
                 "Cross" => Loc.T("Cross"), "Circle" => Loc.T("Circle"), "Square" => Loc.T("Square"), "Coin" => Loc.T("Coin"),
                 "Control Stick" => Loc.T("Control Stick"), "C Stick" => Loc.T("C Stick"), "Left Stick" => Loc.T("Left Stick"), "Right Stick" => Loc.T("Right Stick"),
                 "Circle Pad" => Loc.T("Circle Pad"), "Nunchuk Stick" => Loc.T("Nunchuk Stick"), "Tilt" => Loc.T("Tilt"), "D-Pad" => Loc.T("D-Pad"),
+                "White" => Loc.T("White"), "Black" => Loc.T("Black"), "Left Trigger" => Loc.T("Left Trigger"), "Right Trigger" => Loc.T("Right Trigger"),
                 "Shake Wiimote" => Loc.T("Shake Wiimote"), "Shake Nunchuk" => Loc.T("Shake Nunchuk"), "Home/Swap screens" => Loc.T("Home/Swap screens"),
                 "Enter" => Loc.T("Enter"), "Escape" => Loc.T("Escape"), "Backspace" => Loc.T("Backspace"), "Space" => Loc.T("Space"), "Caps Lock" => Loc.T("Caps Lock"),
                 "Left Shift" => Loc.T("Left Shift"), "Right Shift" => Loc.T("Right Shift"), "Left Ctrl" => Loc.T("Left Ctrl"), "Right Ctrl" => Loc.T("Right Ctrl"),
