@@ -549,8 +549,8 @@ namespace gamevault.Windows
                     await CheckForInstalledUpdates();
                     return;
                 }
-                // Portable build: point to the portable download of the new release (a Mac's: "-macOS.zip", else the release's page)
-                ReleaseInfo? release = await UpdateChecker.GetNewerReleaseAsync(SettingsViewModel.Instance.Version, OperatingSystem.IsWindows() ? "Portable.zip" : OperatingSystem.IsMacOS() ? "-macOS.zip" : ".AppImage");
+                // Portable build: point to the portable download of the new release (a Mac's test build: its app that updates itself)
+                ReleaseInfo? release = await UpdateChecker.GetNewerReleaseAsync(SettingsViewModel.Instance.Version, OperatingSystem.IsWindows() ? "win-Portable.zip" : OperatingSystem.IsMacOS() ? "osx-Portable.zip" : ".AppImage");
                 if (release != null)
                 {
                     var result = await this.ShowMessageAsync(Loc.T("Update available"),

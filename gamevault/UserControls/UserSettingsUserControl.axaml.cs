@@ -154,7 +154,7 @@ namespace gamevault.UserControls
 
         private async void Image_Paste(object? sender, KeyEventArgs e)
         {
-            if (e.KeyModifiers != KeyModifiers.Control || e.Key != Key.V)
+            if (e.KeyModifiers != PlatformInfo.CommandKey || e.Key != Key.V)
                 return;
             try
             {

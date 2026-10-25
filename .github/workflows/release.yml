@@ -2,6 +2,7 @@ name: Release
 # Push a tag like 1.18.0 to publish:
 #  - Windows: GameVault-win-Setup.exe (installer + automatic updates) and GameVault-win-Portable.zip
 #  - Linux: GameVault.AppImage (automatic updates) and GameVault-linux-x64.tar.gz
+#  - Mac (Apple Silicon, not signed by Apple): GameVault-osx-Setup.pkg and GameVault-osx-Portable.zip (automatic updates)
 # Installed builds update themselves from the Velopack packages (*.nupkg, releases.*.json) of the latest release.
 on:
   push:
@@ -84,6 +85,36 @@ jobs:
           name: windows
           path: upload/*
 
+  macos:
+    if: github.repository == 'Aredi/gamevault-app'
+    runs-on: macos-latest
+    # Its first releases: a failure here leaves the release to Windows and Linux
+    continue-on-error: true
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+      - name: Publish
+        run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime osx-arm64 --self-contained true -p:PublishReadyToRun=true -p:Version=${{ github.ref_name }} --output publish/GameVault
+      - name: Bundle 7-Zip and SDL2
+        run: bash packaging/macos/bundle-tools.sh publish/GameVault
+      - name: App and Setup.pkg (Velopack)
+        run: |
+          dotnet tool install -g vpk --version $VPK_VERSION
+          vpk download github --repoUrl ${{ github.server_url }}/${{ github.repository }} --token ${{ github.token }} --channel osx -o releases || true
+          vpk pack -u GameVault -v ${{ github.ref_name }} -p publish/GameVault -e gamevault --channel osx --runtime osx-arm64 \
+            --packTitle SanctuaryVault --packAuthors "Phalcode (fork: ${{ github.repository_owner }})" --bundleId fr.alexisdominguez.sanctuaryvault \
+            -i packaging/macos/SanctuaryVault.icns -o releases
+          mkdir upload
+          cp releases/*${{ github.ref_name }}*.nupkg releases/*.osx.json releases/*-osx-Setup.pkg releases/*-osx-Portable.zip upload/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: upload/*
+
   uploader-image:
     # ghcr.io/<owner>/gamevault-uploader:<version> and :latest, for the server next to GameVault
     if: github.repository == 'Aredi/gamevault-app'
@@ -99,7 +130,7 @@ jobs:
           docker push "$image:latest"
 
   release:
-    needs: [linux, windows]
+    needs: [linux, windows, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

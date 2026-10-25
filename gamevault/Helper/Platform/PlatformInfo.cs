@@ -13,6 +13,10 @@ namespace gamevault.Helper.Platform
         public static bool IsLinux => OperatingSystem.IsLinux();
         /// <summary>The Mac's version: the retro games only (its PC games are Windows', the LAN rooms are theirs).</summary>
         public static bool IsMac => OperatingSystem.IsMacOS();
+        /// <summary>The shortcuts' key: ⌘ on a Mac, Ctrl elsewhere.</summary>
+        public static Avalonia.Input.KeyModifiers CommandKey => IsMac ? Avalonia.Input.KeyModifiers.Meta : Avalonia.Input.KeyModifiers.Control;
+        /// <summary>The quick search's shortcut, as the sidebar and the search show it.</summary>
+        public static string QuickSearchKeys => IsMac ? "⌘K" : "Ctrl K";
 
         public static string AppDirectory => AppContext.BaseDirectory;
 

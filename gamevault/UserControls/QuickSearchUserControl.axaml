@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
+             xmlns:platform="clr-namespace:gamevault.Helper.Platform"
              x:Class="gamevault.UserControls.QuickSearchUserControl">
     <UserControl.Styles>
         <Style Selector="TextBox#uiQuery">
@@ -97,7 +98,7 @@
                             <TextBlock Classes="muted" FontSize="12" Text="{l:T 'to open'}" VerticalAlignment="Center" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border Classes="key"><TextBlock Text="Ctrl K" /></Border>
+                            <Border Classes="key"><TextBlock Text="{x:Static platform:PlatformInfo.QuickSearchKeys}" /></Border>
                             <TextBlock Classes="muted" FontSize="12" Text="{l:T 'from anywhere'}" VerticalAlignment="Center" />
                         </StackPanel>
                     </StackPanel>

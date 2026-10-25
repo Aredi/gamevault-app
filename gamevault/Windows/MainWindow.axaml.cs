@@ -305,10 +305,10 @@ namespace gamevault.Windows
             catch (Exception ex) { Log.Ignored(ex); }
             // Small windows keep the room for the games
             SizeChanged += (_, e) => ApplySidebarState(e.NewSize.Width);
-            // Ctrl+K opens the quick search from any page
+            // Ctrl+K (⌘K on a Mac) opens the quick search from any page
             AddHandler(KeyDownEvent, (_, e) =>
             {
-                if (e.Key == Key.K && e.KeyModifiers.HasFlag(KeyModifiers.Control) && MainWindowViewModel.Instance.Popup == null)
+                if (e.Key == Key.K && e.KeyModifiers.HasFlag(PlatformInfo.CommandKey) && MainWindowViewModel.Instance.Popup == null)
                 {
                     if (uiQuickSearch.IsVisible) uiQuickSearch.Close(); else uiQuickSearch.Open();
                     e.Handled = true;

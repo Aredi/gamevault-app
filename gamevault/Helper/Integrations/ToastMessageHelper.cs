@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace gamevault.Helper
 {
     /// <summary>
-    /// Desktop notifications: org.freedesktop.Notifications (DBus) on Linux, toast notifications on Windows.
+    /// Desktop notifications: org.freedesktop.Notifications (DBus) on Linux, toast notifications on Windows, macOS's on a Mac.
     /// </summary>
     public class ToastMessageHelper
     {
@@ -60,6 +60,11 @@ namespace gamevault.Helper
             {
                 try
                 {
+                    if (OperatingSystem.IsMacOS())
+                    {
+                        await ShowOnMacAsync(title, message);
+                        return;
+                    }
                     INotificationManager? notifications = await GetManager();
                     if (notifications == null)
                         return;
@@ -70,6 +75,20 @@ namespace gamevault.Helper
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }
             });
+        }
+
+        /// <summary>
+        /// macOS's notification, by AppleScript (the texts as its arguments, never in the script).
+        /// shortcut: shown as Script Editor's, without the game's picture; the app's own notifications need it signed by Apple.
+        /// </summary>
+        private static async Task ShowOnMacAsync(string title, string message)
+        {
+            var info = new System.Diagnostics.ProcessStartInfo("osascript") { UseShellExecute = false };
+            foreach (string argument in new[] { "-e", "on run argv", "-e", "display notification (item 2 of argv) with title (item 1 of argv)", "-e", "end run", title, message })
+                info.ArgumentList.Add(argument);
+            using var process = System.Diagnostics.Process.Start(info);
+            if (process != null)
+                await process.WaitForExitAsync();
         }
     }
 }
