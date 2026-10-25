@@ -93,6 +93,8 @@ namespace GameVault.UiTests
                 server.ApolloClients["u1"] = ("SanctuaryVault", 0x3000000);
                 server.ApolloClients["u2"] = ("Their phone", 0x3000000);
                 while (server.SunshinePins.TryDequeue(out _)) { }
+                // Signed in on its page, not with the login: a wrong one refused there too
+                await Assert.ThrowsAsync<InvalidOperationException>(() => SunshineHost.SaveLoginAsync("sv", "wrong"));
                 Click(rooms.FindControl<Button>("uiShare")!);
                 await TestSession.WaitUntil(() => server.ApolloClients["u1"].Perm == 0x7000100 && !server.SunshinePins.IsEmpty, TimeSpan.FromSeconds(30), "Apollo's member allowed its gamepad");
                 Assert.Equal(("", GameVault.Core.Integrations.ScreenSharing.Pin("AB2CD3"), "SanctuaryVault"), server.SunshinePins.First());

@@ -36,7 +36,10 @@ namespace gamevault.Helper
         public static string WebPage => "https://localhost:47990";
 
         // Its certificate is its own, made at its installation: trusted on this PC only, the API being this PC's
-        private static readonly HttpClient http = new(new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true }) { Timeout = TimeSpan.FromSeconds(30) };
+        private static readonly HttpClient http = new(new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(30) };
+
+        /// <summary>Apollo's session ("auth=..."): its API wants its page's sign-in, not the login with each request as Sunshine.</summary>
+        private static string? session;
 
         private static string ConfigFile => LoginManager.Instance.GetUserProfile().UserConfigFile;
 
@@ -58,20 +61,54 @@ namespace gamevault.Helper
             }
         }
 
+        /// <param name="login">A login to check: Apollo signed in with it again, not with the session kept.</param>
         private static async Task<JsonElement> SendAsync(HttpMethod method, string path, object? body = null, (string User, string Password)? login = null)
         {
             var (user, password) = login ?? Login ?? throw new InvalidOperationException(Loc.F("Give SanctuaryVault your {0} login first.", Name));
-            using var request = new HttpRequestMessage(method, $"{ApiUrl}/{path}")
+            if (login != null)
+                session = null;
+            HttpRequestMessage Request()
             {
-                Content = body == null ? null : new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
-            };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{user}:{password}")));
-            using HttpResponseMessage response = await http.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-                throw new InvalidOperationException(Loc.F("{0} did not accept this login.", Name));
-            response.EnsureSuccessStatusCode();
-            string text = await response.Content.ReadAsStringAsync();
-            return text.Length == 0 ? default : JsonDocument.Parse(text).RootElement.Clone();
+                var request = new HttpRequestMessage(method, $"{ApiUrl}/{path}")
+                {
+                    Content = body == null ? null : new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
+                };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{user}:{password}")));
+                if (session != null)
+                    request.Headers.Add("Cookie", session);
+                return request;
+            }
+            HttpResponseMessage response;
+            using (HttpRequestMessage request = Request())
+                response = await http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized && await SignInAsync(user, password))
+            {
+                response.Dispose();
+                using HttpRequestMessage again = Request();
+                response = await http.SendAsync(again);
+            }
+            using (response)
+            {
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                    throw new InvalidOperationException(Loc.F("{0} did not accept this login.", Name));
+                response.EnsureSuccessStatusCode();
+                string text = await response.Content.ReadAsStringAsync();
+                return text.Length == 0 ? default : JsonDocument.Parse(text).RootElement.Clone();
+            }
+        }
+
+        /// <summary>
+        /// Apollo's sign-in, its session kept. Apollo has one session only: its page, open meanwhile, is signed out (and
+        /// signing in there ends this one: signed in again at the next request).
+        /// </summary>
+        private static async Task<bool> SignInAsync(string user, string password)
+        {
+            using var content = new StringContent(JsonSerializer.Serialize(new { username = user, password }), Encoding.UTF8, "application/json");
+            using HttpResponseMessage response = await http.PostAsync($"{ApiUrl}/api/login", content);
+            string? cookie = response.IsSuccessStatusCode && response.Headers.TryGetValues("Set-Cookie", out var cookies)
+                ? cookies.Select(c => c.Split(';')[0]).FirstOrDefault(c => c.StartsWith("auth=")) : null;
+            session = cookie;
+            return cookie != null;
         }
 
         /// <summary>Sunshine answers on this PC (its page needs no login).</summary>

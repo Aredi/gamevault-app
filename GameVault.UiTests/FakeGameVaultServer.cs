@@ -640,7 +640,17 @@ namespace GameVault.UiTests
                 // This PC's Sunshine
                 else if (path == "/sunshine/api/configLocale")
                     await Json(response, new { status = true, locale = "fr" });
-                else if (path.StartsWith("/sunshine/") && request.Headers["Authorization"] != "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("sv:secret")))
+                // Apollo: its page's sign-in, its session in a cookie (the login with each request is not read)
+                else if (path == "/sunshine/api/login" && SunshineIsApollo)
+                {
+                    using JsonDocument login = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    if ((login.RootElement.GetProperty("username").GetString(), login.RootElement.GetProperty("password").GetString()) == ("sv", "secret"))
+                        response.Headers.Add("Set-Cookie", "auth=apollo-session; Secure; SameSite=Strict; Max-Age=2592000; Path=/");
+                    else
+                        response.StatusCode = 401;
+                }
+                else if (path.StartsWith("/sunshine/") && (SunshineIsApollo ? request.Headers["Cookie"] != "auth=apollo-session"
+                    : request.Headers["Authorization"] != "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("sv:secret"))))
                     response.StatusCode = 401;
                 else if (path == "/sunshine/api/apps")
                     await Json(response, new { apps = Array.Empty<object>() });
