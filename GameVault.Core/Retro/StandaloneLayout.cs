@@ -1,23 +1,30 @@
 namespace GameVault.Core.Retro
 {
     /// <summary>
-    /// An emulator of its own, not a RetroArch core (RPCS3, Eden): one build kept in the client's data folder, beside
+    /// An emulator of its own, not a RetroArch core (RPCS3, Eden, xemu): one build kept in the client's data folder, beside
     /// RetroArch, with its console's storage (the saves, a user per GameVault player) kept when it is uninstalled or updated.
     /// </summary>
-    public abstract class StandaloneLayout(string directory, bool windows)
+    public abstract class StandaloneLayout(string directory, bool windows, bool mac = false)
     {
         public string Directory => directory;
         protected bool Windows => windows;
+        protected bool Mac => mac;
         public abstract string Version { get; }
         public abstract string PackageUrl { get; }
         protected abstract string WindowsExecutable { get; }
-        /// <summary>The AppImage is unpacked once (no FUSE needed, nothing unpacked at each start, nothing left in /tmp when it is closed).</summary>
-        public string Executable => windows ? Path.Combine(directory, WindowsExecutable) : Path.Combine(AppDirectory, "AppRun");
+        /// <summary>The program in the Mac's app, from the app's folder ("RPCS3.app/Contents/MacOS/rpcs3").</summary>
+        protected abstract string MacExecutable { get; }
+        /// <summary>The Mac's app ("RPCS3.app").</summary>
+        public string MacApp => MacExecutable.Split(Path.DirectorySeparatorChar)[0];
+        /// <summary>The AppImage is unpacked once (no FUSE needed, nothing unpacked at each start, nothing left in /tmp when it is closed); a Mac's app is copied out of its archive or disk image.</summary>
+        public string Executable => windows ? Path.Combine(directory, WindowsExecutable) : mac ? Path.Combine(AppDirectory, MacExecutable) : Path.Combine(AppDirectory, "AppRun");
         public string AppDirectory => windows ? directory : Path.Combine(directory, "app");
         public virtual string WorkingDirectory => AppDirectory;
         public string VersionFile => Path.Combine(directory, "version");
         public virtual bool IsInstalled => File.Exists(Executable) && File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() == Version;
         public virtual IReadOnlyDictionary<string, string> Environment => new Dictionary<string, string>();
+        /// <summary>Given at every start, its own window's too (before a game's <see cref="Arguments"/>).</summary>
+        public virtual IReadOnlyList<string> StartArguments => Array.Empty<string>();
 
         /// <summary>The console's system files, from RomM, are in place.</summary>
         public abstract bool HasFirmware { get; }

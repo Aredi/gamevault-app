@@ -337,26 +337,12 @@ namespace gamevault.Helper
             File.WriteAllText(Layout.ConfigFile, Layout.Config(player, RetroAchievementsAccount.Account));
         }
 
-        /// <summary>
-        /// The Mac's disk image mounted, its app copied (ditto keeps the links and the signature of its frameworks), then
-        /// its menus, controller profiles and core descriptions taken out of the app's assets.zip.
-        /// </summary>
+        /// <summary>The Mac's app out of its disk image, then its menus, controller profiles and core descriptions out of the app's assets.zip.</summary>
         private static async Task UnpackMacAsync(string image, string work, Action<int> progress)
         {
-            string mount = Path.Combine(work, "image");
-            Directory.CreateDirectory(mount);
-            await RunAsync("hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mount, image);
-            try
-            {
-                // At the image's root, or in its one folder
-                string app = Directory.EnumerateDirectories(mount).Prepend(mount).Select(d => Path.Combine(d, "RetroArch.app")).FirstOrDefault(Directory.Exists)
-                    ?? throw new IOException("RetroArch.app is not in " + Path.GetFileName(image));
-                if (Directory.Exists(Layout.AppDirectory))
-                    Directory.Delete(Layout.AppDirectory, true);
-                Directory.CreateDirectory(Layout.AppDirectory);
-                await RunAsync("ditto", app, Layout.MacApp);
-            }
-            finally { await RunAsync("hdiutil", "detach", mount, "-force"); }
+            if (Directory.Exists(Layout.AppDirectory))
+                Directory.Delete(Layout.AppDirectory, true);
+            await MacDiskImage.CopyAppAsync(image, Path.GetFileName(Layout.MacApp), work, Layout.AppDirectory);
             using ZipArchive assets = ZipFile.OpenRead(Layout.MacAssets);
             var kept = assets.Entries.Where(e => e.Name.Length > 0 && RetroArchLayout.IsKeptAsset(e.FullName)).ToList();
             for (int i = 0; i < kept.Count; i++)
@@ -367,19 +353,6 @@ namespace gamevault.Helper
                 if (i % 200 == 0)
                     progress(i * 100 / kept.Count);
             }
-        }
-
-        private static async Task RunAsync(string program, params string[] arguments)
-        {
-            var info = new ProcessStartInfo(program) { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true };
-            foreach (string argument in arguments)
-                info.ArgumentList.Add(argument);
-            using Process process = Process.Start(info) ?? throw new IOException(program + " could not be started");
-            Task<string> output = process.StandardOutput.ReadToEndAsync(), error = process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
-            await output;
-            if (process.ExitCode != 0)
-                throw new IOException($"{program}: {(await error).Trim()}");
         }
 
         internal static async Task DownloadAsync(string url, string file, Action<double> progress)

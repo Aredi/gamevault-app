@@ -48,6 +48,34 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void OnAMac_TheEmulatorsApps_TheirSettingsInTheirFolder()
+        {
+            var xemu = new XemuLayout("/sv/xemu", windows: false, mac: true);
+            Assert.Equal("/sv/xemu/app/xemu.app/Contents/MacOS/xemu", xemu.Executable);
+            Assert.EndsWith("/v0.8.136/xemu-0.8.136-macos-universal.zip", xemu.PackageUrl);
+            // Its folder of settings is in ~/Library: the client's file given at each start, its own window's too
+            Assert.Equal("/sv/xemu/xemu.toml", xemu.ConfigFile);
+            Assert.Equal(new[] { "-config_path", "/sv/xemu/xemu.toml" }, xemu.StartArguments);
+            Assert.Empty(xemu.Environment);
+            Assert.Empty(new XemuLayout("/sv/xemu", windows: false).StartArguments);
+
+            var rpcs3 = new Rpcs3Layout("/sv/rpcs3", windows: false, mac: true);
+            Assert.Equal("/sv/rpcs3/app/RPCS3.app/Contents/MacOS/rpcs3", rpcs3.Executable);
+            Assert.EndsWith("_macos_aarch64.7z", rpcs3.PackageUrl);
+            Assert.Equal("RPCS3.app", rpcs3.MacApp);
+            // Its ~/Library in its folder (by HOME): its storage, settings and log there
+            Assert.Equal("/sv/rpcs3/home", rpcs3.Environment["HOME"]);
+            Assert.Equal("/sv/rpcs3/home/Library/Application Support/rpcs3/dev_hdd0/home/00000005/savedata", rpcs3.SavesDirectory("5"));
+            Assert.Equal("/sv/rpcs3/home/Library/Caches/rpcs3/RPCS3.log", rpcs3.LogFile);
+            Assert.Equal("/sv/rpcs3/home/Library/Application Support/rpcs3/config.yml", rpcs3.ResolutionFiles.Single());
+
+            var eden = new EdenLayout("/sv/eden", windows: false, mac: true);
+            Assert.Equal("/sv/eden/app/eden.app/Contents/MacOS/eden", eden.Executable);
+            Assert.EndsWith($"/{EdenLayout.Pinned}/Eden-macOS-{EdenLayout.Pinned[(EdenLayout.Pinned.IndexOf('.') + 1)..]}.dmg", eden.PackageUrl);
+            Assert.Equal("/sv/eden", eden.WorkingDirectory);
+        }
+
+        [Fact]
         public void TheButtonsChosen_AreXemus_ForEachGamepadItKnows_AndThePluggedOne()
         {
             var layout = new XemuLayout("/xemu", windows: false);

@@ -4,9 +4,9 @@ namespace GameVault.Core.Retro
     /// xemu plays the Xbox games: an XISO in its drive (see <see cref="XboxDisc"/>), with the console's boot ROM and BIOS
     /// from RomM and xemu's own hard disk, free of copyrighted content (its dashboard). Each GameVault player has their
     /// hard disk, where the games keep their saves. Its settings file is found by xemu itself: beside it on Windows
-    /// (its portable mode), in the folder the client gives it on Linux (XDG_DATA_HOME).
+    /// (its portable mode), in the folder the client gives it on Linux (XDG_DATA_HOME); a Mac's is given at each start.
     /// </summary>
-    public sealed class XemuLayout(string directory, bool windows) : StandaloneLayout(directory, windows)
+    public sealed class XemuLayout(string directory, bool windows, bool mac = false) : StandaloneLayout(directory, windows, mac)
     {
         private const string Release = "0.8.136";
         /// <summary>xemu's hard disk with its dashboard (8 GB, nearly empty: 1.6 MB), copied for each player.</summary>
@@ -15,16 +15,19 @@ namespace GameVault.Core.Retro
         public override string Version => Release;
         public override string PackageUrl => Windows
             ? $"https://github.com/xemu-project/xemu/releases/download/v{Release}/xemu-{Release}-windows-x86_64.zip"
+            : Mac ? $"https://github.com/xemu-project/xemu/releases/download/v{Release}/xemu-{Release}-macos-universal.zip"
             : $"https://github.com/xemu-project/xemu/releases/download/v{Release}/xemu-{Release}-x86_64.AppImage";
         protected override string WindowsExecutable => "xemu.exe";
+        protected override string MacExecutable => Path.Combine("xemu.app", "Contents", "MacOS", "xemu");
 
         /// <summary>On Linux, its settings and caches go in its folder, not the player's home.</summary>
-        public override IReadOnlyDictionary<string, string> Environment => Windows ? new Dictionary<string, string>() : new Dictionary<string, string>
+        public override IReadOnlyDictionary<string, string> Environment => Windows || Mac ? new Dictionary<string, string>() : new Dictionary<string, string>
         {
             ["XDG_DATA_HOME"] = Path.Combine(Directory, "data"),
         };
-        /// <summary>Where xemu looks for it: beside xemu.exe, else SDL's folder of the app ("xemu", "xemu").</summary>
-        public string ConfigFile => Windows ? Path.Combine(Directory, "xemu.toml") : Path.Combine(Directory, "data", "xemu", "xemu", "xemu.toml");
+        /// <summary>Where xemu looks for it: beside xemu.exe, else SDL's folder of the app ("xemu", "xemu"); on a Mac (whose folder is in ~/Library) the one given to it.</summary>
+        public string ConfigFile => Windows || Mac ? Path.Combine(Directory, "xemu.toml") : Path.Combine(Directory, "data", "xemu", "xemu", "xemu.toml");
+        public override IReadOnlyList<string> StartArguments => Mac ? new[] { "-config_path", ConfigFile } : Array.Empty<string>();
 
         private string SystemFolder => Path.Combine(Directory, "system");
         /// <summary>The MCPX boot ROM: xemu takes only one of 512 bytes.</summary>

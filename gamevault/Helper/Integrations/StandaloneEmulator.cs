@@ -60,13 +60,25 @@ namespace gamevault.Helper
                 string package = Path.Combine(work, Path.GetFileName(new Uri(Layout.PackageUrl).LocalPath));
                 await RetroArchManager.DownloadAsync(Layout.PackageUrl, package, done => status(Loc.F("Installing {0}, once for all the {1} games: downloading {2:0}%", Name, Console, done * 100)));
                 status(Loc.F("Installing {0}, once for all the {1} games: unpacking {2}%", Name, Console, 0));
-                if (PlatformInfo.IsWindows)
+                async Task UnpackAsync(string folder)
                 {
-                    // Over the previous version: its console storage (beside it) stays
                     var sevenZip = new SevenZipHelper();
                     sevenZip.Process += (_, e) => status(Loc.F("Installing {0}, once for all the {1} games: unpacking {2}%", Name, Console, e.PercentageDone));
-                    if (await sevenZip.ExtractArchive(package, Layout.Directory) != 0)
+                    if (await sevenZip.ExtractArchive(package, folder) != 0)
                         throw new IOException(sevenZip.LastError);
+                }
+                if (PlatformInfo.IsWindows)
+                    // Over the previous version: its console storage (beside it) stays
+                    await UnpackAsync(Layout.Directory);
+                else if (PlatformInfo.IsMac)
+                {
+                    // Its app in a disk image (Eden), else in a 7z or a zip (7-Zip keeps the app's links); its storage is outside the app's folder
+                    if (Directory.Exists(Layout.AppDirectory))
+                        Directory.Delete(Layout.AppDirectory, true);
+                    if (package.EndsWith(".dmg", StringComparison.OrdinalIgnoreCase))
+                        await MacDiskImage.CopyAppAsync(package, Layout.MacApp, work, Layout.AppDirectory);
+                    else
+                        await UnpackAsync(Layout.AppDirectory);
                 }
                 else
                 {
@@ -129,7 +141,7 @@ namespace gamevault.Helper
         protected Process Start(IReadOnlyList<string> arguments)
         {
             var info = new ProcessStartInfo(Layout.Executable) { UseShellExecute = false, WorkingDirectory = Layout.WorkingDirectory };
-            foreach (string argument in arguments)
+            foreach (string argument in Layout.StartArguments.Concat(arguments))
                 info.ArgumentList.Add(argument);
             foreach (var (name, value) in Layout.Environment)
                 info.Environment[name] = value;

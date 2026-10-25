@@ -5,7 +5,7 @@ namespace GameVault.Core.Retro
     /// it once (PS3UPDAT.PUP, from RomM). Its console's storage (dev_hdd0: the saves, one user per GameVault player)
     /// stays when RPCS3 is uninstalled or updated.
     /// </summary>
-    public sealed class Rpcs3Layout(string directory, bool windows) : StandaloneLayout(directory, windows)
+    public sealed class Rpcs3Layout(string directory, bool windows, bool mac = false) : StandaloneLayout(directory, windows, mac)
     {
         private const string Release = "0.0.43-20210";
         private const string Build = "fcbed0bc6d803abc4d7ed1a722f2ac54d4591eee";
@@ -13,19 +13,26 @@ namespace GameVault.Core.Retro
         public override string Version => Release;
         public override string PackageUrl => Windows
             ? $"https://github.com/RPCS3/rpcs3-binaries-win/releases/download/build-{Build}/rpcs3-v{Release}-{Build[..8]}_win64_msvc.7z"
+            : Mac ? $"https://github.com/RPCS3/rpcs3-binaries-mac-arm64/releases/download/build-{Build}/rpcs3-v{Release}-{Build[..8]}_macos_aarch64.7z"
             : $"https://github.com/RPCS3/rpcs3-binaries-linux/releases/download/build-{Build}/rpcs3-v{Release}-{Build[..8]}_linux64.AppImage";
         protected override string WindowsExecutable => "rpcs3.exe";
+        protected override string MacExecutable => Path.Combine("RPCS3.app", "Contents", "MacOS", "rpcs3");
 
-        /// <summary>Its configuration and console storage: beside the program on Windows, in the folder the client gives it on Linux (XDG_CONFIG_HOME).</summary>
-        public string ConfigDirectory => Windows ? Directory : Path.Combine(Directory, "config", "rpcs3");
-        /// <summary>On Linux, its configuration and caches go in its folder, not the player's home.</summary>
-        public override IReadOnlyDictionary<string, string> Environment => Windows ? new Dictionary<string, string>() : new Dictionary<string, string>
-        {
-            ["XDG_CONFIG_HOME"] = Path.Combine(Directory, "config"),
-            ["XDG_CACHE_HOME"] = Path.Combine(Directory, "cache"),
-        };
+        /// <summary>A Mac's RPCS3 keeps them in ~/Library (by HOME): its own home in its folder.</summary>
+        private string MacHome => Path.Combine(Directory, "home");
+        /// <summary>Its configuration and console storage: beside the program on Windows, in the folder the client gives it on Linux (XDG_CONFIG_HOME) and a Mac (HOME).</summary>
+        public string ConfigDirectory => Windows ? Directory : Mac ? Path.Combine(MacHome, "Library", "Application Support", "rpcs3") : Path.Combine(Directory, "config", "rpcs3");
+        /// <summary>On Linux and a Mac, its configuration and caches go in its folder, not the player's home.</summary>
+        public override IReadOnlyDictionary<string, string> Environment => Windows ? new Dictionary<string, string>()
+            : Mac ? new Dictionary<string, string> { ["HOME"] = MacHome }
+            : new Dictionary<string, string>
+            {
+                ["XDG_CONFIG_HOME"] = Path.Combine(Directory, "config"),
+                ["XDG_CACHE_HOME"] = Path.Combine(Directory, "cache"),
+            };
         /// <summary>Where it tells what it did: the firmware's installation is read there.</summary>
-        public string LogFile => Windows ? Path.Combine(Directory, "RPCS3.log") : Path.Combine(Directory, "cache", "rpcs3", "RPCS3.log");
+        public string LogFile => Windows ? Path.Combine(Directory, "RPCS3.log")
+            : Mac ? Path.Combine(MacHome, "Library", "Caches", "rpcs3", "RPCS3.log") : Path.Combine(Directory, "cache", "rpcs3", "RPCS3.log");
 
         /// <summary>RPCS3 checks this module of the firmware before any game.</summary>
         public override bool HasFirmware => File.Exists(Path.Combine(ConfigDirectory, "dev_flash", "vsh", "module", "vsh.self"));

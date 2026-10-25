@@ -20,7 +20,7 @@ namespace gamevault.Helper
         public override string Name => "xemu";
         public override string Core => "xemu";
         public override string Console => "Xbox";
-        public override XemuLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "xemu"), PlatformInfo.IsWindows);
+        public override XemuLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "xemu"), PlatformInfo.IsWindows, PlatformInfo.IsMac);
 
         public override string FirmwareState => Layout.HasFirmware
             ? Loc.T("Boot ROM, BIOS and hard disk installed in xemu")

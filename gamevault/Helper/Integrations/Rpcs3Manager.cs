@@ -20,7 +20,7 @@ namespace gamevault.Helper
         public override string Name => "RPCS3";
         public override string Core => "rpcs3";
         public override string Console => "PS3";
-        public override Rpcs3Layout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "rpcs3"), PlatformInfo.IsWindows);
+        public override Rpcs3Layout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "rpcs3"), PlatformInfo.IsWindows, PlatformInfo.IsMac);
 
         public override string FirmwareState => Layout.HasFirmware
             ? Loc.T("Firmware installed in RPCS3")
@@ -69,6 +69,14 @@ namespace gamevault.Helper
             }
             catch (IOException) { return false; }
         }
+
+        /// <summary>
+        /// shortcut: on a Mac the controller is not set for the player (RPCS3's SDL names it its own way, not checked without a Mac):
+        /// chosen once in RPCS3's window; write its SDL handler as Windows' XInput one once its name is known.
+        /// </summary>
+        public override string? ControllerHint => PlatformInfo.IsMac && !File.Exists(Layout.InputFile)
+            ? Loc.T("Controller: RPCS3 plays with the keyboard until yours is chosen once in its window (Configuration > Pads, handler SDL)")
+            : null;
 
         /// <summary>The controller ready (RPCS3 alone plays with the keyboard), unless the player set theirs in RPCS3's window.</summary>
         public override Process Launch(string player, string launchFile, string language)

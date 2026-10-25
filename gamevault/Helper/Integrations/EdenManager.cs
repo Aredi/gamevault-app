@@ -21,7 +21,7 @@ namespace gamevault.Helper
         public override string Name => "Eden";
         public override string Core => "eden";
         public override string Console => "Switch";
-        public override EdenLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "eden"), PlatformInfo.IsWindows);
+        public override EdenLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "eden"), PlatformInfo.IsWindows, PlatformInfo.IsMac);
 
         public override string FirmwareState => Layout.HasFirmware
             ? Loc.T("Keys and firmware installed in Eden")

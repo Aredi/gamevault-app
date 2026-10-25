@@ -6,10 +6,10 @@ namespace GameVault.Core.Retro
 {
     /// <summary>
     /// Eden (a nightly build) plays the Nintendo Switch games. It is portable: its "user" folder is beside it (its
-    /// working folder on Linux), where the console's keys and firmware from RomM are copied as Eden's own installation
+    /// working folder on Linux and a Mac), where the console's keys and firmware from RomM are copied as Eden's own installation
     /// does. Each GameVault player is the console's first user while they play, so each has their saves.
     /// </summary>
-    public sealed class EdenLayout(string directory, bool windows) : StandaloneLayout(directory, windows)
+    public sealed class EdenLayout(string directory, bool windows, bool mac = false) : StandaloneLayout(directory, windows, mac)
     {
         /// <summary>The nightly the client's settings were checked with: the oldest one it plays with.</summary>
         public const string Pinned = "v1792353251.de7e6e01d4";
@@ -51,10 +51,12 @@ namespace GameVault.Core.Retro
             string commit = tag[(tag.IndexOf('.') + 1)..];
             return Windows
                 ? $"https://nightly.eden-emu.dev/{tag}/Eden-Windows-{commit}-amd64-clang-pgo.zip"
+                : Mac ? $"https://nightly.eden-emu.dev/{tag}/Eden-macOS-{commit}.dmg"
                 : $"https://nightly.eden-emu.dev/{tag}/Eden-Linux-{commit}-amd64-clang-pgo.AppImage";
         }
         protected override string WindowsExecutable => "eden.exe";
-        /// <summary>On Linux Eden looks for its "user" folder in its working folder.</summary>
+        protected override string MacExecutable => Path.Combine("eden.app", "Contents", "MacOS", "eden");
+        /// <summary>On Linux and a Mac Eden looks for its "user" folder in its working folder.</summary>
         public override string WorkingDirectory => Directory;
 
         public string UserDirectory => Path.Combine(Directory, "user");

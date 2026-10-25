@@ -1261,6 +1261,7 @@
   "The controller the game is played with: RetroArch gives it to the console at the start": "La manette avec laquelle on joue : RetroArch la donne à la console au lancement",
   "The controller of the consoles that have several; a game's page can choose another.": "La manette des consoles qui en ont plusieurs ; la page d'un jeu peut en choisir une autre.",
   "Controller: Eden plays with the keyboard until yours is chosen once in its window (Emulation > Configure > Controls > Input Device)": "Manette : Eden joue au clavier tant que la vôtre n'est pas choisie une fois dans sa fenêtre (Émulation > Configurer > Contrôles > Périphérique d'entrée)",
+  "Controller: RPCS3 plays with the keyboard until yours is chosen once in its window (Configuration > Pads, handler SDL)": "Manette : RPCS3 joue au clavier tant que la vôtre n'est pas choisie une fois dans sa fenêtre (Configuration > Pads, gestionnaire SDL)",
   "Keyboard": "Clavier",
   "The keys of each console played in RetroArch: click a button, then press its key (Escape cancels).": "Les touches de chaque console jouée dans RetroArch : clique sur un bouton, puis appuie sur sa touche (Échap annule).",
   "Default keys": "Touches par défaut",
