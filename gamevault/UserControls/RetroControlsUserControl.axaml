@@ -33,6 +33,19 @@
         <WrapPanel Grid.Row="2" Margin="0,6,0,0">
             <ToggleButton x:Name="uiPadTab" Classes="chip" Content="{l:T 'Gamepad'}" Margin="0,0,6,8" Click="Source_Click" />
             <ToggleButton x:Name="uiKeyboardTab" Classes="chip" Content="{l:T 'Keyboard'}" Margin="0,0,16,8" Click="Source_Click" />
+            <!-- The gamepad's player: each one has their own buttons and gamepad -->
+            <ItemsControl x:Name="uiPlayers" Margin="0,0,10,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ToggleButton Classes="chip" Content="{Binding Name}" IsChecked="{Binding Selected, Mode=OneWay}" Margin="0,0,6,8" Click="Player_Click" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <TextBlock x:Name="uiDevice" Classes="muted" FontSize="13.5" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,8" />
             <Button x:Name="uiInstall" Classes="chip" Content="{l:T 'Install RetroArch now'}" Margin="0,0,0,8" IsVisible="False" Click="Install_Click" />
         </WrapPanel>

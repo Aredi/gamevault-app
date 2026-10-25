@@ -31,9 +31,9 @@ namespace GameVault.Core.Tests
         [Fact]
         public void TheConfig_IsSdl2AndEveryButton_OnlyForTheConsolesSet()
         {
-            Assert.Empty(RetroPad.Config("nes", null, null));
+            Assert.Empty(RetroPad.Config("nes", null, new Dictionary<string, Dictionary<string, RetroPad.Input>>()));
             var chosen = RetroPad.Assign("nes", null, null, "a", RetroPad.Button(2));
-            var config = RetroPad.Config("nes", null, chosen).ToDictionary(c => c.Key, c => c.Value);
+            var config = RetroPad.Config("nes", null, new Dictionary<string, Dictionary<string, RetroPad.Input>> { ["nes"] = chosen }).ToDictionary(c => c.Key, c => c.Value);
             Assert.Equal("sdl2", config["input_joypad_driver"]);
             // The profile is not read: a button left empty would be played by it
             Assert.Equal("false", config["input_autodetect_enable"]);
@@ -43,6 +43,22 @@ namespace GameVault.Core.Tests
             // The others as in the profiles, the sticks too; Select and Start always (Select+Start quits)
             Assert.Equal(("nul", "+4"), (config["input_player1_l2_btn"], config["input_player1_l2_axis"]));
             Assert.Equal("6", config["input_player1_start_btn"]);
+            // The other players play too, with the profiles' buttons
+            Assert.Equal(("1", "1"), (config["input_player2_a_btn"], config["input_player4_a_btn"]));
+            Assert.False(config.ContainsKey("input_player5_a_btn"));
+        }
+
+        [Fact]
+        public void EachPlayer_HasTheirOwnButtons()
+        {
+            var choices = new Dictionary<string, Dictionary<string, RetroPad.Input>> { [RetroPad.KeyOf("ngc", 2)] = RetroPad.Assign("ngc", null, null, "a", RetroPad.Button(3)) };
+            Assert.Equal("ngc#2", RetroPad.KeyOf("ngc", 2));
+            Assert.True(RetroPad.IsSet(choices, "ngc"));
+            Assert.False(RetroPad.IsSet(choices, "n64"));
+            var config = RetroPad.Config("ngc", null, choices).ToDictionary(c => c.Key, c => c.Value);
+            Assert.Equal("3", config["input_player2_a_btn"]);
+            // The first player, without choices: the profiles'
+            Assert.Equal("1", config["input_player1_a_btn"]);
         }
 
         [Fact]

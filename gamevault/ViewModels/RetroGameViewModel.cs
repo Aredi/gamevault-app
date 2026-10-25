@@ -105,7 +105,7 @@ namespace gamevault.ViewModels
                 var parts = new List<string>();
                 if (GameVault.Core.Retro.RetroControllers.BySystem.TryGetValue(Game.Platform.Slug, out var controllers))
                     parts.Add(ControllerName(controllers.FirstOrDefault(c => c.Device == RetroArchManager.ControllerOf(Game))?.Name ?? controllers[0].Name));
-                if (RetroArchManager.Pad.ContainsKey(Game.Platform.Slug))
+                if (GameVault.Core.Retro.RetroPad.IsSet(RetroArchManager.Pad, Game.Platform.Slug))
                     parts.Add(Loc.T("gamepad set"));
                 if (RetroArchManager.Keyboard.ContainsKey(Game.Platform.Slug))
                     parts.Add(Loc.T("keyboard set"));

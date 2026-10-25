@@ -142,10 +142,11 @@ namespace gamevault.Helper
         /// <summary>The console's keys and buttons in the client's config, written again before each game (<see cref="EnsureReadyAsync"/>): the previous console's are gone.</summary>
         private static void SetKeyboard(RetroSystem system, int? controller)
         {
-            var pad = RetroPad.Config(system.Slug, controller, Pad.GetValueOrDefault(system.Slug)).ToList();
-            // The gamepad set, not a LED controller or a KVM SDL lists before it
-            if (pad.Count > 0 && Sdl2Library is string library && RetroGamepad.FirstControllerIndex(library) is int index)
-                pad.Add(("input_player1_joypad_index", index.ToString()));
+            var pad = RetroPad.Config(system.Slug, controller, Pad).ToList();
+            // Each player's gamepad, not a LED controller or a KVM SDL lists before them
+            if (pad.Count > 0 && Sdl2Library is string library)
+                foreach (var (index, player) in RetroGamepad.ControllerIndexes(library).Take(RetroPad.Players).Select((index, i) => (index, i + 1)))
+                    pad.Add(($"input_player{player}_joypad_index", index.ToString()));
             var lines = RetroKeyboard.Config(system.Slug, controller, Keyboard.GetValueOrDefault(system.Slug)).Concat(pad).ToList();
             if (lines.Count == 0)
                 return;

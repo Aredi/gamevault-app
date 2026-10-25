@@ -54,7 +54,7 @@ namespace gamevault.UserControls.SettingsComponents
             var keyboard = RetroArchManager.Keyboard;
             var pad = RetroArchManager.Pad;
             uiControlsSet.ItemsSource = RetroControlsUserControl.Systems
-                .Select(s => (s.Name, Pad: pad.ContainsKey(s.Slug), Keyboard: keyboard.ContainsKey(s.Slug)))
+                .Select(s => (s.Name, Pad: RetroPad.IsSet(pad, s.Slug), Keyboard: keyboard.ContainsKey(s.Slug)))
                 .Where(s => s.Pad || s.Keyboard)
                 .Select(s => s.Pad && s.Keyboard ? Loc.F("{0} · gamepad and keyboard", s.Name) : s.Pad ? Loc.F("{0} · gamepad", s.Name) : Loc.F("{0} · keyboard", s.Name))
                 .ToList();

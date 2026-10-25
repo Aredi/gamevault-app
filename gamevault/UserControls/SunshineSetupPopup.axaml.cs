@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace gamevault.UserControls
 {
-    /// <summary>Sunshine installed (Windows: its installer; Linux: its guide) and running, then its login kept; then the sharing goes on.</summary>
+    /// <summary>Sunshine installed (Windows: Apollo's installer; Linux: Sunshine's guide) and running, then its login kept; then the sharing goes on.</summary>
     public partial class SunshineSetupPopup : UserControl
     {
         private readonly Func<Task> ready;
@@ -24,6 +24,12 @@ namespace gamevault.UserControls
             this.ready = ready;
             InitializeComponent();
             uiLinuxGuide.Text = SunshineHost.LinuxGuide;
+            string name = SunshineHost.Name;
+            uiIntro.Text = Loc.F("{0} (free) streams your screen to your friends, who play with their own gamepad: the game only runs on your PC. It is set up once.", name);
+            uiInstallTitle.Text = Loc.F("Install {0}", name);
+            uiLoginTitle.Text = Loc.F("Give SanctuaryVault your {0} login", name);
+            uiLoginText.Text = Loc.F("The first time, {0} asks you to choose a login on its page. With it, SanctuaryVault pairs your friends for you.", name);
+            uiOpenPage.Content = Loc.F("Open {0}", name);
             uiUser.Text = SunshineHost.Login?.User;
             _ = ShowAsync();
         }
@@ -34,9 +40,9 @@ namespace gamevault.UserControls
             Mark(uiInstallDot, uiInstallMark, running, "1");
             uiLinuxGuide.IsVisible = !running && !PlatformInfo.IsWindows;
             uiInstallText.Text = running ? Loc.T("Installed and running")
-                : PlatformInfo.IsWindows ? Loc.T("Its official installer: keep its virtual gamepads' driver (ViGEmBus) checked.")
+                : PlatformInfo.IsWindows ? Loc.T("Its official installer: keep \"Virtual Gamepad\" checked (your friends' gamepads).")
                 : Loc.T("Install it from your distribution (its package or its Flatpak) as its guide says, start it, then come back here:");
-            uiNext.Content = running ? Loc.T("Share my screen") : PlatformInfo.IsWindows ? Loc.T("Install Sunshine") : Loc.T("It is running");
+            uiNext.Content = running ? Loc.T("Share my screen") : PlatformInfo.IsWindows ? Loc.F("Install {0}", SunshineHost.Name) : Loc.T("It is running");
         }
 
         private void Mark(Border dot, TextBlock mark, bool done, string step)
@@ -59,7 +65,7 @@ namespace gamevault.UserControls
                     if (PlatformInfo.IsWindows)
                         await SunshineHost.InstallAsync(text => Dispatcher.UIThread.Post(() => uiStatus.Text = text));
                     await ShowAsync();
-                    uiStatus.Text = running ? "" : Loc.T("Sunshine does not answer yet: start it, then try again.");
+                    uiStatus.Text = running ? "" : Loc.F("{0} does not answer yet: start it, then try again.", SunshineHost.Name);
                 }
                 else
                 {

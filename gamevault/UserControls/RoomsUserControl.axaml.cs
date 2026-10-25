@@ -286,10 +286,10 @@ namespace gamevault.UserControls
         {
             int me = LoginManager.Instance.GetCurrentUser()?.ID ?? -1;
             if (sender is not Button button || button.DataContext is not MemberRow { JoinIp: string host } || Selected is not RoomItem { Code: string code } room
-                || room.Members.FirstOrDefault(m => m.UserId == me)?.Ip is not string mine)
+                || !room.Members.Any(m => m.UserId == me && m.Ip != null))
                 return;
             button.IsEnabled = false;
-            try { await MoonlightClient.JoinAsync(host, ScreenSharing.Pin(code, mine), text => Dispatcher.UIThread.Post(() => ShowStatus(text))); }
+            try { await MoonlightClient.JoinAsync(host, ScreenSharing.Pin(code), text => Dispatcher.UIThread.Post(() => ShowStatus(text))); }
             catch (Exception ex) { ShowStatus(ex.Message); }
             finally { button.IsEnabled = true; }
         }

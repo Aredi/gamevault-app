@@ -3,8 +3,8 @@ using System.Text.Json;
 namespace GameVault.Core.Retro
 {
     /// <summary>
-    /// The gamepad's buttons of a console's games (Régler mes touches): RetroArch's first player's RetroPad, by platform, the
-    /// RetroPad's buttons being the ones of <see cref="RetroKeyboard.Of"/>. A console set here is played with RetroArch's
+    /// The gamepad's buttons of a console's games (Régler mes touches): RetroArch's first four players' RetroPads, by
+    /// platform, the RetroPad's buttons being the ones of <see cref="RetroKeyboard.Of"/>. A console set here is played with RetroArch's
     /// SDL2 driver, the one the client reads the gamepad with (SDL's numbers, the same in both); the others keep RetroArch's
     /// own driver and profiles. Checked in RetroArch's sources and its SDL2 profiles (1.22.2).
     /// </summary>
@@ -19,6 +19,16 @@ namespace GameVault.Core.Retro
             [System.Text.Json.Serialization.JsonIgnore]
             public bool IsAxis => Name.Length > 1 && Name[0] is '+' or '-';
         }
+
+        /// <summary>The players set here, each with their own gamepad: the plugged ones in SDL's order.</summary>
+        public const int Players = 4;
+
+        /// <summary>A player's buttons in the choices: the console's slug for the first one (kept as before the players), "ngc#2" for the others.</summary>
+        public static string KeyOf(string slug, int player) => player == 1 ? slug : $"{slug}#{player}";
+
+        /// <summary>A player of the console has their buttons chosen.</summary>
+        public static bool IsSet(IReadOnlyDictionary<string, Dictionary<string, Input>> choices, string slug) =>
+            Enumerable.Range(1, Players).Any(p => choices.ContainsKey(KeyOf(slug, p)));
 
         /// <summary>No input.</summary>
         public static readonly Input None = new("nul", "");
@@ -73,24 +83,29 @@ namespace GameVault.Core.Retro
 
         /// <summary>
         /// The lines of RetroArch's config for a platform's game, none when nothing is chosen for it. Else SDL2, every RetroPad
-        /// button written (RetroArch's profile would play a button left empty: it is not read): the console's, and the
-        /// others as in the profiles unless one of the console's has their input (Select and Start stay: Select+Start quits).
+        /// button of every player written (RetroArch's profile would play a button left empty: it is not read, and a player
+        /// without any would not play): theirs, the profiles' for a player without choices; and the others as in the
+        /// profiles unless one of the console's has their input (Select and Start stay: Select+Start quits).
         /// </summary>
-        public static IEnumerable<(string Key, string Value)> Config(string slug, int? device, IReadOnlyDictionary<string, Input>? chosen)
+        public static IEnumerable<(string Key, string Value)> Config(string slug, int? device, IReadOnlyDictionary<string, Dictionary<string, Input>> choices)
         {
-            if (chosen == null || chosen.Count == 0)
+            if (!IsSet(choices, slug))
                 yield break;
             yield return ("input_joypad_driver", "sdl2");
             yield return ("input_autodetect_enable", "false");
             var buttons = RetroKeyboard.Of(slug, device).Select(b => b.Bind).ToList();
-            var inputs = buttons.ToDictionary(b => b, b => InputOf(chosen, b) ?? None);
-            var used = inputs.Values.Select(i => i.Name).ToHashSet();
-            foreach (var (bind, input) in Defaults.Where(d => !buttons.Contains(d.Key)))
-                inputs[bind] = bind is "select" or "start" || !used.Contains(input.Name) ? input : None;
-            foreach (var (bind, input) in inputs)
+            for (int player = 1; player <= Players; player++)
             {
-                yield return ($"input_player1_{bind}_btn", input.IsAxis ? None.Name : input.Name);
-                yield return ($"input_player1_{bind}_axis", input.IsAxis ? input.Name : None.Name);
+                var chosen = choices.GetValueOrDefault(KeyOf(slug, player));
+                var inputs = buttons.ToDictionary(b => b, b => InputOf(chosen, b) ?? None);
+                var used = inputs.Values.Select(i => i.Name).ToHashSet();
+                foreach (var (bind, input) in Defaults.Where(d => !buttons.Contains(d.Key)))
+                    inputs[bind] = bind is "select" or "start" || !used.Contains(input.Name) ? input : None;
+                foreach (var (bind, input) in inputs)
+                {
+                    yield return ($"input_player{player}_{bind}_btn", input.IsAxis ? None.Name : input.Name);
+                    yield return ($"input_player{player}_{bind}_axis", input.IsAxis ? input.Name : None.Name);
+                }
             }
         }
 

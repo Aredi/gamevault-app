@@ -5,14 +5,13 @@ namespace GameVault.Core.Tests
     public class ScreenSharingTests
     {
         [Fact]
-        public void TheHostAndTheGuest_FindTheSamePin_ForThisGuestOfThisRoomOnly()
+        public void TheHostAndTheGuest_FindTheSamePin_ForThisRoomOnly()
         {
-            string pin = ScreenSharing.Pin("K7Q4MX", "10.147.3.2");
+            string pin = ScreenSharing.Pin("K7Q4MX");
             Assert.Matches("^[0-9]{4}$", pin);
-            Assert.Equal(pin, ScreenSharing.Pin("K7Q4MX", "10.147.3.2"));
-            // Another guest, another room: other PINs (these ones differ)
-            Assert.NotEqual(pin, ScreenSharing.Pin("K7Q4MX", "10.147.3.3"));
-            Assert.NotEqual(pin, ScreenSharing.Pin("AB2CD3", "10.147.3.2"));
+            Assert.Equal(pin, ScreenSharing.Pin("K7Q4MX"));
+            // Another room: another PIN (these ones differ)
+            Assert.NotEqual(pin, ScreenSharing.Pin("AB2CD3"));
         }
 
         [Fact]

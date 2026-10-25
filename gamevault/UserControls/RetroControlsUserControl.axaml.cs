@@ -24,6 +24,7 @@ namespace gamevault.UserControls
     {
         internal sealed record ConsoleChip(RetroSystem System, string Name, bool Selected);
         internal sealed record ControllerChip(int Device, string Name, bool Selected);
+        internal sealed record PlayerChip(int Player, string Name, bool Selected);
         /// <summary>A button of the console and what plays it; the lit one is the one waiting for a key or a button.</summary>
         internal sealed record ControlRow(string Bind, string Name, string Input, string Changed, bool Lit);
 
@@ -33,6 +34,7 @@ namespace gamevault.UserControls
         private readonly RetroGame? game;
         private RetroSystem system;
         private bool keyboard;
+        private int player = 1;
         /// <summary>The button waiting for a key or a gamepad's button.</summary>
         private string? listening;
         /// <summary>The buttons set one after the other ("Set them all", a stick's directions) and the one being set.</summary>
@@ -74,6 +76,9 @@ namespace gamevault.UserControls
         private bool ForGame => game != null && game.Platform.Slug == system.Slug;
         private int? Device => ForGame ? RetroArchManager.ControllerOf(game!) : ConsoleDevice;
         private RetroKeyboard.Button[] Buttons => RetroKeyboard.Of(system.Slug, Device);
+        /// <summary>The gamepad's player set: the keyboard and xemu are the first player's only.</summary>
+        internal int Player => keyboard || system.IsXemu ? 1 : player;
+        private string PadKey => RetroPad.KeyOf(system.Slug, Player);
 
         internal string? Listening => listening;
         internal bool IsKeyboard => keyboard;
@@ -86,6 +91,10 @@ namespace gamevault.UserControls
             uiPadTab.IsChecked = !keyboard;
             uiKeyboardTab.IsChecked = keyboard;
             uiColumn.Text = keyboard ? Loc.T("YOUR KEYBOARD") : Loc.T("YOUR GAMEPAD");
+            uiPlayers.IsVisible = !keyboard && !system.IsXemu;
+            uiPlayers.ItemsSource = Enumerable.Range(1, RetroPad.Players).Select(p => new PlayerChip(p, Loc.F("Player {0}", p), p == Player)).ToList();
+            if (gamepad != null)
+                gamepad.Player = Player;
             RefreshDevice();
 
             uiControllerRow.IsVisible = Controllers.Length > 0;
@@ -101,7 +110,7 @@ namespace gamevault.UserControls
 
             var buttons = Buttons;
             var keys = RetroArchManager.Keyboard.GetValueOrDefault(slug);
-            var pad = RetroArchManager.Pad.GetValueOrDefault(slug);
+            var pad = RetroArchManager.Pad.GetValueOrDefault(PadKey);
             int changed = 0;
             var rows = buttons.Select(b =>
             {
@@ -160,7 +169,7 @@ namespace gamevault.UserControls
             else if (gamepad?.Name is string name)
                 uiDevice.Text = gamepad.IsStandard ? Loc.F("Gamepad: {0}", name) : Loc.F("Gamepad: {0} (not a common one: set all its buttons)", name);
             else
-                uiDevice.Text = Loc.T("No gamepad plugged: plug one in.");
+                uiDevice.Text = Player == 1 ? Loc.T("No gamepad plugged: plug one in.") : Loc.F("No gamepad for player {0}: plug one more in.", Player);
         }
 
         #region The gamepad
@@ -173,7 +182,7 @@ namespace gamevault.UserControls
             try
             {
                 string library = await RetroArchManager.Sdl2LibraryAsync() ?? throw new InvalidOperationException(Loc.T("RetroArch's SDL2 library was not found"));
-                gamepad = new RetroGamepad(library);
+                gamepad = new RetroGamepad(library) { Player = Player };
                 gamepadError = null;
                 timer = new DispatcherTimer(TimeSpan.FromMilliseconds(30), DispatcherPriority.Input, (_, _) => Tick());
                 timer.Start();
@@ -282,7 +291,7 @@ namespace gamevault.UserControls
                 return;
             }
             var pads = RetroArchManager.Pad;
-            pads[system.Slug] = RetroPad.Assign(system.Slug, Device, pads.GetValueOrDefault(system.Slug), bind, input);
+            pads[PadKey] = RetroPad.Assign(system.Slug, Device, pads.GetValueOrDefault(PadKey), bind, input);
             RetroArchManager.Pad = pads;
             Next();
         }
@@ -302,10 +311,10 @@ namespace gamevault.UserControls
             else
             {
                 var pads = RetroArchManager.Pad;
-                var chosen = pads.GetValueOrDefault(system.Slug);
+                var chosen = pads.GetValueOrDefault(PadKey);
                 var inputs = Buttons.Select(b => (b.Bind, Input: RetroPad.InputOf(chosen, b.Bind))).Where(i => i.Input != null).ToDictionary(i => i.Bind, i => i.Input!);
                 inputs[bind] = RetroPad.None;
-                pads[system.Slug] = inputs;
+                pads[PadKey] = inputs;
                 RetroArchManager.Pad = pads;
             }
             Next();
@@ -365,6 +374,13 @@ namespace gamevault.UserControls
             Stop();
             if (!keyboard)
                 _ = StartGamepadAsync();
+        }
+
+        private void Player_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is PlayerChip chip)
+                player = chip.Player;
+            Stop();
         }
 
         private void Controller_Click(object? sender, RoutedEventArgs e)
@@ -447,7 +463,7 @@ namespace gamevault.UserControls
             else
             {
                 var pads = RetroArchManager.Pad;
-                pads.Remove(system.Slug);
+                pads.Remove(PadKey);
                 RetroArchManager.Pad = pads;
             }
             Stop();

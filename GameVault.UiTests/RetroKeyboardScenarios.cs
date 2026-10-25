@@ -129,6 +129,27 @@ namespace GameVault.UiTests
                 Assert.Contains("input_player1_up_btn = \"h0up\"", config);
                 Assert.Contains("input_player1_l2_axis = \"+4\"", config);
 
+                // Player 2 has their own buttons; the first one's stay
+                void ChoosePlayer(int number)
+                {
+                    var players = controls.FindControl<ItemsControl>("uiPlayers")!;
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    var chip = players.Items.Cast<RetroControlsUserControl.PlayerChip>().Single(p => p.Player == number);
+                    players.ContainerFromItem(chip)!.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>().Single().RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                }
+                ChoosePlayer(2);
+                Assert.Equal(2, controls.Player);
+                Assert.Equal("B", Rows(controls).Single(r => r.Bind == "a").Input);
+                controls.Give("a", RetroPad.Button(2));
+                Assert.Equal("2", RetroArchManager.Pad["snes#2"]["a"].Name);
+                Assert.Equal("3", RetroArchManager.Pad["snes"]["a"].Name);
+                Assert.ThrowsAny<Exception>(() => RetroArchManager.Launch(RetroSystems.All["snes"], "/nowhere/mario.sfc", "French"));
+                config = File.ReadAllText(RetroArchManager.Layout.ConfigFile);
+                Assert.Contains("input_player2_a_btn = \"2\"", config);
+                Assert.Contains("input_player1_a_btn = \"3\"", config);
+                ChoosePlayer(1);
+                Assert.Equal(1, controls.Player);
+
                 // A stick of the plan: its four directions one after the other
                 controls.Diagram_Clicked("lstick");
                 Assert.Null(controls.Listening);

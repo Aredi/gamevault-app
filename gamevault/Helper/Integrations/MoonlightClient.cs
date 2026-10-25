@@ -79,7 +79,8 @@ namespace gamevault.Helper
                     throw new InvalidOperationException(Loc.T("The host's PC did not accept the pairing: check that its screen is still shared, then try again."));
             }
             status(Loc.T("Joining the shared screen... To leave it: Ctrl+Alt+Shift+Q."));
-            Process.Start(Info("stream", host, ScreenSharing.DesktopApp))?.Dispose();
+            // The sound stays on the host's speakers too (else Sunshine moves it to its silent "Steam Streaming Speakers")
+            Process.Start(Info("stream", host, ScreenSharing.DesktopApp, "--audio-on-host"))?.Dispose();
         }
     }
 }

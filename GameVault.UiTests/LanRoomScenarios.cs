@@ -75,11 +75,11 @@ namespace GameVault.UiTests
                 setup.FindControl<TextBox>("uiUser")!.Text = "sv";
                 setup.FindControl<TextBox>("uiPassword")!.Text = "wrong";
                 Click(setup.FindControl<Button>("uiNext")!);
-                await TestSession.WaitUntil(() => setup.FindControl<TextBlock>("uiStatus")!.Text == gamevault.Localization.Loc.T("Sunshine did not accept this login."), TimeSpan.FromSeconds(30), "the wrong login refused");
+                await TestSession.WaitUntil(() => setup.FindControl<TextBlock>("uiStatus")!.Text == gamevault.Localization.Loc.F("{0} did not accept this login.", "Sunshine"), TimeSpan.FromSeconds(30), "the wrong login refused");
                 setup.FindControl<TextBox>("uiPassword")!.Text = "secret";
                 Click(setup.FindControl<Button>("uiNext")!);
                 await TestSession.WaitUntil(() => friends.Streaming.Contains(1) && !server.SunshinePins.IsEmpty, TimeSpan.FromSeconds(30), "Léa paired with her PIN");
-                Assert.Equal(("0123456789abcdef0123456789abcd01", GameVault.Core.Integrations.ScreenSharing.Pin("AB2CD3", "10.147.1.1"), "SanctuaryVault · Léa"), Assert.Single(server.SunshinePins));
+                Assert.Equal(("0123456789abcdef0123456789abcd01", GameVault.Core.Integrations.ScreenSharing.Pin("AB2CD3"), "SanctuaryVault · Léa"), Assert.Single(server.SunshinePins));
                 Assert.True(server.SunshinePairings.ContainsKey("0123456789abcdef0123456789abcd02"));
                 Assert.Equal(gamevault.Localization.Loc.T("Stop sharing my screen"), rooms.FindControl<Button>("uiShare")!.Content);
                 Assert.Contains(gamevault.Localization.Loc.T("shares their screen"), rooms.FindControl<ItemsControl>("uiMembers")!.Items.Cast<RoomsUserControl.MemberRow>().Single(m => m.Name.StartsWith("admin")).Name);
@@ -87,6 +87,18 @@ namespace GameVault.UiTests
                 // Stopped
                 Click(rooms.FindControl<Button>("uiShare")!);
                 await TestSession.WaitUntil(() => !friends.Streaming.Contains(1) && SunshineHost.SharedRoom == null, TimeSpan.FromSeconds(30), "the sharing stopped");
+
+                // Apollo (Windows): the room's PIN for whoever asks first, then the gamepads of the devices paired here, not the others'
+                server.SunshineIsApollo = true;
+                server.ApolloClients["u1"] = ("SanctuaryVault", 0x3000000);
+                server.ApolloClients["u2"] = ("Their phone", 0x3000000);
+                while (server.SunshinePins.TryDequeue(out _)) { }
+                Click(rooms.FindControl<Button>("uiShare")!);
+                await TestSession.WaitUntil(() => server.ApolloClients["u1"].Perm == 0x7000100 && !server.SunshinePins.IsEmpty, TimeSpan.FromSeconds(30), "Apollo's member allowed its gamepad");
+                Assert.Equal(("", GameVault.Core.Integrations.ScreenSharing.Pin("AB2CD3"), "SanctuaryVault"), server.SunshinePins.First());
+                Assert.Equal(0x3000000u, server.ApolloClients["u2"].Perm);
+                Click(rooms.FindControl<Button>("uiShare")!);
+                await TestSession.WaitUntil(() => SunshineHost.SharedRoom == null, TimeSpan.FromSeconds(30), "the sharing stopped");
 
                 // Left: out of the network, Léa's room still there
                 Click(rooms.FindControl<Button>("uiLeave")!);
@@ -126,6 +138,8 @@ namespace GameVault.UiTests
                 ZeroTierAgent.TestToken = null;
                 SunshineHost.Stop();
                 SunshineHost.ApiUrl = "https://127.0.0.1:47990";
+                server.SunshineIsApollo = false;
+                server.ApolloClients.Clear();
                 server.Rooms.Clear();
                 server.LanGames.Clear();
             }

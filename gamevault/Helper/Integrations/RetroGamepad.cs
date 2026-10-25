@@ -1,12 +1,14 @@
 using GameVault.Core;
 using GameVault.Core.Retro;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace gamevault.Helper
 {
     /// <summary>
-    /// The first gamepad, read with the SDL2 library RetroArch comes with: the buttons, axes and hats get the numbers
+    /// A player's gamepad (the first one's by default), read with the SDL2 library RetroArch comes with: the buttons, axes and hats get the numbers
     /// RetroArch's SDL2 driver gives them (a game controller SDL knows by its own buttons, any other by its raw ones), the
     /// driver the consoles set in <see cref="RetroPad"/> are played with.
     /// </summary>
@@ -85,7 +87,19 @@ namespace gamevault.Helper
         // SDL's game controller: its buttons (A to the cross, then the extra ones) and axes
         private const int ControllerButtons = 21, ControllerAxes = 6;
 
-        /// <summary>The first gamepad (RetroArch's first player's), opened again when one is plugged or unplugged.</summary>
+        private int player = 1;
+        /// <summary>The player whose gamepad is read: the plugged ones in <see cref="Controllers"/>' order, RetroArch's players' too.</summary>
+        public int Player
+        {
+            get => player;
+            set
+            {
+                if (player != value)
+                    (player, devices) = (value, -1);
+            }
+        }
+
+        /// <summary>The player's gamepad, opened again when one is plugged or unplugged.</summary>
         private void Refresh()
         {
             pump();
@@ -94,9 +108,13 @@ namespace gamevault.Helper
                 return;
             devices = now;
             Close();
-            if (now == 0)
+            var controllers = Controllers();
+            if (controllers.Count < Player)
+            {
+                Rest();
                 return;
-            Index = FirstController();
+            }
+            Index = controllers[Player - 1];
             if (isController(Index) != 0)
             {
                 controller = openController(Index);
@@ -110,31 +128,30 @@ namespace gamevault.Helper
             Rest();
         }
 
-        /// <summary>The first game controller SDL knows, else the first device: a PC's LED controller or KVM is seen as a joystick too.</summary>
-        private int FirstController()
+        /// <summary>The game controllers SDL knows, else every device: a PC's LED controller or KVM is seen as a joystick too.</summary>
+        private List<int> Controllers()
         {
-            for (int i = 0; i < count(); i++)
-                if (isController(i) != 0)
-                    return i;
-            return 0;
+            var all = Enumerable.Range(0, count()).ToList();
+            var controllers = all.Where(i => isController(i) != 0).ToList();
+            return controllers.Count > 0 ? controllers : all;
         }
 
         /// <summary>SDL's index of the gamepad read: RetroArch's SDL2 driver gives its ports in this order.</summary>
         public int Index { get; private set; }
 
-        /// <summary>The index of the gamepad the first player plays with (see <see cref="Index"/>), when SDL can be read.</summary>
-        public static int? FirstControllerIndex(string libraryFile)
+        /// <summary>The indexes of the players' gamepads (see <see cref="Index"/>), none when SDL can not be read.</summary>
+        public static IReadOnlyList<int> ControllerIndexes(string libraryFile)
         {
             try
             {
                 using var gamepad = new RetroGamepad(libraryFile);
-                gamepad.Refresh();
-                return gamepad.Name != null ? gamepad.Index : null;
+                gamepad.pump();
+                return gamepad.Controllers();
             }
             catch (Exception ex)
             {
                 Log.Ignored(ex);
-                return null;
+                return Array.Empty<int>();
             }
         }
 

@@ -79,6 +79,9 @@ namespace GameVault.UiTests
         /// <summary>This PC's Sunshine under /sunshine (its login "sv" / "secret"): the pairings Moonlight asks for (id, address), the PINs given.</summary>
         public ConcurrentDictionary<string, string> SunshinePairings { get; } = new();
         public ConcurrentQueue<(string Id, string Pin, string Name)> SunshinePins { get; } = new();
+        /// <summary>Apollo instead (no list of the pairings, a PIN for the one asked first): its devices and their permissions.</summary>
+        public bool SunshineIsApollo { get; set; }
+        public ConcurrentDictionary<string, (string Name, uint Perm)> ApolloClients { get; } = new();
         /// <summary>This PC's ZeroTier service under /zt (its token "zt-test", its address aaaaaaaa01): the networks it joined, the PCs it reaches.</summary>
         public ConcurrentDictionary<string, bool> ZeroTierNetworks { get; } = new();
         public ConcurrentDictionary<string, (int Latency, bool Direct)> ZeroTierPeers { get; } = new();
@@ -641,8 +644,26 @@ namespace GameVault.UiTests
                     response.StatusCode = 401;
                 else if (path == "/sunshine/api/apps")
                     await Json(response, new { apps = Array.Empty<object>() });
-                else if (path == "/sunshine/api/pin" && request.HttpMethod == "GET")
+                else if (path == "/sunshine/api/pin" && request.HttpMethod == "GET" && !SunshineIsApollo)
                     await Json(response, new { pairings = SunshinePairings.Select(p => new { id = p.Key, name = "", address = p.Value }).ToArray() });
+                else if (path == "/sunshine/api/pin" && request.HttpMethod == "POST" && SunshineIsApollo)
+                {
+                    using JsonDocument pin = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    SunshinePins.Enqueue(("", pin.RootElement.GetProperty("pin").GetString()!, pin.RootElement.GetProperty("name").GetString()!));
+                    await Json(response, new { status = false });
+                }
+                else if (path == "/sunshine/api/clients/list" && SunshineIsApollo)
+                    await Json(response, new { named_certs = ApolloClients.Select(c => new { uuid = c.Key, name = c.Value.Name, perm = c.Value.Perm, cert = "PEM", display_mode = "", enable_legacy_ordering = true }).ToArray(), status = true });
+                else if (path == "/sunshine/api/clients/update" && SunshineIsApollo)
+                {
+                    using JsonDocument update = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    // Apollo keeps what is sent: its settings come back with it
+                    if (!update.RootElement.TryGetProperty("enable_legacy_ordering", out _) || update.RootElement.TryGetProperty("cert", out _))
+                        response.StatusCode = 400;
+                    else
+                        ApolloClients[update.RootElement.GetProperty("uuid").GetString()!] = (update.RootElement.GetProperty("name").GetString()!, update.RootElement.GetProperty("perm").GetUInt32());
+                    await Json(response, new { status = true });
+                }
                 else if (path == "/sunshine/api/pin" && request.HttpMethod == "POST")
                 {
                     using JsonDocument pin = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
