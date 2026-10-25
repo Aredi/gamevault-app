@@ -225,9 +225,9 @@
                 </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="36,0,28,40" MaxWidth="900" HorizontalAlignment="Left">
-                        <!-- The PC games' folders, their executables and leftovers: none on a Mac -->
-                        <TextBlock Classes="h1" Text="{l:T 'File System'}" IsVisible="{Binding PlaysPcGames}" />
-                        <StackPanel Margin="10,10,0,0" IsVisible="{Binding PlaysPcGames}">
+                        <!-- The root folders: the retro games' too (GameVault/Retro), so on a Mac as well -->
+                        <TextBlock Classes="h1" Text="{l:T 'File System'}" />
+                        <StackPanel Margin="10,10,0,0">
                             <TextBlock Text="{l:T 'Root Directories (A \&#x27;GameVault\&#x27; subfolder will be created)'}" Margin="0,2,0,2" FontSize="15" />
                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Width="560" HorizontalAlignment="Left">
                                 <ItemsControl ItemsSource="{Binding RootDirectories}">
