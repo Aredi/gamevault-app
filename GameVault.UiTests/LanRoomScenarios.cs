@@ -88,17 +88,18 @@ namespace GameVault.UiTests
                 Click(rooms.FindControl<Button>("uiShare")!);
                 await TestSession.WaitUntil(() => !friends.Streaming.Contains(1) && SunshineHost.SharedRoom == null, TimeSpan.FromSeconds(30), "the sharing stopped");
 
-                // Apollo (Windows): the room's PIN for whoever asks first, then the gamepads of the devices paired here, not the others'
+                // Apollo (Windows): the room's PIN for whoever asks first, then the gamepads of the devices paired here (on the
+                // host's own screen, not a virtual one), not the others'
                 server.SunshineIsApollo = true;
-                server.ApolloClients["u1"] = ("SanctuaryVault", 0x3000000);
-                server.ApolloClients["u2"] = ("Their phone", 0x3000000);
+                server.ApolloClients["u1"] = ("SanctuaryVault", 0x3000000, true);
+                server.ApolloClients["u2"] = ("Their phone", 0x3000000, true);
                 while (server.SunshinePins.TryDequeue(out _)) { }
                 // Signed in on its page, not with the login: a wrong one refused there too
                 await Assert.ThrowsAsync<InvalidOperationException>(() => SunshineHost.SaveLoginAsync("sv", "wrong"));
                 Click(rooms.FindControl<Button>("uiShare")!);
-                await TestSession.WaitUntil(() => server.ApolloClients["u1"].Perm == 0x7000100 && !server.SunshinePins.IsEmpty, TimeSpan.FromSeconds(30), "Apollo's member allowed its gamepad");
+                await TestSession.WaitUntil(() => server.ApolloClients["u1"] == ("SanctuaryVault", 0x7000100u, false) && !server.SunshinePins.IsEmpty, TimeSpan.FromSeconds(30), "Apollo's member allowed its gamepad");
                 Assert.Equal(("", GameVault.Core.Integrations.ScreenSharing.Pin("AB2CD3"), "SanctuaryVault"), server.SunshinePins.First());
-                Assert.Equal(0x3000000u, server.ApolloClients["u2"].Perm);
+                Assert.Equal(("Their phone", 0x3000000u, true), server.ApolloClients["u2"]);
                 Click(rooms.FindControl<Button>("uiShare")!);
                 await TestSession.WaitUntil(() => SunshineHost.SharedRoom == null, TimeSpan.FromSeconds(30), "the sharing stopped");
 

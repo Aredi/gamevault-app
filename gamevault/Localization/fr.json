@@ -1468,5 +1468,6 @@
   "shares their screen": "partage son écran",
   "Your screen is shared: start the game, your friends join it from this room.": "Ton écran est partagé : lance le jeu, tes amis le rejoignent depuis cette room.",
   "Player {0}": "Joueur {0}",
-  "No gamepad for player {0}: plug one more in.": "Pas de manette pour le joueur {0} : branches-en une de plus."
+  "No gamepad for player {0}: plug one more in.": "Pas de manette pour le joueur {0} : branches-en une de plus.",
+  "{0} is starting...": "{0} démarre..."
 }

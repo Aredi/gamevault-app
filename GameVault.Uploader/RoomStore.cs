@@ -13,6 +13,8 @@ namespace GameVault.Uploader
     {
         public const int MaxMembers = 8;
         public const int MaxRoomsPerOwner = 3;
+        /// <summary>A room its owner is alone in goes after this long without anyone joining or leaving.</summary>
+        public static readonly TimeSpan IdleLifetime = TimeSpan.FromHours(1);
         private const string CodeLetters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
         private readonly string file;
@@ -32,7 +34,8 @@ namespace GameVault.Uploader
         /// <param name="Streaming">Shares their screen with the room (Sunshine): the others join it with Moonlight.</param>
         public sealed record Member(int UserId, string UserName, string NodeId, string Ip, DateTime JoinedAt, bool Streaming = false);
 
-        public sealed record Room(string Id, string Code, string Name, int OwnerId, string OwnerName, int? GameId, string? GameTitle, bool Public, int Subnet, List<Member> Members, DateTime CreatedAt);
+        /// <param name="ActiveAt">Someone last joined or left; rooms written before it have their creation instead.</param>
+        public sealed record Room(string Id, string Code, string Name, int OwnerId, string OwnerName, int? GameId, string? GameTitle, bool Public, int Subnet, List<Member> Members, DateTime CreatedAt, DateTime ActiveAt = default);
 
         private sealed class State
         {
@@ -72,15 +75,34 @@ namespace GameVault.Uploader
             finally { writing.Release(); }
         }
 
+        /// <summary>The rooms nobody came to in <see cref="IdleLifetime"/> deleted with their network, when rooms are listed or made.</summary>
+        private static async Task ExpireAsync(State state, ZeroTierController controller, CancellationToken ct)
+        {
+            var idle = state.Rooms.Where(r => r.Members.Count <= 1 && DateTime.UtcNow - (r.ActiveAt > r.CreatedAt ? r.ActiveAt : r.CreatedAt) > IdleLifetime).ToList();
+            foreach (Room room in idle)
+            {
+                await controller.DeleteNetworkAsync(room.Id, ct);
+                state.Rooms.Remove(room);
+            }
+        }
+
         /// <summary>The public rooms and the player's own.</summary>
-        public Task<List<Room>> VisibleAsync(int userId) =>
-            WithStateAsync(state => Task.FromResult(state.Rooms.Where(r => r.Public || r.Members.Any(m => m.UserId == userId)).OrderByDescending(r => r.Members.Any(m => m.UserId == userId)).ThenByDescending(r => r.CreatedAt).ToList()));
+        public Task<List<Room>> VisibleAsync(ZeroTierController controller, int userId, CancellationToken ct) =>
+            WithStateAsync(async state =>
+            {
+                int before = state.Rooms.Count;
+                await ExpireAsync(state, controller, ct);
+                if (state.Rooms.Count != before)
+                    Write(state);
+                return state.Rooms.Where(r => r.Public || r.Members.Any(m => m.UserId == userId)).OrderByDescending(r => r.Members.Any(m => m.UserId == userId)).ThenByDescending(r => r.CreatedAt).ToList();
+            });
 
         public enum Outcome { Done, NotFound, Full, TooMany, NotOwner }
 
         public Task<(Outcome, Room?)> CreateAsync(ZeroTierController controller, int userId, string userName, string nodeId, string name, int? gameId, string? gameTitle, bool isPublic, CancellationToken ct) =>
             WithStateAsync<(Outcome, Room?)>(async state =>
             {
+                await ExpireAsync(state, controller, ct);
                 if (state.Rooms.Count(r => r.OwnerId == userId) >= MaxRoomsPerOwner)
                     return (Outcome.TooMany, null);
                 // Each room its own subnet: a PC in two rooms keeps both
@@ -119,6 +141,7 @@ namespace GameVault.Uploader
                 await controller.AuthorizeAsync(room.Id, nodeId, ip, ct);
                 room.Members.RemoveAll(m => m.UserId == userId);
                 room.Members.Add(new Member(userId, userName, nodeId, ip, DateTime.UtcNow));
+                state.Rooms[state.Rooms.IndexOf(room)] = room = room with { ActiveAt = DateTime.UtcNow };
                 Write(state);
                 return (Outcome.Done, room);
             });
@@ -141,8 +164,8 @@ namespace GameVault.Uploader
                 else
                 {
                     await controller.RemoveAsync(room.Id, member.NodeId, ct);
-                    if (room.OwnerId == userId)
-                        state.Rooms[state.Rooms.IndexOf(room)] = room with { OwnerId = room.Members[0].UserId, OwnerName = room.Members[0].UserName };
+                    Room left = room with { ActiveAt = DateTime.UtcNow };
+                    state.Rooms[state.Rooms.IndexOf(room)] = room.OwnerId == userId ? left with { OwnerId = room.Members[0].UserId, OwnerName = room.Members[0].UserName } : left;
                 }
                 Write(state);
                 return Outcome.Done;

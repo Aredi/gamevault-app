@@ -773,6 +773,28 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task ARoomNobodyJoined_GoesAfterAnHour_NotOneWithItsPlayers()
+        {
+            HttpClient owner = Client("user"), other = Client("admin");
+            static async Task<string> Made(Task<HttpResponseMessage> made) => JsonDocument.Parse(await (await made).Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetString()!;
+            string alone = await Made(owner.PostAsJsonAsync("/rooms", new { name = "Seul", nodeId = "aaaaaaaa01" }));
+            string together = await Made(owner.PostAsJsonAsync("/rooms", new { name = "Ensemble", @public = true, nodeId = "aaaaaaaa01" }));
+            Assert.Equal(HttpStatusCode.OK, (await other.PostAsJsonAsync("/rooms/join", new { roomId = together, nodeId = "bbbbbbbb02" })).StatusCode);
+
+            // Both made and last joined two hours ago
+            string file = Path.Combine(rooms, "rooms.json");
+            var state = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(file))!;
+            foreach (var room in state["Rooms"]!.AsArray())
+                (room!["CreatedAt"], room["ActiveAt"]) = (DateTime.UtcNow.AddHours(-2), DateTime.UtcNow.AddHours(-2));
+            File.WriteAllText(file, state.ToJsonString());
+
+            using JsonDocument left = JsonDocument.Parse(await owner.GetStringAsync("/rooms"));
+            Assert.Equal(together, Assert.Single(left.RootElement.EnumerateArray()).GetProperty("id").GetString());
+            Assert.Contains($"DELETE /controller/network/{alone}", zeroTier.Calls);
+            Assert.DoesNotContain($"DELETE /controller/network/{together}", zeroTier.Calls);
+        }
+
+        [Fact]
         public async Task TheGamesPlayableInLan_AreFoundOnPcGamingWiki_ThenAnAdministratorDecides()
         {
             // The library read on the wiki in the background, each game once, by its metadata's title: "Escape From Duckov" has

@@ -233,12 +233,15 @@ namespace gamevault.Helper
             foreach (JsonElement client in (await SendAsync(HttpMethod.Get, "api/clients/list")).GetProperty("named_certs").EnumerateArray())
             {
                 uint perm = client.GetProperty("perm").GetUInt32();
-                if (!(client.GetProperty("name").GetString() ?? "").StartsWith(PairedName) || (perm & (Gamepad | Apps)) == (Gamepad | Apps))
+                bool virtualDisplay = client.TryGetProperty("always_use_virtual_display", out JsonElement always) && always.GetBoolean();
+                if (!(client.GetProperty("name").GetString() ?? "").StartsWith(PairedName) || (perm & (Gamepad | Apps)) == (Gamepad | Apps) && !virtualDisplay)
                     continue;
                 // Its other settings sent back as they are: Apollo resets the ones missing
                 JsonObject update = JsonNode.Parse(client.GetRawText())!.AsObject();
                 update.Remove("cert");
                 update["perm"] = perm | Gamepad | Apps;
+                // The host's own screen shared, not a new one Windows makes its main screen
+                update["always_use_virtual_display"] = false;
                 await SendAsync(HttpMethod.Post, "api/clients/update", update);
             }
         }

@@ -81,7 +81,7 @@ namespace GameVault.UiTests
         public ConcurrentQueue<(string Id, string Pin, string Name)> SunshinePins { get; } = new();
         /// <summary>Apollo instead (no list of the pairings, a PIN for the one asked first): its devices and their permissions.</summary>
         public bool SunshineIsApollo { get; set; }
-        public ConcurrentDictionary<string, (string Name, uint Perm)> ApolloClients { get; } = new();
+        public ConcurrentDictionary<string, (string Name, uint Perm, bool VirtualDisplay)> ApolloClients { get; } = new();
         /// <summary>This PC's ZeroTier service under /zt (its token "zt-test", its address aaaaaaaa01): the networks it joined, the PCs it reaches.</summary>
         public ConcurrentDictionary<string, bool> ZeroTierNetworks { get; } = new();
         public ConcurrentDictionary<string, (int Latency, bool Direct)> ZeroTierPeers { get; } = new();
@@ -663,7 +663,7 @@ namespace GameVault.UiTests
                     await Json(response, new { status = false });
                 }
                 else if (path == "/sunshine/api/clients/list" && SunshineIsApollo)
-                    await Json(response, new { named_certs = ApolloClients.Select(c => new { uuid = c.Key, name = c.Value.Name, perm = c.Value.Perm, cert = "PEM", display_mode = "", enable_legacy_ordering = true }).ToArray(), status = true });
+                    await Json(response, new { named_certs = ApolloClients.Select(c => new { uuid = c.Key, name = c.Value.Name, perm = c.Value.Perm, always_use_virtual_display = c.Value.VirtualDisplay, cert = "PEM", display_mode = "", enable_legacy_ordering = true }).ToArray(), status = true });
                 else if (path == "/sunshine/api/clients/update" && SunshineIsApollo)
                 {
                     using JsonDocument update = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
@@ -671,7 +671,7 @@ namespace GameVault.UiTests
                     if (!update.RootElement.TryGetProperty("enable_legacy_ordering", out _) || update.RootElement.TryGetProperty("cert", out _))
                         response.StatusCode = 400;
                     else
-                        ApolloClients[update.RootElement.GetProperty("uuid").GetString()!] = (update.RootElement.GetProperty("name").GetString()!, update.RootElement.GetProperty("perm").GetUInt32());
+                        ApolloClients[update.RootElement.GetProperty("uuid").GetString()!] = (update.RootElement.GetProperty("name").GetString()!, update.RootElement.GetProperty("perm").GetUInt32(), update.RootElement.GetProperty("always_use_virtual_display").GetBoolean());
                     await Json(response, new { status = true });
                 }
                 else if (path == "/sunshine/api/pin" && request.HttpMethod == "POST")

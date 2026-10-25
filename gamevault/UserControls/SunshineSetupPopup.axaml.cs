@@ -63,7 +63,13 @@ namespace gamevault.UserControls
                 if (!running)
                 {
                     if (PlatformInfo.IsWindows)
+                    {
                         await SunshineHost.InstallAsync(text => Dispatcher.UIThread.Post(() => uiStatus.Text = text));
+                        // Its service starts a few seconds after its installer closes
+                        uiStatus.Text = Loc.F("{0} is starting...", SunshineHost.Name);
+                        for (int i = 0; i < 30 && !await SunshineHost.RunningAsync(); i++)
+                            await Task.Delay(TimeSpan.FromSeconds(2));
+                    }
                     await ShowAsync();
                     uiStatus.Text = running ? "" : Loc.F("{0} does not answer yet: start it, then try again.", SunshineHost.Name);
                 }

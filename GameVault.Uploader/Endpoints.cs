@@ -190,7 +190,7 @@ namespace GameVault.Uploader
 
             // LAN rooms: one ZeroTier network each, the players' PCs let in by the service
             app.MapGet("/rooms", (HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
-                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player => Results.Json((await rooms.VisibleAsync(player.Id)).Select(r => RoomJson(r, player.Id)))));
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player => Results.Json((await rooms.VisibleAsync(zeroTier, player.Id, ct)).Select(r => RoomJson(r, player.Id)))));
 
             app.MapPost("/rooms", (RoomRequest asked, HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
                 AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player =>
