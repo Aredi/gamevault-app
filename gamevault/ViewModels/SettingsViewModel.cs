@@ -569,6 +569,8 @@ namespace gamevault.ViewModels
                 return Assembly.GetExecutingAssembly().GetName().Version.ToString();
             }
         }
+        /// <summary>The Mac's version plays the retro games only: its PC games are Windows'.</summary>
+        public bool PlaysPcGames => !OperatingSystem.IsMacOS();
         #region Linux
         public bool IsLinux => OperatingSystem.IsLinux();
 

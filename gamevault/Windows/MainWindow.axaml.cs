@@ -28,6 +28,8 @@ namespace gamevault.Windows
             InitializeComponent();
             this.DataContext = MainWindowViewModel.Instance;
             InitSidebar();
+            // The Mac's version: its PC games are Windows' (the library, the LAN rooms)
+            uiNavLibrary.IsVisible = uiNavRooms.IsVisible = !PlatformInfo.IsMac;
             InitPopupLayer();
             Opened += MainWindow_Loaded;
             Closing += MainWindow_Closing;
@@ -60,7 +62,7 @@ namespace gamevault.Windows
             NewGamesNotifier.Start();
             RetroNewGamesNotifier.Start();
             // Games asked from the web page ("Install on my PC")
-            if (PipeServiceHandler.Instance != null)
+            if (PipeServiceHandler.Instance != null && !PlatformInfo.IsMac)
                 RemoteInstalls.Start();
             // Requests of the player that were added or refused
             if (PipeServiceHandler.Instance != null)
@@ -138,11 +140,11 @@ namespace gamevault.Windows
             if (loaded)
                 return;
             loaded = true;
-            MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+            MainWindowViewModel.Instance.SetActiveControl(PlatformInfo.IsMac ? MainControl.Retro : MainControl.Library);
             LoginState state = LoginManager.Instance.GetState();
             if (LoginState.Success == state)
             {
-                if (Preferences.Get(AppConfigKey.LibStartup, LoginManager.Instance.GetUserProfile().UserConfigFile) == "1")
+                if (!PlatformInfo.IsMac && Preferences.Get(AppConfigKey.LibStartup, LoginManager.Instance.GetUserProfile().UserConfigFile) == "1")
                 {
                     await MainWindowViewModel.Instance.Library.LoadLibrary();
                 }

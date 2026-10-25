@@ -225,7 +225,7 @@
                             </Panel>
                             <TextBlock Text="{Binding Subtitle}" FontSize="15" Opacity="0.85" TextWrapping="Wrap" />
                             <!-- Actions -->
-                            <WrapPanel Margin="0,6,0,0" IsVisible="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNull}}">
+                            <WrapPanel x:Name="uiActions" Margin="0,6,0,0" IsVisible="{Binding Game.DeletedAt, Converter={x:Static ObjectConverters.IsNull}}">
                                 <Button Classes="action" Height="48" Padding="24,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="InstallAndPlay_Click" IsVisible="{Binding !IsInstalled}"
                                         ToolTip.Tip="{l:T 'Download, install and start the game'}">
                                     <StackPanel Orientation="Horizontal" Spacing="9">

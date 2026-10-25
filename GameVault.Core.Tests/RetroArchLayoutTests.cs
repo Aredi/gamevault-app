@@ -36,6 +36,31 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void OnAMac_TheAppFromItsImage_ItsAssetsBesideIt_TheAppleSiliconCores()
+        {
+            var layout = new RetroArchLayout("/data/retroarch", windows: false, mac: true);
+            string data = "/data/retroarch/RetroArch-macOS/data";
+
+            Assert.Equal("/data/retroarch/RetroArch-macOS/RetroArch.app/Contents/MacOS/RetroArch", layout.Executable);
+            Assert.Equal($"https://buildbot.libretro.com/stable/{RetroArchLayout.Version}/apple/osx/universal/RetroArch_Metal.dmg", layout.PackageUrl);
+            Assert.Equal("https://buildbot.libretro.com/nightly/apple/osx/arm64/latest/mgba_libretro.dylib.zip", layout.CoreUrl("mgba"));
+            Assert.Equal($"https://github.com/azahar-emu/azahar/releases/download/{RetroArchLayout.AzaharVersion}/azahar-libretro-macos-arm64-{RetroArchLayout.AzaharVersion}.zip", layout.CoreUrl("azahar"));
+            Assert.Equal("/data/retroarch/cores/mgba_libretro.dylib", layout.CoreFile("mgba"));
+            string config = layout.Config("12");
+            Assert.Contains($"libretro_info_path = \"{data}/info\"\n", config);
+            Assert.Contains($"joypad_autoconfig_dir = \"{data}/autoconfig\"\n", config);
+            // Its menu's settings and remaps here (the client writes them), not in ~/Library; its assets.zip not unpacked again there
+            Assert.Contains($"rgui_config_directory = \"{data}/config\"\n", config);
+            Assert.Contains($"input_remapping_directory = \"{data}/config/remaps\"\n", config);
+            Assert.Contains("bundle_assets_extract_enable = \"false\"\n", config);
+            Assert.DoesNotContain("bundle_assets", new RetroArchLayout("/data/retroarch", windows: false).Config("12"));
+
+            Assert.True(RetroArchLayout.IsKeptAsset("autoconfig/sdl2/Xbox One Controller.cfg") && RetroArchLayout.IsKeptAsset("info/mgba_libretro.info") && RetroArchLayout.IsKeptAsset("assets/ozone/png/icons/a.png"));
+            Assert.False(RetroArchLayout.IsKeptAsset("assets/xmb/monochrome/a.png") || RetroArchLayout.IsKeptAsset("shaders/crt/a.slang") || RetroArchLayout.IsKeptAsset("overlays/a.png")
+                || RetroArchLayout.IsKeptAsset("info/../../escape.info") || RetroArchLayout.IsKeptAsset("assets"));
+        }
+
+        [Fact]
         public void TheAchievements_AreTheAccountsToken_NotItsPassword()
         {
             var layout = new RetroArchLayout("/data/retroarch", windows: false);

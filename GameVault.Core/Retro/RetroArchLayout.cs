@@ -4,8 +4,9 @@ namespace GameVault.Core.Retro
     /// RetroArch plays the games of the retro platforms (from RomM): one stable build kept in the client's data folder,
     /// and a libretro core per platform, fetched the first time a game of that platform is installed. The client
     /// writes its own configuration (folders, full screen, quit with Select+Start), so nothing is set up by hand.
+    /// On a Mac: its app from the disk image, its menus and profiles from the app's assets.zip, the Apple Silicon cores.
     /// </summary>
-    public sealed class RetroArchLayout(string directory, bool windows)
+    public sealed class RetroArchLayout(string directory, bool windows, bool mac = false)
     {
         public const string Version = "1.22.2";
         private const string Buildbot = "https://buildbot.libretro.com";
@@ -16,12 +17,26 @@ namespace GameVault.Core.Retro
         private string Os => windows ? "windows" : "linux";
 
         public string Directory => directory;
-        public string PackageUrl => $"{Buildbot}/stable/{Version}/{Os}/x86_64/RetroArch.7z";
+        public string PackageUrl => mac ? $"{Buildbot}/stable/{Version}/apple/osx/universal/RetroArch_Metal.dmg" : $"{Buildbot}/stable/{Version}/{Os}/x86_64/RetroArch.7z";
         /// <summary>The folder the package unpacks to.</summary>
-        public string AppDirectory => Path.Combine(directory, windows ? "RetroArch-Win64" : "RetroArch-Linux-x86_64");
-        public string Executable => Path.Combine(AppDirectory, windows ? "retroarch.exe" : "RetroArch-Linux-x86_64.AppImage");
-        /// <summary>Where the package keeps its menus, controller profiles and core descriptions (the AppImage's portable home on Linux).</summary>
-        private string DataDirectory => windows ? AppDirectory : Path.Combine(AppDirectory, "RetroArch-Linux-x86_64.AppImage.home", ".config", "retroarch");
+        public string AppDirectory => Path.Combine(directory, windows ? "RetroArch-Win64" : mac ? "RetroArch-macOS" : "RetroArch-Linux-x86_64");
+        /// <summary>The Mac's app, copied from the disk image.</summary>
+        public string MacApp => Path.Combine(AppDirectory, "RetroArch.app");
+        public string Executable => windows ? Path.Combine(AppDirectory, "retroarch.exe")
+            : mac ? Path.Combine(MacApp, "Contents", "MacOS", "RetroArch") : Path.Combine(AppDirectory, "RetroArch-Linux-x86_64.AppImage");
+        /// <summary>Where the package keeps its menus, controller profiles and core descriptions (the AppImage's portable home on Linux, what the client takes out of the app's assets.zip on a Mac).</summary>
+        public string DataDirectory => windows ? AppDirectory : mac ? Path.Combine(AppDirectory, "data")
+            : Path.Combine(AppDirectory, "RetroArch-Linux-x86_64.AppImage.home", ".config", "retroarch");
+        private string InfoDirectory => Path.Combine(DataDirectory, windows || mac ? "info" : "cores");
+        /// <summary>The Mac's app keeps its menus, controller profiles and core descriptions in this zip.</summary>
+        public string MacAssets => Path.Combine(MacApp, "Contents", "Resources", "assets.zip");
+
+        /// <summary>What the client takes out of the Mac's assets.zip: the menus, the controller profiles and the core descriptions, without the folders the other packages leave out.</summary>
+        public static bool IsKeptAsset(string entry)
+        {
+            string[] parts = entry.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length > 1 && parts[0] is "assets" or "autoconfig" or "info" && !parts.Any(p => p == ".." || UnusedPackageFolders.Contains(p));
+        }
         /// <summary>What the player changed in RetroArch's menu: core options, controls remapped, overrides.</summary>
         public string MenuSettingsDirectory => Path.Combine(DataDirectory, "config");
         public string CoresDirectory => Path.Combine(directory, "cores");
@@ -83,7 +98,7 @@ namespace GameVault.Core.Retro
                 return name;
             if (NewNames.TryGetValue(core, out string? renamed) && HasName(CoreFile(core), renamed))
                 return renamed;
-            string info = Path.Combine(DataDirectory, windows ? "info" : "cores", $"{core}_libretro.info");
+            string info = Path.Combine(InfoDirectory, $"{core}_libretro.info");
             try
             {
                 foreach (string line in File.Exists(info) ? File.ReadLines(info) : Enumerable.Empty<string>())
@@ -110,11 +125,12 @@ namespace GameVault.Core.Retro
                 File.ReadAllBytes(coreFile).AsSpan().IndexOf(System.Text.Encoding.ASCII.GetBytes(name + "\0")) >= 0);
         }
 
-        public string CoreFile(string core) => Path.Combine(CoresDirectory, windows ? $"{core}_libretro.dll" : $"{core}_libretro.so");
+        public string CoreFile(string core) => Path.Combine(CoresDirectory, windows ? $"{core}_libretro.dll" : mac ? $"{core}_libretro.dylib" : $"{core}_libretro.so");
         // shortcut: the buildbot keeps no stable file per core, so cores are the nightly "latest"; pin them if one breaks
+        // shortcut: a Mac's cores are Apple Silicon's (arm64), none runs on an Intel Mac; add osx/x86_64 if one asks
         public string CoreUrl(string core) => core == "azahar"
-            ? $"https://github.com/azahar-emu/azahar/releases/download/{AzaharVersion}/azahar-libretro-{Os}-x86_64-{AzaharVersion}.zip"
-            : $"{Buildbot}/nightly/{Os}/x86_64/latest/{Path.GetFileName(CoreFile(core))}.zip";
+            ? $"https://github.com/azahar-emu/azahar/releases/download/{AzaharVersion}/azahar-libretro-{(mac ? "macos-arm64" : Os + "-x86_64")}-{AzaharVersion}.zip"
+            : $"{Buildbot}/nightly/{(mac ? "apple/osx/arm64" : Os + "/x86_64")}/latest/{Path.GetFileName(CoreFile(core))}.zip";
 
         /// <summary>A core's data files (Dolphin's Sys folder...), as RetroArch's own "core system files" downloader takes them.</summary>
         public static string SystemFilesUrl(string name) => $"{Buildbot}/assets/system/{Uri.EscapeDataString(name)}.zip";
@@ -145,7 +161,7 @@ namespace GameVault.Core.Retro
             var settings = new (string Key, string Value)[]
             {
                 ("libretro_directory", CoresDirectory),
-                ("libretro_info_path", Path.Combine(DataDirectory, windows ? "info" : "cores")),
+                ("libretro_info_path", InfoDirectory),
                 ("assets_directory", Path.Combine(DataDirectory, "assets")),
                 ("joypad_autoconfig_dir", Path.Combine(DataDirectory, "autoconfig")),
                 ("system_directory", SystemDirectory),
@@ -171,6 +187,9 @@ namespace GameVault.Core.Retro
                 ("cheevos_token", achievements?.Token ?? ""),
                 ("cheevos_hardcore_mode_enable", "false"),
             };
+            // A Mac's RetroArch keeps its menu's settings in ~/Library and unpacks its assets.zip there: in its folder instead, like the others
+            if (mac)
+                settings = settings.Concat(new[] { ("rgui_config_directory", MenuSettingsDirectory), ("input_remapping_directory", Path.Combine(MenuSettingsDirectory, "remaps")), ("bundle_assets_extract_enable", "false") }).ToArray();
             return string.Concat(settings.Select(s => $"{s.Key} = \"{s.Value}\"\n"));
         }
 

@@ -51,6 +51,9 @@ namespace gamevault.UserControls
         public GameViewUserControl(Game game, bool reloadGameObject = true)
         {
             InitializeComponent();
+            // A PC game opened on a Mac (from the community): it is Windows', nothing to install or download there
+            if (PlatformInfo.IsMac)
+                uiActions.IsVisible = false;
             MarkdownLinks.KeepSafe(uiDescription);
             MarkdownLinks.KeepSafe(uiNotes);
             ViewModel = new GameViewViewModel();

@@ -200,7 +200,7 @@
                         </Button>
                         <TextBlock Classes="navSection wide" Text="{l:T 'MENU'}" />
                         <ListBox x:Name="uiNavigation" SelectionMode="Single" SelectedIndex="{Binding ActiveControlIndex}" SelectionChanged="Navigation_SelectionChanged">
-                            <ListBoxItem ToolTip.Tip="{l:T 'Library'}">
+                            <ListBoxItem x:Name="uiNavLibrary" ToolTip.Tip="{l:T 'Library'}">
                                 <Panel>
                                     <Border Classes="mark" />
                                     <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
@@ -249,7 +249,7 @@
                                 </Panel>
                             </ListBoxItem>
                             <!-- Under Community: the LAN rooms (ZeroTier) -->
-                            <ListBoxItem Classes="sub" ToolTip.Tip="{l:T 'LAN rooms'}">
+                            <ListBoxItem x:Name="uiNavRooms" Classes="sub" ToolTip.Tip="{l:T 'LAN rooms'}">
                                 <Panel>
                                     <Border Classes="mark" />
                                     <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="11">

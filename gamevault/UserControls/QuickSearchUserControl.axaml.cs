@@ -214,10 +214,14 @@ namespace gamevault.UserControls
                 Kind = Loc.T("Page"),
                 Run = () => MainWindowViewModel.Instance.SetActiveControl(page),
             };
-            yield return Page("Library", "IconNavLibrary", MainControl.Library);
+            // The Mac's version has no PC library (its games are Windows'), nor LAN rooms
+            bool pc = !Helper.Platform.PlatformInfo.IsMac;
+            if (pc)
+                yield return Page("Library", "IconNavLibrary", MainControl.Library);
             yield return Page("Retro", "IconNavRetro", MainControl.Retro, "The games of the other platforms");
             yield return Page("Downloads", "IconNavDownloads", MainControl.Downloads);
-            yield return new QuickSearchItem
+            if (pc)
+                yield return new QuickSearchItem
             {
                 Title = Loc.T("What to play tonight?"),
                 Subtitle = Loc.T("A game of the library at random, the forgotten ones first"),
@@ -235,11 +239,13 @@ namespace gamevault.UserControls
             };
             yield return Page("Community", "IconNavCommunity", MainControl.Community);
             yield return Page("Recent activity", "IconNavCommunity", MainControl.Activity, "The games the players of the server played lately");
-            yield return Page("LAN rooms", "IconNavCommunity", MainControl.Rooms, "Play the LAN games with friends, over the Internet");
+            if (pc)
+                yield return Page("LAN rooms", "IconNavCommunity", MainControl.Rooms, "Play the LAN games with friends, over the Internet");
             yield return Page("Settings", "IconNavSettings", MainControl.Settings, "Themes, language, installation folders");
             if (LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN)
                 yield return Page("Admin Console", "IconNavAdmin", MainControl.AdminConsole, "Users, publish a game, server");
-            yield return new QuickSearchItem
+            if (pc)
+                yield return new QuickSearchItem
             {
                 Title = Loc.T("Reload Library (F5)"),
                 Icon = Icon("IconReload"),

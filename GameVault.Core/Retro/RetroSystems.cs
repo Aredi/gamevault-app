@@ -42,7 +42,8 @@ namespace GameVault.Core.Retro
             // xemu, not RetroArch: an XISO (a full dump is made one at its download, see XboxDisc)
             new RetroSystem("xbox", "Xbox", "xemu", new[] { "iso", "xiso" }),
             new RetroSystem("3ds", "Nintendo 3DS", "azahar", new[] { "cxi", "zcxi", "3ds", "cci", "zcci", "3dsx", "z3dsx", "app", "elf", "cia" }, CoverRatio: 0.89),
-        }.ToDictionary(s => s.Slug);
+        // shortcut: the Mac plays RetroArch's consoles only, RPCS3, Eden and xemu are not set up there; add them if Mac players ask
+        }.Where(s => !(OperatingSystem.IsMacOS() && s.IsStandalone)).ToDictionary(s => s.Slug);
 
         /// <summary>
         /// A game's cover as anyone reaches it (RomM serves its covers without a sign-in), for Discord's activity: the small

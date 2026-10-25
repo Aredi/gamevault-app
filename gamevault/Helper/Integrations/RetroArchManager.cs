@@ -22,7 +22,7 @@ namespace gamevault.Helper
     /// </summary>
     internal static class RetroArchManager
     {
-        public static RetroArchLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "retroarch"), PlatformInfo.IsWindows);
+        public static RetroArchLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "retroarch"), PlatformInfo.IsWindows, PlatformInfo.IsMac);
         private static readonly SemaphoreSlim preparing = new(1, 1);
         internal static string Player => LoginManager.Instance.GetCurrentUser()?.ID.ToString() ?? "0";
 
@@ -250,7 +250,7 @@ namespace gamevault.Helper
         /// </summary>
         public static async Task<string?> Sdl2LibraryAsync()
         {
-            if (OperatingSystem.IsWindows() || Sdl2Library != null)
+            if (OperatingSystem.IsWindows() || PlatformInfo.IsMac || Sdl2Library != null)
                 return Sdl2Library;
             string folder = Path.Combine(Layout.Directory, "sdl2"), library = Path.Combine(folder, "libSDL2-2.0.so.0"), version = Path.Combine(folder, "version");
             string work = Path.Combine(Layout.Directory, ".sdl2");
@@ -289,6 +289,9 @@ namespace gamevault.Helper
             {
                 if (OperatingSystem.IsWindows())
                     return File.Exists(Path.Combine(Layout.AppDirectory, "SDL2.dll")) ? Path.Combine(Layout.AppDirectory, "SDL2.dll") : null;
+                // The Mac's RetroArch has SDL2 inside it: the client comes with its own (the same numbers)
+                if (PlatformInfo.IsMac)
+                    return File.Exists(Path.Combine(PlatformInfo.AppDirectory, "libSDL2.dylib")) ? Path.Combine(PlatformInfo.AppDirectory, "libSDL2.dylib") : null;
                 string folder = Path.Combine(Layout.Directory, "sdl2"), version = Path.Combine(folder, "version");
                 return File.Exists(Path.Combine(folder, "libSDL2-2.0.so.0")) && File.Exists(version) && File.ReadAllText(version) == RetroArchLayout.Version
                     ? Path.Combine(folder, "libSDL2-2.0.so.0") : null;
@@ -307,16 +310,21 @@ namespace gamevault.Helper
                 if (Directory.Exists(work))
                     Directory.Delete(work, true);
                 Directory.CreateDirectory(work);
-                string archive = Path.Combine(work, "RetroArch.7z");
+                string archive = Path.Combine(work, Path.GetFileName(Layout.PackageUrl));
                 await DownloadAsync(Layout.PackageUrl, archive, done => status(Loc.F("Installing RetroArch, once for all the games: downloading {0:0}%", done * 100)));
                 status(Loc.F("Installing RetroArch, once for all the games: unpacking {0}%", 0));
-                var sevenZip = new SevenZipHelper();
-                sevenZip.Process += (_, e) => status(Loc.F("Installing RetroArch, once for all the games: unpacking {0}%", e.PercentageDone));
-                if (await sevenZip.ExtractArchive(archive, work, excludedNames: RetroArchLayout.UnusedPackageFolders) != 0)
-                    throw new IOException(sevenZip.LastError);
-                if (Directory.Exists(Layout.AppDirectory))
-                    Directory.Delete(Layout.AppDirectory, true);
-                Directory.Move(Path.Combine(work, Path.GetFileName(Layout.AppDirectory)), Layout.AppDirectory);
+                if (PlatformInfo.IsMac)
+                    await UnpackMacAsync(archive, work, done => status(Loc.F("Installing RetroArch, once for all the games: unpacking {0}%", done)));
+                else
+                {
+                    var sevenZip = new SevenZipHelper();
+                    sevenZip.Process += (_, e) => status(Loc.F("Installing RetroArch, once for all the games: unpacking {0}%", e.PercentageDone));
+                    if (await sevenZip.ExtractArchive(archive, work, excludedNames: RetroArchLayout.UnusedPackageFolders) != 0)
+                        throw new IOException(sevenZip.LastError);
+                    if (Directory.Exists(Layout.AppDirectory))
+                        Directory.Delete(Layout.AppDirectory, true);
+                    Directory.Move(Path.Combine(work, Path.GetFileName(Layout.AppDirectory)), Layout.AppDirectory);
+                }
                 Directory.Delete(work, true);
                 if (!OperatingSystem.IsWindows())
                     File.SetUnixFileMode(Layout.Executable, File.GetUnixFileMode(Layout.Executable) | UnixFileMode.UserExecute);
@@ -327,6 +335,51 @@ namespace gamevault.Helper
             foreach (string folder in Layout.Folders(player))
                 Directory.CreateDirectory(folder);
             File.WriteAllText(Layout.ConfigFile, Layout.Config(player, RetroAchievementsAccount.Account));
+        }
+
+        /// <summary>
+        /// The Mac's disk image mounted, its app copied (ditto keeps the links and the signature of its frameworks), then
+        /// its menus, controller profiles and core descriptions taken out of the app's assets.zip.
+        /// </summary>
+        private static async Task UnpackMacAsync(string image, string work, Action<int> progress)
+        {
+            string mount = Path.Combine(work, "image");
+            Directory.CreateDirectory(mount);
+            await RunAsync("hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mount, image);
+            try
+            {
+                // At the image's root, or in its one folder
+                string app = Directory.EnumerateDirectories(mount).Prepend(mount).Select(d => Path.Combine(d, "RetroArch.app")).FirstOrDefault(Directory.Exists)
+                    ?? throw new IOException("RetroArch.app is not in " + Path.GetFileName(image));
+                if (Directory.Exists(Layout.AppDirectory))
+                    Directory.Delete(Layout.AppDirectory, true);
+                Directory.CreateDirectory(Layout.AppDirectory);
+                await RunAsync("ditto", app, Layout.MacApp);
+            }
+            finally { await RunAsync("hdiutil", "detach", mount, "-force"); }
+            using ZipArchive assets = ZipFile.OpenRead(Layout.MacAssets);
+            var kept = assets.Entries.Where(e => e.Name.Length > 0 && RetroArchLayout.IsKeptAsset(e.FullName)).ToList();
+            for (int i = 0; i < kept.Count; i++)
+            {
+                string target = Path.Combine(Layout.DataDirectory, kept[i].FullName);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                kept[i].ExtractToFile(target, overwrite: true);
+                if (i % 200 == 0)
+                    progress(i * 100 / kept.Count);
+            }
+        }
+
+        private static async Task RunAsync(string program, params string[] arguments)
+        {
+            var info = new ProcessStartInfo(program) { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true };
+            foreach (string argument in arguments)
+                info.ArgumentList.Add(argument);
+            using Process process = Process.Start(info) ?? throw new IOException(program + " could not be started");
+            Task<string> output = process.StandardOutput.ReadToEndAsync(), error = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+            await output;
+            if (process.ExitCode != 0)
+                throw new IOException($"{program}: {(await error).Trim()}");
         }
 
         internal static async Task DownloadAsync(string url, string file, Action<double> progress)

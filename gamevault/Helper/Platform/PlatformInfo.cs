@@ -11,6 +11,8 @@ namespace gamevault.Helper.Platform
     {
         public static bool IsWindows => OperatingSystem.IsWindows();
         public static bool IsLinux => OperatingSystem.IsLinux();
+        /// <summary>The Mac's version: the retro games only (its PC games are Windows', the LAN rooms are theirs).</summary>
+        public static bool IsMac => OperatingSystem.IsMacOS();
 
         public static string AppDirectory => AppContext.BaseDirectory;
 
