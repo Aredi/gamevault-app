@@ -23,6 +23,8 @@ namespace GameVault.Core.Retro
         public string VersionFile => Path.Combine(directory, "version");
         public virtual bool IsInstalled => File.Exists(Executable) && File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() == Version;
         public virtual IReadOnlyDictionary<string, string> Environment => new Dictionary<string, string>();
+        /// <summary>Folders linked where the emulator looks for them, made again after each installation.</summary>
+        public virtual IReadOnlyList<(string Link, string Target)> Links => Array.Empty<(string, string)>();
         /// <summary>Given at every start, its own window's too (before a game's <see cref="Arguments"/>).</summary>
         public virtual IReadOnlyList<string> StartArguments => Array.Empty<string>();
 

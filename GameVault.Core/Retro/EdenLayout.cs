@@ -56,8 +56,13 @@ namespace GameVault.Core.Retro
         }
         protected override string WindowsExecutable => "eden.exe";
         protected override string MacExecutable => Path.Combine("eden.app", "Contents", "MacOS", "eden");
-        /// <summary>On Linux and a Mac Eden looks for its "user" folder in its working folder.</summary>
+        /// <summary>On Linux Eden looks for its "user" folder in its working folder.</summary>
         public override string WorkingDirectory => Directory;
+        /// <summary>
+        /// A Mac's Eden looks for it beside its app (it goes there itself as it starts): a link there to the one kept
+        /// outside the app's folder, which an update replaces.
+        /// </summary>
+        public override IReadOnlyList<(string Link, string Target)> Links => Mac ? new[] { (Path.Combine(AppDirectory, "user"), UserDirectory) } : base.Links;
 
         public string UserDirectory => Path.Combine(Directory, "user");
         private string Nand => Path.Combine(UserDirectory, "nand");

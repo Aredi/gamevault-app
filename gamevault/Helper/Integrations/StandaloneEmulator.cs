@@ -98,6 +98,11 @@ namespace gamevault.Helper
                 Directory.Delete(work, true);
                 File.WriteAllText(Layout.VersionFile, Layout.Version);
             }
+            foreach (var (link, target) in Layout.Links.Where(l => !Directory.Exists(l.Link)))
+            {
+                Directory.CreateDirectory(target);
+                Directory.CreateSymbolicLink(link, target);
+            }
             foreach (string file in Layout.SettingsFiles)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);

@@ -72,7 +72,9 @@ namespace GameVault.Core.Tests
             var eden = new EdenLayout("/sv/eden", windows: false, mac: true);
             Assert.Equal("/sv/eden/app/eden.app/Contents/MacOS/eden", eden.Executable);
             Assert.EndsWith($"/{EdenLayout.Pinned}/Eden-macOS-{EdenLayout.Pinned[(EdenLayout.Pinned.IndexOf('.') + 1)..]}.dmg", eden.PackageUrl);
-            Assert.Equal("/sv/eden", eden.WorkingDirectory);
+            // It goes beside its app as it starts, and looks for its user folder (keys, firmware, saves) there: a link to the kept one
+            Assert.Equal(new[] { ("/sv/eden/app/user", "/sv/eden/user") }, eden.Links);
+            Assert.Empty(new EdenLayout("/sv/eden", windows: false).Links);
         }
 
         [Fact]
