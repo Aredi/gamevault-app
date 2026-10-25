@@ -73,7 +73,12 @@ namespace GameVault.UiTests
             public string? GameTitle;
             public bool Public;
             public List<(int UserId, string UserName, string NodeId, string Ip)> Members = new();
+            /// <summary>The members sharing their screen.</summary>
+            public HashSet<int> Streaming = new();
         }
+        /// <summary>This PC's Sunshine under /sunshine (its login "sv" / "secret"): the pairings Moonlight asks for (id, address), the PINs given.</summary>
+        public ConcurrentDictionary<string, string> SunshinePairings { get; } = new();
+        public ConcurrentQueue<(string Id, string Pin, string Name)> SunshinePins { get; } = new();
         /// <summary>This PC's ZeroTier service under /zt (its token "zt-test", its address aaaaaaaa01): the networks it joined, the PCs it reaches.</summary>
         public ConcurrentDictionary<string, bool> ZeroTierNetworks { get; } = new();
         public ConcurrentDictionary<string, (int Latency, bool Direct)> ZeroTierPeers { get; } = new();
@@ -81,7 +86,7 @@ namespace GameVault.UiTests
         {
             id = r.Id, code = r.Code, name = r.Name, ownerId = r.OwnerId, ownerName = r.OwnerName, gameId = r.GameId, gameTitle = r.GameTitle,
             @public = r.Public, maxMembers = 8, member = r.Members.Any(m => m.UserId == 1),
-            members = r.Members.Select(m => new { userId = m.UserId, userName = m.UserName, nodeId = m.NodeId, ip = m.Ip }).ToArray(),
+            members = r.Members.Select(m => new { userId = m.UserId, userName = m.UserName, nodeId = m.NodeId, ip = m.Ip, streaming = r.Streaming.Contains(m.UserId) }).ToArray(),
         };
         /// <summary>Game requests sent through the service (to the RomM-ComM bot): name of the game.</summary>
         public ConcurrentQueue<string> GameRequests { get; } = new();
@@ -608,6 +613,15 @@ namespace GameVault.UiTests
                     changed.GameTitle = roomAsked.RootElement.GetProperty("gameTitle").GetString();
                     response.StatusCode = 204;
                 }
+                else if ((match = Regex.Match(path, @"^/rooms/(\w+)/stream$")).Success && Rooms.TryGetValue(match.Groups[1].Value, out var shared))
+                {
+                    using JsonDocument streamAsked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    if (streamAsked.RootElement.GetProperty("on").GetBoolean())
+                        shared.Streaming.Add(1);
+                    else
+                        shared.Streaming.Remove(1);
+                    response.StatusCode = 204;
+                }
                 else if (path == "/lan-games" && request.HttpMethod == "GET")
                     await Json(response, LanGames.Select(g => new { id = g.Key, players = g.Value }).ToArray());
                 else if ((match = Regex.Match(path, @"^/lan-games/(\d+)$")).Success)
@@ -619,6 +633,23 @@ namespace GameVault.UiTests
                     else
                         LanGames.TryAdd(lanGame, null);
                     response.StatusCode = 204;
+                }
+                // This PC's Sunshine
+                else if (path == "/sunshine/api/configLocale")
+                    await Json(response, new { status = true, locale = "fr" });
+                else if (path.StartsWith("/sunshine/") && request.Headers["Authorization"] != "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes("sv:secret")))
+                    response.StatusCode = 401;
+                else if (path == "/sunshine/api/apps")
+                    await Json(response, new { apps = Array.Empty<object>() });
+                else if (path == "/sunshine/api/pin" && request.HttpMethod == "GET")
+                    await Json(response, new { pairings = SunshinePairings.Select(p => new { id = p.Key, name = "", address = p.Value }).ToArray() });
+                else if (path == "/sunshine/api/pin" && request.HttpMethod == "POST")
+                {
+                    using JsonDocument pin = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string pairing = pin.RootElement.GetProperty("pairing_id").GetString()!;
+                    SunshinePins.Enqueue((pairing, pin.RootElement.GetProperty("pin").GetString()!, pin.RootElement.GetProperty("name").GetString()!));
+                    SunshinePairings.TryRemove(pairing, out _);
+                    await Json(response, new { status = true });
                 }
                 // This PC's ZeroTier service
                 else if (path.StartsWith("/zt/") && request.Headers["X-ZT1-Auth"] != "zt-test")

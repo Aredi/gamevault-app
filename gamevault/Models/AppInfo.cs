@@ -129,6 +129,9 @@ namespace gamevault.Models
         PublishTargetDirectory,
         PublishUploaderUrl,
         ShareActivity,
+        //LAN rooms' shared screen: this PC's Sunshine login (encrypted)
+        SunshineUser,
+        SunshinePassword,
         PublishDestination,
         //Library layout: cover size, "gallery" / "shelf", showcase on ("1") or off ("0")
         LibraryCardWidth,

@@ -57,6 +57,37 @@ namespace GameVault.UiTests
                 Assert.Equal(gamevault.Localization.Loc.T("This PC"), members.Single(m => m.Name.StartsWith("admin")).State);
                 Assert.Contains("10.147.1.1", rooms.FindControl<SelectableTextBlock>("uiHostHint")!.Text);
 
+                // Léa shares her screen: joined from her line
+                friends.Streaming.Add(2);
+                await rooms.LoadAsync();
+                var lea = rooms.FindControl<ItemsControl>("uiMembers")!.Items.Cast<RoomsUserControl.MemberRow>().Single(m => m.Name.StartsWith("Léa"));
+                Assert.Equal("10.147.1.1", lea.JoinIp);
+                Assert.Null(rooms.FindControl<ItemsControl>("uiMembers")!.Items.Cast<RoomsUserControl.MemberRow>().Single(m => m.Name.StartsWith("admin")).JoinIp);
+
+                // This PC shares too: Sunshine's login asked once, then Léa's pairing gets her PIN, not a stranger's
+                SunshineHost.ApiUrl = server.Url + "/sunshine";
+                server.SunshinePairings["0123456789abcdef0123456789abcd01"] = "::ffff:10.147.1.1";
+                server.SunshinePairings["0123456789abcdef0123456789abcd02"] = "192.168.1.50";
+                Click(rooms.FindControl<Button>("uiShare")!);
+                await TestSession.WaitUntil(() => MainWindowViewModel.Instance.Popup is SunshineSetupPopup, TimeSpan.FromSeconds(30), "Sunshine's setup");
+                var setup = (SunshineSetupPopup)MainWindowViewModel.Instance.Popup!;
+                await TestSession.WaitUntil(() => setup.FindControl<Button>("uiNext")!.Content as string == gamevault.Localization.Loc.T("Share my screen"), TimeSpan.FromSeconds(30), "Sunshine found running");
+                setup.FindControl<TextBox>("uiUser")!.Text = "sv";
+                setup.FindControl<TextBox>("uiPassword")!.Text = "wrong";
+                Click(setup.FindControl<Button>("uiNext")!);
+                await TestSession.WaitUntil(() => setup.FindControl<TextBlock>("uiStatus")!.Text == gamevault.Localization.Loc.T("Sunshine did not accept this login."), TimeSpan.FromSeconds(30), "the wrong login refused");
+                setup.FindControl<TextBox>("uiPassword")!.Text = "secret";
+                Click(setup.FindControl<Button>("uiNext")!);
+                await TestSession.WaitUntil(() => friends.Streaming.Contains(1) && !server.SunshinePins.IsEmpty, TimeSpan.FromSeconds(30), "Léa paired with her PIN");
+                Assert.Equal(("0123456789abcdef0123456789abcd01", GameVault.Core.Integrations.ScreenSharing.Pin("AB2CD3", "10.147.1.1"), "SanctuaryVault · Léa"), Assert.Single(server.SunshinePins));
+                Assert.True(server.SunshinePairings.ContainsKey("0123456789abcdef0123456789abcd02"));
+                Assert.Equal(gamevault.Localization.Loc.T("Stop sharing my screen"), rooms.FindControl<Button>("uiShare")!.Content);
+                Assert.Contains(gamevault.Localization.Loc.T("shares their screen"), rooms.FindControl<ItemsControl>("uiMembers")!.Items.Cast<RoomsUserControl.MemberRow>().Single(m => m.Name.StartsWith("admin")).Name);
+
+                // Stopped
+                Click(rooms.FindControl<Button>("uiShare")!);
+                await TestSession.WaitUntil(() => !friends.Streaming.Contains(1) && SunshineHost.SharedRoom == null, TimeSpan.FromSeconds(30), "the sharing stopped");
+
                 // Left: out of the network, Léa's room still there
                 Click(rooms.FindControl<Button>("uiLeave")!);
                 await TestSession.WaitUntil(() => !server.ZeroTierNetworks.ContainsKey(friends.Id) && rooms.Rooms.Any(r => r.Id == friends.Id && !r.Member), TimeSpan.FromSeconds(30), "the room left");
@@ -93,6 +124,8 @@ namespace GameVault.UiTests
                 SanctuaryService.Current = SanctuaryService.Url;
                 ZeroTierAgent.ApiUrl = "http://127.0.0.1:9993";
                 ZeroTierAgent.TestToken = null;
+                SunshineHost.Stop();
+                SunshineHost.ApiUrl = "https://127.0.0.1:47990";
                 server.Rooms.Clear();
                 server.LanGames.Clear();
             }

@@ -22,6 +22,9 @@ namespace gamevault.Helper
         public string NodeId { get; set; } = "";
         [JsonPropertyName("ip")]
         public string Ip { get; set; } = "";
+        /// <summary>Shares their screen with the room (Sunshine).</summary>
+        [JsonPropertyName("streaming")]
+        public bool Streaming { get; set; }
     }
 
     /// <summary>A LAN room as the SanctuaryVault service gives it: its ZeroTier network is its id.</summary>
@@ -91,6 +94,8 @@ namespace gamevault.Helper
             JsonSerializer.Deserialize<RoomItem>(await SendAsync(HttpMethod.Post, "rooms/join", new { roomId, code, nodeId }))!;
 
         public static Task LeaveAsync(string roomId) => SendAsync(HttpMethod.Post, $"rooms/{roomId}/leave");
+
+        public static Task SetStreamingAsync(string roomId, bool on) => SendAsync(HttpMethod.Put, $"rooms/{roomId}/stream", new { on });
 
         public static Task SetGameAsync(string roomId, int? gameId, string? gameTitle) => SendAsync(HttpMethod.Put, $"rooms/{roomId}/game", new { gameId, gameTitle });
 

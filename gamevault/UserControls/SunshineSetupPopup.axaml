@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.SunshineSetupPopup"
+             Width="640" Focusable="True">
+    <!-- Once per PC, to share its screen with a room: Sunshine installed, then its login given to SanctuaryVault -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="30,24,30,26" Spacing="18">
+            <StackPanel Spacing="8">
+                <TextBlock Classes="sectionTitle" FontSize="22" Text="{l:T 'Share your screen with the room'}" />
+                <TextBlock FontSize="14" TextWrapping="Wrap" Text="{l:T 'Sunshine (free) streams your screen to your friends, who play with their own gamepad: the game only runs on your PC. It is set up once.'}" />
+            </StackPanel>
+
+            <StackPanel Spacing="10">
+                <Border CornerRadius="12" Padding="16,12" Background="{DynamicResource Brush.Surface}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border x:Name="uiInstallDot" Width="26" Height="26" CornerRadius="13" BorderThickness="2" BorderBrush="{DynamicResource Brush.Line}">
+                            <TextBlock x:Name="uiInstallMark" Text="1" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4">
+                            <TextBlock FontWeight="SemiBold" Text="{l:T 'Install Sunshine'}" />
+                            <TextBlock x:Name="uiInstallText" Classes="muted" FontSize="13" TextWrapping="Wrap" />
+                            <SelectableTextBlock x:Name="uiLinuxGuide" FontFamily="monospace" FontSize="13" TextWrapping="Wrap" IsVisible="False" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <Border CornerRadius="12" Padding="16,12" Background="{DynamicResource Brush.Surface}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border x:Name="uiLoginDot" Width="26" Height="26" CornerRadius="13" BorderThickness="2" BorderBrush="{DynamicResource Brush.Line}">
+                            <TextBlock x:Name="uiLoginMark" Text="2" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="8">
+                            <TextBlock FontWeight="SemiBold" Text="{l:T 'Give SanctuaryVault your Sunshine login'}" />
+                            <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{l:T 'The first time, Sunshine asks you to choose a login on its page. With it, SanctuaryVault pairs your friends for you.'}" />
+                            <Grid ColumnDefinitions="*,8,*,8,Auto">
+                                <TextBox x:Name="uiUser" Watermark="{l:T 'Login'}" />
+                                <TextBox x:Name="uiPassword" Grid.Column="2" PasswordChar="•" Watermark="{l:T 'Password'}" />
+                                <Button Grid.Column="4" Classes="ghost small" Click="OpenPage_Click" Content="{l:T 'Open Sunshine'}" />
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <TextBlock x:Name="uiStatus" FontSize="13" TextWrapping="Wrap" />
+
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                <Button Classes="ghost" Click="Later_Click" Content="{l:T 'Later'}" />
+                <Button x:Name="uiNext" Classes="action" Click="Next_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

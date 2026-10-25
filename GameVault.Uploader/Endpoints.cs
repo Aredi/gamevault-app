@@ -23,6 +23,7 @@ namespace GameVault.Uploader
     /// GET  /rooms, POST /rooms                   the LAN rooms the player sees (public, or theirs) / makes one (its ZeroTier network)
     /// POST /rooms/join, POST /rooms/{id}/leave   lets the player's PC in a room (by its code, or a public room) / out of it
     /// PUT  /rooms/{id}/game                      the room's game (its owner)
+    /// PUT  /rooms/{id}/stream                    the player shares their screen with the room, or stops (Sunshine)
     /// GET  /lan-games, PUT /lan-games/{gameId}   the games playable in LAN (PCGamingWiki, read in the background) / an administrator marks or unmarks one
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
@@ -231,6 +232,10 @@ namespace GameVault.Uploader
                         RoomStore.Outcome.NotOwner => Results.Json(new { error = "Only the room's owner chooses its game." }, statusCode: StatusCodes.Status403Forbidden),
                         _ => Results.NotFound(),
                     }));
+
+            app.MapPut("/rooms/{roomId}/stream", (string roomId, RoomStream asked, HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
+                AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player =>
+                    await rooms.SetStreamingAsync(player.Id, roomId, asked.On) == RoomStore.Outcome.Done ? Results.NoContent() : Results.NotFound()));
 
             app.MapGet("/lan-games", (HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, GameVaultProxy gameVault, PcGamingWiki wiki, ILogger<RoomStore> logger, CancellationToken ct) =>
                 AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async _ =>
@@ -500,7 +505,7 @@ namespace GameVault.Uploader
             {
                 id = room.Id, code = member || room.Public ? room.Code : null, name = room.Name, ownerId = room.OwnerId, ownerName = room.OwnerName,
                 gameId = room.GameId, gameTitle = room.GameTitle, @public = room.Public, maxMembers = RoomStore.MaxMembers, member,
-                members = room.Members.Select(m => new { userId = m.UserId, userName = m.UserName, nodeId = m.NodeId, ip = m.Ip }),
+                members = room.Members.Select(m => new { userId = m.UserId, userName = m.UserName, nodeId = m.NodeId, ip = m.Ip, streaming = m.Streaming }),
             };
         }
 
@@ -569,6 +574,7 @@ namespace GameVault.Uploader
     public sealed record RoomRequest(string? Name, int? GameId, string? GameTitle, bool Public, string? NodeId);
     public sealed record RoomJoin(string? RoomId, string? Code, string? NodeId);
     public sealed record RoomGame(int? GameId, string? GameTitle);
+    public sealed record RoomStream(bool On);
     public sealed record LanGame(bool Lan);
     public sealed record HiddenPlay(int? GameId);
 }

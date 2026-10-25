@@ -739,6 +739,12 @@ namespace GameVault.Uploader.Tests
             using (JsonDocument mine = JsonDocument.Parse(await other.GetStringAsync("/rooms")))
                 Assert.Equal(2, Assert.Single(mine.RootElement.EnumerateArray()).GetProperty("members").GetArrayLength());
 
+            // A member shares their screen, the room sees it; not someone outside the room
+            Assert.Equal(HttpStatusCode.NoContent, (await other.PutAsJsonAsync($"/rooms/{id}/stream", new { on = true })).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("p16").PutAsJsonAsync($"/rooms/{id}/stream", new { on = true })).StatusCode);
+            using (JsonDocument seen = JsonDocument.Parse(await owner.GetStringAsync("/rooms")))
+                Assert.Equal(new[] { false, true }, Assert.Single(seen.RootElement.EnumerateArray()).GetProperty("members").EnumerateArray().Select(m => m.GetProperty("streaming").GetBoolean()));
+
             // Full at 8
             for (int n = 10; n < 16; n++)
                 Assert.Equal(HttpStatusCode.OK, (await Client($"p{n}").PostAsJsonAsync("/rooms/join", new { code, nodeId = $"cccccccc{n}" })).StatusCode);

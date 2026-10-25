@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using GameVault.Core;
+using GameVault.Core.Integrations;
 using gamevault.Helper;
 using gamevault.Localization;
 using gamevault.Models;
@@ -21,7 +22,11 @@ namespace gamevault.UserControls
     /// </summary>
     public partial class RoomsUserControl : UserControl
     {
-        public sealed record MemberRow(string Name, string Initial, string Ip, string State, IBrush Dot);
+        /// <param name="JoinIp">Their shared screen's address, when this PC can join it.</param>
+        public sealed record MemberRow(string Name, string Initial, string Ip, string State, IBrush Dot, string? JoinIp = null)
+        {
+            public bool CanJoin => JoinIp != null;
+        }
 
         private readonly DispatcherTimer refresh = new() { Interval = TimeSpan.FromSeconds(10) };
         private string? selectedId;
@@ -118,6 +123,12 @@ namespace gamevault.UserControls
             uiGameTitle.Text = room.GameTitle ?? Loc.T("No game chosen yet");
             uiEnter.IsVisible = !room.Member;
             uiLeave.IsVisible = room.Member;
+            // Shared before the client was closed: the sharing goes on
+            RoomMember? mine = room.Members.FirstOrDefault(m => m.UserId == me);
+            if (mine?.Streaming == true && SunshineHost.SharedRoom != room.Id)
+                SunshineHost.Start(room.Id);
+            uiShare.IsVisible = room.Member;
+            uiShare.Content = mine?.Streaming == true ? Loc.T("Stop sharing my screen") : Loc.T("Share my screen");
             bool installed = room.GameId is int id && InstallViewModel.Instance.InstalledGames.Any(g => g.Key.ID == id);
             uiPlay.IsVisible = room.Member && installed;
             uiOpenGame.IsVisible = room.GameId != null && !(room.Member && installed);
@@ -135,12 +146,15 @@ namespace gamevault.UserControls
                 string name = m.UserId == me ? Loc.F("{0} (you)", m.UserName) : m.UserName;
                 if (m.UserId == room.OwnerId)
                     name += " · " + Loc.T("host");
+                // The others' sharing: their join button says it
+                if (m.Streaming && (m.UserId == me || mine == null))
+                    name += " · " + Loc.T("shares their screen");
                 (string state, string brush) = m.NodeId == myNode ? (Loc.T("This PC"), "Brush.Success")
                     : peers.TryGetValue(m.NodeId, out var peer) && peer.Latency >= 0
                         ? (peer.Direct ? Loc.F("Direct · {0} ms", peer.Latency) : Loc.F("Relayed · {0} ms", peer.Latency), peer.Direct ? "Brush.Success" : "Brush.Warning")
                         : (Loc.T("Not connected"), "Brush.Muted");
                 IBrush dot = this.TryFindResource(brush, out object? found) && found is IBrush b ? b : Brushes.Gray;
-                return new MemberRow(name, m.UserName.Length > 0 ? m.UserName[..1].ToUpperInvariant() : "?", m.Ip, state, dot);
+                return new MemberRow(name, m.UserName.Length > 0 ? m.UserName[..1].ToUpperInvariant() : "?", m.Ip, state, dot, m.Streaming && m.UserId != me && mine != null ? m.Ip : null);
             }).ToList();
             string? host = room.Members.FirstOrDefault(m => m.UserId == room.OwnerId)?.Ip;
             uiHostHint.Text = host == null ? "" : Loc.F("The game does not see the party? Type the host's address: {0}", host);
@@ -222,6 +236,8 @@ namespace gamevault.UserControls
             try
             {
                 await RoomsService.LeaveAsync(room.Id);
+                if (SunshineHost.SharedRoom == room.Id)
+                    SunshineHost.Stop();
                 if (ZeroTierAgent.HasAccess)
                     await ZeroTierAgent.LeaveAsync(room.Id);
                 selectedId = null;
@@ -229,6 +245,53 @@ namespace gamevault.UserControls
             }
             catch (Exception ex) { ShowStatus(ex.Message); }
             finally { uiLeave.IsEnabled = true; }
+        }
+
+        /// <summary>Shares this PC's screen with the room (Sunshine set up first), or stops.</summary>
+        private async void Share_Click(object? sender, RoutedEventArgs e)
+        {
+            if (Selected is not RoomItem room)
+                return;
+            bool on = SunshineHost.SharedRoom != room.Id;
+            if (on && !await SunshineHost.ReadyAsync())
+            {
+                MainWindowViewModel.Instance.OpenPopup(new SunshineSetupPopup(() => ShareAsync(room.Id, true)));
+                return;
+            }
+            await ShareAsync(room.Id, on);
+        }
+
+        private async Task ShareAsync(string roomId, bool on)
+        {
+            uiShare.IsEnabled = false;
+            try
+            {
+                // One room at a time: the one shared before stops
+                if (on && SunshineHost.SharedRoom is string before && before != roomId)
+                    await RoomsService.SetStreamingAsync(before, false);
+                await RoomsService.SetStreamingAsync(roomId, on);
+                if (on)
+                    SunshineHost.Start(roomId);
+                else
+                    SunshineHost.Stop();
+                await LoadAsync(roomId);
+                ShowStatus(on ? Loc.T("Your screen is shared: start the game, your friends join it from this room.") : "");
+            }
+            catch (Exception ex) { ShowStatus(ex.Message); }
+            finally { uiShare.IsEnabled = true; }
+        }
+
+        /// <summary>A member's shared screen, with Moonlight (taken and paired the first time).</summary>
+        private async void JoinScreen_Click(object? sender, RoutedEventArgs e)
+        {
+            int me = LoginManager.Instance.GetCurrentUser()?.ID ?? -1;
+            if (sender is not Button button || button.DataContext is not MemberRow { JoinIp: string host } || Selected is not RoomItem { Code: string code } room
+                || room.Members.FirstOrDefault(m => m.UserId == me)?.Ip is not string mine)
+                return;
+            button.IsEnabled = false;
+            try { await MoonlightClient.JoinAsync(host, ScreenSharing.Pin(code, mine), text => Dispatcher.UIThread.Post(() => ShowStatus(text))); }
+            catch (Exception ex) { ShowStatus(ex.Message); }
+            finally { button.IsEnabled = true; }
         }
 
         private async void Play_Click(object? sender, RoutedEventArgs e)

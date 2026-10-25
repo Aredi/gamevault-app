@@ -29,7 +29,8 @@ namespace GameVault.Uploader
 
         public bool Enabled { get; }
 
-        public sealed record Member(int UserId, string UserName, string NodeId, string Ip, DateTime JoinedAt);
+        /// <param name="Streaming">Shares their screen with the room (Sunshine): the others join it with Moonlight.</param>
+        public sealed record Member(int UserId, string UserName, string NodeId, string Ip, DateTime JoinedAt, bool Streaming = false);
 
         public sealed record Room(string Id, string Code, string Name, int OwnerId, string OwnerName, int? GameId, string? GameTitle, bool Public, int Subnet, List<Member> Members, DateTime CreatedAt);
 
@@ -156,6 +157,18 @@ namespace GameVault.Uploader
                 if (state.Rooms[index].OwnerId != userId)
                     return Task.FromResult(Outcome.NotOwner);
                 state.Rooms[index] = state.Rooms[index] with { GameId = gameId, GameTitle = gameTitle };
+                Write(state);
+                return Task.FromResult(Outcome.Done);
+            });
+
+        public Task<Outcome> SetStreamingAsync(int userId, string roomId, bool on) =>
+            WithStateAsync(state =>
+            {
+                Room? room = state.Rooms.FirstOrDefault(r => r.Id == roomId);
+                int index = room?.Members.FindIndex(m => m.UserId == userId) ?? -1;
+                if (index < 0)
+                    return Task.FromResult(Outcome.NotFound);
+                room!.Members[index] = room.Members[index] with { Streaming = on };
                 Write(state);
                 return Task.FromResult(Outcome.Done);
             });
