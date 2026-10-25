@@ -97,9 +97,10 @@
                             <TextBlock Text="{l:T 'Applies at the next start'}" VerticalAlignment="Center" Opacity="0.7" />
                         </StackPanel>
                         <TextBlock Classes="h1" Text="{l:T 'Startup'}" />
-                        <ToggleSwitch x:Name="uiAutostartToggle" Content="{l:T 'Launch SanctuaryVault on Computer Startup'}" />
+                        <!-- Not on a Mac: its start at login is not set up (Windows' registry, Linux's autostart), nor its PC library -->
+                        <ToggleSwitch x:Name="uiAutostartToggle" Content="{l:T 'Launch SanctuaryVault on Computer Startup'}" IsVisible="{Binding PlaysPcGames}" />
                         <ToggleSwitch Content="{l:T 'Minimize SanctuaryVault to System Tray on Startup'}" IsChecked="{Binding BackgroundStart}" />
-                        <ToggleSwitch Content="{l:T 'Auto-Load Library from Server on Startup'}" IsChecked="{Binding LibStartup}" />
+                        <ToggleSwitch Content="{l:T 'Auto-Load Library from Server on Startup'}" IsChecked="{Binding LibStartup}" IsVisible="{Binding PlaysPcGames}" />
                         <ToggleSwitch Content="{l:T 'Notify me when new games are added to the server'}" IsChecked="{Binding NotifyNewGames}" />
                         <StackPanel Classes="section">
                             <TextBlock Classes="h1" Text="{l:T 'Theme'}" />
@@ -125,7 +126,7 @@
                                 <local:IconButton Text="{l:T 'Open Theme Folder'}" FontSize="15" Icon="{StaticResource IconGameSettingsFolder}" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="10,0,0,0" Click="OpenThemeFolder_Click" />
                             </WrapPanel>
                         </StackPanel>
-                        <StackPanel Classes="section">
+                        <StackPanel Classes="section" IsVisible="{Binding PlaysPcGames}">
                             <TextBlock Classes="h1" Text="{l:T 'Library'}" />
                             <ToggleSwitch Content="{l:T 'Retain Sorting and Filter preferences after restart'}" IsChecked="{Binding RetainLibarySortByAndOrderBy}" />
                         </StackPanel>
@@ -224,8 +225,9 @@
                 </TabItem.Header>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="36,0,28,40" MaxWidth="900" HorizontalAlignment="Left">
-                        <TextBlock Classes="h1" Text="{l:T 'File System'}" />
-                        <StackPanel Margin="10,10,0,0">
+                        <!-- The PC games' folders, their executables and leftovers: none on a Mac -->
+                        <TextBlock Classes="h1" Text="{l:T 'File System'}" IsVisible="{Binding PlaysPcGames}" />
+                        <StackPanel Margin="10,10,0,0" IsVisible="{Binding PlaysPcGames}">
                             <TextBlock Text="{l:T 'Root Directories (A \&#x27;GameVault\&#x27; subfolder will be created)'}" Margin="0,2,0,2" FontSize="15" />
                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Width="560" HorizontalAlignment="Left">
                                 <ItemsControl ItemsSource="{Binding RootDirectories}">
@@ -256,7 +258,7 @@
                                 <local:IconButton Text="{l:T 'Clear offline cache'}" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" MinWidth="185" Height="30" Click="ClearOfflineCache_Clicked" ToolTip.Tip="{l:T 'Clears the entire offline cache'}" />
                                 <TextBlock Text="{Binding OfflineCacheSize, Converter={StaticResource sizeConv}, StringFormat='({0})'}" FontSize="20" Margin="10,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
-                            <Border Classes="group" HorizontalAlignment="Stretch">
+                            <Border Classes="group" HorizontalAlignment="Stretch" IsVisible="{Binding PlaysPcGames}">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <StackPanel>
                                         <TextBlock Text="{l:T 'Ignored Executables'}" FontWeight="Bold" />
@@ -271,7 +273,7 @@
                         </StackPanel>
 
                         <!-- Free up disk space -->
-                        <StackPanel Classes="section">
+                        <StackPanel Classes="section" IsVisible="{Binding PlaysPcGames}">
                             <Grid ColumnDefinitions="*,Auto" Width="900" HorizontalAlignment="Left">
                                 <TextBlock Classes="h1" Text="{l:T 'Free up disk space'}" />
                                 <local:IconButton Grid.Column="1" Text="{l:T 'Analyze'}" Icon="{StaticResource IconCleanup}" IconScale="0.06" IconMargin="-110,-100,-105,-100" FontSize="14" MinWidth="120" Height="32" Click="AnalyzeStorage_Click" IsEnabled="{Binding !IsStorageCleanupRunning}" />
@@ -332,7 +334,8 @@
                                 <ToggleSwitch Content="{l:T 'Sync'}" Margin="0,10,0,0" IsChecked="{Binding SyncDiscordPresence}" />
                             </StackPanel>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
+                        <!-- Ludusavi's cloud saves and Playnite are the PC games': not on a Mac (its retro saves go to RomM) -->
+                        <StackPanel Orientation="Horizontal" Margin="10,0,0,0" IsVisible="{Binding PlaysPcGames}">
                             <Rectangle Classes="integrationBar" />
                             <StackPanel Margin="10,0,0,0">
                                 <StackPanel Orientation="Horizontal">
@@ -368,7 +371,7 @@
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="10,0,0,0" IsVisible="{Binding PlaysPcGames}">
                             <Rectangle Classes="integrationBar" />
                             <StackPanel Margin="10,0,0,0">
                                 <StackPanel Orientation="Horizontal">

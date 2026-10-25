@@ -570,7 +570,7 @@ namespace gamevault.ViewModels
             }
         }
         /// <summary>The Mac's version plays the retro games only: its PC games are Windows'.</summary>
-        public bool PlaysPcGames => !OperatingSystem.IsMacOS();
+        public bool PlaysPcGames => !PlatformInfo.IsMac;
         #region Linux
         public bool IsLinux => OperatingSystem.IsLinux();
 

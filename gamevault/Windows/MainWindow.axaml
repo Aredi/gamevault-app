@@ -200,6 +200,12 @@
                         </Button>
                         <TextBlock Classes="navSection wide" Text="{l:T 'MENU'}" />
                         <ListBox x:Name="uiNavigation" SelectionMode="Single" SelectedIndex="{Binding ActiveControlIndex}" SelectionChanged="Navigation_SelectionChanged">
+                            <!-- Not the virtualizing panel: it shows each item again as it lays them out, the Mac's hidden pages too -->
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
                             <ListBoxItem x:Name="uiNavLibrary" ToolTip.Tip="{l:T 'Library'}">
                                 <Panel>
                                     <Border Classes="mark" />
