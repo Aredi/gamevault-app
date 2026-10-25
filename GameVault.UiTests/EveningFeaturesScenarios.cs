@@ -129,6 +129,15 @@ namespace GameVault.UiTests
             Assert.Equal(true, presence.Convert(new object?[] { zoe, 0 }, typeof(bool), "hasdot", System.Globalization.CultureInfo.CurrentCulture));
             ActivityService.Instance.Apply(Array.Empty<PlayerActivity>(), replaceAll: true);
             Assert.Equal(false, presence.Convert(new object?[] { zoe, 0 }, typeof(bool), "hasdot", System.Globalization.CultureInfo.CurrentCulture));
+
+            // She hides what she plays: online for the server, her game for an administrator through the service
+            ActivityService.Instance.Apply(new[] { new PlayerActivity { UserId = 2, State = "ONLINE" } }, replaceAll: true);
+            ActivityService.Instance.ApplyHidden(new[] { new PlayerActivity { UserId = 2, State = "PLAYING", GameId = 9731 } });
+            Assert.Equal(gamevault.Localization.Loc.F("Playing {0}", "Activity Arena"), presence.Convert(new object?[] { zoe, 0 }, typeof(string), "text", System.Globalization.CultureInfo.CurrentCulture));
+            Assert.Contains(ActivityService.Instance.All, a => a.UserId == 2 && a.IsPlaying);
+            ActivityService.Instance.ApplyHidden(null);
+            ActivityService.Instance.Apply(Array.Empty<PlayerActivity>(), replaceAll: true);
+            Assert.Equal(false, presence.Convert(new object?[] { zoe, 0 }, typeof(bool), "hasdot", System.Globalization.CultureInfo.CurrentCulture));
         }
 
         [AvaloniaFact]

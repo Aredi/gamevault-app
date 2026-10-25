@@ -12,6 +12,7 @@ builder.Services.AddSingleton<RemoteInstallStore>();
 builder.Services.AddSingleton<RetroSaveStore>();
 builder.Services.AddSingleton<RetroPlayerStore>();
 builder.Services.AddSingleton<RoomStore>();
+builder.Services.AddSingleton<HiddenPlayStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");

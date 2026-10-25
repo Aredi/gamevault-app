@@ -5,6 +5,7 @@ using SocketIOClient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
@@ -28,7 +29,8 @@ namespace gamevault.Helper
 
     /// <summary>
     /// The players online and the games they are playing right now, through the server's activity websocket
-    /// (socket.io, "set-activity" / "activities"). Says this client's own activity unless the player hides it.
+    /// (socket.io, "set-activity" / "activities"). Says this client's own activity unless the player hides it: then
+    /// only the administrators see their game, through the SanctuaryVault service (/activity), read each minute.
     /// Servers with SERVER_ONLINE_ACTIVITIES_DISABLED, or a proxy without websockets, simply leave everyone offline.
     /// </summary>
     internal sealed class ActivityService
@@ -37,6 +39,8 @@ namespace gamevault.Helper
 
         private SocketIOClient.SocketIO? socket;
         private readonly Dictionary<int, PlayerActivity> activities = new();
+        /// <summary>For an administrator: the games of the players who hide them, by player.</summary>
+        private Dictionary<int, PlayerActivity> hidden = new();
         private int? playing;
         private bool started;
 
@@ -48,7 +52,7 @@ namespace gamevault.Helper
         public PlayerActivity? Of(int userId)
         {
             lock (activities)
-                return activities.GetValueOrDefault(userId);
+                return activities.GetValueOrDefault(userId) is { IsPlaying: true } shared ? shared : hidden.GetValueOrDefault(userId) ?? activities.GetValueOrDefault(userId);
         }
 
         public IReadOnlyList<PlayerActivity> All
@@ -56,7 +60,7 @@ namespace gamevault.Helper
             get
             {
                 lock (activities)
-                    return activities.Values.ToList();
+                    return activities.Keys.Union(hidden.Keys).Select(id => Of(id)!).ToList();
             }
         }
 
@@ -97,6 +101,8 @@ namespace gamevault.Helper
                 socket.On("activity", response => Apply(new List<PlayerActivity> { response.GetValue<PlayerActivity>() }, replaceAll: false));
                 socket.OnConnected += async (_, _) => await SendMineAsync();
                 socket.OnDisconnected += (_, _) => Apply(new List<PlayerActivity>(), replaceAll: true);
+                if (me.Role == PERMISSION_ROLE.ADMIN)
+                    _ = ReadHiddenAsync();
                 await socket.ConnectAsync();
             }
             catch (Exception ex)
@@ -110,13 +116,61 @@ namespace gamevault.Helper
         public void SetPlaying(int? gameId)
         {
             if (playing == gameId)
+            {
+                // Hidden: said again each minute (the tracker's), the service forgets a game not said for 3
+                if (playing != null && !ShareMine)
+                    _ = SendHiddenAsync();
                 return;
+            }
             playing = gameId;
             _ = SendMineAsync();
         }
 
+        private static string Service => SanctuaryService.Current.TrimEnd('/');
+
+        /// <summary>The game of a player who hides it, for the administrators; none when shown to all.</summary>
+        private async Task SendHiddenAsync()
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Put, $"{Service}/activity/me")
+                {
+                    Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(new { gameId = ShareMine ? null : playing }), System.Text.Encoding.UTF8, "application/json"),
+                };
+                using var _ = await WebHelper.SendLongAsync(request, System.Threading.CancellationToken.None);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>An administrator's client: the hidden games each minute, while it is started.</summary>
+        private async Task ReadHiddenAsync()
+        {
+            while (started)
+            {
+                try
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/activity/hidden");
+                    using var response = await WebHelper.SendLongAsync(request, System.Threading.CancellationToken.None);
+                    if (response.IsSuccessStatusCode)
+                        ApplyHidden(System.Text.Json.JsonSerializer.Deserialize<List<PlayerActivity>>(await response.Content.ReadAsStringAsync()));
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+                await Task.Delay(TimeSpan.FromMinutes(1));
+            }
+        }
+
+        /// <summary>Takes the hidden games as the service sends them (also used by the tests).</summary>
+        internal void ApplyHidden(IEnumerable<PlayerActivity>? received)
+        {
+            var games = (received ?? Enumerable.Empty<PlayerActivity>()).ToDictionary(a => a.UserId);
+            lock (activities)
+                hidden = games;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Changed?.Invoke());
+        }
+
         private async Task SendMineAsync()
         {
+            _ = SendHiddenAsync();
             if (socket?.Connected != true)
                 return;
             try
@@ -158,6 +212,7 @@ namespace gamevault.Helper
             }
             catch (Exception ex) { Log.Ignored(ex); }
             socket = null;
+            ApplyHidden(null);
             Apply(new List<PlayerActivity>(), replaceAll: true);
         }
     }

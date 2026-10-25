@@ -251,6 +251,24 @@ namespace GameVault.Uploader
                 return Results.NoContent();
             });
 
+            // The game of a player who hides what they play: the administrators see it all the same
+            app.MapPut("/activity/me", async (HiddenPlay played, HttpRequest request, AdminCheck users, HiddenPlayStore hidden, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                hidden.Set(check.Id, played.GameId, DateTimeOffset.UtcNow);
+                return Results.NoContent();
+            });
+
+            app.MapGet("/activity/hidden", async (HttpRequest request, AdminCheck admins, HiddenPlayStore hidden, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return Results.Json(hidden.Now(DateTimeOffset.UtcNow).Select(p => new { user_id = p.UserId, state = "PLAYING", game_id = p.GameId }));
+            });
+
             // The administrators see when each player last had the client open
             app.MapGet("/users/last-seen", async (HttpRequest request, AdminCheck admins, RemoteInstallStore remote, CancellationToken ct) =>
             {
@@ -552,4 +570,5 @@ namespace GameVault.Uploader
     public sealed record RoomJoin(string? RoomId, string? Code, string? NodeId);
     public sealed record RoomGame(int? GameId, string? GameTitle);
     public sealed record LanGame(bool Lan);
+    public sealed record HiddenPlay(int? GameId);
 }

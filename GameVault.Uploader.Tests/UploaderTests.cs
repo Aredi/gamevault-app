@@ -391,6 +391,23 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task AHiddenGame_IsSeenByTheAdministrators_Only()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/activity/me", new { gameId = 6 })).StatusCode);
+            Assert.Equal("[{\"user_id\":2,\"state\":\"PLAYING\",\"game_id\":6}]", await Client("admin").GetStringAsync("/activity/hidden"));
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.GetAsync("/activity/hidden")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).PutAsJsonAsync("/activity/me", new { gameId = 6 })).StatusCode);
+            // Stopped, or shown to all again
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/activity/me", new { gameId = (int?)null })).StatusCode);
+            Assert.Equal("[]", await Client("admin").GetStringAsync("/activity/hidden"));
+            // A client gone without saying it: forgotten
+            var store = new HiddenPlayStore();
+            store.Set(2, 6, DateTimeOffset.UtcNow - HiddenPlayStore.Fresh);
+            Assert.Empty(store.Now(DateTimeOffset.UtcNow));
+        }
+
+        [Fact]
         public async Task RemoteInstalls_GoToThePCTheyAreAskedFor_AndKeepTheirOutcome()
         {
             var player = Client("user");
