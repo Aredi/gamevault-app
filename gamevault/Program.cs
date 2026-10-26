@@ -19,11 +19,29 @@ namespace gamevault
         // started by Steam or a desktop launcher would not find the running instance.
         private static readonly string GAMEVAULT_MUTEX = (OperatingSystem.IsWindows() ? "" : "Global\\") + "0C8E52D8-ECD4-4F12-95B5-CE3412C073EA:GameVault";
 
+        [System.Runtime.InteropServices.DllImport("libc")]
+        private static extern int mallopt(int param, int value);
+
+        /// <summary>
+        /// Linux (glibc): blocks of 1 MB or more (decoded images) taken straight from the system and given back once freed.
+        /// Else glibc raises that threshold by itself up to 32 MB and keeps the freed images' memory (75 MB more after a
+        /// few game pages). Windows' heap already does so.
+        /// </summary>
+        private static void ReturnLargeBlocksToTheSystem()
+        {
+            if (!OperatingSystem.IsLinux())
+                return;
+            const int M_MMAP_THRESHOLD = -3;
+            try { mallopt(M_MMAP_THRESHOLD, 1024 * 1024); }
+            catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { }
+        }
+
         [STAThread]
         public static void Main(string[] args)
         {
             // Must run first: handles the install/update/uninstall hooks of the Velopack installer and exits for them
             Velopack.VelopackApp.Build().Run();
+            ReturnLargeBlocksToTheSystem();
 
             CommandOptions cmdLineOptions;
             if (args.Length > 0 && args.Any(s => s.Contains("gamevault://")) && !args[0].Contains("--uridata"))
