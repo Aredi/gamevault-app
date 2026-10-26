@@ -257,7 +257,7 @@ $",
 
     #region Verb instances of CommandOptions
 
-    [Verb("show", HelpText = "Show GameVault, or optionally a specific game.")]
+    [Verb("show", HelpText = "Show SanctuaryVault, or optionally a specific game.")]
     public class CommandOptions_Show : CommandOptions
     {
         public override ActionEnum Action { get => ActionEnum.Show; set => base.Action = ActionEnum.Show; }
@@ -265,14 +265,14 @@ $",
         [Option("minimized", Required = false, HelpText = "Start minimized.")]
         public new bool Minimized { get => base.Minimized.GetValueOrDefault(); set => base.Minimized = value; }
 
-        [Option("gameid", Required = false, HelpText = $"The {nameof(Game.ID)} of the game to show, or null to simply open GameVault.", Default = null)]
+        [Option("gameid", Required = false, HelpText = $"The {nameof(Game.ID)} of the game to show, or null to simply open SanctuaryVault.", Default = null)]
         public override int? GameId { get => base.GameId; set => base.GameId = value; }
 
         [Option("jumplistcommand", Required = false, HelpText = $"Executes the command of the jump list item clicked", Default = null)]
         public override int? JumpListCommand { get => base.JumpListCommand.GetValueOrDefault(); set => base.JumpListCommand = value; }
     }
 
-    [Verb("install", HelpText = "Install a game from GameVault.")]
+    [Verb("install", HelpText = "Install a game from SanctuaryVault.")]
     public class CommandOptions_Install : CommandOptions
     {
         public override ActionEnum Action { get => ActionEnum.Install; set => base.Action = ActionEnum.Install; }
@@ -281,7 +281,7 @@ $",
         public new int GameId { get => base.GameId.GetValueOrDefault(); set => base.GameId = value; }
     }
 
-    [Verb("uninstall", HelpText = "Uninstall a game from GameVault.")]
+    [Verb("uninstall", HelpText = "Uninstall a game from SanctuaryVault.")]
     public class CommandOptions_Uninstall : CommandOptions
     {
         public override ActionEnum Action { get => ActionEnum.Uninstall; set => base.Action = ActionEnum.Uninstall; }
@@ -306,7 +306,7 @@ $",
     Explicitly disabled STOP since we don't support that until we track active games
     Remove this message which causes a syntax error if implemented
 
-    [Verb(nameof(ActionEnum.Stop), HelpText = "Stop a specific game or all games currently opened by GameVault.")]
+    [Verb(nameof(ActionEnum.Stop), HelpText = "Stop a specific game or all games currently opened by SanctuaryVault.")]
     public class CommandOptions_Stop : CommandOptions
     {
         public override ActionEnum Action { get => ActionEnum.Stop; set => base.Action = ActionEnum.Stop; }

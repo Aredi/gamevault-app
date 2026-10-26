@@ -12,6 +12,8 @@
 		<!-- Release builds pass -p:Version=<tag>; Velopack packages use the same version -->
 		<Version>1.40.4</Version>
 		<Product>SanctuaryVault</Product>
+		<!-- The name Windows shows for the running app (taskbar, Task Manager) -->
+		<AssemblyTitle>SanctuaryVault</AssemblyTitle>
 		<Copyright>© Phalcode™. All Rights Reserved.</Copyright>
 		<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
 		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>

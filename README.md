@@ -28,9 +28,9 @@ Get the [latest release](https://github.com/Aredi/gamevault-app/releases/latest)
 
 | System | File | |
 |---|---|---|
-| Windows | `GameVault-win-Setup.exe` | Installer, updates itself |
-| Windows | `GameVault-win-Portable.zip` | No installation |
-| Linux | `GameVault.AppImage` | `chmod +x GameVault.AppImage`, updates itself |
+| Windows | `SanctuaryVault-win-Setup.exe` | Installer, updates itself |
+| Windows | `SanctuaryVault-win-Portable.zip` | No installation |
+| Linux | `SanctuaryVault.AppImage` | `chmod +x SanctuaryVault.AppImage`, updates itself |
 | Linux | `GameVault-linux-x64.tar.gz` | Portable |
 
 The Windows installer is not code-signed: if SmartScreen warns about it, choose *More info* → *Run anyway*.

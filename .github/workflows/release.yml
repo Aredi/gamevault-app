@@ -1,8 +1,9 @@
 name: Release
 # Push a tag like 1.18.0 to publish:
-#  - Windows: GameVault-win-Setup.exe (installer + automatic updates) and GameVault-win-Portable.zip
-#  - Linux: GameVault.AppImage (automatic updates) and GameVault-linux-x64.tar.gz
-#  - Mac (Apple Silicon, not signed by Apple): GameVault-osx-Setup.pkg and GameVault-osx-Portable.zip (automatic updates)
+#  - Windows: SanctuaryVault-win-Setup.exe (installer + automatic updates) and SanctuaryVault-win-Portable.zip
+#  - Linux: SanctuaryVault.AppImage (automatic updates) and SanctuaryVault-linux-x64.tar.gz
+#  - Mac (Apple Silicon, not signed by Apple): SanctuaryVault-osx-Setup.pkg and SanctuaryVault-osx-Portable.zip (automatic updates)
+# The packages keep the id GameVault (-u): installed builds find their updates and their folders by it
 # Installed builds update themselves from the Velopack packages (*.nupkg, releases.*.json) of the latest release.
 on:
   push:
@@ -37,7 +38,7 @@ jobs:
           tar -xzf ludusavi.tar.gz -C publish/GameVault/Lib/savegame
           chmod +x publish/GameVault/gamevault publish/GameVault/Lib/savegame/ludusavi
       - name: Portable archive
-        run: tar -czf GameVault-linux-x64.tar.gz -C publish GameVault
+        run: tar -czf SanctuaryVault-linux-x64.tar.gz -C publish GameVault --transform s/^GameVault/SanctuaryVault/
       - name: AppImage (Velopack)
         run: |
           dotnet tool install -g vpk --version $VPK_VERSION
@@ -46,8 +47,9 @@ jobs:
           vpk pack -u GameVault -v ${{ github.ref_name }} -p publish/GameVault -e gamevault --channel linux \
             --packTitle SanctuaryVault -i gamevault/Resources/Images/icon.png -o releases
           mkdir upload
-          cp releases/*${{ github.ref_name }}*.nupkg releases/*.json releases/RELEASES* releases/GameVault.AppImage upload/
-          cp GameVault-linux-x64.tar.gz upload/
+          cp releases/*${{ github.ref_name }}*.nupkg releases/*.json releases/RELEASES* upload/
+          cp releases/GameVault.AppImage upload/SanctuaryVault.AppImage
+          cp SanctuaryVault-linux-x64.tar.gz upload/
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -79,7 +81,9 @@ jobs:
           vpk pack -u GameVault -v ${{ github.ref_name }} -p publish/GameVault -e gamevault.exe --channel win --runtime win-x64 \
             --packTitle SanctuaryVault --packAuthors "Phalcode (fork: ${{ github.repository_owner }})" -i gamevault/Resources/Images/icon.ico -o releases
           mkdir upload
-          cp releases/*${{ github.ref_name }}*.nupkg releases/*.json releases/RELEASES* releases/GameVault-win-Setup.exe releases/GameVault-win-Portable.zip upload/
+          cp releases/*${{ github.ref_name }}*.nupkg releases/*.json releases/RELEASES* upload/
+          cp releases/GameVault-win-Setup.exe upload/SanctuaryVault-win-Setup.exe
+          cp releases/GameVault-win-Portable.zip upload/SanctuaryVault-win-Portable.zip
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -113,7 +117,9 @@ jobs:
           ditto -x -k releases/*-osx-Portable.zip check
           codesign --verify --deep --strict --verbose=2 check/*.app
           mkdir upload
-          cp releases/*${{ github.ref_name }}*.nupkg releases/*.osx.json releases/*-osx-Setup.pkg releases/*-osx-Portable.zip upload/
+          cp releases/*${{ github.ref_name }}*.nupkg releases/*.osx.json upload/
+          cp releases/GameVault-osx-Setup.pkg upload/SanctuaryVault-osx-Setup.pkg
+          cp releases/GameVault-osx-Portable.zip upload/SanctuaryVault-osx-Portable.zip
       - uses: actions/upload-artifact@v4
         with:
           name: macos
