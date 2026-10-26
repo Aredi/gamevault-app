@@ -32,6 +32,7 @@ namespace gamevault.UserControls
             ViewModel = new RetroGameViewModel(game);
             DataContext = ViewModel;
             _ = game.CoverImage;// asks for it when the page opens from elsewhere
+            uiFixMatch.IsVisible = LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN;
             KeyDown += (_, e) =>
             {
                 if (e.Key == Key.Escape)
@@ -253,6 +254,15 @@ namespace gamevault.UserControls
             }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
             ViewModel.Game.Status = "";
+        }
+
+        private void FixMatch_Click(object? sender, RoutedEventArgs e)
+        {
+            // RomM changes the match with the admin's own account: it checks they may
+            if (!RommAccount.IsLinked)
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Link your RomM account first (Settings > Retro): RomM changes the match with it.");
+            else
+                MainWindowViewModel.Instance.OpenPopup(new RetroMatchPopup(ViewModel.Game));
         }
 
         private void Video_Click(object? sender, RoutedEventArgs e)

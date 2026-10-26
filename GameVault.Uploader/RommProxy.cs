@@ -37,6 +37,10 @@ namespace GameVault.Uploader
         private static double? Decimal(JsonElement element, string name) =>
             element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.Number ? value.GetDouble() : null;
 
+        /// <summary>A short tag of a text (the cover's source address), null without it.</summary>
+        internal static string? Version(string? text) => string.IsNullOrEmpty(text) ? null
+            : Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..12].ToLowerInvariant();
+
         public sealed class RommException(string message) : Exception(message);
 
         private HttpRequestMessage Get(string path)
@@ -143,6 +147,8 @@ namespace GameVault.Uploader
                     fileName = Text(r, "fs_name"),
                     size = Number(r, "fs_size_bytes"),
                     cover = Media(Text(r, "path_cover_large") ?? Text(r, "path_cover_small")),
+                    // The cover's path stays when an admin fixes the match: its source tells the clients to take it again
+                    coverVersion = Version(Text(r, "url_cover")),
                     summary = Text(r, "summary"),
                     // What the library shows of a game: picked one by one (RomM's metadata also hold its providers' keys)
                     released = Decimal(about, "first_release_date") is double date ? (long?)date : null,

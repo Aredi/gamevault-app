@@ -64,7 +64,8 @@ namespace gamevault.Helper
         /// What the client may do in the player's RomM: read the games, read and write their saves, their status and
         /// rating of a game, their RetroAchievements account (its name, for their progression) and their collections.
         /// </summary>
-        private static readonly string[] Scopes = { "me.read", "me.write", "roms.read", "roms.user.read", "roms.user.write", "assets.read", "assets.write", "devices.read", "devices.write", "collections.read" };
+        private static readonly string[] Scopes = { "me.read", "me.write", "roms.read", "roms.user.read", "roms.user.write", "assets.read", "assets.write", "devices.read", "devices.write", "collections.read", "roms.write" };
+        // roms.write: only given to RomM's admins and editors (RomM keeps the scopes the account has), to fix a game's match
 
         private static string Config => LoginManager.Instance.GetUserProfile().UserConfigFile;
         /// <summary>Kept encrypted, as the other secrets (a link made before was kept as it is: encrypted when read).</summary>
@@ -256,6 +257,59 @@ namespace gamevault.Helper
             using JsonDocument json = JsonDocument.Parse(body);
             return json.RootElement.Clone();
         }
+
+        #region Fixing a game's match (RomM's admins and editors)
+        /// <summary>A game of the metadata providers RomM searched (IGDB, ScreenScraper...): what a rom can be matched to.</summary>
+        public sealed record MatchCandidate(string Name, string Source, string? Cover, string Summary, IReadOnlyDictionary<string, string> Ids)
+        {
+            public string? IgdbId => Ids.GetValueOrDefault("igdb_id");
+        }
+
+        /// <summary>The providers' ids RomM matches a rom with, in its order of priority (the first one names the source).</summary>
+        private static readonly (string Id, string Cover, string Source)[] Providers =
+        {
+            ("igdb_id", "igdb_url_cover", "IGDB"), ("ss_id", "ss_url_cover", "ScreenScraper"), ("moby_id", "moby_url_cover", "MobyGames"),
+            ("launchbox_id", "launchbox_url_cover", "LaunchBox"), ("flashpoint_id", "flashpoint_url_cover", "Flashpoint"), ("steam_id", "steam_url_cover", "Steam"),
+        };
+
+        /// <summary>The games the providers know by this name, or by this IGDB id.</summary>
+        public static async Task<List<MatchCandidate>> SearchMatchesAsync(int romId, string term, bool byId)
+        {
+            JsonElement found = await JsonAsync(HttpMethod.Get, $"/api/search/roms?rom_id={romId}&search_term={Uri.EscapeDataString(term)}&search_by={(byId ? "id" : "name")}");
+            var candidates = new List<MatchCandidate>();
+            if (found.ValueKind != JsonValueKind.Array)
+                return candidates;
+            foreach (JsonElement game in found.EnumerateArray())
+            {
+                var ids = new Dictionary<string, string>();
+                foreach (var provider in Providers)
+                    if (game.TryGetProperty(provider.Id, out JsonElement id) && id.ValueKind is JsonValueKind.Number or JsonValueKind.String && id.ToString() is { Length: > 0 } text)
+                        ids[provider.Id] = text;
+                if (ids.Count == 0)
+                    continue;
+                string? cover = Providers.Select(p => game.TryGetProperty(p.Cover, out JsonElement url) ? url.GetString() : null).FirstOrDefault(url => !string.IsNullOrEmpty(url));
+                candidates.Add(new MatchCandidate(game.GetProperty("name").GetString() ?? "", Providers.First(p => ids.ContainsKey(p.Id)).Source, cover,
+                    game.TryGetProperty("summary", out JsonElement summary) ? summary.GetString() ?? "" : "", ids));
+            }
+            return candidates;
+        }
+
+        /// <summary>
+        /// The rom matched to this game instead: RomM takes its name, cover and details from the providers again. The
+        /// providers the game is not known by are cleared (the wrong match's ones would stay). Returns RomM's rom.
+        /// </summary>
+        public static async Task<JsonElement> MatchAsync(int romId, MatchCandidate game)
+        {
+            var form = new MultipartFormDataContent();
+            foreach (var provider in Providers)
+                form.Add(new StringContent(game.Ids.GetValueOrDefault(provider.Id) ?? ""), provider.Id);
+            form.Add(new StringContent(game.Name), "name");
+            if (game.Cover != null)
+                form.Add(new StringContent(game.Cover), "url_cover");
+            try { return await JsonAsync(HttpMethod.Put, $"/api/roms/{romId}", form); }
+            catch (MissingScopeException) { throw new InvalidOperationException(Loc.T("RomM refused: link a RomM admin or editor account again (Settings > Retro).")); }
+        }
+        #endregion
 
         /// <summary>RomM's details of a game, with the player's status, rating and the game's achievements.</summary>
         public static Task<JsonElement> RomAsync(int romId) => JsonAsync(HttpMethod.Get, $"/api/roms/{romId}");

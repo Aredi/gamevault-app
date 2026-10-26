@@ -123,6 +123,9 @@ namespace GameVault.UiTests
         public ConcurrentQueue<string> RommPropsSent { get; } = new();
         /// <summary>A link made before the client asked for the statuses: RomM refuses to change them.</summary>
         public bool RommOldScopes { get; set; }
+        /// <summary>The forms of the matches fixed in RomM (PUT /api/roms/{id}); a viewer's account is refused.</summary>
+        public ConcurrentQueue<string> RommMatches { get; } = new();
+        public bool RommViewer { get; set; }
         /// <summary>The RetroAchievements account RomM has for the player, and whether its progression was taken again.</summary>
         public string? RommRaUser { get; set; }
         public int RommRaRefreshes;
@@ -255,6 +258,27 @@ namespace GameVault.UiTests
                 {
                     Interlocked.Increment(ref RommRaRefreshes);
                     await Json(response, new { });
+                }
+                else if (romm && path == "/api/search/roms")
+                    await Json(response, request.QueryString["search_by"] == "id"
+                        ? new object[] { new { igdb_id = 549, ss_id = (int?)null, platform_id = 1, name = "God of War", summary = "Kratos.", igdb_url_cover = "", is_identified = true, is_unidentified = false } }
+                        : new object[]
+                        {
+                            new { igdb_id = 549, ss_id = (int?)19530, platform_id = 1, name = "God of War", summary = "Kratos.", igdb_url_cover = "", is_identified = true, is_unidentified = false },
+                            new { igdb_id = 1352, ss_id = (int?)null, platform_id = 1, name = "God of War II", summary = "Kratos again.", igdb_url_cover = "", is_identified = true, is_unidentified = false },
+                        });
+                else if (romm && request.HttpMethod == "PUT" && (match = Regex.Match(path, @"^/api/roms/(\d+)$")).Success)
+                {
+                    if (RommViewer)
+                    {
+                        response.StatusCode = 403;
+                        return;
+                    }
+                    int id = int.Parse(match.Groups[1].Value);
+                    string body = await new StreamReader(request.InputStream).ReadToEndAsync();
+                    var fields = Regex.Matches(body, "name=\"?(\\w+)\"?\r\n(?:[^\r\n]+\r\n)*\r\n(.*?)\r\n--").ToDictionary(m => m.Groups[1].Value, m => m.Groups[2].Value);
+                    RommMatches.Enqueue(string.Join("&", fields.OrderBy(f => f.Key).Select(f => $"{f.Key}={f.Value}")));
+                    await Json(response, new { id, name = fields["name"], summary = "Kratos.", path_cover_large = $"/assets/romm/resources/roms/1/{id}/cover/big.png?ts=2026" });
                 }
                 else if (romm && (match = Regex.Match(path, @"^/api/roms/(\d+)$")).Success)
                 {

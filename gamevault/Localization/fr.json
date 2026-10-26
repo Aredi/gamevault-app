@@ -1438,5 +1438,19 @@
   "{0} and {1} more play in LAN in {2}": "{0} et {1} autre(s) jouent en LAN dans {2}",
   "{0} plays in LAN in {1}": "{0} joue en LAN dans {1}",
   "{0} with {1}": "{0} avec {1}",
-  "{0}'s room": "La room de {0}"
+  "{0}'s room": "La room de {0}",
+  "Fix the match": "Corriger l'association",
+  "Detected as another game: match it to the right one (with your RomM account)": "Reconnu comme un autre jeu : associe-le au bon (avec ton compte RomM)",
+  "Link your RomM account first (Settings > Retro): RomM changes the match with it.": "Relie d'abord ton compte RomM (Paramètres > Rétro) : RomM change l'association avec lui.",
+  "File: {0}": "Fichier : {0}",
+  "Matched to: {0}": "Associé à : {0}",
+  "IGDB id": "ID IGDB",
+  "Match": "Associer",
+  "current": "actuel",
+  "An IGDB id is a number (in the address of the game's page on igdb.com).": "Un identifiant IGDB est un nombre (dans l'adresse de la page du jeu sur igdb.com).",
+  "Searching...": "Recherche...",
+  "No game found: try another name, or its IGDB id.": "Aucun jeu trouvé : essaie un autre nom, ou son identifiant IGDB.",
+  "RomM takes the game's details again...": "RomM recharge les informations du jeu...",
+  "'{0}' is now matched to {1}. The other players see it within 5 minutes.": "« {0} » est maintenant associé à {1}. Les autres joueurs le verront d'ici 5 minutes.",
+  "RomM refused: link a RomM admin or editor account again (Settings > Retro).": "RomM a refusé : relie à nouveau un compte RomM admin ou éditeur (Paramètres > Rétro)."
 }

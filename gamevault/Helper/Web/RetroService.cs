@@ -5,6 +5,7 @@ using GameVault.Core;
 using GameVault.Core.Retro;
 using gamevault.Helper.Platform;
 using gamevault.ViewModels;
+using System.Text.RegularExpressions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -49,6 +50,9 @@ namespace gamevault.Helper
         public long Size { get; set; }
         [JsonPropertyName("cover")]
         public string? Cover { get; set; }
+        /// <summary>Changes when the cover does (its path stays): kept apart on disk.</summary>
+        [JsonPropertyName("coverVersion")]
+        public string? CoverVersion { get; set; }
         [JsonPropertyName("summary")]
         public string? Summary { get; set; }
         /// <summary>Several files (a CD game with its tracks...): they come as one zip, unpacked here.</summary>
@@ -179,7 +183,7 @@ namespace gamevault.Helper
         {
             try
             {
-                coverImage = await RetroService.MediaImageAsync(Cover!, 240);
+                coverImage = await RetroService.MediaImageAsync(Cover!, 240, CoverVersion);
                 OnPropertyChanged(nameof(CoverImage));
                 OnPropertyChanged(nameof(CoverRatio));
                 OnPropertyChanged(nameof(Banner));
@@ -187,6 +191,27 @@ namespace gamevault.Helper
                 Accent = await Task.Run(() => CoverColors.Get(cover, "retro:" + Cover));
             }
             catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>Matched again by an admin: RomM's new name, summary and cover, shown at once (the rest with the next list).</summary>
+        public void Rematched(JsonElement rom)
+        {
+            if (rom.ValueKind != JsonValueKind.Object)
+                return;
+            if (rom.TryGetProperty("name", out JsonElement name) && name.GetString() is { Length: > 0 } text)
+                Name = text;
+            Summary = rom.TryGetProperty("summary", out JsonElement summary) ? summary.GetString() : null;
+            string? path = rom.TryGetProperty("path_cover_large", out JsonElement large) ? large.GetString() : null;
+            Match media = Regex.Match(path ?? "", @"roms/\d+/\d+/cover/(small|big)\.(png|jpe?g|webp)");
+            Cover = media.Success ? media.Value : null;
+            // The same path as the wrong cover's: a new name on disk
+            CoverVersion = Guid.NewGuid().ToString("N")[..12];
+            coverAsked = false;
+            coverImage = null;
+            OnPropertyChanged(nameof(Name));
+            OnPropertyChanged(nameof(Summary));
+            OnPropertyChanged(nameof(CoverImage));
+            OnPropertyChanged(nameof(Banner));
         }
 
         private string status = "";
@@ -398,9 +423,9 @@ namespace gamevault.Helper
         }
 
         /// <summary>A cover, screenshot or manual of RomM, kept on disk: each is downloaded once.</summary>
-        public static async Task<string> MediaFileAsync(string media)
+        public static async Task<string> MediaFileAsync(string media, string? version = null)
         {
-            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", media.Replace('/', '_'));
+            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", (version != null ? version + "-" : "") + media.Replace('/', '_'));
             if (!File.Exists(file))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);
@@ -424,9 +449,9 @@ namespace gamevault.Helper
             return await Task.Run(() => new Bitmap(file));
         }
 
-        public static async Task<Bitmap> MediaImageAsync(string media, int width)
+        public static async Task<Bitmap> MediaImageAsync(string media, int width, string? version = null)
         {
-            string file = await MediaFileAsync(media);
+            string file = await MediaFileAsync(media, version);
             return await Task.Run(() =>
             {
                 using FileStream stream = File.OpenRead(file);

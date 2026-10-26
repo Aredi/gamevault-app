@@ -219,6 +219,10 @@
                                 <Button Classes="heroLink" Click="Menu_Click">
                                     <TextBlock Text="{Binding MenuText}" />
                                 </Button>
+                                <Button x:Name="uiFixMatch" Classes="heroLink" Click="FixMatch_Click" IsVisible="False"
+                                        ToolTip.Tip="{l:T 'Detected as another game: match it to the right one (with your RomM account)'}">
+                                    <TextBlock Text="{l:T 'Fix the match'}" />
+                                </Button>
                             </WrapPanel>
                         </StackPanel>
                     </Grid>

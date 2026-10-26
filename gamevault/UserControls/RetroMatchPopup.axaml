@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.RetroMatchPopup"
+             Width="720" Focusable="True">
+    <!-- An admin matches a retro game to another game of the providers (RomM's own match) -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="28,22,28,26" Spacing="14">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="sectionTitle" FontSize="22" Text="{l:T 'Fix the match'}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+            <StackPanel Spacing="2">
+                <TextBlock x:Name="uiFile" Classes="muted" FontSize="13" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="uiCurrent" FontSize="14" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                <TextBox x:Name="uiTerm" KeyDown="Term_KeyDown" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <RadioButton x:Name="uiByName" GroupName="matchBy" IsChecked="True" Content="{l:T 'Name'}" />
+                    <RadioButton GroupName="matchBy" Content="{l:T 'IGDB id'}" />
+                </StackPanel>
+                <Button x:Name="uiSearch" Grid.Column="2" Classes="action" Click="Search_Click" Content="{l:T 'Search'}" />
+            </Grid>
+            <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="uiResults">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="12" Padding="10" Margin="0,0,0,8" Background="{DynamicResource Brush.Surface}">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                                    <Border Width="60" Height="80" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Background}">
+                                        <Image Source="{Binding Image}" Stretch="UniformToFill" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                        <TextBlock Text="{Binding Game.Name}" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Details}" Classes="muted" FontSize="12" />
+                                        <TextBlock Text="{Binding Game.Summary}" Classes="muted" FontSize="12" MaxLines="2" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Classes="ghost" VerticalAlignment="Center" Click="Match_Click" Content="{l:T 'Match'}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+            <TextBlock x:Name="uiStatus" TextWrapping="Wrap" FontSize="13" />
+        </StackPanel>
+    </Border>
+</UserControl>

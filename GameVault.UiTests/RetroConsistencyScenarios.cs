@@ -1,8 +1,10 @@
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Headless.XUnit;
 using GameVault.Core.Retro;
 using GameVault.Core;
 using gamevault.Helper;
+using gamevault.Localization;
 using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.UserControls.SettingsComponents;
@@ -262,6 +264,56 @@ namespace GameVault.UiTests
             {
                 SettingsViewModel.Instance.CloudSaves = cloud;
                 CleanUp(session);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task AnAdmin_FixesAWrongMatch_WithTheirRommAccount()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            session.Server.RommLinkable = true;
+            RommAccount.ForgetUrl();
+            Loc.Initialize("fr");
+            var game = new RetroGame { Id = 77, Name = "God of War II", FileName = "God of War (USA).iso", Cover = "roms/1/77/cover/big.png", Platform = new RetroPlatform { Slug = "ps2", Name = "PlayStation 2" } };
+            try
+            {
+                await new RetroSettingsUserControl().LinkRommAsync(open: false);
+                var popup = new RetroMatchPopup(game);
+                await popup.SearchAsync("God of War", byId: false);
+                Assert.Equal(new[] { "God of War", "God of War II" }, popup.Rows.Select(r => r.Game.Name));
+                Assert.Equal("IGDB 549", popup.Rows[0].Details);
+
+                // A viewer of RomM is refused by it: told what to link
+                session.Server.RommViewer = true;
+                await popup.MatchAsync(popup.Rows[0]);
+                Assert.Equal("God of War II", game.Name);
+                Assert.Empty(session.Server.RommMatches);
+
+                // An admin: RomM gets the right ids (the wrong match's other providers cleared), the page shows its new name and cover
+                session.Server.RommViewer = false;
+                string? before = game.CoverVersion;
+                await popup.MatchAsync(popup.Rows[0]);
+                Assert.Equal("flashpoint_id=&igdb_id=549&launchbox_id=&moby_id=&name=God of War&ss_id=19530&steam_id=", session.Server.RommMatches.Single());
+                Assert.Equal("God of War", game.Name);
+                Assert.Equal("roms/1/77/cover/big.png", game.Cover);
+                Assert.NotEqual(before, game.CoverVersion);
+
+                // By IGDB id
+                await popup.SearchAsync("abc", byId: true);
+                Assert.Equal("Un identifiant IGDB est un nombre (dans l'adresse de la page du jeu sur igdb.com).", popup.FindControl<TextBlock>("uiStatus")!.Text);
+                await popup.SearchAsync("549", byId: true);
+                Assert.Equal("God of War", popup.Rows.Single().Game.Name);
+            }
+            finally
+            {
+                Loc.Initialize("en");
+                RommAccount.Unlink();
+                RommAccount.ForgetUrl();
+                session.Server.RommLinkable = false;
+                session.Server.RommViewer = false;
+                session.Server.RommMatches.Clear();
+                SanctuaryService.Current = SanctuaryService.Url;
             }
         }
 
