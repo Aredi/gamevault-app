@@ -66,13 +66,13 @@ namespace gamevault.Helper
             }
             catch (RetroArchManager.MissingBiosException ex)
             {
-                game.Status = ex.Message;
+                game.Status = WebExceptionHelper.TryGetServerMessage(ex);
                 game.Busy = false;
             }
             catch (Exception ex)
             {
                 Log.Ignored(ex);
-                game.Status = Loc.F("Failed: {0}", ex.Message);
+                game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
                 game.Busy = false;
             }
         }

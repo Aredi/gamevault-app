@@ -79,7 +79,7 @@ namespace gamevault.UserControls.SettingsComponents
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Error: {0}", ex.Message);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Error: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
             uiBtnStartBackup.IsEnabled = true;
             this.IsEnabled = true;
@@ -130,7 +130,7 @@ namespace gamevault.UserControls.SettingsComponents
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Error: {0}", ex.Message);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Error: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
             uiBtnStartRestore.IsEnabled = true;
             this.IsEnabled = true;

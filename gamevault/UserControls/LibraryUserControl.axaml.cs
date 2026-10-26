@@ -304,7 +304,7 @@ namespace gamevault.UserControls
                 PlatformInfo.OpenUrl(url);
                 e.Handled = true;
             }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
         private void GameCard_Clicked(object sender, RoutedEventArgs e)
         {

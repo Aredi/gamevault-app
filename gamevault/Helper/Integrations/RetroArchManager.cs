@@ -431,7 +431,7 @@ namespace gamevault.Helper
             // Without libfuse2 an AppImage can not mount itself: it unpacks to /tmp instead (10 MB, each start)
             if (!PlatformInfo.IsWindows)
                 info.Environment["APPIMAGE_EXTRACT_AND_RUN"] = "1";
-            return Process.Start(info) ?? throw new InvalidOperationException("RetroArch could not be started");
+            return Process.Start(info) ?? throw new InvalidOperationException(Loc.T("RetroArch could not be started"));
         }
     }
 }

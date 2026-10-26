@@ -460,7 +460,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("The profile could not be saved: {0}", ex.Message);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("The profile could not be saved: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
             uiSaveProfile.IsEnabled = true;
         }

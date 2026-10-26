@@ -135,7 +135,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private bool IsGameInstalled(Game game)
@@ -278,7 +278,7 @@ namespace gamevault.UserControls
                     }
                     catch (Exception ex) when (!OperatingSystem.IsWindows())
                     {
-                        MainWindowViewModel.Instance.AppBarText = ex.Message;
+                        MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
                         return;
                     }
                     catch
@@ -517,7 +517,7 @@ namespace gamevault.UserControls
             catch { defaultName = CompatibilityManager.DisplayName(CompatibilitySettings.DefaultToolId); }
             var tools = new List<CompatibilityTool>
             {
-                new CompatibilityTool(CompatibilityToolId.Default, $"Default ({defaultName})", CompatibilityToolKind.Wine, null, "the default tool of Settings → Linux", false),
+                new CompatibilityTool(CompatibilityToolId.Default, Loc.F("Default ({0})", defaultName), CompatibilityToolKind.Wine, null, "the default tool of Settings → Linux", false),
             };
             tools.AddRange(CompatibilityManager.GetTools(refresh: true).Where(t => t.Id != CompatibilityToolId.Auto));
             // Keep a tool that was deleted meanwhile visible, so the choice is not silently changed
@@ -566,7 +566,7 @@ namespace gamevault.UserControls
                 return;
             if (!string.IsNullOrWhiteSpace(ViewModel.CustomUmuId) && !GameVault.Core.Compatibility.UmuDatabase.IsValidId(ViewModel.CustomUmuId.Trim()))
             {
-                ViewModel.UmuStatus = "An umu id looks like umu-271590 (see the umu database).";
+                ViewModel.UmuStatus = Loc.T("An umu id looks like umu-271590 (see the umu database).");
                 return;
             }
             gameCompatibility.SetUmuId(ViewModel.CustomUmuId);
@@ -576,7 +576,7 @@ namespace gamevault.UserControls
         {
             if (gameCompatibility == null)
                 return;
-            ViewModel.UmuStatus = "Looking up...";
+            ViewModel.UmuStatus = Loc.T("Looking up...");
             string title = ViewModel.Game?.Metadata?.Title ?? ViewModel.Game?.Title ?? "";
             await GameFixes.LookUpAsync(gameCompatibility, title);
             RefreshFixesStatus();
@@ -601,7 +601,7 @@ namespace gamevault.UserControls
                 return;
             }
             ((Control)sender).IsEnabled = false;
-            ViewModel.WinetricksStatus = $"Installing {string.Join(", ", pending)}... (this can take a few minutes)";
+            ViewModel.WinetricksStatus = Loc.F("Installing {0}... (this can take a few minutes)", string.Join(", ", pending));
             try
             {
                 await GameFixes.RunWinetricksAsync(gameCompatibility, pending);
@@ -609,7 +609,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                ViewModel.WinetricksStatus = ex.Message;
+                ViewModel.WinetricksStatus = WebExceptionHelper.TryGetServerMessage(ex);
             }
             ((Control)sender).IsEnabled = true;
         }
@@ -643,7 +643,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private async void DeleteGamePrefix_Click(object sender, RoutedEventArgs e)
@@ -659,7 +659,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         #endregion
@@ -689,7 +689,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Failed to load image: {0}", ex.Message);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Failed to load image: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
         }
         private void SetImage(string? tag, IImage? image)
@@ -729,7 +729,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private async void LoadImageUrl(string url, string tag)
@@ -748,7 +748,7 @@ namespace gamevault.UserControls
             catch (Exception ex)
             {
                 if (url != string.Empty)
-                    MainWindowViewModel.Instance.AppBarText = ex.Message;
+                    MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private void FindImages_Click(object sender, RoutedEventArgs e)
@@ -761,7 +761,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private async Task SaveImage(string tag)
@@ -842,7 +842,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private async void CopyImageToClipboard_Click(object sender, RoutedEventArgs e)
@@ -866,7 +866,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         #region Generic Events       

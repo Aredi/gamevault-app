@@ -66,7 +66,7 @@ namespace gamevault.UserControls
             void Fill()
             {
                 panel.Children.Clear();
-                panel.Children.Add(new TextBlock { Text = "Collections", FontWeight = FontWeight.Bold });
+                panel.Children.Add(new TextBlock { Text = Loc.T("Collections"), FontWeight = FontWeight.Bold });
                 panel.Children.Add(new TextBlock { Text = Loc.T("Add games from their page (collection button next to the bookmark). Edit a name and press Enter to rename."), FontSize = 12, Opacity = 0.7, TextWrapping = TextWrapping.Wrap });
                 var collections = LibraryData.Collections.Load().OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
                 foreach (var collection in collections)
@@ -81,7 +81,7 @@ namespace gamevault.UserControls
                     name.KeyDown += (_, e) => { if (e.Key == Key.Enter) { Rename(); Fill(); } };
                     name.LostFocus += (_, _) => Rename();
                     var count = new TextBlock { Text = Loc.F("{0} game(s)", collection.GameIds.Count), VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Opacity = 0.7 };
-                    var delete = new IconButton { Text = "Delete", Kind = ButtonKind.Danger, Height = 28, Width = 70, FontSize = 12 };
+                    var delete = new IconButton { Text = Loc.T("Delete"), Kind = ButtonKind.Danger, Height = 28, Width = 70, FontSize = 12 };
                     delete.Click += async (_, _) =>
                     {
                         if (await DialogService.ConfirmAsync(Loc.F("Delete the collection '{0}'? The games stay in the library.", collection.Name), "Collections"))
@@ -111,8 +111,8 @@ namespace gamevault.UserControls
         private static Control NewCollectionRow(Action<string> create)
         {
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 6, Margin = new Thickness(0, 6, 0, 0) };
-            var name = new TextBox { Watermark = "New collection" };
-            var add = new IconButton { Text = "Create", Height = 30, Width = 80, FontSize = 13 };
+            var name = new TextBox { Watermark = Loc.T("New collection") };
+            var add = new IconButton { Text = Loc.T("Create"), Height = 30, Width = 80, FontSize = 13 };
             void Create()
             {
                 if (string.IsNullOrWhiteSpace(name.Text))
@@ -137,7 +137,7 @@ namespace gamevault.UserControls
             catch (Exception ex)
             {
                 Log.Ignored(ex);
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
     }

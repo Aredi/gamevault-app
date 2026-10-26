@@ -309,7 +309,7 @@ namespace gamevault.UserControls
                 return;
             Close();
             try { item.Run(); }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
 
         private void Results_Tapped(object? sender, TappedEventArgs e)

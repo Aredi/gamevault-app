@@ -181,7 +181,7 @@ namespace gamevault.UserControls
             catch (Exception ex)
             {
                 Log.Ignored(ex);
-                gamepadError = Loc.F("The gamepad can not be read: {0}", ex.Message);
+                gamepadError = Loc.F("The gamepad can not be read: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
             finally
             {
@@ -221,7 +221,7 @@ namespace gamevault.UserControls
             catch (Exception ex)
             {
                 Log.Ignored(ex);
-                gamepadError = Loc.F("RetroArch could not be installed: {0}", ex.Message);
+                gamepadError = Loc.F("RetroArch could not be installed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
             starting = false;
             await StartGamepadAsync();

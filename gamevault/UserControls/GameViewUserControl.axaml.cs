@@ -320,7 +320,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Rooms);
                 await MainWindowViewModel.Instance.Rooms.LoadAsync(room.Id);
             }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
 
         private async void LanAdmin_Click(object? sender, RoutedEventArgs e)
@@ -334,7 +334,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
                 uiLanAdmin.IsChecked = !uiLanAdmin.IsChecked;
             }
         }

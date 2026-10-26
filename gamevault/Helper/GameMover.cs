@@ -91,7 +91,7 @@ namespace gamevault.Helper
             catch (Exception ex)
             {
                 Log.Ignored(ex);
-                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' could not be moved: {1}", game.Title, ex.Message);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' could not be moved: {1}", game.Title, WebExceptionHelper.TryGetServerMessage(ex));
                 return false;
             }
             finally

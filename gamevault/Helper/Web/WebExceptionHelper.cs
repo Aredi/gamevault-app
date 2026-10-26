@@ -35,10 +35,28 @@ namespace gamevault.Helper
             if (ex is WebException webEx)
             {
                 string msg = GetServerMessage(webEx);
-                return string.IsNullOrEmpty(msg) ? ex.Message : Loc.F("Server responded: {0}", msg);
+                return string.IsNullOrEmpty(msg) ? Describe(ex) : Loc.F("Server responded: {0}", msg);
             }
-            return ex.Message;
+            return Describe(ex);
         }
+        /// <summary>.NET's own network messages are in English only: the usual ones in the interface language.</summary>
+        internal static string Describe(Exception ex) => ex switch
+        {
+            TaskCanceledException { InnerException: TimeoutException } => Loc.T("The server did not answer in time."),
+            HttpRequestException { HttpRequestError: HttpRequestError.NameResolutionError } => Loc.T("The server address could not be found. Check the address and your connection."),
+            HttpRequestException { HttpRequestError: HttpRequestError.ConnectionError } => Loc.T("The server could not be reached. Check that it is running and your connection."),
+            HttpRequestException { HttpRequestError: HttpRequestError.SecureConnectionError } => Loc.T("The secure connection to the server failed (certificate or HTTPS)."),
+            // Status errors without a server message (EnsureSuccessStatusCode's own text)
+            HttpRequestException { StatusCode: HttpStatusCode code } when ex.Message.StartsWith("Response status code") => code switch
+            {
+                HttpStatusCode.Unauthorized => Loc.T("The server refused the sign-in: sign in again."),
+                HttpStatusCode.Forbidden => Loc.T("The server does not allow this for your account."),
+                HttpStatusCode.NotFound => Loc.T("Not found on the server."),
+                _ => Loc.F("The server answered with an error ({0}).", (int)code),
+            },
+            // Our own errors are English texts translated in fr.json
+            _ => Loc.T(ex.Message),
+        };
         public static async Task EnsureSuccessStatusCode(HttpResponseMessage msg)
         {
             if (!msg.IsSuccessStatusCode)

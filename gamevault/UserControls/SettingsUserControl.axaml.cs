@@ -113,7 +113,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Unable to change autostart: {0}", ex.Message);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Unable to change autostart: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
         }
 
@@ -190,7 +190,7 @@ namespace gamevault.UserControls
                 }
                 catch (Exception ex)
                 {
-                    MainWindowViewModel.Instance.AppBarText = ex.Message;
+                    MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
                 }
             }
             ((Control)sender).IsEnabled = true;
@@ -215,7 +215,7 @@ namespace gamevault.UserControls
                 }
                 catch (Exception ex)
                 {
-                    MainWindowViewModel.Instance.AppBarText = ex.Message;
+                    MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
                 }
             }
             ((Control)sender).IsEnabled = true;
@@ -267,7 +267,7 @@ namespace gamevault.UserControls
                 App.Instance.SetTheme(selectedTheme.Path);
                 Preferences.Set(AppConfigKey.Theme, JsonSerializer.Serialize(selectedTheme), LoginManager.Instance.GetUserProfile().UserConfigFile, true);
             }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
         private static ThemeItem CreateThemeItem(string path, ThemeManager.ThemeDefinition definition)
         {
@@ -432,7 +432,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
             ((Control)sender).IsEnabled = true;
         }
@@ -467,7 +467,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
             ((Control)sender).IsEnabled = true;
         }
@@ -532,7 +532,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                ViewModel.StorageCleanupSummary = Loc.F("Analysis failed: {0}", ex.Message);
+                ViewModel.StorageCleanupSummary = Loc.F("Analysis failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
             ViewModel.IsStorageCleanupRunning = false;
         }
@@ -610,7 +610,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
             ViewModel.RefreshCompatibilityTools();
         }
@@ -628,7 +628,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                ViewModel.ToolDownloadStatus = Loc.F("Could not load the versions: {0}", ex.Message);
+                ViewModel.ToolDownloadStatus = Loc.F("Could not load the versions: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
         }
         private async void InstallTool_Click(object sender, RoutedEventArgs e)
@@ -641,7 +641,7 @@ namespace gamevault.UserControls
                 return;
             ViewModel.IsToolDownloadRunning = true;
             ViewModel.ToolDownloadProgress = 0;
-            ViewModel.ToolDownloadStatus = $"Downloading {ToolCatalog.DisplayName(tool.Flavor)} {tool.Version} ({tool.SizeText})...";
+            ViewModel.ToolDownloadStatus = Loc.F("Downloading {0} {1} ({2})...", ToolCatalog.DisplayName(tool.Flavor), tool.Version, tool.SizeText);
             try
             {
                 var progress = new Progress<double>(value =>
@@ -662,7 +662,7 @@ namespace gamevault.UserControls
             catch (Exception ex)
             {
                 ViewModel.IsToolDownloadRunning = false;
-                ViewModel.ToolDownloadStatus = $"Installing {tool.Version} failed: {ex.Message}";
+                ViewModel.ToolDownloadStatus = Loc.F("Installing {0} failed: {1}", tool.Version, WebExceptionHelper.TryGetServerMessage(ex));
             }
             ViewModel.IsToolDownloadRunning = false;
         }

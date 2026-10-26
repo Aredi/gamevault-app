@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core;
 using GameVault.Core.Retro;
 using System;
@@ -61,7 +62,7 @@ namespace gamevault.Helper
             // Read while the client's window is not the focused one too (the player looks at the screen, not the window)
             Function<IntOfStrings>("SDL_SetHint")("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1");
             if (Function<IntOfUInt>("SDL_Init")(InitGameController) != 0)
-                throw new InvalidOperationException("SDL could not read the gamepads");
+                throw new InvalidOperationException(Loc.T("SDL could not read the gamepads"));
             quit = Function<VoidOfUInt>("SDL_QuitSubSystem");
             pump = Function<VoidOfNone>("SDL_PumpEvents");
             count = Function<IntOfNone>("SDL_NumJoysticks");

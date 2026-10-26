@@ -341,7 +341,7 @@ namespace gamevault.UserControls
             catch (Exception ex)
             {
                 Log.Ignored(ex);
-                Show(Loc.F("Failed: {0}", ex.Message));
+                Show(Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex)));
             }
             finally { uiMenu.IsEnabled = true; }
         }

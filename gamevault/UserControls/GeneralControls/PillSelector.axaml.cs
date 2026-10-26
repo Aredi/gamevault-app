@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -185,11 +186,11 @@ namespace gamevault.UserControls
         {
             uiTxtSelectionHeader.Text = SelectionType switch //C# 8.0 more compact switch case
             {
-                Selection.Tags => "Add Tags",
-                Selection.Genres => "Add Genres",
-                Selection.Developers => "Add Developers",
-                Selection.Publishers => "Add Publishers",
-                Selection.GameType => "Add Game Type",
+                Selection.Tags => Loc.T("Add Tags"),
+                Selection.Genres => Loc.T("Add Genres"),
+                Selection.Developers => Loc.T("Add Developers"),
+                Selection.Publishers => Loc.T("Add Publishers"),
+                Selection.GameType => Loc.T("Add Game Type"),
                 _ => uiTxtHeader.Text
             };
             uiSelectionpopup.IsOpen = true;
