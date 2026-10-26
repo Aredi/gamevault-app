@@ -135,7 +135,7 @@ namespace gamevault.Helper
                     message = error.GetString() ?? message;
             }
             catch (JsonException) { }
-            throw new HttpRequestException(Loc.F("Uploader: {0}", message), null, response.StatusCode);
+            throw new HttpRequestException(Loc.F("Uploader: {0}", WebExceptionHelper.Translate(message)), null, response.StatusCode);
         }
     }
 }

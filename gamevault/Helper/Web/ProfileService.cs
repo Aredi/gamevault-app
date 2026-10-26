@@ -110,7 +110,7 @@ namespace gamevault.Helper
             {
                 using JsonDocument error = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
                 if (error.RootElement.TryGetProperty("error", out var message))
-                    return message.GetString() ?? response.ReasonPhrase ?? "";
+                    return WebExceptionHelper.Translate(message.GetString() ?? response.ReasonPhrase ?? "");
             }
             catch (JsonException) { }
             return $"{(int)response.StatusCode} {response.ReasonPhrase}";
