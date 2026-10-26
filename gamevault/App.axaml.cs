@@ -127,7 +127,7 @@ namespace gamevault
             try
             {
                 Directory.CreateDirectory(ProfileManager.ErrorLogDir);
-                string errorLogPath = Path.Combine(ProfileManager.ErrorLogDir, $"GameVault_ErrorLog_{DateTime.Now:yyyyMMddHHmmssfff}.txt");
+                string errorLogPath = Path.Combine(ProfileManager.ErrorLogDir, $"SanctuaryVault_ErrorLog_{DateTime.Now:yyyyMMddHHmmssfff}.txt");
                 string errorMessage = $"MESSAGE:\n{e.Message}\nINNER_EXCEPTION:{e.InnerException?.Message}";
                 string errorStackTrace = $"STACK_TRACE:\n{e.StackTrace}";
                 File.WriteAllText(errorLogPath, errorMessage + "\n" + errorStackTrace);

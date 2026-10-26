@@ -88,7 +88,7 @@ namespace GameVault.Uploader
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
                 logger.LogWarning(ex, "The GameVault server could not be reached");
-                return new Forwarded(StatusCodes.Status502BadGateway, JsonSerializer.Serialize(new { message = "The GameVault server could not be reached." }));
+                return new Forwarded(StatusCodes.Status502BadGateway, JsonSerializer.Serialize(new { message = "The game server could not be reached." }));
             }
         }
     }

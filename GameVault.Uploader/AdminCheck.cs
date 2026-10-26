@@ -44,7 +44,7 @@ namespace GameVault.Uploader
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
                 logger.LogWarning(ex, "The GameVault server could not be reached");
-                return new Result(false, StatusCodes.Status502BadGateway, "The GameVault server could not be reached to check the user.");
+                return new Result(false, StatusCodes.Status502BadGateway, "The game server could not be reached to check the user.");
             }
             using (response)
             {

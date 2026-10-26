@@ -40,7 +40,7 @@ namespace gamevault.Helper
             if (Directory.Exists(ProfileManager.ErrorLogDir))
             {
                 // Crash reports of the last two weeks
-                foreach (var crash in new DirectoryInfo(ProfileManager.ErrorLogDir).GetFiles("GameVault_ErrorLog_*.txt")
+                foreach (var crash in new DirectoryInfo(ProfileManager.ErrorLogDir).GetFiles("*_ErrorLog_*.txt")
                     .Where(f => f.LastWriteTime > DateTime.Now.AddDays(-14)).OrderByDescending(f => f.LastWriteTime).Take(10))
                     entries[$"crashes/{crash.Name}"] = Redactor.Tail(crash.FullName, 256 * 1024);
             }
