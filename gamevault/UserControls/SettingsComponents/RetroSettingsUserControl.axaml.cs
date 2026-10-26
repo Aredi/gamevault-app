@@ -242,7 +242,7 @@ namespace gamevault.UserControls.SettingsComponents
         private async void OpenMenu_Click(object? sender, RoutedEventArgs e)
         {
             try { await RetroArchManager.OpenMenuAsync(text => Dispatcher.UIThread.Post(() => uiRetroArch.Text = text)); }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
             await RefreshAsync();
         }
 
@@ -255,7 +255,7 @@ namespace gamevault.UserControls.SettingsComponents
                 RetroArchManager.ResetMenuSettings();
                 MainWindowViewModel.Instance.AppBarText = Loc.T("RetroArch's settings were reset");
             }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
 
         private async void Uninstall_Click(object? sender, RoutedEventArgs e)
@@ -263,7 +263,7 @@ namespace gamevault.UserControls.SettingsComponents
             if (!await DialogService.ConfirmAsync(Loc.T("Uninstall the emulators, the BIOS and the firmware? The saves are kept."), "RetroArch"))
                 return;
             try { await RetroArchManager.UninstallAsync(); }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
             await RefreshAsync();
         }
 

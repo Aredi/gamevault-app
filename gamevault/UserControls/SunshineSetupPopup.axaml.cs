@@ -81,7 +81,7 @@ namespace gamevault.UserControls
                     await ready();
                 }
             }
-            catch (Exception ex) { uiStatus.Text = ex.Message; }
+            catch (Exception ex) { uiStatus.Text = WebExceptionHelper.TryGetServerMessage(ex); }
             finally { uiNext.IsEnabled = true; }
         }
     }

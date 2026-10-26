@@ -246,7 +246,7 @@ namespace gamevault.Helper
                 // The game is there: the BIOS comes when an administrator adds it, and Play fetches it
                 IsPreparing = false;
                 IsDone = true;
-                notice = ex.Message;
+                notice = WebExceptionHelper.TryGetServerMessage(ex);
                 State = ex.Message;
             }
             catch (Exception ex)

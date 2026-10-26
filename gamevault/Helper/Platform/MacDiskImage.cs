@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -17,7 +18,7 @@ namespace gamevault.Helper.Platform
             try
             {
                 string source = Directory.EnumerateDirectories(mount).Prepend(mount).Select(d => Path.Combine(d, app)).FirstOrDefault(Directory.Exists)
-                    ?? throw new IOException($"{app} is not in {Path.GetFileName(image)}");
+                    ?? throw new IOException(Loc.F("{0} is not in {1}", app, Path.GetFileName(image)));
                 Directory.CreateDirectory(folder);
                 await RunAsync("ditto", source, Path.Combine(folder, app));
             }

@@ -150,7 +150,7 @@ namespace gamevault.Helper
                 info.ArgumentList.Add(argument);
             foreach (var (name, value) in Layout.Environment)
                 info.Environment[name] = value;
-            return Process.Start(info) ?? throw new InvalidOperationException($"{Name} could not be started");
+            return Process.Start(info) ?? throw new InvalidOperationException(Loc.F("{0} could not be started", Name));
         }
 
         /// <summary>The emulator, the system files, its caches: what goes with "Uninstall" (the console's storage, with the saves, stays).</summary>

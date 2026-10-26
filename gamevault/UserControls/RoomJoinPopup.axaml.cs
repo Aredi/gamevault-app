@@ -40,7 +40,7 @@ namespace gamevault.UserControls
                 uiOpen.ItemsSource = open;
                 uiOpenTitle.IsVisible = open.Count > 0;
             }
-            catch (Exception ex) { uiStatus.Text = ex.Message; }
+            catch (Exception ex) { uiStatus.Text = WebExceptionHelper.TryGetServerMessage(ex); }
         }
 
         private void Close_Click(object? sender, RoutedEventArgs e) => MainWindowViewModel.Instance.ClosePopup();
@@ -55,7 +55,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Rooms);
                 await MainWindowViewModel.Instance.Rooms.LoadAsync(room.Id);
             }
-            catch (Exception ex) { uiStatus.Text = ex.Message; }
+            catch (Exception ex) { uiStatus.Text = WebExceptionHelper.TryGetServerMessage(ex); }
             finally { uiCreate.IsEnabled = uiJoin.IsEnabled = true; }
         }
 

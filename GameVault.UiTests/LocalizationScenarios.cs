@@ -22,6 +22,10 @@ namespace GameVault.UiTests
                 Assert.Equal("'Celeste' n'est pas installé", Loc.F("'{0}' is not installed", "Celeste"));
                 gamevault.ViewModels.MainWindowViewModel.Instance.AppBarText = "You are offline";
                 Assert.Equal("Vous êtes hors ligne", gamevault.ViewModels.MainWindowViewModel.Instance.AppBarText);
+                // Errors: .NET's English network messages and our own
+                Assert.Equal("Impossible de joindre le serveur. Vérifie qu'il est allumé et ta connexion.",
+                    gamevault.Helper.WebExceptionHelper.TryGetServerMessage(new HttpRequestException(HttpRequestError.ConnectionError, "Connection refused (localhost:8080)")));
+                Assert.Equal("RetroArch n'a pas pu démarrer", gamevault.Helper.WebExceptionHelper.TryGetServerMessage(new InvalidOperationException("RetroArch could not be started")));
             }
             finally
             {

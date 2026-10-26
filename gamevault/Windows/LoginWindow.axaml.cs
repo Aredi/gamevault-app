@@ -168,7 +168,7 @@ namespace gamevault.Windows
                 catch (Exception ex)
                 {
                     string message = WebExceptionHelper.TryGetServerMessage(ex);
-                    info = new BindableServerInfo(message == "" ? "Could not connect to server" : message);
+                    info = new BindableServerInfo(message == "" ? Loc.T("Could not connect to server") : message);
                 }
             }
             if (check != serverChecks)
@@ -236,7 +236,7 @@ namespace gamevault.Windows
             }
             catch (Exception ex)
             {
-                ViewModel.AppBarText = ex.Message;
+                ViewModel.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private async void ProfileLogin_Click(object sender, RoutedEventArgs e)
@@ -422,7 +422,7 @@ namespace gamevault.Windows
             }
             catch (Exception ex)
             {
-                ViewModel.AppBarText = ex.Message;
+                ViewModel.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private void ValidateSignUpData()
@@ -470,7 +470,7 @@ namespace gamevault.Windows
             }
             catch (Exception ex)
             {
-                ViewModel.AppBarText = ex.Message;
+                ViewModel.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private void OpenProfileEdit(UserProfile profileToEdit)
@@ -521,7 +521,7 @@ namespace gamevault.Windows
             }
             catch (Exception ex)
             {
-                ViewModel.AppBarText = ex.Message;
+                ViewModel.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         /// <summary>Earlier versions created a profile for the demo server of the original GameVault.</summary>
@@ -666,7 +666,7 @@ namespace gamevault.Windows
                 ViewModel.LoginStepIndex = (int)LoginStep.ChooseProfile;
                 ViewModel.AppBarText = Loc.T("Successfully saved additional request headers");
             }
-            catch (Exception ex) { ViewModel.AppBarText = ex.Message; }
+            catch (Exception ex) { ViewModel.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
         private void LoginWindowSettings_Click(object sender, RoutedEventArgs e)
         {

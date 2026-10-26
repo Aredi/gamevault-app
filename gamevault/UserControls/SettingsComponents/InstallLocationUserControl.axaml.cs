@@ -159,7 +159,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
                 IsEnabled = true;
             }
         }

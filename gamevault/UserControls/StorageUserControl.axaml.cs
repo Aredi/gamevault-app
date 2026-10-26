@@ -153,7 +153,7 @@ namespace gamevault.UserControls
             foreach (var game in Chosen)
             {
                 try { await Task.Run(() => Directory.Delete(game.Usage.Directory, true)); }
-                catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+                catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
             }
             selected.Clear();
             await LoadAsync();
@@ -196,7 +196,7 @@ namespace gamevault.UserControls
                     else
                         Directory.Delete(row.Usage.Directory, true);
                 }
-                catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+                catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
                 await LoadAsync();
                 return;
             }

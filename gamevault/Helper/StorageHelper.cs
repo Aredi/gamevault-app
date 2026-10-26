@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ namespace gamevault.Helper
             var provider = Owner?.StorageProvider;
             if (provider == null)
                 return null;
-            var options = new FolderPickerOpenOptions { Title = title, AllowMultiple = false };
+            var options = new FolderPickerOpenOptions { Title = Loc.T(title), AllowMultiple = false };
             if (!string.IsNullOrEmpty(startDirectory))
                 options.SuggestedStartLocation = await provider.TryGetFolderFromPathAsync(startDirectory);
             var result = await provider.OpenFolderPickerAsync(options);
@@ -31,9 +32,9 @@ namespace gamevault.Helper
             var provider = Owner?.StorageProvider;
             if (provider == null)
                 return null;
-            var options = new FilePickerOpenOptions { Title = title, AllowMultiple = false };
+            var options = new FilePickerOpenOptions { Title = Loc.T(title), AllowMultiple = false };
             if (patterns != null)
-                options.FileTypeFilter = patterns.Select(p => new FilePickerFileType(p.Key) { Patterns = p.Value }).ToList();
+                options.FileTypeFilter = patterns.Select(p => new FilePickerFileType(Loc.T(p.Key)) { Patterns = p.Value }).ToList();
             if (!string.IsNullOrEmpty(startDirectory))
                 options.SuggestedStartLocation = await provider.TryGetFolderFromPathAsync(startDirectory);
             var result = await provider.OpenFilePickerAsync(options);

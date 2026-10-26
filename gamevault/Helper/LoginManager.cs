@@ -160,7 +160,7 @@ namespace gamevault.Helper
                 if (authResponse == null)
                 {
                     m_LoginState = LoginState.Error;
-                    m_LoginMessage = "Authentication canceled by user.";
+                    m_LoginMessage = Loc.T("Authentication canceled by user.");
                     return LoginState.Error;
                 }
                 WebHelper.InjectTokens(authResponse.AccessToken, authResponse.RefreshToken);

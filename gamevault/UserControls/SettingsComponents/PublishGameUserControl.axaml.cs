@@ -285,7 +285,7 @@ namespace gamevault.UserControls.SettingsComponents
                 }
                 catch (Exception ex)
                 {
-                    ViewModel.Status = Loc.F("Publishing failed: {0}", ex.Message);
+                    ViewModel.Status = Loc.F("Publishing failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
                     return;
                 }
                 Preferences.Set(AppConfigKey.PublishDestination, "1", configFile);

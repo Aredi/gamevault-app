@@ -226,8 +226,8 @@ namespace gamevault.Helper.Platform
         public static string MissingToolMessage(string tool) => PlatformInfo.IsLinux
             ? tool switch
             {
-                "7z" => "7-Zip was not found. Install it with your package manager (e.g. 'sudo apt install 7zip').",
-                "ludusavi" => "Ludusavi was not found. Install it (e.g. 'flatpak install flathub com.github.mtkennerly.ludusavi') to use cloud saves.",
+                "7z" => Loc.T("7-Zip was not found. Install it with your package manager (e.g. 'sudo apt install 7zip')."),
+                "ludusavi" => Loc.T("Ludusavi was not found. Install it (e.g. 'flatpak install flathub com.github.mtkennerly.ludusavi') to use cloud saves."),
                 _ => Loc.F("{0} was not found.", tool),
             }
             : Loc.F("{0} is missing from the SanctuaryVault installation directory.", tool);

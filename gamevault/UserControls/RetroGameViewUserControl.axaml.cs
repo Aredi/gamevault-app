@@ -112,7 +112,7 @@ namespace gamevault.UserControls
                     catch (Exception ex) { Log.Ignored(ex); }
                 });
             }
-            catch (RommAccount.MissingScopeException ex) { ViewModel.RommNote = ex.Message; }
+            catch (RommAccount.MissingScopeException ex) { ViewModel.RommNote = WebExceptionHelper.TryGetServerMessage(ex); }
             catch (Exception ex) { Log.Ignored(ex); }
         }
 
@@ -122,7 +122,7 @@ namespace gamevault.UserControls
             catch (RommAccount.MissingScopeException ex)
             {
                 ViewModel.HasRomm = false;
-                ViewModel.RommNote = ex.Message;
+                ViewModel.RommNote = WebExceptionHelper.TryGetServerMessage(ex);
             }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
@@ -224,7 +224,7 @@ namespace gamevault.UserControls
             if (!await DialogService.ConfirmAsync(Loc.F("Delete '{0}' from this PC? Its saves are kept.", ViewModel.Game.Name)))
                 return;
             try { Directory.Delete(folder, true); }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
             ViewModel.Game.Refresh();
         }
 
@@ -251,7 +251,7 @@ namespace gamevault.UserControls
                 else
                     await RetroArchManager.OpenMenuAsync(text => ViewModel.Game.Status = text);
             }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
             ViewModel.Game.Status = "";
         }
 

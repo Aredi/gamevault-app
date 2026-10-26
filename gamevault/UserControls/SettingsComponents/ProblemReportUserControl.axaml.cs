@@ -40,7 +40,7 @@ namespace gamevault.UserControls.SettingsComponents
             catch (Exception ex)
             {
                 Log.Error(ex, "Creating the problem report failed");
-                uiStatus.Text = Loc.F("The report could not be created: {0}", ex.Message);
+                uiStatus.Text = Loc.F("The report could not be created: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
             finally
             {

@@ -28,7 +28,7 @@ namespace gamevault.Helper.Platform
             string[] pending = compatibility.PendingWinetricks;
             if (pending.Length > 0)
             {
-                status?.Invoke($"Installing {string.Join(", ", pending)} with winetricks...");
+                status?.Invoke(Loc.F("Installing {0} with winetricks...", string.Join(", ", pending)));
                 await RunWinetricksAsync(compatibility, pending);
             }
         }

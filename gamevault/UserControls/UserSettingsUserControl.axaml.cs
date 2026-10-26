@@ -102,7 +102,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Failed to load image: {0}", ex.Message);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Failed to load image: {0}", WebExceptionHelper.TryGetServerMessage(ex));
             }
         }
         /// <summary>
@@ -148,7 +148,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
 
@@ -189,7 +189,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
 
@@ -209,7 +209,7 @@ namespace gamevault.UserControls
             catch (Exception ex)
             {
                 if (url != string.Empty)
-                    MainWindowViewModel.Instance.AppBarText = ex.Message;
+                    MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         #region Generic Events
@@ -456,7 +456,7 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }        
     }

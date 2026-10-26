@@ -1062,7 +1062,7 @@ namespace gamevault.UserControls
                     {
                         Directory.CreateDirectory(ViewModel.InstallPath);
                         try { await GameFixes.PrepareAsync(ViewModel.InstallPath, ViewModel.Game?.Metadata?.Title ?? ViewModel.Game?.Title, status => MainWindowViewModel.Instance.AppBarText = status); }
-                        catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+                        catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
                     }
                     Process setupProcess = null;
                     try
@@ -1071,7 +1071,7 @@ namespace gamevault.UserControls
                     }
                     catch (Exception ex) when (!OperatingSystem.IsWindows())
                     {
-                        MainWindowViewModel.Instance.AppBarText = ex.Message;
+                        MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
                         uiProgressRingInstall.IsActive = false;
                         return;
                     }
@@ -1255,7 +1255,7 @@ namespace gamevault.UserControls
             {
                 Log.Error(ex, $"Updating {ViewModel.Game?.Title} failed");
                 ViewModel.State = "Update failed";
-                MainWindowViewModel.Instance.AppBarText = Loc.F("Updating '{0}' failed: {1}", ViewModel.Game?.Title, ex.Message);
+                MainWindowViewModel.Instance.AppBarText = Loc.F("Updating '{0}' failed: {1}", ViewModel.Game?.Title, WebExceptionHelper.TryGetServerMessage(ex));
             }
             finally
             {

@@ -369,7 +369,7 @@ namespace gamevault.UserControls
                 PlatformInfo.OpenUrl(url);
                 e.Handled = true;
             }
-            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
         private void GameCard_Clicked(object sender, RoutedEventArgs e)
         {
@@ -472,7 +472,7 @@ namespace gamevault.UserControls
                 {
                     // protonfixes lookup and winetricks components of this game
                     try { await GameFixes.PrepareAsync(path, result.Key?.Metadata?.Title ?? result.Key?.Title, status => MainWindowViewModel.Instance.AppBarText = status); }
-                    catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+                    catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
                 }
                 try
                 {
@@ -481,7 +481,7 @@ namespace gamevault.UserControls
                 catch (Exception ex) when (!OperatingSystem.IsWindows())
                 {
                     // e.g. the game's compatibility tool is missing
-                    MainWindowViewModel.Instance.AppBarText = ex.Message;
+                    MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
                     return;
                 }
                 catch

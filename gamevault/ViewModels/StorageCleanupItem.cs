@@ -1,3 +1,4 @@
+using gamevault.Localization;
 using GameVault.Core.Storage;
 using System;
 
@@ -17,10 +18,10 @@ namespace gamevault.ViewModels
         public string SizeText => StorageCleanup.FormatSize(Candidate.Size);
         public string KindText => Candidate.Kind switch
         {
-            CleanupKind.InstalledGameArchive => "archive of an installed game",
-            CleanupKind.NotInstalledDownload => "downloaded, not installed",
-            CleanupKind.OrphanPrefix => "Wine prefix of an uninstalled game",
-            _ => "Proton/Wine version no game uses",
+            CleanupKind.InstalledGameArchive => Loc.T("archive of an installed game"),
+            CleanupKind.NotInstalledDownload => Loc.T("downloaded, not installed"),
+            CleanupKind.OrphanPrefix => Loc.T("Wine prefix of an uninstalled game"),
+            _ => Loc.T("Proton/Wine version no game uses"),
         };
 
         private bool isSelected;

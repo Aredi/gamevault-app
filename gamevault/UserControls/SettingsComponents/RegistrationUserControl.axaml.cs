@@ -70,7 +70,7 @@ namespace gamevault.UserControls.SettingsComponents
             catch (Exception ex)
             {
                 string message = WebExceptionHelper.TryGetServerMessage(ex);
-                ViewModel.SignUpServerInfo = new BindableServerInfo(message == "" ? "Could not connect to server" : message);
+                ViewModel.SignUpServerInfo = new BindableServerInfo(message == "" ? Loc.T("Could not connect to server") : message);
             }
         }
         private string ValidateUriScheme(string uri)
@@ -106,7 +106,7 @@ namespace gamevault.UserControls.SettingsComponents
             }
             catch (Exception ex)
             {
-                MainWindowViewModel.Instance.AppBarText = ex.Message;
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
         private void ValidateSignUpData()
