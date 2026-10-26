@@ -37,6 +37,13 @@ namespace GameVault.UiTests
                 if (ShowcaseScenarios.Enabled)
                 {
                     Assert.Equal(new Avalonia.PixelSize(480, 720), decoded.PixelSize);
+                    // Its colors as they are (blue, green, red in memory): not swapped by the smaller decoding
+                    byte[] pixel = new byte[4];
+                    var pinned = System.Runtime.InteropServices.GCHandle.Alloc(pixel, System.Runtime.InteropServices.GCHandleType.Pinned);
+                    try { decoded.CopyPixels(new Avalonia.PixelRect(10, 10, 1, 1), pinned.AddrOfPinnedObject(), 4, 4); }
+                    finally { pinned.Free(); }
+                    Assert.InRange(pixel[2], 190, 210);
+                    Assert.InRange(pixel[0], 30, 50);
                     Assert.Equal(new Avalonia.PixelSize(300, 450), smallDecoded.PixelSize);
                     Assert.Equal(new Avalonia.PixelSize(1200, 1800), full.PixelSize);
                 }
@@ -106,7 +113,8 @@ namespace GameVault.UiTests
             await Task.Delay(1500);// the slow one has arrived meanwhile
             Assert.Same(shown, image.GetImageSource());
             string cache = Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox");
-            Assert.Same(DecodedImages.TryGet(Path.Combine(cache, "8812.88012"), 480), image.GetImageSource());
+            // Decoded as wide as the largest library card (260) on this 100 % screen
+            Assert.Same(DecodedImages.TryGet(Path.Combine(cache, "8812.88012"), 260), image.GetImageSource());
         }
     }
 }
