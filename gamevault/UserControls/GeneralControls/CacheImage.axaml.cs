@@ -70,12 +70,16 @@ namespace gamevault.UserControls
         }
         private int? DecodeWidth => DecodeWidthOverride > 0 ? DecodeWidthOverride : ImageCacheType switch
         {
-            ImageCache.GameCover => 480,
-            ImageCache.GameBackground => IsShowingFallback ? 480 : 2560,
+            ImageCache.GameCover => CoverWidth,
+            ImageCache.GameBackground => IsShowingFallback ? CoverWidth : ScreenWidth,
             ImageCache.UserAvatar => 256,
-            ImageCache.UserBackground => 2560,
+            ImageCache.UserBackground => ScreenWidth,
             _ => null,
         };
+
+        // In this screen's pixels: a cover is shown at most 260 wide (the largest library card), a background at most as wide as the screen
+        private static int CoverWidth => Math.Min(480, (int)Math.Ceiling(260 * (App.Instance.MainWindow?.RenderScaling ?? 2)));
+        private static int ScreenWidth => Math.Min(2560, App.Instance.MainWindow is Window window ? window.Screens.ScreenFromWindow(window)?.Bounds.Width ?? 2560 : 2560);
 
         public static readonly StyledProperty<bool> ComputeAccentProperty = AvaloniaProperty.Register<CacheImage, bool>(nameof(ComputeAccent));
         /// <summary>Analyse the shown image for <see cref="AccentColor"/>.</summary>
