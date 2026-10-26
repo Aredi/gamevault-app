@@ -114,7 +114,7 @@ namespace gamevault.Helper
             try
             {
                 using JsonDocument json = JsonDocument.Parse(body);
-                return json.RootElement.TryGetProperty("error", out JsonElement error) ? error.GetString() : null;
+                return json.RootElement.TryGetProperty("error", out JsonElement error) ? WebExceptionHelper.Translate(error.GetString() ?? "") : null;
             }
             catch (JsonException) { return null; }
         }
