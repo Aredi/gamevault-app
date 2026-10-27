@@ -223,6 +223,9 @@
                                         ToolTip.Tip="{l:T 'Detected as another game: match it to the right one (with your RomM account)'}">
                                     <TextBlock Text="{l:T 'Fix the match'}" />
                                 </Button>
+                                <Button Classes="heroLink" Click="ReportProblem_Click">
+                                    <TextBlock Text="{l:T 'Report a problem'}" />
+                                </Button>
                             </WrapPanel>
                         </StackPanel>
                     </Grid>

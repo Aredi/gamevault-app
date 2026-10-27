@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.ReportProblemPopup"
+             Width="560" Focusable="True">
+    <!-- A player tells the administrators what is wrong with a game -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="28,22,28,26" Spacing="14">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="sectionTitle" FontSize="22" Text="{l:T 'Report a problem'}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+            <TextBlock x:Name="uiTitle" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <StackPanel Spacing="6">
+                <TextBlock Classes="muted" FontSize="13" Text="{l:T 'What is the problem?'}" />
+                <ItemsControl x:Name="uiCategories">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <RadioButton GroupName="reportCategory" Content="{Binding Text}" IsChecked="{Binding IsChecked}" Margin="0,2" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+            <StackPanel Spacing="6">
+                <TextBlock Classes="muted" FontSize="13" Text="{l:T 'Details'}" />
+                <TextBox x:Name="uiDetails" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80" MaxLength="1000"
+                         Watermark="{l:T 'What happens, and when (e.g. black screen after the intro)'}" />
+                <TextBlock x:Name="uiContext" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+            <!-- The player's earlier reports on this game -->
+            <ItemsControl x:Name="uiMine" IsVisible="False">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis">
+                            <Run Text="{Binding StatusText}" FontWeight="SemiBold" />
+                            <Run Text="·" />
+                            <Run Text="{Binding CategoryText}" />
+                        </TextBlock>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock x:Name="uiStatus" TextWrapping="Wrap" FontSize="13" IsVisible="{Binding $self.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Classes="ghost" Click="Close_Click" Content="{l:T 'Cancel'}" />
+                <Button x:Name="uiSend" Classes="action" Click="Send_Click" Content="{l:T 'Send'}" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

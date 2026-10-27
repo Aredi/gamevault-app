@@ -134,6 +134,10 @@ namespace gamevault.Helper
             "At most {0} games can wait.",
             "A profile can have at most {0} bytes.",
             "A chunk can have at most {0} bytes.",
+            "Problem reports are not available on this server.",
+            "Describe the problem.",
+            "You already have many open reports: wait for some to be handled.",
+            "This report no longer exists.",
         };
         private static readonly Lazy<(Regex Pattern, string Text)[]> serverPatterns = new(() => ServerTexts
             .Select(text => (new Regex("^" + Regex.Replace(Regex.Escape(text), @"\\\{(\d)}", "(?<v$1>.+?)") + "$"), text)).ToArray());

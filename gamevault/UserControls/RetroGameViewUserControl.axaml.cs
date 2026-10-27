@@ -265,6 +265,8 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.OpenPopup(new RetroMatchPopup(ViewModel.Game));
         }
 
+        private void ReportProblem_Click(object? sender, RoutedEventArgs e) => ReportProblemPopup.Open(ViewModel.Game);
+
         private void Video_Click(object? sender, RoutedEventArgs e)
         {
             if (ViewModel.Game.Video is string video)

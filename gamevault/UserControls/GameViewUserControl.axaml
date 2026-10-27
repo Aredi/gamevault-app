@@ -289,6 +289,9 @@
                                     <TextBlock Text="{l:T 'Move the game to another disk or folder'}" />
                                 </Button>
                             </WrapPanel>
+                            <Button Classes="heroLink" Click="ReportProblem_Click">
+                                <TextBlock Text="{l:T 'Report a problem'}" />
+                            </Button>
                             <!-- Friends in a LAN room for this game -->
                             <Border x:Name="uiLanRoom" IsVisible="False" CornerRadius="12" Padding="14,6" Background="{DynamicResource Brush.Glass}" HorizontalAlignment="Left">
                                 <StackPanel Orientation="Horizontal" Spacing="12">

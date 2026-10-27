@@ -31,6 +31,7 @@ namespace gamevault.UserControls
         {
             InitializeComponent();
             DataContext = ViewModel;
+            ReportProblemPopup.OfferOnRightClick(this);
             AttachedToVisualTree += (_, _) =>
             {
                 Focus();
