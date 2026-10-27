@@ -32,6 +32,7 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `ZEROTIER_CONTROLLER_URL` | - | The API of a [ZeroTier](https://github.com/zerotier/ZeroTierOne) 1.14.2 network controller (e.g. `http://zerotier-controller:9993`): the client's **LAN rooms** are off without it |
 | `ZEROTIER_API_SECRET` | - | The controller's API token (`ZEROTIER_API_SECRET` of its container, or its `authtoken.secret`) |
 | `ROOMS_DIRECTORY` | `/data/rooms` | The LAN rooms and the games playable in LAN |
+| `REPORTS_DIRECTORY` | `/data/reports` | The problems the players report on games (admin console) |
 
 ## LAN rooms
 

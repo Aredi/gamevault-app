@@ -130,6 +130,9 @@ namespace GameVault.UiTests
         public string? RommRaUser { get; set; }
         public int RommRaRefreshes;
 
+        /// <summary>The problem reports the service keeps (POST /reports, resolved by /reports/{id}/resolve).</summary>
+        public List<Dictionary<string, object?>> Reports { get; } = new();
+
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
         public List<object> RetroLatest { get; } = new();
 
@@ -550,6 +553,32 @@ namespace GameVault.UiTests
                     }
                     else
                         response.StatusCode = 404;
+                }
+                else if (path == "/reports" && request.HttpMethod == "POST")
+                {
+                    var report = JsonSerializer.Deserialize<Dictionary<string, object?>>(await new StreamReader(request.InputStream).ReadToEndAsync())!;
+                    report["id"] = Guid.NewGuid().ToString("N");
+                    report["username"] = "admin";
+                    report["at"] = DateTime.UtcNow;
+                    report["resolvedAt"] = null;
+                    lock (Reports)
+                        Reports.Add(report);
+                    response.StatusCode = 201;
+                    await Json(response, report);
+                }
+                else if (path == "/reports")
+                {
+                    object[] reports;
+                    lock (Reports)
+                        reports = Reports.ToArray();
+                    await Json(response, reports);
+                }
+                else if (path.StartsWith("/reports/") && path.EndsWith("/resolve"))
+                {
+                    lock (Reports)
+                        foreach (var report in Reports.Where(r => (string?)r["id"]?.ToString() == path.Split('/')[2]))
+                            report["resolvedAt"] = DateTime.UtcNow;
+                    response.StatusCode = 204;
                 }
                 else if (path == "/game-requests" && request.HttpMethod == "POST")
                 {

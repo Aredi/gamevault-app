@@ -24,6 +24,8 @@ namespace GameVault.Uploader
     /// POST /rooms/join, POST /rooms/{id}/leave   lets the player's PC in a room (by its code, or a public room) / out of it
     /// PUT  /rooms/{id}/game                      the room's game (its owner)
     /// GET  /lan-games, PUT /lan-games/{gameId}   the games playable in LAN (PCGamingWiki, read in the background) / an administrator marks or unmarks one
+    /// POST /reports, GET /reports                a player reports a problem on a game / the reports (all for an administrator, else the player's)
+    /// POST /reports/{id}/resolve                 an administrator says a report is handled
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
@@ -33,7 +35,7 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -267,6 +269,43 @@ namespace GameVault.Uploader
                 if (!check.Allowed)
                     return Results.Json(new { error = check.Message }, statusCode: check.Status);
                 return Results.Json(hidden.Now(DateTimeOffset.UtcNow).Select(p => new { user_id = p.UserId, state = "PLAYING", game_id = p.GameId }));
+            });
+
+            // Problems reported on a game, for the administrators' console
+            app.MapPost("/reports", async (ProblemReport asked, HttpRequest request, AdminCheck users, ReportStore reports, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!reports.Enabled)
+                    return Results.Json(new { error = "Problem reports are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                string title = (asked.Title ?? "").Trim();
+                if (asked.Kind is not ("pc" or "retro") || title.Length is 0 or > 200 || !ReportStore.Categories.Contains(asked.Category)
+                    || asked.Category == "other" && string.IsNullOrWhiteSpace(asked.Details))
+                    return Results.Json(new { error = "Describe the problem." }, statusCode: StatusCodes.Status400BadRequest);
+                var added = reports.Add(new ReportStore.Report("", asked.Kind, asked.GameId, Cut(asked.Platform, 50), title, asked.Category!, Cut(asked.Details, 1000), Cut(asked.Context, 300),
+                    check.Id, check.User, default, null, null));
+                return added == null
+                    ? Results.Json(new { error = "You already have many open reports: wait for some to be handled." }, statusCode: StatusCodes.Status409Conflict)
+                    : Results.Json(added, statusCode: StatusCodes.Status201Created);
+            });
+
+            app.MapGet("/reports", async (HttpRequest request, AdminCheck users, ReportStore reports, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!reports.Enabled)
+                    return Results.Json(new { error = "Problem reports are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                return Results.Json(reports.List(check.Admin ? null : check.Id));
+            });
+
+            app.MapPost("/reports/{id}/resolve", async (string id, HttpRequest request, AdminCheck admins, ReportStore reports, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return reports.Resolve(id, check.User) ? Results.NoContent() : Results.Json(new { error = "This report no longer exists." }, statusCode: StatusCodes.Status404NotFound);
             });
 
             // The administrators see when each player last had the client open
@@ -550,6 +589,8 @@ namespace GameVault.Uploader
             }
         }
 
+        private static string? Cut(string? text, int length) => text?.Trim() is { Length: > 0 } t ? t[..Math.Min(t.Length, length)] : null;
+
         private static async Task<IResult> GuardedAsync(string name, HttpRequest request, AdminCheck admins, CancellationToken ct, Func<string, Task<IResult>> action)
         {
             if (!UploadStore.IsValidName(name, out string error))
@@ -571,4 +612,5 @@ namespace GameVault.Uploader
     public sealed record RoomGame(int? GameId, string? GameTitle);
     public sealed record LanGame(bool Lan);
     public sealed record HiddenPlay(int? GameId);
+    public sealed record ProblemReport(string? Kind, int GameId, string? Platform, string? Title, string? Category, string? Details, string? Context);
 }

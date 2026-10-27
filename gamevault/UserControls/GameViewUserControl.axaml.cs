@@ -553,6 +553,12 @@ namespace gamevault.UserControls
                 return;
             MainWindowViewModel.Instance.OpenPopup(new ChooseExecutableUserControl(ViewModel.Game, installed.Value));
         }
+        private void ReportProblem_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel?.Game != null)
+                ReportProblemPopup.Open(ViewModel.Game);
+        }
+
         private async void MoveGame_Click(object sender, RoutedEventArgs e)
         {
             if (ViewModel?.Game != null)

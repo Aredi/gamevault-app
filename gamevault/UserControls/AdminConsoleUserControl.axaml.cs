@@ -52,6 +52,7 @@ namespace gamevault.UserControls
             if (this.IsVisible)
             {
                 await InitUserList();
+                await LoadReportsAsync();
                 ViewModel.ServerVersionInfo = await GetServerVersionInfo();
             }
         }
@@ -70,6 +71,46 @@ namespace gamevault.UserControls
                 string msg = WebExceptionHelper.TryGetServerMessage(ex);
                 MainWindowViewModel.Instance.AppBarText = msg;
             }
+        }
+
+        /// <summary>The open problem reports; without the SanctuaryVault service (or its reports) the card stays hidden.</summary>
+        internal async Task LoadReportsAsync()
+        {
+            try
+            {
+                var open = (await ReportsService.ListAsync())?.Where(r => r.IsOpen).ToList();
+                uiReportsCard.IsVisible = open != null;
+                uiReports.ItemsSource = open;
+                uiReportsTitle.Text = Loc.F("Problem reports ({0} open)", open?.Count ?? 0);
+                uiReportsEmpty.IsVisible = open?.Count == 0;
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        private async void ReportOpenGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ProblemReportItem report)
+                return;
+            try
+            {
+                if (report.IsRetro)
+                    await MainWindowViewModel.Instance.Retro.ShowGameAsync(report.Platform ?? "", report.GameId);
+                else
+                    MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(new Game { ID = report.GameId }));
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        private async void ReportResolve_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ProblemReportItem report)
+                return;
+            try
+            {
+                await ReportsService.ResolveAsync(report.Id);
+                await LoadReportsAsync();
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
 
         /// <summary>Without the SanctuaryVault service the line stays hidden.</summary>
@@ -225,6 +266,7 @@ namespace gamevault.UserControls
 
             uiBtnReload.IsEnabled = false;
             await InitUserList();
+            await LoadReportsAsync();
             uiBtnReload.IsEnabled = true;
         }
         private async Task<KeyValuePair<string, string>> GetServerVersionInfo()

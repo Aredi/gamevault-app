@@ -181,6 +181,7 @@ namespace GameVault.Uploader.Tests
         private readonly string retroSaves = Path.Combine(Path.GetTempPath(), $"gv-retro-saves-{Guid.NewGuid():N}");
         private readonly string retroPlayers = Path.Combine(Path.GetTempPath(), $"gv-retro-players-{Guid.NewGuid():N}");
         private readonly string rooms = Path.Combine(Path.GetTempPath(), $"gv-rooms-{Guid.NewGuid():N}");
+        private readonly string reports = Path.Combine(Path.GetTempPath(), $"gv-reports-{Guid.NewGuid():N}");
         private readonly FakeZeroTier zeroTier = new();
         private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
@@ -220,6 +221,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("ZEROTIER_CONTROLLER_URL", "http://zerotier.test:9993");
                 host.UseSetting("ZEROTIER_API_SECRET", "zt-secret");
                 host.UseSetting("ROOMS_DIRECTORY", rooms);
+                host.UseSetting("REPORTS_DIRECTORY", reports);
                 host.ConfigureServices(services =>
                 {
                     services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
@@ -242,6 +244,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(retroSaves, true); } catch { }
             try { Directory.Delete(retroPlayers, true); } catch { }
             try { Directory.Delete(rooms, true); } catch { }
+            try { Directory.Delete(reports, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -388,6 +391,33 @@ namespace GameVault.Uploader.Tests
 
             Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/game-requests", new { game = "" })).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/game-requests")).StatusCode);
+        }
+
+        [Fact]
+        public async Task AProblemReport_IsSeenByTheAdministrators_ThenResolved()
+        {
+            var player = Client("user");
+            var sent = await player.PostAsJsonAsync("/reports", new { kind = "retro", gameId = 12, platform = "ps2", title = " God of War ", category = "match", details = "It is the first one", context = "1.0 · Windows 11" });
+            Assert.Equal(HttpStatusCode.Created, sent.StatusCode);
+            string id = JsonDocument.Parse(await sent.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetString()!;
+            // The reporter is the signed-in player, whatever the client says
+            using (JsonDocument all = JsonDocument.Parse(await Client("admin").GetStringAsync("/reports")))
+            {
+                JsonElement report = all.RootElement[0];
+                Assert.Equal("player", report.GetProperty("username").GetString());
+                Assert.Equal("God of War", report.GetProperty("title").GetString());
+                Assert.Equal(JsonValueKind.Null, report.GetProperty("resolvedAt").ValueKind);
+            }
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PostAsync($"/reports/{id}/resolve", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PostAsync($"/reports/{id}/resolve", null)).StatusCode);
+            // The player sees theirs, resolved
+            using (JsonDocument mine = JsonDocument.Parse(await player.GetStringAsync("/reports")))
+                Assert.Equal("admin", mine.RootElement[0].GetProperty("resolvedBy").GetString());
+
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Hades", category = "other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Hades", category = "broken" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").PostAsync("/reports/nope/resolve", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/reports")).StatusCode);
         }
 
         [Fact]

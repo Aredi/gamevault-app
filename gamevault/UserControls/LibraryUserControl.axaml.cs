@@ -41,6 +41,7 @@ namespace gamevault.UserControls
         {
             InitializeComponent();
             ViewModel = new LibraryViewModel();
+            ReportProblemPopup.OfferOnRightClick(this);
             int sortByIndex = 0;
             if (SettingsViewModel.Instance.RetainLibarySortByAndOrderBy)
             {

@@ -65,6 +65,37 @@
                     </StackPanel>
                 </Border>
 
+                <!-- The problems the players reported on games (SanctuaryVault service) -->
+                <Border x:Name="uiReportsCard" Classes="card" IsVisible="False">
+                    <StackPanel Spacing="10">
+                        <TextBlock x:Name="uiReportsTitle" Classes="cardTitle" />
+                        <TextBlock x:Name="uiReportsEmpty" Classes="muted" FontSize="13" Text="{l:T 'No open report.'}" />
+                        <ItemsControl x:Name="uiReports">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="12" Padding="14,10" Margin="0,0,0,8" Background="{DynamicResource Brush.Surface}">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
+                                            <StackPanel Spacing="3">
+                                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                                    <TextBlock Text="{Binding Header}" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Byline}" Classes="muted" FontSize="12" VerticalAlignment="Center" />
+                                                </Grid>
+                                                <TextBlock Text="{Binding CategoryText}" FontSize="13" />
+                                                <TextBlock Text="{Binding Details}" FontSize="13" TextWrapping="Wrap" IsVisible="{Binding HasDetails}" />
+                                                <TextBlock Text="{Binding Context}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Button Classes="ghost small" Click="ReportOpenGame_Click" Content="{l:T 'Game page'}" />
+                                                <Button Classes="ghost small" Click="ReportResolve_Click" Content="{l:T 'Resolved'}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
                 <!-- Users -->
                 <Border Classes="card">
                     <Grid RowDefinitions="Auto,*">
