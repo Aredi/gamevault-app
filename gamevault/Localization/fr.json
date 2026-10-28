@@ -1202,7 +1202,6 @@
   "Not installed": "Non installé",
   "Not downloaded yet": "Pas encore téléchargé",
   "Cloud saves: {0}": "Sauvegardes dans le cloud : {0}",
-  "Cloud saves off (Settings > Data)": "Sauvegardes dans le cloud désactivées (Paramètres > Données)",
   "Linked as {0}": "Lié en tant que {0}",
   "Not linked": "Non lié",
   "Signed in as {0}": "Connecté en tant que {0}",
@@ -1685,5 +1684,7 @@
   "RomM saves": "Sauvegardes RomM",
   "Link RomM": "Lier RomM",
   "Not now": "Pas maintenant",
-  "Approve the code {0} on RomM's page that opened, then come back": "Approuve le code {0} sur la page RomM qui s'est ouverte, puis reviens ici"
+  "Approve the code {0} on RomM's page that opened, then come back": "Approuve le code {0} sur la page RomM qui s'est ouverte, puis reviens ici",
+  "Cloud saves (sent after a game, taken before)": "Sauvegardes cloud (envoyées après une partie, récupérées avant)",
+  "Cloud saves off: the saves stay on this device": "Sauvegardes cloud désactivées : les sauvegardes restent sur cet appareil"
 }

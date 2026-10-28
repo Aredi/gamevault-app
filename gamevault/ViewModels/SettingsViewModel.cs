@@ -115,7 +115,9 @@ namespace gamevault.ViewModels
             sendAnonymousAnalytics = analyticsPreference == "1"; OnPropertyChanged(nameof(SendAnonymousAnalytics));
 
             syncDiscordPresence = Preferences.Get(AppConfigKey.SyncDiscordPresence, userConfigFile) == "1"; OnPropertyChanged(nameof(SyncDiscordPresence));
-            cloudSaves = Preferences.Get(AppConfigKey.CloudSaves, userConfigFile) == "1"; OnPropertyChanged(nameof(CloudSaves));
+            // On where it could not be set before (the Mac, Android: their retro saves had no switch), as long as unset
+            string cloudSavesSetting = Preferences.Get(AppConfigKey.CloudSaves, userConfigFile);
+            cloudSaves = cloudSavesSetting == "1" || (cloudSavesSetting == "" && !PlatformInfo.PlaysPcGames); OnPropertyChanged(nameof(CloudSaves));
 
             // Also set when it is off: the settings of the profile signed in before must not stay
             string autoInstallPortableStr = Preferences.Get(AppConfigKey.AutoInstallPortable, userConfigFile);

@@ -139,8 +139,10 @@
 
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="{l:T 'Saves'}" />
+                <!-- The same setting as Integrations > Cloud Saves: here too, where the Mac and Android have it -->
+                <ToggleSwitch x:Name="uiCloudSaves" Content="{l:T 'Cloud saves (sent after a game, taken before)'}" Margin="0,0,0,6" IsCheckedChanged="CloudSaves_Changed" />
                 <TextBlock x:Name="uiSavesState" TextWrapping="Wrap" FontSize="14" />
-                <WrapPanel Margin="0,12,0,0">
+                <WrapPanel x:Name="uiSavesFolders" Margin="0,12,0,0">
                     <controls:IconButton Text="{l:T 'Open the saves'}" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
                                          Click="OpenSaves_Click" />
                     <controls:IconButton Text="{l:T 'Open the backups'}" Icon="{StaticResource IconGameSettingsFolder}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"

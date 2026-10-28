@@ -45,7 +45,8 @@ namespace gamevault.UserControls.SettingsComponents
         public RetroSettingsUserControl()
         {
             InitializeComponent();
-            uiRetroArchSection.IsVisible = uiControls.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
+            // Android: not the PC's RetroArch, no file manager
+            uiRetroArchSection.IsVisible = uiControls.IsVisible = uiSavesFolders.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
             AttachedToVisualTree += (_, _) => _ = RefreshAsync();
         }
 
@@ -104,9 +105,23 @@ namespace gamevault.UserControls.SettingsComponents
             uiLanguage.ItemsSource = RetroLanguage.All.Select(RetroGameViewModel.LanguageName)
                 .Prepend(Loc.F("As the client ({0})", RetroGameViewModel.Lower(RetroGameViewModel.LanguageName(RetroArchManager.ClientLanguage)))).ToList();
             uiLanguage.SelectedIndex = Array.IndexOf(RetroLanguage.All, RetroArchManager.LanguageSetting) + 1;
+            ShowCloudSaves();
+        }
+
+        private void ShowCloudSaves()
+        {
+            uiCloudSaves.IsChecked = SettingsViewModel.Instance.CloudSaves;
             uiSavesState.Text = SettingsViewModel.Instance.CloudSaves
                 ? Loc.F("Cloud saves: {0}", RetroCloudSaves.Destination)
-                : Loc.T("Cloud saves off (Settings > Data)");
+                : Loc.T("Cloud saves off: the saves stay on this device");
+        }
+
+        private void CloudSaves_Changed(object? sender, RoutedEventArgs e)
+        {
+            if (uiCloudSaves.IsChecked is not bool on || on == SettingsViewModel.Instance.CloudSaves)
+                return;
+            SettingsViewModel.Instance.CloudSaves = on;
+            ShowCloudSaves();
         }
 
         private string? rommPage;
