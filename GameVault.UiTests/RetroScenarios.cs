@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -193,6 +194,45 @@ namespace GameVault.UiTests
                     Assert.Equal("wii", ((RetroGame)card.DataContext!).Platform.Slug);
                     Assert.DoesNotContain(cards, other => other != card && other.Bounds.Intersects(card.Bounds));
                 }
+            }
+            finally
+            {
+                SanctuaryService.Current = SanctuaryService.Url;
+                MainWindowViewModel.Instance.Retro.ViewModel.AllGames = new();
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task TheGrid_LeftAlone_WhenItShowsItsGames_AndANewLayout_ShowsThemAgain()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            try
+            {
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
+                RetroUserControl page = MainWindowViewModel.Instance.Retro;
+                await page.EnsureLoadedAsync();
+                var gba = new RetroPlatform { Id = 7, Slug = "gba", Name = "GBA" };
+                page.SizeCards(null);
+                page.ViewModel.AllGames = Enumerable.Range(1, 60).Select(i => new RetroGame { Id = 7000 + i, Name = $"GBA {i:00}", FileName = "x", Platform = gba }).ToList();
+                Dispatcher.UIThread.RunJobs();
+                var grid = page.GetLogicalDescendants().OfType<ItemsRepeater>().First(r => r.Name == "uiGames");
+                // Back on the page: a grid that shows its games keeps its layout
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+                Dispatcher.UIThread.RunJobs();
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
+                Dispatcher.UIThread.RunJobs();
+                var layout = grid.Layout;
+                Assert.False(page.RebuildGridIfEmpty());
+                Assert.Same(layout, grid.Layout);
+
+                Assert.True(page.RebuildGridIfEmpty(force: true));
+                Dispatcher.UIThread.RunJobs();
+                var rebuilt = (UniformGridLayout)grid.Layout!;
+                Assert.NotSame(layout, rebuilt);
+                Assert.Equal(((UniformGridLayout)layout!).MinItemHeight, rebuilt.MinItemHeight);
+                Assert.True(grid.Bounds.Height > 1000);
+                Assert.Contains(grid.Children, c => c.IsVisible && c.DataContext is RetroGame);
             }
             finally
             {
