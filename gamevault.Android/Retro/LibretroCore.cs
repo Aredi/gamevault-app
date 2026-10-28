@@ -157,6 +157,10 @@ namespace gamevault.Android.Retro
                 SystemAvInfo av;
                 ((delegate* unmanaged[Cdecl]<SystemAvInfo*, void>)Export("retro_get_system_av_info"))(&av);
                 AvInfo = av;
+                // A controller on each port, as RetroArch does: Dolphin has none until told (its pads did not answer)
+                var setDevice = (delegate* unmanaged[Cdecl]<uint, uint, void>)Export("retro_set_controller_port_device");
+                for (uint port = 0; port < 4; port++)
+                    setDevice(port, DeviceJoypad);
                 if (Gl != null)
                 {
                     // Its largest picture, then the core makes its GPU objects
