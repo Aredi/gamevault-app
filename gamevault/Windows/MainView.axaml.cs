@@ -71,7 +71,8 @@ namespace gamevault.Windows
         /// </summary>
         private void Back_Requested(object? sender, RoutedEventArgs e)
         {
-            if (DialogLayer.Children.Count > 0)
+            // A game over the pages has its own menu
+            if (DialogLayer.Children.Count > 0 || App.Instance.OverScreen != null)
                 return;
             if (uiQuickSearch.IsVisible)
                 uiQuickSearch.Close();

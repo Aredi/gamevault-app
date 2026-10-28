@@ -28,6 +28,21 @@ namespace gamevault.Android
                 platform.RequestStorageAccess();
         }
 
+        /// <summary>A controller's buttons and sticks go to the game being played.</summary>
+        public override bool DispatchKeyEvent(global::Android.Views.KeyEvent? e)
+        {
+            if (e != null && platform?.OnKey(e) == true)
+                return true;
+            return base.DispatchKeyEvent(e);
+        }
+
+        public override bool DispatchGenericMotionEvent(global::Android.Views.MotionEvent? e)
+        {
+            if (e != null && platform?.OnMotion(e) == true)
+                return true;
+            return base.DispatchGenericMotionEvent(e);
+        }
+
         protected override void OnPause()
         {
             base.OnPause();

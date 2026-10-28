@@ -48,15 +48,7 @@ namespace gamevault.Helper
                     using var zip = new ZipArchive(new MemoryStream(await HttpClients.Shared.GetByteArrayAsync(Layout.CoreUrl(system.Core))));
                     zip.ExtractToDirectory(Layout.CoresDirectory, overwriteFiles: true);
                 }
-                if (system.SystemFiles is string name && !File.Exists(Layout.SystemFilesMarker(name)))
-                {
-                    status(Loc.T("Downloading the emulator's files..."));
-                    using var zip = new ZipArchive(new MemoryStream(await HttpClients.Shared.GetByteArrayAsync(RetroArchLayout.SystemFilesUrl(name))));
-                    zip.ExtractToDirectory(Layout.SystemDirectory, overwriteFiles: true);
-                    File.WriteAllText(Layout.SystemFilesMarker(name), "");
-                }
-                if (system.FirmwareFolder is string folder)
-                    await EnsureBiosAsync(platform, Path.Combine(Layout.SystemDirectory, folder), status);
+                await EnsureSystemFilesAsync(platform, status);
                 if (CrtSystems.Contains(system.Slug))
                     foreach (var (extension, url) in RetroArchLayout.CrtShaderUrls.Where(s => !File.Exists(Layout.CrtShaderFile(s.Extension))))
                     {
@@ -69,6 +61,24 @@ namespace gamevault.Helper
         }
 
         private static string ProfileConfig => LoginManager.Instance.GetUserProfile().UserConfigFile;
+
+        /// <summary>
+        /// The core's data files and the BIOS, in <see cref="RetroArchLayout.SystemDirectory"/>: for RetroArch, and for
+        /// the Android app's own player.
+        /// </summary>
+        public static async Task EnsureSystemFilesAsync(RetroPlatform platform, Action<string> status)
+        {
+            RetroSystem system = platform.System;
+            if (system.SystemFiles is string name && !File.Exists(Layout.SystemFilesMarker(name)))
+            {
+                status(Loc.T("Downloading the emulator's files..."));
+                using var zip = new ZipArchive(new MemoryStream(await HttpClients.Shared.GetByteArrayAsync(RetroArchLayout.SystemFilesUrl(name))));
+                zip.ExtractToDirectory(Layout.SystemDirectory, overwriteFiles: true);
+                File.WriteAllText(Layout.SystemFilesMarker(name), "");
+            }
+            if (system.FirmwareFolder is string folder)
+                await EnsureBiosAsync(platform, Path.Combine(Layout.SystemDirectory, folder), status);
+        }
 
         /// <summary>The consoles the player sees with the CRT look (Settings > Retro), by their slug.</summary>
         public static HashSet<string> CrtSystems

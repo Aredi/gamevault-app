@@ -46,7 +46,7 @@ namespace gamevault.Helper
             }
             if (Platform.MobilePlatform.Current is Platform.IMobilePlatform mobile)
             {
-                await PlayOnAndroidAsync(mobile, game, rom);
+                await PlayOnAndroidAsync(mobile, game, rom, stateSlot);
                 return;
             }
             game.Busy = true;
@@ -67,7 +67,7 @@ namespace gamevault.Helper
                     : emulator.ControllerHint is string hint ? $"{Loc.T("Playing: close the game's window to quit")} · {hint}"
                     : Loc.T("Playing: close the game's window to quit");
                 DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
-                _ = WhenClosedAsync(process, game, before);
+                _ = WhenClosedAsync(process.WaitForExitAsync(), game, before);
             }
             catch (RetroArchManager.MissingBiosException ex)
             {
@@ -98,7 +98,7 @@ namespace gamevault.Helper
         /// Android: RetroArch for Android (installed by the player, with the core), until SanctuaryVault is back on the
         /// screen. The play time is counted; the saves stay in RetroArch's folders for now.
         /// </summary>
-        private static async Task PlayOnAndroidAsync(Platform.IMobilePlatform mobile, RetroGame game, string rom)
+        private static async Task PlayOnAndroidAsync(Platform.IMobilePlatform mobile, RetroGame game, string rom, int? stateSlot)
         {
             if (AndroidCore(game.Platform.System) is not string core)
             {
@@ -108,6 +108,11 @@ namespace gamevault.Helper
             if (mobile.CannotPlay(core) is string why)
             {
                 game.Status = why;
+                return;
+            }
+            if (mobile.PlaysBuiltIn(core))
+            {
+                await PlayBuiltInAsync(mobile, game, core, rom);
                 return;
             }
             game.Busy = true;
@@ -142,11 +147,46 @@ namespace gamevault.Helper
             finally { game.Busy = false; }
         }
 
+        /// <summary>
+        /// Android, the consoles whose cores draw without the GPU: the app's own player, as RetroArch on a PC (its core and
+        /// BIOS downloaded, the saves taken from the cloud before and sent after, the play time counted).
+        /// </summary>
+        private static async Task PlayBuiltInAsync(Platform.IMobilePlatform mobile, RetroGame game, string core, string rom)
+        {
+            game.Busy = true;
+            try
+            {
+                await mobile.EnsureCoreAsync(core, text => game.Status = text);
+                await RetroArchManager.EnsureSystemFilesAsync(game.Platform, text => game.Status = text);
+                if (await RetroCloudSaves.TakeAsync(game, text => game.Status = text) is string kept)
+                    MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);
+                var saves = RetroCloudSaves.Of(game);
+                var before = saves.Snapshot();
+                // The cartridge's (or memory card's) save where the cloud put it, else in the core's folder, as RetroArch
+                string saveFile = saves.MainSave() ?? System.IO.Path.Combine(RetroArchManager.SavesFolder,
+                    RetroArchManager.Layout.SaveFolderName(game.Platform.System.Core), System.IO.Path.GetFileNameWithoutExtension(rom) + ".srm");
+                game.Status = Loc.T("Playing: Select+Start to quit");
+                _ = WhenClosedAsync(mobile.PlayBuiltInAsync(new Platform.BuiltInGame(game.Name, game.Platform.Slug, core, rom,
+                    RetroArchManager.Layout.SystemDirectory, saveFile, RetroArchManager.LanguageOf(game))), game, before);
+            }
+            catch (RetroArchManager.MissingBiosException ex)
+            {
+                game.Status = WebExceptionHelper.TryGetServerMessage(ex);
+                game.Busy = false;
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
+                game.Busy = false;
+            }
+        }
+
         /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then its time counted and its saves sent.</summary>
-        private static async Task WhenClosedAsync(Process process, RetroGame game, System.Collections.Generic.Dictionary<string, long> before)
+        private static async Task WhenClosedAsync(Task closed, RetroGame game, System.Collections.Generic.Dictionary<string, long> before)
         {
             DateTime started = DateTime.UtcNow;
-            await process.WaitForExitAsync();
+            await closed;
             DiscordHelper.Instance.RetroStopped();
             try
             {
@@ -163,7 +203,8 @@ namespace gamevault.Helper
             {
                 try { await RommAccount.PlayedAsync(game.Id); }
                 catch (Exception ex) { Log.Ignored(ex); }
-                if (StandaloneEmulator.Of(game.Platform.System) == null)
+                // RetroArch's achievements (not the Android app's own player)
+                if (StandaloneEmulator.Of(game.Platform.System) == null && !Platform.PlatformInfo.IsAndroid)
                 {
                     await RetroAchievementsAccount.SyncRommAsync();
                     await RetroAchievementsAccount.ShareAsync(game);

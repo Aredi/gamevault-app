@@ -34,6 +34,8 @@ namespace gamevault
         /// <summary>Android: one screen, no windows. The login view, then the main view, fill it.</summary>
         private ISingleViewApplicationLifetime? SingleView => ApplicationLifetime as ISingleViewApplicationLifetime;
         private readonly ContentControl singleViewShell = new ContentControl();
+        /// <summary>Over the pages: the Android app's own game player.</summary>
+        private readonly ContentControl overScreen = new ContentControl { IsVisible = false };
 
         /// <summary>
         /// The main GameVault window once a profile is logged in, otherwise the login window.
@@ -58,6 +60,17 @@ namespace gamevault
 
         /// <summary>The Android app (one screen): what is the PC's window elsewhere is there.</summary>
         public bool IsSingleView => SingleView != null;
+
+        /// <summary>Android: a full screen view over the pages (a game), or none.</summary>
+        public Control? OverScreen
+        {
+            get => overScreen.Content as Control;
+            set
+            {
+                overScreen.Content = value;
+                overScreen.IsVisible = value != null;
+            }
+        }
 
         public override void Initialize()
         {
@@ -98,7 +111,7 @@ namespace gamevault
             }
             else if (SingleView != null)
             {
-                SingleView.MainView = singleViewShell;
+                SingleView.MainView = new Panel { Children = { singleViewShell, overScreen } };
                 Dispatcher.UIThread.Post(async () => await StartupSingleViewAsync());
             }
             base.OnFrameworkInitializationCompleted();

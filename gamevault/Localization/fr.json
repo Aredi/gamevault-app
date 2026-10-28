@@ -1675,5 +1675,8 @@
   "RetroArch was not installed: Play installs it again.": "RetroArch n'a pas été installé : Jouer relance son installation.",
   "RetroArch closed at once: if the game did not start, download the core '{0}' in RetroArch (Main Menu > Online Updater > Core Downloader), then press Play again.": "RetroArch s'est fermé tout de suite : si le jeu n'a pas démarré, télécharge le core « {0} » dans RetroArch (Menu principal > Mise à jour en ligne > Téléchargeur de cores), puis appuie de nouveau sur Jouer.",
   "Allow SanctuaryVault to install apps, then come back to it": "Autorise SanctuaryVault à installer des applications, puis reviens dans l'appli",
-  "Installing RetroArch: confirm in Android's window": "Installation de RetroArch : confirme dans la fenêtre d'Android"
+  "Installing RetroArch: confirm in Android's window": "Installation de RetroArch : confirme dans la fenêtre d'Android",
+  "Quit the game": "Quitter le jeu",
+  "Downloading the emulator... {0:0}%": "Téléchargement de l'émulateur... {0:0}%",
+  "The game could not be started: {0}": "Le jeu n'a pas pu démarrer : {0}"
 }

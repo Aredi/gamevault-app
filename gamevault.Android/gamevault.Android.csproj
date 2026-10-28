@@ -7,6 +7,8 @@
 		<TargetFramework>net10.0-android</TargetFramework>
 		<SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
 		<Nullable>enable</Nullable>
+		<!-- The libretro cores are called through function pointers -->
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<!-- Same assembly as the desktop client: the views' resources are avares://gamevault/... -->
 		<AssemblyName>gamevault</AssemblyName>

@@ -7,7 +7,9 @@ using gamevault.Helper.Platform;
 using GameVault.Core.Retro;
 using gamevault.Localization;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using AndroidEnvironment = Android.OS.Environment;
@@ -19,6 +21,13 @@ namespace gamevault.Android
     /// <summary>The Android side of <see cref="IMobilePlatform"/>: the shared storage, the browser, RetroArch for Android (installed from libretro's builds).</summary>
     internal sealed class AndroidPlatform(MainActivity activity) : IMobilePlatform
     {
+        /// <summary>The cores of the app's own player: the consoles drawn without the GPU.</summary>
+        private static readonly HashSet<string> BuiltInCores = new() { "mesen", "snes9x", "mgba", "melondsds", "swanstation", "fbneo" };
+
+        private Retro.Gamepads? gamepads;
+        private Retro.RetroPlayer? player;
+        private Retro.RetroPlayerView? playerView;
+
         /// <summary>RetroArch's packages: 64-bit (retroarch.com, F-Droid), the Play Store's, 32-bit.</summary>
         private static readonly string[] RetroArchPackages = { "com.retroarch.aarch64", "com.retroarch", "com.retroarch.ra32" };
         private const string RetroArchActivity = "com.retroarch.browser.retroactivity.RetroActivityFuture";
@@ -134,6 +143,118 @@ namespace gamevault.Android
             return StartAndWaitAsync(intent);
         }
 
+        public bool PlaysBuiltIn(string core) => BuiltInCores.Contains(core);
+
+        private static string Abi => System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture switch
+        {
+            System.Runtime.InteropServices.Architecture.X64 => "x86_64",
+            System.Runtime.InteropServices.Architecture.Arm => "armeabi-v7a",
+            _ => "arm64-v8a",
+        };
+
+        private string CoreFile(string core) => Path.Combine(activity.FilesDir!.AbsolutePath, "cores", Abi, $"{core}_libretro_android.so");
+
+        public async Task EnsureCoreAsync(string core, Action<string> status)
+        {
+            string file = CoreFile(core);
+            if (File.Exists(file))
+                return;
+            status(Loc.T("Downloading the emulator..."));
+            string folder = Path.GetDirectoryName(file)!;
+            Directory.CreateDirectory(folder);
+            string zip = file + ".zip";
+            await RetroArchManager.DownloadAsync($"https://buildbot.libretro.com/nightly/android/latest/{Abi}/{core}_libretro_android.so.zip", zip,
+                done => status(Loc.F("Downloading the emulator... {0:0}%", done * 100)));
+            await Task.Run(() =>
+            {
+                using (var archive = System.IO.Compression.ZipFile.OpenRead(zip))
+                    archive.GetEntry(Path.GetFileName(file))!.ExtractToFile(file + ".part", true);
+                File.Move(file + ".part", file, true);
+                File.Delete(zip);
+            });
+        }
+
+        public async Task PlayBuiltInAsync(BuiltInGame game)
+        {
+            gamepads ??= CreateGamepads();
+            gamepads.Reset();
+            var started = new Retro.RetroPlayer(game, CoreFile(game.Core));
+            player = started;
+            var view = new Retro.RetroPlayerView(started, game.Platform, game.Name);
+            playerView = view;
+            view.ShowTouchPad(!gamepads.Any);
+            view.Quit += () => started.Stop();
+            started.QuitRequested += () => Avalonia.Threading.Dispatcher.UIThread.Post(() => started.Stop());
+            App.Instance.OverScreen = view;
+            Immersive(true);
+            gamepads.Player = started;
+            try
+            {
+                if (!await started.StartAsync())
+                    throw new InvalidOperationException(Loc.F("The game could not be started: {0}", started.Error));
+                await started.Completion;
+            }
+            finally
+            {
+                gamepads.Player = null;
+                player = null;
+                playerView = null;
+                App.Instance.OverScreen = null;
+                Immersive(false);
+            }
+        }
+
+        private Retro.Gamepads CreateGamepads()
+        {
+            var created = new Retro.Gamepads(activity);
+            created.PresenceChanged += any => Avalonia.Threading.Dispatcher.UIThread.Post(() => playerView?.ShowTouchPad(!any));
+            created.ControllerUsed += () => Avalonia.Threading.Dispatcher.UIThread.Post(() => playerView?.ShowTouchPad(false));
+            return created;
+        }
+
+        /// <summary>The game takes the whole screen (no status or navigation bar), the screen stays on.</summary>
+        private void Immersive(bool on)
+        {
+            try
+            {
+                var window = activity.Window!;
+                if (on)
+                    window.AddFlags(global::Android.Views.WindowManagerFlags.KeepScreenOn);
+                else
+                    window.ClearFlags(global::Android.Views.WindowManagerFlags.KeepScreenOn);
+                if (Build.VERSION.SdkInt >= BuildVersionCodes.R && window.InsetsController is global::Android.Views.IWindowInsetsController insets)
+                {
+                    if (on)
+                    {
+                        insets.Hide(global::Android.Views.WindowInsets.Type.SystemBars());
+                        insets.SystemBarsBehavior = (int)global::Android.Views.WindowInsetsControllerBehavior.ShowTransientBarsBySwipe;
+                    }
+                    else
+                        insets.Show(global::Android.Views.WindowInsets.Type.SystemBars());
+                }
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        /// <summary>A controller's button: the game's while one is played (or its menu's while open).</summary>
+        public bool OnKey(global::Android.Views.KeyEvent e)
+        {
+            if (player == null || gamepads == null)
+                return false;
+            if (playerView?.IsMenuOpen == true)
+            {
+                if (e.Action == global::Android.Views.KeyEventActions.Down && Retro.Gamepads.MenuButtonOf(e.KeyCode) is int button)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => playerView?.MenuButtonPressed(button));
+                    return true;
+                }
+                return false;
+            }
+            return gamepads.OnKey(e);
+        }
+
+        public bool OnMotion(global::Android.Views.MotionEvent e) => player != null && playerView?.IsMenuOpen != true && gamepads != null && gamepads.OnMotion(e);
+
         /// <summary>Another app's page, until SanctuaryVault is back on the screen.</summary>
         private Task StartAndWaitAsync(Intent intent)
         {
@@ -147,6 +268,7 @@ namespace gamevault.Android
         /// <summary>SanctuaryVault left the screen: for the app that was started.</summary>
         public void Paused()
         {
+            player?.Pause(true);
             if (away != null)
                 left = true;
         }
@@ -154,6 +276,8 @@ namespace gamevault.Android
         /// <summary>Back on the screen: the game was quit, the installer or the settings page closed.</summary>
         public void Resumed()
         {
+            if (player != null && playerView?.IsMenuOpen != true)
+                player.Pause(false);
             if (away == null || !left)
                 return;
             var done = away;
