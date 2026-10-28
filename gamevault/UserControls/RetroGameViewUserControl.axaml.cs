@@ -31,9 +31,11 @@ namespace gamevault.UserControls
             InitializeComponent();
             ViewModel = new RetroGameViewModel(game);
             DataContext = ViewModel;
-            // Android: no file manager, and not the PC's RetroArch (its own player, its touch pad)
+            // Android: no file manager, and not the PC's RetroArch (its own player, its touch pad). Removed, not hidden:
+            // their visibility is bound
             if (PlatformInfo.IsAndroid)
-                uiOpenFolder.IsVisible = uiRetroArchMenu.IsVisible = false;
+                foreach (Control link in new Control[] { uiOpenFolder, uiRetroArchMenu })
+                    (link.Parent as Panel)?.Children.Remove(link);
             _ = game.CoverImage;// asks for it when the page opens from elsewhere
             uiFixMatch.IsVisible = LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN;
             KeyDown += (_, e) =>

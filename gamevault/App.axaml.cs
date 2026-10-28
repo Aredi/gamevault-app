@@ -61,6 +61,12 @@ namespace gamevault
         /// <summary>The Android app (one screen): what is the PC's window elsewhere is there.</summary>
         public bool IsSingleView => SingleView != null;
 
+        /// <summary>
+        /// Android: the room the status and navigation bars (and a camera's notch) take, kept free by the pages; a game
+        /// takes the whole screen.
+        /// </summary>
+        public void SetSafeArea(Thickness padding) => singleViewShell.Margin = padding;
+
         /// <summary>Android: a full screen view over the pages (a game), or none.</summary>
         public Control? OverScreen
         {

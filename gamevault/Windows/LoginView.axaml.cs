@@ -93,7 +93,9 @@ namespace gamevault.Windows
             if (loaded)
                 return;
             loaded = true;
-            ViewModel.RememberMe = Preferences.Get(AppConfigKey.LoginRememberMe, ProfileManager.ProfileConfigFile) == "1";
+            // Android: remembered unless unticked (a phone opens the app often)
+            string remember = Preferences.Get(AppConfigKey.LoginRememberMe, ProfileManager.ProfileConfigFile);
+            ViewModel.RememberMe = remember == "1" || (remember == "" && PlatformInfo.IsAndroid);
             try
             {
                 string result = Preferences.Get(AppConfigKey.AdditionalRequestHeaders, ProfileManager.ProfileConfigFile);

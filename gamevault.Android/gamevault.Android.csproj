@@ -20,6 +20,10 @@
 		<Version>1.40.0</Version>
 		<Product>SanctuaryVault</Product>
 		<AndroidPackageFormat>apk</AndroidPackageFormat>
+		<!-- .NET's own HTTP (SocketsHttpHandler), not Android's: closing a download's connection that was not read to its
+		     end reads the rest on the calling thread, and Android stops that on the UI thread (NetworkOnMainThreadException,
+		     shown as "Java.Lang.RuntimeException" at the end of a download in several parts) -->
+		<UseNativeHttpHandler>false</UseNativeHttpHandler>
 		<RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
 		<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
 		<!-- The views bind by reflection (compiled bindings are off): no trimming of the app's own types -->

@@ -26,6 +26,23 @@ namespace gamevault.Android
             base.OnCreate(savedInstanceState);
             if (!platform.HasStorageAccess)
                 platform.RequestStorageAccess();
+            // Android draws the app behind its bars: their room, in the app's units, each time the layout changes
+            Window!.DecorView.ViewTreeObserver!.GlobalLayout += (_, _) => ApplySafeArea();
+        }
+
+        private Avalonia.Thickness safeArea;
+        private void ApplySafeArea()
+        {
+            var insets = Window?.DecorView.RootWindowInsets;
+            if (insets == null || Build.VERSION.SdkInt < BuildVersionCodes.R)
+                return;
+            var bars = insets.GetInsets(global::Android.Views.WindowInsets.Type.SystemBars() | global::Android.Views.WindowInsets.Type.DisplayCutout());
+            double density = Resources!.DisplayMetrics!.Density;
+            var padding = new Avalonia.Thickness(bars.Left / density, bars.Top / density, bars.Right / density, bars.Bottom / density);
+            if (padding == safeArea)
+                return;
+            safeArea = padding;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => App.Instance.SetSafeArea(padding));
         }
 
         /// <summary>A controller's buttons and sticks go to the game being played.</summary>
