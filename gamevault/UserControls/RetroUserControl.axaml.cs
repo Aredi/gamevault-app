@@ -36,6 +36,7 @@ namespace gamevault.UserControls
             {
                 Focus();
                 _ = EnsureLoadedAsync();
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => RebuildGridIfEmpty(), Avalonia.Threading.DispatcherPriority.Background);
             };
             KeyDown += Page_KeyDown;
             ViewModel.PropertyChanged += (_, e) =>
@@ -43,13 +44,35 @@ namespace gamevault.UserControls
                 // Another list (platform, search, filter, sort) starts at the top. Below it, the grid measures its cards with
                 // an old card, which it then leaves drawn where it was, at its old size, over the others (ItemsRepeater 11.1)
                 if (e.PropertyName == nameof(RetroViewModel.Games))
+                {
                     uiScroll.Offset = default;
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => RebuildGridIfEmpty(), Avalonia.Threading.DispatcherPriority.Background);
+                }
                 // As the collections' list: new items, the chosen one set back
                 else if (e.PropertyName == nameof(RetroViewModel.Genres))
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => uiGenres.SelectedIndex = ViewModel.Genre);
                 else if (e.PropertyName == nameof(RetroViewModel.Decades))
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => uiDecades.SelectedIndex = ViewModel.Decade);
             };
+        }
+
+        /// <summary>
+        /// On Windows the grid was seen with all its games yet no height (only Continue playing shown), and a new list did not
+        /// bring it back: a new layout, which forgets the card size the old one kept.
+        /// </summary>
+        /// <returns>True when the grid was rebuilt.</returns>
+        internal bool RebuildGridIfEmpty(bool force = false)
+        {
+            if (!force && (VisualRoot == null || ViewModel.Games.Count == 0 || uiGames.Bounds.Height >= 1))
+                return false;
+            var old = (UniformGridLayout)uiGames.Layout!;
+            Log.Info($"Retro grid empty with {ViewModel.Games.Count} games (grid {uiGames.Bounds}, viewport {uiScroll.Viewport}, cards {old.MinItemWidth}x{old.MinItemHeight}): layout rebuilt");
+            uiGames.Layout = new UniformGridLayout
+            {
+                ItemsStretch = old.ItemsStretch, MinItemWidth = old.MinItemWidth, MinItemHeight = old.MinItemHeight,
+                MinRowSpacing = old.MinRowSpacing, MinColumnSpacing = old.MinColumnSpacing,
+            };
+            return true;
         }
 
         /// <summary>A list whose items change loses its selection (Avalonia does not take the bound index again): set back.</summary>
