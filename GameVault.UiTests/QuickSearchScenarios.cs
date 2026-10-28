@@ -12,12 +12,12 @@ namespace GameVault.UiTests
     {
         private static QuickSearchUserControl Open(TestSession session)
         {
-            var existing = session.Window.FindControl<QuickSearchUserControl>("uiQuickSearch")!;
+            var existing = session.Window.View.FindControl<QuickSearchUserControl>("uiQuickSearch")!;
             if (existing.IsVisible)
                 existing.Close();
             session.Window.KeyPressQwerty(PhysicalKey.K, RawInputModifiers.Control);
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            var search = session.Window.FindControl<QuickSearchUserControl>("uiQuickSearch")!;
+            var search = session.Window.View.FindControl<QuickSearchUserControl>("uiQuickSearch")!;
             Assert.True(search.IsVisible, "Ctrl+K opens the quick search");
             return search;
         }

@@ -1666,5 +1666,11 @@
   "Problem reports ({0} open)": "Signalements ({0} en attente)",
   "Problem reports are not available on this server.": "Les signalements ne sont pas disponibles sur ce serveur.",
   "You already have many open reports: wait for some to be handled.": "Tu as déjà beaucoup de signalements en attente : attends que certains soient traités.",
-  "This report no longer exists.": "Ce signalement n'existe plus."
+  "This report no longer exists.": "Ce signalement n'existe plus.",
+  "SanctuaryVault stopped after an error.": "SanctuaryVault s'est arrêté après une erreur.",
+  "This game is a .7z archive: Android unpacks .zip games only for now.": "Ce jeu est une archive .7z : pour l'instant, Android ne décompresse que les jeux en .zip.",
+  "{0} games are not playable on Android yet.": "Les jeux {0} ne se jouent pas encore sur Android.",
+  "Playing in RetroArch": "En jeu dans RetroArch",
+  "Install RetroArch for Android (retroarch.com or F-Droid) to play the retro games.": "Installe RetroArch pour Android (retroarch.com ou F-Droid) pour jouer aux jeux rétro.",
+  "Allow SanctuaryVault to access the files, so that RetroArch reads the game.": "Autorise SanctuaryVault à accéder aux fichiers, pour que RetroArch puisse lire le jeu."
 }

@@ -368,3 +368,5 @@ FodyWeavers.xsd
 
 # Generated Stuff
 Generated/
+# The Android APKs of packaging/android/make-apk.sh
+packaging/android/out/

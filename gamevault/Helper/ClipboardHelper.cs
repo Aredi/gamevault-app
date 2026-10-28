@@ -9,7 +9,7 @@ namespace gamevault.Helper
         {
             try
             {
-                var clipboard = (App.Instance.MainWindow ?? App.Instance.ActiveWindow)?.Clipboard;
+                var clipboard = App.Instance.Root?.Clipboard;
                 if (clipboard != null)
                     await clipboard.SetTextAsync(text ?? "");
             }

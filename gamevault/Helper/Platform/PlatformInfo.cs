@@ -13,6 +13,10 @@ namespace gamevault.Helper.Platform
         public static bool IsLinux => OperatingSystem.IsLinux();
         /// <summary>The Mac's version: the retro games only (its PC games are Windows', the LAN rooms are theirs).</summary>
         public static bool IsMac => OperatingSystem.IsMacOS();
+        /// <summary>The Android app: the retro games only too, played in RetroArch for Android.</summary>
+        public static bool IsAndroid => OperatingSystem.IsAndroid();
+        /// <summary>The library's PC games and the LAN rooms: Windows and Linux only.</summary>
+        public static bool PlaysPcGames => !IsMac && !IsAndroid;
         /// <summary>The shortcuts' key: ⌘ on a Mac, Ctrl elsewhere.</summary>
         public static Avalonia.Input.KeyModifiers CommandKey => IsMac ? Avalonia.Input.KeyModifiers.Meta : Avalonia.Input.KeyModifiers.Control;
         /// <summary>The quick search's shortcut, as the sidebar and the search show it.</summary>
@@ -141,6 +145,11 @@ namespace gamevault.Helper.Platform
 
         private static void Open(string target)
         {
+            if (MobilePlatform.Current is IMobilePlatform mobile)
+            {
+                mobile.Open(target);
+                return;
+            }
             try
             {
                 if (IsLinux)

@@ -83,13 +83,20 @@ namespace gamevault.ViewModels
 
             string rootDirectoriesString = Preferences.Get(AppConfigKey.RootDirectories, userConfigFile);
             RootDirectories = string.IsNullOrWhiteSpace(rootDirectoriesString) ? null! : new ObservableCollection<DirectoryEntry>(rootDirectoriesString.Split(';').Select(part => new DirectoryEntry { Uri = part }).ToList());
+            // Android: the games' folder of the shared storage, where RetroArch finds them
+            if (RootDirectories == null && MobilePlatform.Current is IMobilePlatform mobile)
+            {
+                RootDirectories = new ObservableCollection<DirectoryEntry> { new DirectoryEntry { Uri = mobile.GamesDirectory } };
+                Preferences.Set(AppConfigKey.RootDirectories, mobile.GamesDirectory, userConfigFile);
+            }
 
             string showMappedTitleString = Preferences.Get(AppConfigKey.ShowMappedTitle, userConfigFile);
             showMappedTitle = showMappedTitleString == "1" || showMappedTitleString == "";
             //Setting the private members to avoid writing to the user config file over and over again
             m_BackgroundStart = (Preferences.Get(AppConfigKey.BackgroundStart, userConfigFile) == "1"); OnPropertyChanged(nameof(BackgroundStart));
             notifyNewGames = Preferences.Get(AppConfigKey.NotifyNewGames, userConfigFile) != "0"; OnPropertyChanged(nameof(NotifyNewGames));
-            askInstallLocation = Preferences.Get(AppConfigKey.AskInstallLocation, userConfigFile) != "0"; OnPropertyChanged(nameof(AskInstallLocation));
+            // Android has one games' folder: not asked each time
+            askInstallLocation = PlatformInfo.IsAndroid ? Preferences.Get(AppConfigKey.AskInstallLocation, userConfigFile) == "1" : Preferences.Get(AppConfigKey.AskInstallLocation, userConfigFile) != "0"; OnPropertyChanged(nameof(AskInstallLocation));
             maxConcurrentDownloads = int.TryParse(Preferences.Get(AppConfigKey.MaxConcurrentDownloads, userConfigFile), out int maxDownloads) ? Math.Clamp(maxDownloads, 0, 10) : 0;
             downloadConnections = int.TryParse(Preferences.Get(AppConfigKey.DownloadConnections, userConfigFile), out int connections) ? Math.Clamp(connections, 1, 8) : 4;
             OnPropertyChanged(nameof(DownloadConnectionsIndex));
@@ -570,7 +577,7 @@ namespace gamevault.ViewModels
             }
         }
         /// <summary>The Mac's version plays the retro games only: its PC games are Windows'.</summary>
-        public bool PlaysPcGames => !PlatformInfo.IsMac;
+        public bool PlaysPcGames => PlatformInfo.PlaysPcGames;
         #region Linux
         public bool IsLinux => OperatingSystem.IsLinux();
 

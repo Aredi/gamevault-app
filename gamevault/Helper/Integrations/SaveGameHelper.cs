@@ -320,7 +320,7 @@ namespace gamevault.Helper.Integrations
 
         private static async Task<MessageDialogResult> Ask(string message, string title, MessageDialogStyle style, MetroDialogSettings settings)
         {
-            var window = App.Instance.MainWindow;
+            var window = App.Instance.Root;
             if (window == null)
                 return MessageDialogResult.Affirmative;
             return await Dispatcher.UIThread.InvokeAsync(() => window.ShowMessageAsync(title, message, style, settings));

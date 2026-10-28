@@ -22,7 +22,7 @@ namespace gamevault.Helper
                 {
                     Size Read()
                     {
-                        var screens = App.Instance.ActiveWindow?.Screens;
+                        var screens = (App.Instance.ActiveWindow ?? App.Instance.Root)?.Screens;
                         var primary = screens?.Primary;
                         if (primary == null)
                             return size;

@@ -44,6 +44,11 @@ namespace gamevault.Helper
                 game.Status = Loc.T("An update or a DLC is not started: Eden takes it when its game is played.");
                 return;
             }
+            if (Platform.MobilePlatform.Current is Platform.IMobilePlatform mobile)
+            {
+                await PlayOnAndroidAsync(mobile, game, rom);
+                return;
+            }
             game.Busy = true;
             try
             {
@@ -75,6 +80,56 @@ namespace gamevault.Helper
                 game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
                 game.Busy = false;
             }
+        }
+
+        /// <summary>
+        /// The libretro core of RetroArch for Android, or null when the console has none there (PS2, PS3, Switch, Xbox:
+        /// their emulators are other apps).
+        /// </summary>
+        internal static string? AndroidCore(RetroSystem system) => system.Core switch
+        {
+            "pcsx2" or "rpcs3" or "eden" or "xemu" => null,
+            // Azahar is the PC's: RetroArch for Android has Citra, its origin
+            "azahar" => "citra",
+            string core => core,
+        };
+
+        /// <summary>
+        /// Android: RetroArch for Android (installed by the player, with the core), until SanctuaryVault is back on the
+        /// screen. The play time is counted; the saves stay in RetroArch's folders for now.
+        /// </summary>
+        private static async Task PlayOnAndroidAsync(Platform.IMobilePlatform mobile, RetroGame game, string rom)
+        {
+            if (AndroidCore(game.Platform.System) is not string core)
+            {
+                game.Status = Loc.F("{0} games are not playable on Android yet.", game.Platform.Name);
+                return;
+            }
+            if (mobile.CannotPlay(core) is string why)
+            {
+                game.Status = why;
+                return;
+            }
+            game.Busy = true;
+            try
+            {
+                game.Status = Loc.T("Playing in RetroArch");
+                DateTime started = DateTime.UtcNow;
+                await mobile.PlayAsync(core, rom);
+                await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
+                if (RommAccount.IsLinked)
+                {
+                    try { await RommAccount.PlayedAsync(game.Id); }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
+                game.Status = "";
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
+            }
+            finally { game.Busy = false; }
         }
 
         /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then its time counted and its saves sent.</summary>

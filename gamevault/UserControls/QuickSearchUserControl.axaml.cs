@@ -215,7 +215,7 @@ namespace gamevault.UserControls
                 Run = () => MainWindowViewModel.Instance.SetActiveControl(page),
             };
             // The Mac's version has no PC library (its games are Windows'), nor LAN rooms
-            bool pc = !Helper.Platform.PlatformInfo.IsMac;
+            bool pc = Helper.Platform.PlatformInfo.PlaysPcGames;
             if (pc)
                 yield return Page("Library", "IconNavLibrary", MainControl.Library);
             yield return Page("Retro", "IconNavRetro", MainControl.Retro, "The games of the other platforms");

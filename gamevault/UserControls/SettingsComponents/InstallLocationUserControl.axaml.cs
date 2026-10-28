@@ -47,7 +47,7 @@ namespace gamevault.UserControls
             // Attached rather than Loaded: started without a visible window (command line), nobody can answer
             AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(() =>
             {
-                if (App.Instance.MainWindow.IsVisible == false && Rows.Count > 0 && movingFrom == null)
+                if (App.Instance.MainWindow?.IsVisible == false && Rows.Count > 0 && movingFrom == null)
                     Choose(DefaultLocation());
                 else
                     Focus();

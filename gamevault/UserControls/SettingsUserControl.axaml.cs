@@ -162,14 +162,7 @@ namespace gamevault.UserControls
             SwitchToLoginWindow();
             ((Control)sender).IsEnabled = true;
         }
-        private static void SwitchToLoginWindow()
-        {
-            var mainWindow = (MainWindow)App.Instance.MainWindow!;
-            var loginWindow = new LoginWindow(true);
-            App.Instance.MainWindow = loginWindow;
-            loginWindow.Show();
-            mainWindow.Dispose();
-        }
+        private static void SwitchToLoginWindow() => App.Instance.OpenLoginView();
         private async void Logout_Click(object sender, RoutedEventArgs e)
         {
             ((Control)sender).IsEnabled = false;

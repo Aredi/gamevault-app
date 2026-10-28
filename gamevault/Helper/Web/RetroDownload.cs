@@ -298,6 +298,16 @@ namespace gamevault.Helper
             if ((Game.Multi || Game.Platform.System.IsStandalone) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z")
             {
                 // A game in several files (a CD and its tracks, a PS3 game's folder): RomM sends them zipped; a PS3 ISO or a Switch card may be zipped too
+                if (Helper.Platform.PlatformInfo.IsAndroid)
+                {
+                    // No 7-Zip on Android: .NET's own zip reader
+                    if (!string.Equals(Path.GetExtension(downloaded), ".zip", StringComparison.OrdinalIgnoreCase))
+                        throw new IOException(Loc.T("This game is a .7z archive: Android unpacks .zip games only for now."));
+                    State = Loc.F("Unpacking... {0}%", 0);
+                    await Task.Run(() => System.IO.Compression.ZipFile.ExtractToDirectory(downloaded, Folder, overwriteFiles: true));
+                    File.Delete(downloaded);
+                    return;
+                }
                 var sevenZip = new SevenZipHelper();
                 sevenZip.Process += (_, e) => Preparing(Loc.F("Unpacking... {0}%", e.PercentageDone));
                 State = Loc.F("Unpacking... {0}%", 0);

@@ -31,6 +31,9 @@ namespace gamevault
         private bool handlingFatalError;
 
         private IClassicDesktopStyleApplicationLifetime? Desktop => ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+        /// <summary>Android: one screen, no windows. The login view, then the main view, fill it.</summary>
+        private ISingleViewApplicationLifetime? SingleView => ApplicationLifetime as ISingleViewApplicationLifetime;
+        private readonly ContentControl singleViewShell = new ContentControl();
 
         /// <summary>
         /// The main GameVault window once a profile is logged in, otherwise the login window.
@@ -49,6 +52,12 @@ namespace gamevault
         private Window? mainWindow;
 
         public Window? ActiveWindow => Desktop?.Windows.FirstOrDefault(w => w.IsActive) ?? Desktop?.Windows.FirstOrDefault(w => w.IsVisible);
+
+        /// <summary>Where dialogs, pickers and the clipboard are: the main window, another window, or the Android screen.</summary>
+        public TopLevel? Root => MainWindow as TopLevel ?? ActiveWindow ?? (SingleView != null ? TopLevel.GetTopLevel(singleViewShell) : null);
+
+        /// <summary>The Android app (one screen): what is the PC's window elsewhere is there.</summary>
+        public bool IsSingleView => SingleView != null;
 
         public override void Initialize()
         {
@@ -87,6 +96,11 @@ namespace gamevault
                 Desktop.Exit += (_, _) => trayIcon?.Dispose();
                 Dispatcher.UIThread.Post(async () => await StartupAsync());
             }
+            else if (SingleView != null)
+            {
+                SingleView.MainView = singleViewShell;
+                Dispatcher.UIThread.Post(async () => await StartupSingleViewAsync());
+            }
             base.OnFrameworkInitializationCompleted();
         }
 
@@ -119,6 +133,60 @@ namespace gamevault
             }
         }
 
+        private async Task StartupSingleViewAsync()
+        {
+            try
+            {
+                var login = new LoginView();
+                singleViewShell.Content = FitLogin(login);
+                await login.Completion;
+            }
+            catch (Exception ex) { LogUnhandledException(ex); }
+        }
+
+        /// <summary>
+        /// The pages once signed in: a new main window on a PC (its visibility at the first start is the protocol
+        /// handler's), the screen of the Android app.
+        /// </summary>
+        public void OpenMainView()
+        {
+            if (SingleView != null)
+            {
+                singleViewShell.Content = new MainView();
+                return;
+            }
+            var mainWindow = new MainWindow();
+            MainWindow = mainWindow;
+            if (PipeServiceHandler.Instance?.IsAppStartup != true && !SettingsViewModel.Instance.BackgroundStart)
+                mainWindow.Show();
+        }
+
+        /// <summary>The login pages are made for the PC's 720×500 window: scaled down to a phone's screen.</summary>
+        private static Control FitLogin(LoginView login)
+        {
+            login.Width = 720;
+            login.Height = 500;
+            var frame = new Border { Child = new Viewbox { Child = login, StretchDirection = Avalonia.Media.StretchDirection.DownOnly } };
+            frame.Bind(Border.BackgroundProperty, frame.GetResourceObservable("Brush.Background2"));
+            return frame;
+        }
+
+        /// <summary>Back to the profiles (sign-out, another profile): the main view is disposed.</summary>
+        public void OpenLoginView()
+        {
+            if (SingleView != null)
+            {
+                (singleViewShell.Content as MainView)?.Dispose();
+                singleViewShell.Content = FitLogin(new LoginView(true));
+                return;
+            }
+            var mainWindow = (MainWindow)MainWindow!;
+            var loginWindow = new LoginWindow(true);
+            MainWindow = loginWindow;
+            loginWindow.Show();
+            mainWindow.Dispose();
+        }
+
         public void LogUnhandledException(Exception e)
         {
             if (handlingFatalError)
@@ -135,6 +203,12 @@ namespace gamevault
             catch (Exception ignored) { Log.Ignored(ignored); }
             Log.Error(e, "Unhandled exception");
 
+            if (SingleView != null)
+            {
+                // No second window on Android: the message takes the screen
+                singleViewShell.Content = new SelectableTextBlock { Text = Loc.T("SanctuaryVault stopped after an error.") + "\n\n" + e, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(24) };
+                return;
+            }
             var exceptionWindow = new ExceptionWindow();
             exceptionWindow.Closed += (_, _) => ShutdownApp();
             exceptionWindow.Show();
@@ -247,6 +321,8 @@ namespace gamevault
 
         public bool IsWindowActiveAndControlInFocus(MainControl control)
         {
+            if (SingleView != null)
+                return MainWindowViewModel.Instance.ActiveControlIndex == (int)control;
             if (MainWindow == null)
                 return false;
 

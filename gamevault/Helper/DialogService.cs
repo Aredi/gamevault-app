@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using gamevault.UserControls;
 using gamevault.Localization;
 using System;
@@ -50,14 +51,14 @@ namespace gamevault.Helper
     /// </summary>
     public static class DialogService
     {
-        public static Task<MessageDialogResult> ShowMessageAsync(this Window? window, string title, string message,
+        public static Task<MessageDialogResult> ShowMessageAsync(this Visual? window, string title, string message,
             MessageDialogStyle style = MessageDialogStyle.Affirmative, MetroDialogSettings? settings = null)
         {
             return Run(window, title, message, style, settings ?? new MetroDialogSettings(), input: false)
                 .ContinueWith(t => t.Result.Result, TaskScheduler.Default);
         }
 
-        public static async Task<string?> ShowInputAsync(this Window? window, string title, string message, MetroDialogSettings? settings = null)
+        public static async Task<string?> ShowInputAsync(this Visual? window, string title, string message, MetroDialogSettings? settings = null)
         {
             settings ??= new MetroDialogSettings();
             var result = await Run(window, title, message, MessageDialogStyle.AffirmativeAndNegative, settings, input: true);
@@ -69,7 +70,7 @@ namespace gamevault.Helper
         /// </summary>
         public static Task ShowInfoAsync(string message, string title = "")
         {
-            return ShowMessageAsync(App.Instance.MainWindow ?? App.Instance.ActiveWindow, title, message);
+            return ShowMessageAsync(App.Instance.Root, title, message);
         }
 
         /// <summary>
@@ -77,14 +78,14 @@ namespace gamevault.Helper
         /// </summary>
         public static async Task<bool> ConfirmAsync(string message, string title = "", string yes = "Yes", string no = "No")
         {
-            var result = await ShowMessageAsync(App.Instance.MainWindow ?? App.Instance.ActiveWindow, title, message,
+            var result = await ShowMessageAsync(App.Instance.Root, title, message,
                 MessageDialogStyle.AffirmativeAndNegative, new MetroDialogSettings { AffirmativeButtonText = yes, NegativeButtonText = no });
             return result == MessageDialogResult.Affirmative;
         }
 
         private record DialogOutcome(MessageDialogResult Result, string? Input);
 
-        private static async Task<DialogOutcome> Run(Window? window, string title, string message, MessageDialogStyle style, MetroDialogSettings settings, bool input)
+        private static async Task<DialogOutcome> Run(Visual? window, string title, string message, MessageDialogStyle style, MetroDialogSettings settings, bool input)
         {
             // Texts of every dialog are translated here (formatted ones arrive translated through Loc.F)
             title = Loc.T(title ?? "");
@@ -106,7 +107,7 @@ namespace gamevault.Helper
             return await await Dispatcher.UIThread.InvokeAsync<Task<DialogOutcome>>(() => ShowCore(window, title, message, style, settings, input));
         }
 
-        private static Task<DialogOutcome> ShowCore(Window? window, string title, string message, MessageDialogStyle style, MetroDialogSettings settings, bool input)
+        private static Task<DialogOutcome> ShowCore(Visual? owner, string title, string message, MessageDialogStyle style, MetroDialogSettings settings, bool input)
         {
             var tcs = new TaskCompletionSource<DialogOutcome>();
 
@@ -156,7 +157,11 @@ namespace gamevault.Helper
                 ZIndex = 1000,
             };
 
-            Panel? layer = window?.IsVisible == true ? window.FindControl<Panel>("DialogLayer") : null;
+            // The window (or the Android screen) of the control the dialog is for, else the app's
+            TopLevel? window = (owner != null ? TopLevel.GetTopLevel(owner) : null) ?? App.Instance.Root;
+            Panel? layer = window?.IsVisible == true
+                ? window.GetVisualDescendants().OfType<Panel>().FirstOrDefault(p => p.Name == "DialogLayer")
+                : null;
             Window? standalone = null;
 
             void Close(MessageDialogResult result)
@@ -204,6 +209,12 @@ namespace gamevault.Helper
                     Close(MessageDialogResult.Affirmative);
             };
 
+            if (layer == null && App.Instance.IsSingleView)
+            {
+                // Android has no other window: the screen is still being built
+                tcs.TrySetResult(new DialogOutcome(MessageDialogResult.Canceled, null));
+                return tcs.Task;
+            }
             if (layer != null)
             {
                 layer.Children.Add(overlay);
@@ -226,8 +237,8 @@ namespace gamevault.Helper
                 {
                     if (e.Key == Key.Escape) Close(MessageDialogResult.Canceled);
                 };
-                if (window != null && window.IsVisible)
-                    standalone.ShowDialog(window);
+                if (window is Window parent && parent.IsVisible)
+                    standalone.ShowDialog(parent);
                 else
                     standalone.Show();
             }

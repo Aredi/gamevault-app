@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<!-- The games go to /storage/emulated/0/SanctuaryVault, where RetroArch can read them -->
+	<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<!-- Android 11+: RetroArch must be visible to be started -->
+	<queries>
+		<package android:name="com.retroarch" />
+		<package android:name="com.retroarch.aarch64" />
+		<package android:name="com.retroarch.ra32" />
+		<intent>
+			<action android:name="android.intent.action.VIEW" />
+			<data android:scheme="https" />
+		</intent>
+	</queries>
+	<application android:label="SanctuaryVault" android:icon="@mipmap/icon" android:requestLegacyExternalStorage="true" android:usesCleartextTraffic="true" />
+</manifest>

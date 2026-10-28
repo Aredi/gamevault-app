@@ -12,7 +12,7 @@ namespace gamevault.Helper
     /// </summary>
     internal static class StorageHelper
     {
-        private static TopLevel? Owner => App.Instance.MainWindow is { IsVisible: true } main ? main : App.Instance.ActiveWindow;
+        private static TopLevel? Owner => App.Instance.MainWindow is { IsVisible: true } main ? main : App.Instance.ActiveWindow ?? App.Instance.Root;
 
         public static async Task<string?> PickFolderAsync(string title, string? startDirectory = null)
         {
