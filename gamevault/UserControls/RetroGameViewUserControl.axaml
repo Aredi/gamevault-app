@@ -213,10 +213,10 @@
                                 <Button Classes="heroLink" Click="Manual_Click" IsVisible="{Binding Game.HasManual}">
                                     <TextBlock Text="{l:T 'Open the manual'}" />
                                 </Button>
-                                <Button Classes="heroLink" Click="OpenFolder_Click" IsVisible="{Binding Game.Installed}">
+                                <Button x:Name="uiOpenFolder" Classes="heroLink" Click="OpenFolder_Click" IsVisible="{Binding Game.Installed}">
                                     <TextBlock Text="{l:T 'Open the game folder'}" />
                                 </Button>
-                                <Button Classes="heroLink" Click="Menu_Click">
+                                <Button x:Name="uiRetroArchMenu" Classes="heroLink" Click="Menu_Click">
                                     <TextBlock Text="{Binding MenuText}" />
                                 </Button>
                                 <Button x:Name="uiFixMatch" Classes="heroLink" Click="FixMatch_Click" IsVisible="False"

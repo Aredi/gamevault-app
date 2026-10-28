@@ -1679,5 +1679,6 @@
   "Quit the game": "Quitter le jeu",
   "Downloading the emulator... {0:0}%": "Téléchargement de l'émulateur... {0:0}%",
   "The game could not be started: {0}": "Le jeu n'a pas pu démarrer : {0}",
-  "Allow SanctuaryVault to access the files (on the page that opens), then press Install again.": "Autorise SanctuaryVault à accéder aux fichiers (sur la page qui s'ouvre), puis appuie de nouveau sur Installer."
+  "Allow SanctuaryVault to access the files (on the page that opens), then press Install again.": "Autorise SanctuaryVault à accéder aux fichiers (sur la page qui s'ouvre), puis appuie de nouveau sur Installer.",
+  "Downloading games...": "Téléchargement de jeux en cours..."
 }

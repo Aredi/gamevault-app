@@ -6,17 +6,20 @@
     <!-- Settings > Retro: RetroArch, the BIOS and the saves of the retro games (styles of the Settings page) -->
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="36,0,28,40" MaxWidth="900" HorizontalAlignment="Left">
-            <TextBlock Classes="h1" Text="RetroArch" />
-            <TextBlock x:Name="uiRetroArch" TextWrapping="Wrap" FontSize="14" />
-            <TextBlock x:Name="uiCores" Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,4,0,0" />
-            <WrapPanel Margin="0,12,0,0">
-                <controls:IconButton Text="{l:T 'Open RetroArch'}" Icon="{StaticResource IconNavSettings}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
-                                     ToolTip.Tip="{l:T 'RetroArch without a game: controls, picture, sound'}" Click="OpenMenu_Click" />
-                <controls:IconButton Text="{l:T 'Reset its settings'}" Icon="{StaticResource IconReload}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
-                                     ToolTip.Tip="{l:T 'Forget the core options and controls changed in RetroArch\&#x27;s menu'}" Click="ResetSettings_Click" />
-                <controls:IconButton x:Name="uiUninstall" Text="{l:T 'Uninstall RetroArch'}" Kind="Danger" Icon="{StaticResource IconTrash}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
-                                     Click="Uninstall_Click" />
-            </WrapPanel>
+            <!-- The PC's RetroArch: not on Android (its own player, and RetroArch for Android) -->
+            <StackPanel x:Name="uiRetroArchSection">
+                <TextBlock Classes="h1" Text="RetroArch" />
+                <TextBlock x:Name="uiRetroArch" TextWrapping="Wrap" FontSize="14" />
+                <TextBlock x:Name="uiCores" Classes="muted" TextWrapping="Wrap" FontSize="13" Margin="0,4,0,0" />
+                <WrapPanel Margin="0,12,0,0">
+                    <controls:IconButton Text="{l:T 'Open RetroArch'}" Icon="{StaticResource IconNavSettings}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
+                                         ToolTip.Tip="{l:T 'RetroArch without a game: controls, picture, sound'}" Click="OpenMenu_Click" />
+                    <controls:IconButton Text="{l:T 'Reset its settings'}" Icon="{StaticResource IconReload}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
+                                         ToolTip.Tip="{l:T 'Forget the core options and controls changed in RetroArch\&#x27;s menu'}" Click="ResetSettings_Click" />
+                    <controls:IconButton x:Name="uiUninstall" Text="{l:T 'Uninstall RetroArch'}" Kind="Danger" Icon="{StaticResource IconTrash}" FontSize="15" IconMargin="0,0,5,2" MinWidth="175" Height="40" Margin="0,0,10,8"
+                                         Click="Uninstall_Click" />
+                </WrapPanel>
+            </StackPanel>
 
             <StackPanel Classes="section">
                 <TextBlock Classes="h1" Text="BIOS" />

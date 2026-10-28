@@ -51,6 +51,8 @@ namespace gamevault.UserControls
         {
             InitializeComponent();
             DataContext = ViewModel;
+            // The PC's RetroArch menu: not on Android
+            uiMenu.IsVisible = !PlatformInfo.IsAndroid;
             ReportProblemPopup.OfferOnRightClick(this);
             AttachedToVisualTree += (_, _) =>
             {

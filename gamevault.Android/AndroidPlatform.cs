@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AndroidEnvironment = Android.OS.Environment;
 using AndroidUri = Android.Net.Uri;
@@ -144,6 +145,42 @@ namespace gamevault.Android
         }
 
         public bool PlaysBuiltIn(string core) => BuiltInCores.Contains(core);
+
+        private int running;
+
+        public IDisposable KeepRunning()
+        {
+            if (Interlocked.Increment(ref running) == 1)
+            {
+                try
+                {
+                    // The notification of the service shows from Android 13 once allowed (asked once; the downloads go on without)
+                    if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+                        && activity.CheckSelfPermission(global::Android.Manifest.Permission.PostNotifications) != Permission.Granted)
+                        activity.RequestPermissions(new[] { global::Android.Manifest.Permission.PostNotifications }, 2);
+                    activity.StartForegroundService(new Intent(activity, typeof(DownloadService)));
+                }
+                catch (Exception ex) { GameVault.Core.Log.Error(ex, "The downloads' service did not start"); }
+            }
+            return new Release(this);
+        }
+
+        private sealed class Release(AndroidPlatform platform) : IDisposable
+        {
+            private int done;
+            public void Dispose()
+            {
+                if (Interlocked.Exchange(ref done, 1) == 1 || Interlocked.Decrement(ref platform.running) > 0)
+                    return;
+                platform.StopDownloadService();
+            }
+        }
+
+        private void StopDownloadService()
+        {
+            try { activity.StopService(new Intent(activity, typeof(DownloadService))); }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
 
         private static string Abi => System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture switch
         {

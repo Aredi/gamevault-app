@@ -45,6 +45,7 @@ namespace gamevault.UserControls.SettingsComponents
         public RetroSettingsUserControl()
         {
             InitializeComponent();
+            uiRetroArchSection.IsVisible = uiControls.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
             AttachedToVisualTree += (_, _) => _ = RefreshAsync();
         }
 

@@ -96,7 +96,8 @@ namespace gamevault.ViewModels
             }
         }
         /// <summary>Played in RetroArch: its page opens Régler mes touches.</summary>
-        public bool HasControls => GameVault.Core.Retro.RetroKeyboard.Of(Game.Platform.Slug).Length > 0;
+        /// <summary>Régler mes touches: the PC's RetroArch's controls (not on Android: its player maps the controllers itself).</summary>
+        public bool HasControls => GameVault.Core.Retro.RetroKeyboard.Of(Game.Platform.Slug).Length > 0 && !Helper.Platform.PlatformInfo.IsAndroid;
         /// <summary>What it is played with: its controller (a console with several), and the buttons set for its console.</summary>
         public string ControlsSummary
         {

@@ -208,6 +208,8 @@ namespace gamevault.Helper
             IsFailed = false;
             IsActive = true;
             State = Loc.T("Downloading...");
+            // Android: the download goes on while another app is on the screen
+            using IDisposable? keepRunning = Helper.Platform.MobilePlatform.Current?.KeepRunning();
             try
             {
                 Directory.CreateDirectory(Folder);
@@ -305,14 +307,15 @@ namespace gamevault.Helper
                         throw new IOException(Loc.T("This game is a .7z archive: Android unpacks .zip games only for now."));
                     State = Loc.F("Unpacking... {0}%", 0);
                     await Task.Run(() => System.IO.Compression.ZipFile.ExtractToDirectory(downloaded, Folder, overwriteFiles: true));
-                    File.Delete(downloaded);
-                    return;
                 }
-                var sevenZip = new SevenZipHelper();
-                sevenZip.Process += (_, e) => Preparing(Loc.F("Unpacking... {0}%", e.PercentageDone));
-                State = Loc.F("Unpacking... {0}%", 0);
-                if (await sevenZip.ExtractArchive(downloaded, Folder) != 0)
-                    throw new IOException(sevenZip.LastError);
+                else
+                {
+                    var sevenZip = new SevenZipHelper();
+                    sevenZip.Process += (_, e) => Preparing(Loc.F("Unpacking... {0}%", e.PercentageDone));
+                    State = Loc.F("Unpacking... {0}%", 0);
+                    if (await sevenZip.ExtractArchive(downloaded, Folder) != 0)
+                        throw new IOException(sevenZip.LastError);
+                }
                 File.Delete(downloaded);
             }
             else if (string.Equals(Path.GetExtension(downloaded), ".cia", StringComparison.OrdinalIgnoreCase))
@@ -349,7 +352,18 @@ namespace gamevault.Helper
                             Preparing(Loc.F("Preparing the Xbox disc... {0}%", shown = percent));
                     }));
                 }
-            await RetroArchManager.EnsureReadyAsync(Game.Platform, Preparing);
+            if (Helper.Platform.MobilePlatform.Current is Helper.Platform.IMobilePlatform mobile)
+            {
+                // Android: the core of the app's own player and the BIOS; RetroArch for Android (GameCube, Wii, 3DS) comes with
+                // the first game, never the PC's RetroArch
+                if (RetroPlay.AndroidCore(Game.Platform.System) is string core && mobile.PlaysBuiltIn(core))
+                {
+                    await mobile.EnsureCoreAsync(core, Preparing);
+                    await RetroArchManager.EnsureSystemFilesAsync(Game.Platform, Preparing);
+                }
+            }
+            else
+                await RetroArchManager.EnsureReadyAsync(Game.Platform, Preparing);
             if (Game.RomFile == null)
                 throw new IOException(Loc.T("None of this game's files can be started by the emulator."));
         }

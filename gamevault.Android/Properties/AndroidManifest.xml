@@ -7,6 +7,9 @@
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<!-- Downloads go on while another app is on the screen -->
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 	<!-- RetroArch for Android, downloaded from libretro, is handed to Android's installer -->
 	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 	<!-- Android 11+: RetroArch must be visible to be started -->

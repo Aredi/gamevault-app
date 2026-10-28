@@ -15,6 +15,11 @@ namespace gamevault.Helper.Platform
         /// <summary>The shared storage may be written ("All files access", asked once).</summary>
         bool HasStorageAccess { get; }
 
+        /// <summary>
+        /// Keeps the app running (and its network) while another app is on the screen, until disposed: the downloads.
+        /// </summary>
+        IDisposable KeepRunning();
+
         /// <summary>Opens Android's page that gives the storage access.</summary>
         void RequestStorageAccess();
 
