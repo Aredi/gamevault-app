@@ -41,6 +41,15 @@ namespace gamevault.UserControls
         public SettingsUserControl()
         {
             InitializeComponent();
+            // A narrow page (a phone): the sections' tabs above, the settings on the whole width
+            SizeChanged += (_, e) =>
+            {
+                bool narrow = e.NewSize.Width > 0 && e.NewSize.Width < 900;
+                uiTabControl.Classes.Set("narrow", narrow);
+                uiTabControl.TabStripPlacement = narrow ? Avalonia.Controls.Dock.Top : Avalonia.Controls.Dock.Left;
+                uiTabControl.Margin = narrow ? new Avalonia.Thickness(20, 0, 0, 0) : new Avalonia.Thickness(28, 0, 0, 0);
+                uiVersion.IsVisible = !narrow;
+            };
             ViewModel = SettingsViewModel.Instance;
             this.DataContext = ViewModel;
             uiForkLink.Tag = AppRepository.ReleasesPage.Replace("/releases", "");

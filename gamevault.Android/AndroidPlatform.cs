@@ -217,6 +217,10 @@ namespace gamevault.Android
         {
             try
             {
+                // A phone: landscape while a game is played. A large screen (a foldable open, a tablet) stays as it is, the
+                // player lays out upright too (asked, Android would show the game in a band across it)
+                if (activity.Resources!.Configuration!.SmallestScreenWidthDp < 600)
+                    activity.RequestedOrientation = on ? global::Android.Content.PM.ScreenOrientation.SensorLandscape : global::Android.Content.PM.ScreenOrientation.Unspecified;
                 var window = activity.Window!;
                 if (on)
                     window.AddFlags(global::Android.Views.WindowManagerFlags.KeepScreenOn);

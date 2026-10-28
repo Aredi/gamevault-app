@@ -41,7 +41,7 @@ namespace gamevault.UserControls
                     Back();
                 }
             };
-            SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width);
+            SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width, e.NewSize.Height);
             RetroLibrary.Changed += LibraryChanged;
             game.PropertyChanged += Game_PropertyChanged;
             DetachedFromVisualTree += (_, _) =>
@@ -189,13 +189,19 @@ namespace gamevault.UserControls
         }
 
         private bool? narrowLayout;
-        /// <summary>As the library's game page: narrow windows stack the columns.</summary>
-        private void ApplyWidth(double width)
+        /// <summary>
+        /// As the library's game page: narrow windows stack the columns. A low screen (a phone in landscape) keeps less of
+        /// the artwork above the title: the buttons stay in sight.
+        /// </summary>
+        private void ApplyWidth(double width, double height)
         {
             bool narrow = width < 1100;
-            uiContent.Margin = narrow ? new Thickness(24, 200, 24, 40) : new Thickness(44, 250, 44, 48);
+            double top = narrow ? 200 : 250;
+            if (height > 0 && height < 700)
+                top = Math.Max(60, height * 0.18);
+            uiContent.Margin = narrow ? new Thickness(24, top, 24, 40) : new Thickness(44, top, 44, 48);
             uiTitle.FontSize = width < 900 ? 32 : narrow ? 40 : 50;
-            uiCoverFrame.Width = narrow ? 160 : 220;
+            uiCoverFrame.Width = width < 700 ? 120 : narrow ? 160 : 220;
             if (narrowLayout == narrow)
                 return;
             narrowLayout = narrow;

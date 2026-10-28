@@ -70,7 +70,9 @@ namespace gamevault.Android.Retro
 
         private void Place(Size size)
         {
-            double w = size.Width, h = size.Height, unit = Math.Min(h, w * 0.6);
+            double w = size.Width, h = size.Height;
+            // Upright: the controls share the bottom under the picture, sized by the width
+            double unit = h > w ? Math.Min(w * 0.75, h * 0.42) : Math.Min(h, w * 0.6);
             var list = new List<Button>();
             cross = new Point(unit * 0.3, h - unit * 0.34);
             crossRadius = unit * 0.2;
@@ -88,7 +90,8 @@ namespace gamevault.Android.Retro
             for (int i = 0; i < shoulders.Length; i++)
             {
                 bool right = i % 2 == 1;
-                double y = unit * (0.1 + 0.15 * (i / 2));
+                // Upright: above the cross and the buttons, under the picture
+                double y = h > w ? h - unit * (0.72 + 0.15 * (i / 2)) : unit * (0.1 + 0.15 * (i / 2));
                 list.Add(new Button(shoulders[i].Label, shoulders[i].Id, right ? w - unit * 0.16 : unit * 0.16, y, unit * 0.065));
             }
             list.Add(new Button("SELECT", RetroPlayer.Select, w / 2 - unit * 0.13, h - unit * 0.07, unit * 0.05));

@@ -397,6 +397,22 @@ namespace gamevault.Helper
                 existing.Watch(game);
                 return null;
             }
+            if (Helper.Platform.MobilePlatform.Current is Helper.Platform.IMobilePlatform mobile)
+            {
+                // Android: the games go to the shared storage, which needs "All files access" (asked once)
+                if (!mobile.HasStorageAccess)
+                {
+                    mobile.RequestStorageAccess();
+                    return Loc.T("Allow SanctuaryVault to access the files (on the page that opens), then press Install again.");
+                }
+                if ((SettingsViewModel.Instance.RootDirectories?.Count ?? 0) == 0)
+                    await SettingsViewModel.Instance.AddRootDirectoryAsync(mobile.GamesDirectory);
+                foreach (var folder in SettingsViewModel.Instance.RootDirectories!)
+                {
+                    try { Directory.CreateDirectory(folder.Uri); }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
+            }
             if ((SettingsViewModel.Instance.RootDirectories?.Count ?? 0) == 0)
                 return Loc.T("No Root Directory configured! Go to ⚙️Settings->Data");
             // A PS3 package is installed into the console with its licence: not done here, told before gigabytes come down

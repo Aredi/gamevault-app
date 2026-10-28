@@ -7,9 +7,9 @@ using gamevault.Helper.Platform;
 
 namespace gamevault.Android
 {
-    /// <summary>SanctuaryVault on Android: the desktop client's views in one screen, in landscape (the pages' layout).</summary>
+    /// <summary>SanctuaryVault on Android: the desktop client's views in one screen, turned as the phone is (a game asks for landscape).</summary>
     [Activity(Label = "SanctuaryVault", Theme = "@style/SanctuaryTheme", Icon = "@mipmap/icon", MainLauncher = true,
-        LaunchMode = LaunchMode.SingleTask, ScreenOrientation = ScreenOrientation.SensorLandscape,
+        LaunchMode = LaunchMode.SingleTask, ScreenOrientation = ScreenOrientation.Unspecified,
         ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode | ConfigChanges.ScreenLayout
             | ConfigChanges.SmallestScreenSize | ConfigChanges.Density | ConfigChanges.Keyboard | ConfigChanges.KeyboardHidden | ConfigChanges.Navigation)]
     public class MainActivity : AvaloniaMainActivity<App>

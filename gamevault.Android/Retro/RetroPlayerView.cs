@@ -222,15 +222,19 @@ namespace gamevault.Android.Retro
         protected override Size ArrangeOverride(Size finalSize)
         {
             lastRatio = player.AspectRatio;
-            // With the touch pad, the picture between its controls (smaller on a phone, nothing under the fingers)
-            double room = pad.ShowButtons ? TouchPad.SideRoom(finalSize) : 0;
+            bool portrait = finalSize.Height > finalSize.Width;
+            // With the touch pad, the picture between its controls (smaller on a phone, nothing under the fingers);
+            // upright, the picture at the top on the whole width, the controls under it
+            double room = pad.ShowButtons && !portrait ? TouchPad.SideRoom(finalSize) : 0;
             double width = Math.Max(0, finalSize.Width - 2 * room), height = width / lastRatio;
-            if (height > finalSize.Height)
+            double maxHeight = pad.ShowButtons && portrait ? finalSize.Height * 0.55 : finalSize.Height;
+            if (height > maxHeight)
             {
-                height = finalSize.Height;
+                height = maxHeight;
                 width = height * lastRatio;
             }
-            picture.Arrange(new Rect((finalSize.Width - width) / 2, (finalSize.Height - height) / 2, width, height));
+            double top = pad.ShowButtons && portrait ? 52 : (finalSize.Height - height) / 2;
+            picture.Arrange(new Rect((finalSize.Width - width) / 2, top, width, height));
             pad.Arrange(new Rect(finalSize));
             menuButton.Arrange(new Rect(finalSize));
             menu.Arrange(new Rect(finalSize));

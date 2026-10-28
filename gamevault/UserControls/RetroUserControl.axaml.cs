@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -27,6 +28,25 @@ namespace gamevault.UserControls
         /// <summary>Each platform's games, asked once (RomM sends megabytes for a big one); Reload asks again.</summary>
         private readonly Dictionary<int, List<RetroGame>> lists = new();
 
+        private bool? narrow;
+        /// <summary>
+        /// A narrow page (a phone, a small window): the platforms on one line that scrolls sideways, the collections and
+        /// the sorting under them, smaller.
+        /// </summary>
+        private void ApplyWidth(double width)
+        {
+            bool isNarrow = width > 0 && width < 900;
+            if (narrow == isNarrow)
+                return;
+            narrow = isNarrow;
+            DockPanel.SetDock(uiSortRow, isNarrow ? Dock.Bottom : Dock.Right);
+            uiSortRow.Margin = new Thickness(0, isNarrow ? 4 : 0, 0, 0);
+            uiChipsScroll.HorizontalScrollBarVisibility = isNarrow ? Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden : Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled;
+            uiSortLabel.IsVisible = !isNarrow;
+            uiCollections.MinWidth = isNarrow ? 130 : 170;
+            uiSort.MinWidth = isNarrow ? 120 : 160;
+        }
+
         public RetroUserControl()
         {
             InitializeComponent();
@@ -39,6 +59,7 @@ namespace gamevault.UserControls
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => RebuildGridIfEmpty(), Avalonia.Threading.DispatcherPriority.Background);
             };
             KeyDown += Page_KeyDown;
+            SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width);
             ViewModel.PropertyChanged += (_, e) =>
             {
                 // Another list (platform, search, filter, sort) starts at the top. Below it, the grid measures its cards with

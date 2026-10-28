@@ -50,8 +50,16 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Platforms, then the filters and the sorting -->
-            <Grid ColumnDefinitions="*,Auto">
+            <!-- Platforms, then the filters and the sorting; a narrow page (a phone) has the platforms on one line that
+                 scrolls, the sorting under them -->
+            <DockPanel x:Name="uiChipsRow">
+                <StackPanel x:Name="uiSortRow" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                    <ComboBox x:Name="uiCollections" MinWidth="170" MaxWidth="260" MinHeight="32" ItemsSource="{Binding Collections}" SelectedIndex="{Binding Collection}"
+                              SelectionChanged="Collections_SelectionChanged" ToolTip.Tip="{l:T 'Collections'}" />
+                    <TextBlock x:Name="uiSortLabel" Classes="muted" Text="{l:T 'Sort by'}" FontSize="13" VerticalAlignment="Center" />
+                    <ComboBox x:Name="uiSort" MinWidth="160" MinHeight="32" ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortBy}" />
+                </StackPanel>
+                <ScrollViewer x:Name="uiChipsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
                 <WrapPanel Classes="chips" Margin="0,0,0,-8">
                     <ToggleButton x:Name="uiAll" Classes="chip" IsChecked="{Binding ShowsAll, Mode=OneWay}" Click="All_Click" Content="{l:T 'All'}" />
                     <ItemsControl x:Name="uiPlatforms" ItemsSource="{Binding Platforms}" Margin="0">
@@ -76,20 +84,15 @@
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyFavorites}" Content="{l:T 'Bookmarks'}" />
                     <ToggleButton Classes="chip" IsChecked="{Binding ShowFilters}" Content="{l:T 'Filters'}" />
                 </WrapPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-                    <ComboBox x:Name="uiCollections" MinWidth="170" MaxWidth="260" MinHeight="32" ItemsSource="{Binding Collections}" SelectedIndex="{Binding Collection}"
-                              SelectionChanged="Collections_SelectionChanged" ToolTip.Tip="{l:T 'Collections'}" />
-                    <TextBlock Classes="muted" Text="{l:T 'Sort by'}" FontSize="13" VerticalAlignment="Center" />
-                    <ComboBox MinWidth="160" MinHeight="32" ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortBy}" />
-                </StackPanel>
-            </Grid>
-            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding ShowFilters}">
+                </ScrollViewer>
+            </DockPanel>
+            <WrapPanel x:Name="uiFilters" Classes="chips" IsVisible="{Binding ShowFilters}">
                 <ComboBox x:Name="uiGenres" MinWidth="170" MinHeight="32" ItemsSource="{Binding Genres}" SelectedIndex="{Binding Genre}" />
                 <ComboBox MinWidth="160" MinHeight="32" ItemsSource="{Binding PlayerOptions}" SelectedIndex="{Binding Players}" />
                 <ComboBox x:Name="uiDecades" MinWidth="140" MinHeight="32" ItemsSource="{Binding Decades}" SelectedIndex="{Binding Decade}" />
                 <ComboBox MinWidth="130" MinHeight="32" ItemsSource="{Binding RatingOptions}" SelectedIndex="{Binding Rating}" />
                 <Button Classes="link" VerticalAlignment="Center" Click="ClearFilters_Click" IsVisible="{Binding HasFilters}" Content="{l:T 'Clear'}" />
-            </StackPanel>
+            </WrapPanel>
         </StackPanel>
 
         <!-- ===== Games ===== -->
