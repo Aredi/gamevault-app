@@ -49,7 +49,7 @@ namespace gamevault.Android.Retro
         {
             "nes" => new[] { ("A", RetroPlayer.A, 0), ("B", RetroPlayer.B, 2) },
             "gba" => new[] { ("A", RetroPlayer.A, 0), ("B", RetroPlayer.B, 2) },
-            "psx" => new[] { ("○", RetroPlayer.A, 0), ("✕", RetroPlayer.B, 1), ("□", RetroPlayer.Y, 2), ("△", RetroPlayer.X, 3) },
+            "psx" or "ps2" => new[] { ("○", RetroPlayer.A, 0), ("✕", RetroPlayer.B, 1), ("□", RetroPlayer.Y, 2), ("△", RetroPlayer.X, 3) },
             // FinalBurn Neo's Neo Geo: A B C D on B A Y X
             "neogeoaes" => new[] { ("B", RetroPlayer.A, 0), ("A", RetroPlayer.B, 1), ("C", RetroPlayer.Y, 2), ("D", RetroPlayer.X, 3) },
             _ => new[] { ("A", RetroPlayer.A, 0), ("B", RetroPlayer.B, 1), ("Y", RetroPlayer.Y, 2), ("X", RetroPlayer.X, 3) },
@@ -58,7 +58,7 @@ namespace gamevault.Android.Retro
         private (string Label, int Id)[] Shoulders => platform switch
         {
             "nes" => Array.Empty<(string, int)>(),
-            "psx" => new[] { ("L1", RetroPlayer.L), ("R1", RetroPlayer.R), ("L2", RetroPlayer.L2), ("R2", RetroPlayer.R2) },
+            "psx" or "ps2" => new[] { ("L1", RetroPlayer.L), ("R1", RetroPlayer.R), ("L2", RetroPlayer.L2), ("R2", RetroPlayer.R2) },
             // Dolphin: the triggers are L2 and R2, Z is R (right, under R)
             "ngc" or "wii" => new[] { ("L", RetroPlayer.L2), ("R", RetroPlayer.R2), ("", -1), ("Z", RetroPlayer.R) },
             _ => new[] { ("L", RetroPlayer.L), ("R", RetroPlayer.R) },

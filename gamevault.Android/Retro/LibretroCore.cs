@@ -68,6 +68,9 @@ namespace gamevault.Android.Retro
         {
             ["dolphin_fastmem"] = "disabled",
             ["dolphin_fastmem_arena"] = "disabled",
+            // Citra: the bottom screen touched on the phone's screen (libretro's pointer), not with a mouse
+            ["citra_touch_touchscreen"] = "enabled",
+            ["citra_mouse_touchscreen"] = "disabled",
         };
         private readonly System.Collections.Generic.Dictionary<string, IntPtr> optionValues = new();
 

@@ -84,13 +84,13 @@ namespace gamevault.Helper
         }
 
         /// <summary>
-        /// The libretro core of RetroArch for Android, or null when the console has none there (PS2, PS3, Switch, Xbox:
-        /// their emulators are other apps).
+        /// The libretro core of Android, or null when the console has none there (PS3, Switch, Xbox: their emulators are
+        /// other programs).
         /// </summary>
         internal static string? AndroidCore(RetroSystem system) => system.Core switch
         {
-            "pcsx2" or "rpcs3" or "eden" or "xemu" => null,
-            // Azahar is the PC's: RetroArch for Android has Citra, its origin
+            "rpcs3" or "eden" or "xemu" => null,
+            // Azahar is the PC's: Android has Citra's core, its origin
             "azahar" => "citra",
             string core => core,
         };
