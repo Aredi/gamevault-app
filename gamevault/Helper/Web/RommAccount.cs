@@ -132,6 +132,8 @@ namespace gamevault.Helper
         /// <returns>Null when linked, else why not.</returns>
         public static async Task<string?> LinkAsync(Action<string, string> showCode, CancellationToken cancellationToken)
         {
+            // Android: the approval is made in the browser; the app waits for it in the background, with its network
+            using IDisposable? keepRunning = Platform.MobilePlatform.Current?.KeepRunning();
             if (await UrlAsync() is not string root)
                 return Loc.T("RomM is not set up on this server.");
             JsonElement init;

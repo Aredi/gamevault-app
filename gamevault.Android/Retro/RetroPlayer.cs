@@ -124,7 +124,10 @@ namespace gamevault.Android.Retro
                         WriteSave();
                         autosave.Restart();
                     }
-                    // The sound sets the pace (its writes wait); without sound, the clock
+                    // The sound sets the pace (its writes wait while its buffer is full): a clock as well would leave it
+                    // without samples now and then, heard as cuts. Without sound, the clock
+                    if (audio != null)
+                        continue;
                     frame++;
                     double ahead = frame / fps - clock.Elapsed.TotalSeconds;
                     if (ahead > 0.002)
@@ -255,8 +258,9 @@ namespace gamevault.Android.Retro
             {
                 int rate = (int)Math.Round(sampleRate > 0 ? sampleRate : 44100);
                 int minimum = AudioTrack.GetMinBufferSize(rate, ChannelOut.Stereo, Encoding.Pcm16bit);
-                // About 80 ms: small enough for the controls to feel right
-                int bytes = Math.Max(minimum, rate / 12 * 4);
+                // About 80 ms: small enough for the controls to feel right; twice for the GPU's consoles, whose pictures
+                // come less evenly (GameCube, Wii)
+                int bytes = Math.Max(minimum * 2, rate / (core?.Gl != null ? 6 : 12) * 4);
                 audio = new AudioTrack.Builder()
                     .SetAudioAttributes(new AudioAttributes.Builder().SetUsage(AudioUsageKind.Game)!.SetContentType(AudioContentType.Music)!.Build()!)!
                     .SetAudioFormat(new AudioFormat.Builder().SetSampleRate(rate)!.SetEncoding(Encoding.Pcm16bit)!.SetChannelMask(ChannelOut.Stereo)!.Build()!)!

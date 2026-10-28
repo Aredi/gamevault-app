@@ -1,6 +1,7 @@
 using GameVault.Core;
 using GameVault.Core.Retro;
 using gamevault.Localization;
+using gamevault.Models;
 using gamevault.ViewModels;
 using System;
 using System.Diagnostics;
@@ -158,6 +159,7 @@ namespace gamevault.Helper
             {
                 await mobile.EnsureCoreAsync(core, text => game.Status = text);
                 await RetroArchManager.EnsureSystemFilesAsync(game.Platform, text => game.Status = text);
+                await OfferRommAsync(game);
                 if (await RetroCloudSaves.TakeAsync(game, text => game.Status = text) is string kept)
                     MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);
                 var saves = RetroCloudSaves.Of(game);
@@ -180,6 +182,32 @@ namespace gamevault.Helper
                 game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
                 game.Busy = false;
             }
+        }
+
+        /// <summary>
+        /// Android, the first retro game: RomM keeps the saves of the other devices when they are linked to it, and this
+        /// phone's profile is new. Linking is offered once (then in Settings > Retro); the page opens in the browser.
+        /// </summary>
+        private static async Task OfferRommAsync(RetroGame game)
+        {
+            try
+            {
+                string config = LoginManager.Instance.GetUserProfile().UserConfigFile;
+                if (RommAccount.IsLinked || Preferences.Get(AppConfigKey.RommOffered, config) == "1" || await RommAccount.UrlAsync() == null)
+                    return;
+                Preferences.Set(AppConfigKey.RommOffered, "1", config);
+                if (!await DialogService.ConfirmAsync(Loc.T("RomM keeps the saves of your retro games. Link your RomM account on this device to find the saves of your other devices here?"),
+                        Loc.T("RomM saves"), Loc.T("Link RomM"), Loc.T("Not now")))
+                    return;
+                using var timeout = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(10));
+                string? failure = await RommAccount.LinkAsync((code, page) =>
+                {
+                    game.Status = Loc.F("Approve the code {0} on RomM's page that opened, then come back", code);
+                    Platform.PlatformInfo.OpenUrl(page);
+                }, timeout.Token);
+                MainWindowViewModel.Instance.AppBarText = failure ?? Loc.F("Linked to RomM as {0}", RommAccount.Username);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then its time counted and its saves sent.</summary>

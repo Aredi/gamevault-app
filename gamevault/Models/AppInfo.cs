@@ -140,7 +140,9 @@ namespace gamevault.Models
         //Navigation bar folded to its icons ("1", profileconfig)
         SidebarFolded,
         //Server news: when they were last opened (the newer ones are counted on the badge)
-        NewsLastSeen
+        NewsLastSeen,
+        //Android: linking RomM was offered at the first retro game ("1", userconfig)
+        RommOffered
     }
     public static class Globals
     {
