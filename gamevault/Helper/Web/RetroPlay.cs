@@ -113,16 +113,26 @@ namespace gamevault.Helper
             game.Busy = true;
             try
             {
+                // The first game installs RetroArch, as on a PC
+                if (!mobile.HasRetroArch && !await mobile.InstallRetroArchAsync(text => game.Status = text))
+                {
+                    game.Status = Loc.T("RetroArch was not installed: Play installs it again.");
+                    return;
+                }
                 game.Status = Loc.T("Playing in RetroArch");
                 DateTime started = DateTime.UtcNow;
                 await mobile.PlayAsync(core, rom);
-                await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
+                TimeSpan played = DateTime.UtcNow - started;
+                await RetroLibrary.RecordPlayAsync(game, (int)Math.Round(played.TotalMinutes));
                 if (RommAccount.IsLinked)
                 {
                     try { await RommAccount.PlayedAsync(game.Id); }
                     catch (Exception ex) { Log.Ignored(ex); }
                 }
-                game.Status = "";
+                // Back at once: most often RetroArch has not the console's core yet (it can not be added from here)
+                game.Status = played < TimeSpan.FromSeconds(10)
+                    ? Loc.F("RetroArch closed at once: if the game did not start, download the core '{0}' in RetroArch (Main Menu > Online Updater > Core Downloader), then press Play again.", core)
+                    : "";
             }
             catch (Exception ex)
             {

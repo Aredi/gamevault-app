@@ -7,6 +7,8 @@
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<!-- RetroArch for Android, downloaded from libretro, is handed to Android's installer -->
+	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 	<!-- Android 11+: RetroArch must be visible to be started -->
 	<queries>
 		<package android:name="com.retroarch" />
@@ -17,5 +19,11 @@
 			<data android:scheme="https" />
 		</intent>
 	</queries>
-	<application android:label="SanctuaryVault" android:icon="@mipmap/icon" android:requestLegacyExternalStorage="true" android:usesCleartextTraffic="true" />
+	<application android:label="SanctuaryVault" android:icon="@mipmap/icon" android:requestLegacyExternalStorage="true" android:usesCleartextTraffic="true">
+		<!-- The downloaded RetroArch APK, read by the installer -->
+		<provider android:name="androidx.core.content.FileProvider" android:authorities="fr.alexisdominguez.sanctuaryvault.fileprovider"
+			android:exported="false" android:grantUriPermissions="true">
+			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+		</provider>
+	</application>
 </manifest>

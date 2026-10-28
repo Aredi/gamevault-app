@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 
 namespace gamevault.Helper.Platform
@@ -20,7 +21,16 @@ namespace gamevault.Helper.Platform
         /// <summary>A web page in the browser, or a downloaded file in its app.</summary>
         void Open(string target);
 
-        /// <summary>Why RetroArch can not start this core (not installed, core missing), or null.</summary>
+        /// <summary>RetroArch for Android is installed.</summary>
+        bool HasRetroArch { get; }
+
+        /// <summary>
+        /// RetroArch for Android downloaded from libretro, then Android's installer (and, the first time, the permission
+        /// to install apps). True once it is installed.
+        /// </summary>
+        Task<bool> InstallRetroArchAsync(Action<string> status);
+
+        /// <summary>Why RetroArch can not start the game now (no access to the files), or null.</summary>
         string? CannotPlay(string core);
 
         /// <summary>Starts the game in RetroArch; completes once SanctuaryVault is back on the screen.</summary>
