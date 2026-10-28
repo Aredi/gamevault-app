@@ -59,6 +59,8 @@ namespace gamevault.Android.Retro
         {
             "nes" => Array.Empty<(string, int)>(),
             "psx" => new[] { ("L1", RetroPlayer.L), ("R1", RetroPlayer.R), ("L2", RetroPlayer.L2), ("R2", RetroPlayer.R2) },
+            // Dolphin: the triggers are L2 and R2, Z is R (right, under R)
+            "ngc" or "wii" => new[] { ("L", RetroPlayer.L2), ("R", RetroPlayer.R2), ("", -1), ("Z", RetroPlayer.R) },
             _ => new[] { ("L", RetroPlayer.L), ("R", RetroPlayer.R) },
         };
 
@@ -89,6 +91,8 @@ namespace gamevault.Android.Retro
             var shoulders = Shoulders;
             for (int i = 0; i < shoulders.Length; i++)
             {
+                if (shoulders[i].Id < 0)
+                    continue;
                 bool right = i % 2 == 1;
                 // Upright: above the cross and the buttons, under the picture
                 double y = h > w ? h - unit * (0.72 + 0.15 * (i / 2)) : unit * (0.1 + 0.15 * (i / 2));

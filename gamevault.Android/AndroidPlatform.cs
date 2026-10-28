@@ -22,8 +22,8 @@ namespace gamevault.Android
     /// <summary>The Android side of <see cref="IMobilePlatform"/>: the shared storage, the browser, RetroArch for Android (installed from libretro's builds).</summary>
     internal sealed class AndroidPlatform(MainActivity activity) : IMobilePlatform
     {
-        /// <summary>The cores of the app's own player: the consoles drawn without the GPU.</summary>
-        private static readonly HashSet<string> BuiltInCores = new() { "mesen", "snes9x", "mgba", "melondsds", "swanstation", "fbneo" };
+        /// <summary>The cores of the app's own player (Dolphin draws with the GPU, in the player's OpenGL ES context).</summary>
+        private static readonly HashSet<string> BuiltInCores = new() { "mesen", "snes9x", "mgba", "melondsds", "swanstation", "fbneo", "dolphin" };
 
         private Retro.Gamepads? gamepads;
         private Retro.RetroPlayer? player;

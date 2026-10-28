@@ -33,6 +33,44 @@ namespace gamevault.Android.Retro
         [StructLayout(LayoutKind.Sequential)]
         private struct Variable { public IntPtr Key, Value; }
 
+        /// <summary>retro_hw_render_callback: what a core drawing with the GPU asks for, and what it is given.</summary>
+        [StructLayout(LayoutKind.Sequential)]
+        private struct HwRender
+        {
+            public int ContextType;
+            public IntPtr ContextReset, GetCurrentFramebuffer, GetProcAddress;
+            public byte Depth, Stencil, BottomLeftOrigin;
+            public uint VersionMajor, VersionMinor;
+            public byte CacheContext;
+            public IntPtr ContextDestroy;
+            public byte DebugContext;
+        }
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate nuint CurrentFramebufferFn();
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr ProcAddressFn([MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+
+        private readonly CurrentFramebufferFn currentFramebuffer;
+        private readonly ProcAddressFn procAddress;
+        private IntPtr contextReset, contextDestroy;
+
+        /// <summary>The GPU context of a core that draws with it (GameCube, Wii), else null.</summary>
+        public GlContext? Gl { get; private set; }
+        /// <summary>The core's picture starts at its bottom line (OpenGL's order): turned upright when shown.</summary>
+        public bool BottomLeftOrigin { get; private set; }
+
+        /// <summary>
+        /// Options the app sets itself (else the cores' defaults). Dolphin's fast memory catches the process's memory
+        /// faults, which .NET's runtime uses too.
+        /// </summary>
+        private static readonly System.Collections.Generic.Dictionary<string, string> Options = new()
+        {
+            ["dolphin_fastmem"] = "disabled",
+            ["dolphin_fastmem_arena"] = "disabled",
+        };
+        private readonly System.Collections.Generic.Dictionary<string, IntPtr> optionValues = new();
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         [return: MarshalAs(UnmanagedType.U1)]
         private delegate bool EnvironmentFn(uint command, IntPtr data);
@@ -85,6 +123,8 @@ namespace gamevault.Android.Retro
             audioBatch = (data, frames) => { Audio?.Invoke(data, (int)frames); return frames; };
             inputPoll = () => { };
             inputState = (port, device, index, id) => Input?.Invoke(port, device, index, id) ?? 0;
+            currentFramebuffer = () => Gl?.Framebuffer ?? 0;
+            procAddress = name => Gl?.ProcAddress(name) ?? IntPtr.Zero;
 
             ((delegate* unmanaged[Cdecl]<IntPtr, void>)Export("retro_set_environment"))(Marshal.GetFunctionPointerForDelegate(environment));
             // As RetroArch: init right after the environment, then the callbacks (some cores keep them in objects made by init)
@@ -117,6 +157,13 @@ namespace gamevault.Android.Retro
                 SystemAvInfo av;
                 ((delegate* unmanaged[Cdecl]<SystemAvInfo*, void>)Export("retro_get_system_av_info"))(&av);
                 AvInfo = av;
+                if (Gl != null)
+                {
+                    // Its largest picture, then the core makes its GPU objects
+                    Gl.CreateFramebuffer((int)Math.Max(av.Geometry.MaxWidth, av.Geometry.BaseWidth), (int)Math.Max(av.Geometry.MaxHeight, av.Geometry.BaseHeight));
+                    if (contextReset != IntPtr.Zero)
+                        ((delegate* unmanaged[Cdecl]<void>)contextReset)();
+                }
             }
             return loaded;
         }
@@ -131,12 +178,21 @@ namespace gamevault.Android.Retro
             return data == IntPtr.Zero || size == 0 ? Span<byte>.Empty : new Span<byte>((void*)data, (int)size);
         }
 
-        public void UnloadGame() => ((delegate* unmanaged[Cdecl]<void>)Export("retro_unload_game"))();
+        public void UnloadGame()
+        {
+            ((delegate* unmanaged[Cdecl]<void>)Export("retro_unload_game"))();
+            if (Gl != null && contextDestroy != IntPtr.Zero)
+                ((delegate* unmanaged[Cdecl]<void>)contextDestroy)();
+        }
 
         public void Dispose()
         {
             ((delegate* unmanaged[Cdecl]<void>)Export("retro_deinit"))();
+            Gl?.Dispose();
+            Gl = null;
             NativeLibrary.Free(library);
+            foreach (IntPtr value in optionValues.Values)
+                Marshal.FreeCoTaskMem(value);
             Marshal.FreeCoTaskMem(systemDirectory);
             Marshal.FreeCoTaskMem(saveDirectory);
             if (gamePath != IntPtr.Zero)
@@ -184,9 +240,37 @@ namespace gamevault.Android.Retro
                             return false;
                         Format = (PixelFormat)format;
                         return true;
-                    case 15:// GET_VARIABLE: the default
-                        ((Variable*)data)->Value = IntPtr.Zero;
-                        return false;
+                    case 15:// GET_VARIABLE: the app's own options, else the default
+                        {
+                            var variable = (Variable*)data;
+                            string key = Marshal.PtrToStringUTF8(variable->Key) ?? "";
+                            if (!Options.TryGetValue(key, out string? value))
+                            {
+                                variable->Value = IntPtr.Zero;
+                                return false;
+                            }
+                            if (!optionValues.TryGetValue(key, out IntPtr text))
+                                optionValues[key] = text = Marshal.StringToCoTaskMemUTF8(value);
+                            variable->Value = text;
+                            return true;
+                        }
+                    case 14:// SET_HW_RENDER: OpenGL ES (2, 3) only, in a context of the player's own
+                        {
+                            var hw = (HwRender*)data;
+                            bool gles = hw->ContextType is 2 or 4 || (hw->ContextType == 5 && hw->VersionMajor <= 3);
+                            if (!gles)
+                                return false;
+                            Gl ??= new GlContext();
+                            contextReset = hw->ContextReset;
+                            contextDestroy = hw->ContextDestroy;
+                            BottomLeftOrigin = hw->BottomLeftOrigin != 0;
+                            hw->GetCurrentFramebuffer = Marshal.GetFunctionPointerForDelegate(currentFramebuffer);
+                            hw->GetProcAddress = Marshal.GetFunctionPointerForDelegate(procAddress);
+                            return true;
+                        }
+                    case 56:// GET_PREFERRED_HW_RENDER: OpenGL ES 3
+                        *(uint*)data = 4;
+                        return true;
                     case 17:// GET_VARIABLE_UPDATE
                         *(byte*)data = 0;
                         return true;

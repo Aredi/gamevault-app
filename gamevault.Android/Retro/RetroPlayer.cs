@@ -153,7 +153,17 @@ namespace gamevault.Android.Retro
             Directory.CreateDirectory(saves);
             Directory.CreateDirectory(game.SystemDirectory);
             core = new LibretroCore(coreFile, game.SystemDirectory, saves, Language(game.Language));
-            core.Video = (data, width, height, pitch) => { if (data != IntPtr.Zero) Frame.Write(data, (int)width, (int)height, pitch, core.Format); };
+            core.Video = (data, width, height, pitch) =>
+            {
+                // RETRO_HW_FRAME_BUFFER_VALID: drawn in the GPU's framebuffer, read back
+                if (data == new IntPtr(-1) && core.Gl is GlContext gl)
+                {
+                    gl.Read((int)width, (int)height);
+                    Frame.WriteRgba(gl.Pixels, (int)width, (int)height, core.BottomLeftOrigin);
+                }
+                else if (data != IntPtr.Zero)
+                    Frame.Write(data, (int)width, (int)height, pitch, core.Format);
+            };
             core.Audio = WriteAudio;
             core.Input = InputState;
 
@@ -218,7 +228,18 @@ namespace gamevault.Android.Retro
                     int held = Buttons[port] | tappedThisFrame[port] | (port == 0 ? touchHeld | touchThisFrame : 0);
                     return id == LibretroCore.JoypadMask ? (short)held : (short)((held >> (int)id) & 1);
                 case LibretroCore.DeviceAnalog:
-                    return index < 2 && id < 2 ? Sticks[port, index * 2 + id] : (short)0;
+                    if (index >= 2 || id >= 2)
+                        return 0;
+                    short stick = Sticks[port, index * 2 + id];
+                    // The touch pad's cross also moves the left stick (3D games walk with it)
+                    if (stick == 0 && port == 0 && index == 0)
+                    {
+                        int cross = touchHeld | touchThisFrame;
+                        int low = id == 0 ? Left : Up, high = id == 0 ? Right : Down;
+                        if ((cross & (1 << low)) != 0) return -32767;
+                        if ((cross & (1 << high)) != 0) return 32767;
+                    }
+                    return stick;
                 case LibretroCore.DevicePointer:
                     if (port != 0)
                         return 0;
@@ -363,6 +384,31 @@ namespace gamevault.Android.Retro
         public int[] Pixels { get; private set; } = Array.Empty<int>();
         /// <summary>Counts the pictures: the screen copies a new one only.</summary>
         public long Version { get; private set; }
+
+        /// <summary>A picture read from the GPU: RGBA already, its lines turned upright when it starts at the bottom.</summary>
+        public void WriteRgba(byte[] rgba, int width, int height, bool bottomFirst)
+        {
+            lock (this)
+            {
+                if (Pixels.Length < width * height)
+                    Pixels = new int[width * height];
+                Width = width;
+                Height = height;
+                fixed (byte* source = rgba)
+                fixed (int* target = Pixels)
+                {
+                    for (int y = 0; y < height; y++)
+                    {
+                        int* from = (int*)source + (bottomFirst ? height - 1 - y : y) * width;
+                        Buffer.MemoryCopy(from, target + y * width, width * 4, width * 4);
+                    }
+                    // Opaque: the GPU's alpha is the game's, not the screen's
+                    for (int i = 0, n = width * height; i < n; i++)
+                        target[i] |= unchecked((int)0xFF000000);
+                }
+                Version++;
+            }
+        }
 
         public void Write(IntPtr data, int width, int height, int pitch, LibretroCore.PixelFormat format)
         {
