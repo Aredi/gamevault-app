@@ -14,6 +14,7 @@ builder.Services.AddSingleton<RetroPlayerStore>();
 builder.Services.AddSingleton<RoomStore>();
 builder.Services.AddSingleton<HiddenPlayStore>();
 builder.Services.AddSingleton<ReportStore>();
+builder.Services.AddSingleton<InviteStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
@@ -79,6 +80,7 @@ _ = app.Services.GetRequiredService<RetroSaveStore>();
 _ = app.Services.GetRequiredService<RetroPlayerStore>();
 _ = app.Services.GetRequiredService<RoomStore>();
 _ = app.Services.GetRequiredService<ReportStore>();
+_ = app.Services.GetRequiredService<InviteStore>();
 app.Run();
 
 public partial class Program { }

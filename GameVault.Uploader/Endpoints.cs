@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace GameVault.Uploader
 {
     /// <summary>
@@ -26,6 +28,8 @@ namespace GameVault.Uploader
     /// GET  /lan-games, PUT /lan-games/{gameId}   the games playable in LAN (PCGamingWiki, read in the background) / an administrator marks or unmarks one
     /// POST /reports, GET /reports                a player reports a problem on a game / the reports (all for an administrator, else the player's)
     /// POST /reports/{id}/resolve                 an administrator says a report is handled
+    /// GET  /invites, POST /invites, DELETE /invites/{code}   an administrator's invitation codes / a new one, named / an unused one dropped
+    /// POST /invites/redeem                       a new account waiting for its activation gives its code (no sign-in: it can not yet)
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
@@ -35,7 +39,7 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, InviteStore invites, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled, invites = invites.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -306,6 +310,70 @@ namespace GameVault.Uploader
                 if (!check.Allowed)
                     return Results.Json(new { error = check.Message }, statusCode: check.Status);
                 return reports.Resolve(id, check.User) ? Results.NoContent() : Results.Json(new { error = "This report no longer exists." }, statusCode: StatusCodes.Status404NotFound);
+            });
+
+            // Invitation codes: a new account is activated only with one, which then says who used it
+            app.MapGet("/invites", async (HttpRequest request, AdminCheck admins, InviteStore invites, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return invites.Enabled ? Results.Json(invites.List()) : InvitesOff();
+            });
+
+            app.MapPost("/invites", async (NewInvite asked, HttpRequest request, AdminCheck admins, InviteStore invites, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!invites.Enabled)
+                    return InvitesOff();
+                string name = (asked.Name ?? "").Trim();
+                if (name.Length is 0 or > 60)
+                    return Results.Json(new { error = "Give the invitation a name (who it is for)." }, statusCode: StatusCodes.Status400BadRequest);
+                return Results.Json(invites.Create(name, check.User), statusCode: StatusCodes.Status201Created);
+            });
+
+            app.MapDelete("/invites/{code}", async (string code, HttpRequest request, AdminCheck admins, InviteStore invites, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return invites.Delete(code) switch
+                {
+                    null => Results.NoContent(),
+                    "used" => Results.Json(new { error = "This invitation code was used: it stays, to tell who came with it." }, statusCode: StatusCodes.Status409Conflict),
+                    _ => Results.Json(new { error = "This invitation code no longer exists." }, statusCode: StatusCodes.Status404NotFound),
+                };
+            });
+
+            app.MapPost("/invites/redeem", async (RedeemInvite asked, InviteStore invites, GameVaultProxy gameVault, ILogger<InviteStore> logger, CancellationToken ct) =>
+            {
+                if (!invites.Enabled)
+                    return InvitesOff();
+                if (string.IsNullOrWhiteSpace(asked.Username) || InviteStore.Normalize(asked.Code).Length == 0)
+                    return Results.Json(new { error = "Type your username and your invitation code." }, statusCode: StatusCodes.Status400BadRequest);
+                // shortcut: no limit on wrong codes, 60 bits of code can not be guessed; add one if usernames must not be probed
+                if (invites.Reserve(asked.Code!) is not InviteStore.Invite invite)
+                    return Results.Json(new { error = "This invitation code is not valid or was already used." }, statusCode: StatusCodes.Status404NotFound);
+                try
+                {
+                    if (await gameVault.PendingUserAsync(asked.Username, ct) is not (int id, string username))
+                    {
+                        invites.Release(invite.Code);
+                        return Results.Json(new { error = "No account of this name waits for its activation." }, statusCode: StatusCodes.Status404NotFound);
+                    }
+                    await gameVault.ActivateAsync(id, ct);
+                    invites.Use(invite.Code, id, username);
+                    logger.LogInformation("Invitation {Name} activated the account {User} ({Id})", invite.Name, username, id);
+                    return Results.NoContent();
+                }
+                catch (Exception ex) when (ex is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException)
+                {
+                    invites.Release(invite.Code);
+                    logger.LogWarning(ex, "An invitation could not activate {User}", asked.Username);
+                    return Results.Json(new { error = "The game server could not activate the account." }, statusCode: StatusCodes.Status502BadGateway);
+                }
             });
 
             // The administrators see when each player last had the client open
@@ -589,6 +657,8 @@ namespace GameVault.Uploader
             }
         }
 
+        private static IResult InvitesOff() => Results.Json(new { error = "Invitation codes are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
         private static string? Cut(string? text, int length) => text?.Trim() is { Length: > 0 } t ? t[..Math.Min(t.Length, length)] : null;
 
         private static async Task<IResult> GuardedAsync(string name, HttpRequest request, AdminCheck admins, CancellationToken ct, Func<string, Task<IResult>> action)
@@ -612,5 +682,7 @@ namespace GameVault.Uploader
     public sealed record RoomGame(int? GameId, string? GameTitle);
     public sealed record LanGame(bool Lan);
     public sealed record HiddenPlay(int? GameId);
+    public sealed record NewInvite(string? Name);
+    public sealed record RedeemInvite(string? Code, string? Username);
     public sealed record ProblemReport(string? Kind, int GameId, string? Platform, string? Title, string? Category, string? Details, string? Context);
 }

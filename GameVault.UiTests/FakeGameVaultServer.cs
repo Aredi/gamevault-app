@@ -132,6 +132,8 @@ namespace GameVault.UiTests
 
         /// <summary>The problem reports the service keeps (POST /reports, resolved by /reports/{id}/resolve).</summary>
         public List<Dictionary<string, object?>> Reports { get; } = new();
+        /// <summary>The invitation codes the service keeps; "WAIT-ING0-USER" is the account waiting for its activation's name.</summary>
+        public List<Dictionary<string, object?>> Invites { get; } = new();
 
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
         public List<object> RetroLatest { get; } = new();
@@ -578,6 +580,54 @@ namespace GameVault.UiTests
                     lock (Reports)
                         foreach (var report in Reports.Where(r => (string?)r["id"]?.ToString() == path.Split('/')[2]))
                             report["resolvedAt"] = DateTime.UtcNow;
+                    response.StatusCode = 204;
+                }
+                else if (path == "/invites/redeem")
+                {
+                    using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string code = asked.RootElement.GetProperty("code").GetString()!.Trim().ToUpperInvariant();
+                    string username = asked.RootElement.GetProperty("username").GetString()!;
+                    Dictionary<string, object?>? invite;
+                    lock (Invites)
+                        invite = Invites.FirstOrDefault(i => (string)i["code"]! == code && i["usedAt"] == null);
+                    if (invite == null)
+                    {
+                        response.StatusCode = 404;
+                        await Json(response, new { error = "This invitation code is not valid or was already used." });
+                    }
+                    else if (username != "newbie")
+                    {
+                        response.StatusCode = 404;
+                        await Json(response, new { error = "No account of this name waits for its activation." });
+                    }
+                    else
+                    {
+                        invite["usedAt"] = DateTime.UtcNow;
+                        invite["userId"] = 11;
+                        invite["username"] = username;
+                        response.StatusCode = 204;
+                    }
+                }
+                else if (path == "/invites" && request.HttpMethod == "POST")
+                {
+                    using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    var invite = new Dictionary<string, object?> { ["code"] = $"CODE-{Invites.Count:0000}-TEST", ["name"] = asked.RootElement.GetProperty("name").GetString(), ["createdAt"] = DateTime.UtcNow, ["usedAt"] = null, ["userId"] = null, ["username"] = null };
+                    lock (Invites)
+                        Invites.Insert(0, invite);
+                    response.StatusCode = 201;
+                    await Json(response, invite);
+                }
+                else if (path == "/invites")
+                {
+                    object[] invites;
+                    lock (Invites)
+                        invites = Invites.ToArray();
+                    await Json(response, invites);
+                }
+                else if (path.StartsWith("/invites/") && request.HttpMethod == "DELETE")
+                {
+                    lock (Invites)
+                        Invites.RemoveAll(i => (string)i["code"]! == Uri.UnescapeDataString(path.Split('/')[2]) && i["usedAt"] == null);
                     response.StatusCode = 204;
                 }
                 else if (path == "/game-requests" && request.HttpMethod == "POST")

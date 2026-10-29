@@ -255,6 +255,9 @@
                         </StackPanel>
                     </StackPanel>
                     <CheckBox IsChecked="{Binding SignupUser.IsLoggedInWithSSO}" IsEnabled="{Binding SignUpServerInfo.IsSSOEnabled}" Content="{l:T 'Sign up using your Identity Provider'}" HorizontalAlignment="Center" Margin="0,15,0,0" />
+                    <TextBlock Classes="label" Text="{l:T 'Invitation code'}" />
+                    <TextBox x:Name="uiSignupInvite" Text="{Binding SignupUser.InviteCode}" Watermark="XXXX-XXXX-XXXX" KeyDown="UserRegistrationTextBox_KeyDown" />
+                    <TextBlock Classes="muted" FontSize="12" Margin="0,4,0,0" Text="{l:T 'Ask the administrator for one.'}" />
                 </StackPanel>
                 <uc:IconButton Text="{l:T 'Save and Sign Up'}" Height="30" Margin="0,0,10,10" Width="190" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="SaveAndSignUp_Click" />
                 <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" Width="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.SignInOrSignUp}" />
@@ -282,6 +285,15 @@
                     <TextBlock Text="{l:T 'Your Account is pending Admin Approval'}" FontSize="30" HorizontalAlignment="Center" />
                     <uc:ProgressRing HorizontalAlignment="Center" IsActive="True" Margin="0,40,0,0" />
                     <TextBlock Text="{l:T 'You can wait or close this screen and check again later.'}" HorizontalAlignment="Center" Margin="0,30,0,0" FontSize="20" />
+                    <!-- An invitation code activates it at once -->
+                    <StackPanel Width="400" Margin="0,24,0,0">
+                        <TextBlock Text="{l:T 'Have an invitation code? It activates your account.'}" HorizontalAlignment="Center" TextWrapping="Wrap" FontSize="15" />
+                        <TextBlock Classes="label" Text="{l:T 'Username'}" />
+                        <TextBox x:Name="uiPendingUsername" Text="{Binding PendingUser.Username}" />
+                        <TextBlock Classes="label" Text="{l:T 'Invitation code'}" />
+                        <TextBox x:Name="uiPendingInvite" Text="{Binding PendingUser.InviteCode}" Watermark="XXXX-XXXX-XXXX" />
+                        <uc:IconButton x:Name="uiActivate" Text="{l:T 'Activate'}" Height="30" Width="150" HorizontalAlignment="Right" Margin="0,10,0,0" Click="ActivateWithInvite_Click" />
+                    </StackPanel>
                     <uc:IconButton Text="{l:T 'Back to Profile Selection'}" Height="30" Width="250" HorizontalAlignment="Center" Margin="0,20,0,0" FontSize="20" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
                 </StackPanel>
             </Grid>

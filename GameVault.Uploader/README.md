@@ -33,6 +33,8 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `ZEROTIER_API_SECRET` | - | The controller's API token (`ZEROTIER_API_SECRET` of its container, or its `authtoken.secret`) |
 | `ROOMS_DIRECTORY` | `/data/rooms` | The LAN rooms and the games playable in LAN |
 | `REPORTS_DIRECTORY` | `/data/reports` | The problems the players report on games (admin console) |
+| `INVITES_DIRECTORY` | `/data/invites` | The invitation codes new accounts need (admin console) |
+| `GAMEVAULT_API_KEY` | - | An administrator's API key of the GameVault server: activates the accounts that give an invitation code. The server needs `AUTH_API_KEY_ENABLED=true`, and `SERVER_ACCOUNT_ACTIVATION_DISABLED=false` so that new accounts wait for one |
 
 ## LAN rooms
 
