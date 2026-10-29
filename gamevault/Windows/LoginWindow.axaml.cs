@@ -473,9 +473,10 @@ namespace gamevault.Windows
                 ViewModel.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
-        private void OpenProfileEdit(UserProfile profileToEdit)
+        internal void OpenProfileEdit(UserProfile profileToEdit)
         {
-            ViewModel.EditUser = new LoginUser() { ID = profileToEdit.RootDir, ServerUrl = profileToEdit.ServerUrl, Username = profileToEdit.Name, Password = Preferences.Get(AppConfigKey.Password, profileToEdit.UserConfigFile, true) };
+            ViewModel.EditUser = new LoginUser() { ID = profileToEdit.RootDir, ServerUrl = profileToEdit.ServerUrl, Username = profileToEdit.Name, Password = Preferences.Get(AppConfigKey.Password, profileToEdit.UserConfigFile, true),
+                IsLoggedInWithSSO = Preferences.Get(AppConfigKey.IsLoggedInWithSSO, profileToEdit.UserConfigFile) == "1" };
             ViewModel.LoginStepIndex = (int)LoginStep.EditProfile;
         }
 
@@ -500,9 +501,10 @@ namespace gamevault.Windows
                 UserProfile? profileToEdit = ViewModel.UserProfiles.FirstOrDefault(x => x.RootDir == ViewModel.EditUser.ID);
                 if (profileToEdit == null)
                     throw new Exception(Loc.T("User Profile not found"));
+                UserProfile saved = profileToEdit;
                 if (profileToEdit.ServerUrl != ViewModel.EditUser.ServerUrl)
                 {
-                    UserProfile profile = ProfileManager.ChangeServer(profileToEdit, ViewModel.EditUser.ServerUrl);
+                    UserProfile profile = saved = ProfileManager.ChangeServer(profileToEdit, ViewModel.EditUser.ServerUrl);
                     ViewModel.UserProfiles.Remove(profileToEdit);
                     profile.Name = ViewModel.EditUser.Username;
                     profile.ServerUrl = ViewModel.EditUser.ServerUrl;
@@ -517,6 +519,11 @@ namespace gamevault.Windows
                     Preferences.Set(AppConfigKey.Username, ViewModel.EditUser.Username, profileToEdit.UserConfigFile);
                     Preferences.Set(AppConfigKey.Password, ViewModel.EditUser.Password, profileToEdit.UserConfigFile, true);
                 }
+                // SSO or a password, as the player chose: a profile made with SSO can change to its password (and back)
+                if (ViewModel.EditUser.IsLoggedInWithSSO)
+                    Preferences.Set(AppConfigKey.IsLoggedInWithSSO, "1", saved.UserConfigFile);
+                else
+                    Preferences.DeleteKey(AppConfigKey.IsLoggedInWithSSO, saved.UserConfigFile);
                 ViewModel.LoginStepIndex = (int)LoginStep.ChooseProfile;
             }
             catch (Exception ex)
