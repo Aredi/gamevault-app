@@ -819,6 +819,7 @@ namespace GameVault.UiTests
             string sort = request.QueryString["sortBy"] ?? "";
             list = sort.StartsWith("created_at:DESC") ? list.OrderByDescending(g => g.CreatedAt).ThenBy(g => g.ID)
                 : sort.StartsWith("updated_at:DESC") ? list.OrderByDescending(g => g.UpdatedAt ?? g.CreatedAt).ThenBy(g => g.ID)
+                : sort.StartsWith("id:DESC") ? list.OrderByDescending(g => g.ID)
                 : sort.StartsWith("sort_title") ? list.OrderBy(g => g.SortTitle)
                 : list.OrderBy(g => g.ID);
             var all = list.ToArray();
@@ -828,6 +829,7 @@ namespace GameVault.UiTests
 
         /// <summary>Adds a game as it comes from the server with its metadata (the showcase uses real games).</summary>
         public void AddGame(Game game, byte[] file) => games[game.ID] = (game, file);
+        public void RemoveGame(int id) => games.TryRemove(id, out _);
 
         private async Task Download(HttpListenerContext context, int id)
         {
