@@ -8,7 +8,7 @@ namespace GameVault.Uploader
     /// What the web page needs from the GameVault server, asked by the service (same origin for the browser, no CORS):
     /// signing in with the GameVault account, refreshing the session, and the games already on the server.
     /// </summary>
-    public sealed class GameVaultProxy(HttpClient gameVault, ILogger<GameVaultProxy> logger)
+    public sealed class GameVaultProxy(HttpClient gameVault, UploaderOptions options, ILogger<GameVaultProxy> logger)
     {
         public sealed record Forwarded(int Status, string Body);
 
@@ -76,6 +76,39 @@ namespace GameVault.Uploader
                 return null;
             using JsonDocument game = JsonDocument.Parse(answer.Body);
             return new GameSummary(id, game.RootElement.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "", null, null);
+        }
+
+        /// <summary>The account of this name that waits for its activation (made by a sign up or a first SSO sign-in), as an administrator; null when none.</summary>
+        public async Task<(int Id, string Username)?> PendingUserAsync(string username, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "api/users");
+            request.Headers.TryAddWithoutValidation("X-Api-Key", options.GameVaultApiKey);
+            Forwarded answer = await SendAsync(request, cancellationToken);
+            if (answer.Status != 200)
+                throw new HttpRequestException($"The GameVault server answered {answer.Status} to the list of its users.");
+            using JsonDocument users = JsonDocument.Parse(answer.Body);
+            foreach (JsonElement user in users.RootElement.EnumerateArray())
+            {
+                if (user.TryGetProperty("deleted_at", out var deleted) && deleted.ValueKind != JsonValueKind.Null
+                    || !user.TryGetProperty("activated", out var activated) || activated.ValueKind != JsonValueKind.False)
+                    continue;
+                string name = user.TryGetProperty("username", out var value) ? value.GetString() ?? "" : "";
+                if (string.Equals(name, username.Trim(), StringComparison.OrdinalIgnoreCase))
+                    return (user.GetProperty("id").GetInt32(), name);
+            }
+            return null;
+        }
+
+        public async Task ActivateAsync(int userId, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"api/users/{userId}")
+            {
+                Content = new StringContent("{\"activated\":true}", Encoding.UTF8, "application/json"),
+            };
+            request.Headers.TryAddWithoutValidation("X-Api-Key", options.GameVaultApiKey);
+            Forwarded answer = await SendAsync(request, cancellationToken);
+            if (answer.Status is < 200 or >= 300)
+                throw new HttpRequestException($"The GameVault server answered {answer.Status} to the activation: {answer.Body}");
         }
 
         private async Task<Forwarded> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

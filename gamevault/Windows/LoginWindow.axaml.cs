@@ -39,6 +39,7 @@ namespace gamevault.Windows
         private string lastName;
         private string eMail;
         private bool isLoggedInWithSSO;
+        private string inviteCode;
 
         public string ID { get; set; }
         public string ServerUrl { get => serverUrl; set { serverUrl = value; OnPropertyChanged(); } }
@@ -50,6 +51,8 @@ namespace gamevault.Windows
         public string LastName { get => lastName; set { lastName = value; OnPropertyChanged(); } }
         public string EMail { get => eMail; set { eMail = value; OnPropertyChanged(); } }
         public bool IsLoggedInWithSSO { get => isLoggedInWithSSO; set { isLoggedInWithSSO = value; OnPropertyChanged(); } }
+        /// <summary>Given by an administrator: a new account waits for its activation until it gives one.</summary>
+        public string InviteCode { get => inviteCode; set { inviteCode = value; OnPropertyChanged(); } }
     }
     public enum LoginStep
     {
@@ -134,6 +137,26 @@ namespace gamevault.Windows
         {
             ViewModel.LoginStepIndex = (int)LoginStep.SignUp;
             _ = CheckServerAsync(false, ViewModel.SignupUser.ServerUrl);
+        }
+
+        private UserProfile? pendingProfile;
+
+        /// <summary>The account waiting for its activation gives its invitation code; then it signs in.</summary>
+        private async void ActivateWithInvite_Click(object sender, RoutedEventArgs e)
+        {
+            ((Control)sender).IsEnabled = false;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(ViewModel.PendingUser.Username) || string.IsNullOrWhiteSpace(ViewModel.PendingUser.InviteCode))
+                    throw new InvalidOperationException(Loc.T("Type your username and your invitation code."));
+                await InvitesService.RedeemAsync(ViewModel.PendingUser.InviteCode, ViewModel.PendingUser.Username);
+                ViewModel.AppBarText = Loc.T("Your account is activated.");
+                // A password profile signs in by itself within 5 seconds; an SSO one asks the browser once more
+                if (pendingProfile != null && Preferences.Get(AppConfigKey.IsLoggedInWithSSO, pendingProfile.UserConfigFile) == "1")
+                    await Login(pendingProfile);
+            }
+            catch (Exception ex) { ViewModel.AppBarText = ex is InvalidOperationException ? ex.Message : WebExceptionHelper.TryGetServerMessage(ex); }
+            finally { ((Control)sender).IsEnabled = true; }
         }
 
         private void Back_Click(object sender, RoutedEventArgs e)
@@ -311,7 +334,7 @@ namespace gamevault.Windows
                 {
                     Preferences.Set(AppConfigKey.Username, LoginManager.Instance.GetCurrentUser()?.Username, profile.UserConfigFile);
                 }
-                else if (state != LoginState.Success && firstTimeLogin)
+                else if (state != LoginState.Success && state != LoginState.NotActivated && firstTimeLogin)
                 {
                     try
                     {
@@ -332,7 +355,17 @@ namespace gamevault.Windows
             }
             else if (state == LoginState.NotActivated)
             {
+                if (!calledByActivationLoop)
+                {
+                    pendingProfile = profile;
+                    // The name of a sign up or a saved profile; an SSO account's name is not known here: typed
+                    ViewModel.PendingUser = new LoginUser { Username = isLoggedInWithSSO ? "" : Preferences.Get(AppConfigKey.Username, profile.UserConfigFile), InviteCode = ViewModel.SignupUser.InviteCode };
+                    ViewModel.AppBarText = LoginManager.Instance.GetServerLoginResponseMessage();
+                }
                 ViewModel.LoginStepIndex = (int)LoginStep.PendingActivation;
+                // SSO signs in again in the browser: only once activated, not every 5 seconds
+                if (isLoggedInWithSSO)
+                    return;
                 await Task.Delay(5000);
                 if (ViewModel.LoginStepIndex == (int)LoginStep.PendingActivation)
                     await Login(profile, firstTimeLogin, true);
@@ -405,6 +438,12 @@ namespace gamevault.Windows
                 if (!ViewModel.SignupUser.IsLoggedInWithSSO)
                 {
                     state = await LoginManager.Instance.Register(ViewModel.SignupUser);//Only non-provider login has a additional call. Else its just a login, because the server will create the account internally
+                    if (state == LoginState.NotActivated && !string.IsNullOrWhiteSpace(ViewModel.SignupUser.InviteCode))
+                    {
+                        // Activated at once; else the waiting page asks for the code again
+                        try { await InvitesService.RedeemAsync(ViewModel.SignupUser.InviteCode, ViewModel.SignupUser.Username); }
+                        catch (Exception ex) { ViewModel.AppBarText = ex.Message; }
+                    }
                 }
                 UserProfile profile = null;
                 if (state != LoginState.Error)

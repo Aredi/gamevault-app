@@ -64,6 +64,7 @@ namespace gamevault.UserControls
                 string userList = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users");
                 User[]? users = JsonSerializer.Deserialize<User[]>(userList);
                 await AddLastSeenAsync(users);
+                await LoadInvitesAsync(users);
                 ViewModel.Users = users;
             }
             catch (Exception ex)
@@ -111,6 +112,72 @@ namespace gamevault.UserControls
                 await LoadReportsAsync();
             }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        /// <summary>The invitation codes, and the one each account was activated with; without the service the card stays hidden.</summary>
+        internal async Task LoadInvitesAsync(User[]? users = null)
+        {
+            try
+            {
+                var invites = await InvitesService.ListAsync();
+                uiInvitesCard.IsVisible = invites != null;
+                uiInvites.ItemsSource = invites;
+                foreach (User user in users ?? Array.Empty<User>())
+                    user.InviteText = invites?.FirstOrDefault(i => i.UserId == user.ID) is InviteItem used ? Loc.F("Invitation code {0}", used.Name) : null;
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        private async void CreateInvite_Click(object? sender, RoutedEventArgs e)
+        {
+            string name = uiInviteName.Text?.Trim() ?? "";
+            if (name.Length == 0)
+            {
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Give the invitation a name (who it is for).");
+                return;
+            }
+            try
+            {
+                InviteItem invite = await InvitesService.CreateAsync(name);
+                uiInviteName.Text = "";
+                await LoadInvitesAsync();
+                await CopyAsync(invite);
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+        }
+
+        private void InviteName_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                CreateInvite_Click(sender, e);
+            }
+        }
+
+        private async void CopyInvite_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is InviteItem invite)
+                await CopyAsync(invite);
+        }
+
+        private async Task CopyAsync(InviteItem invite)
+        {
+            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+                await clipboard.SetTextAsync(invite.Code);
+            MainWindowViewModel.Instance.AppBarText = Loc.F("Invitation code for {0} copied: {1}", invite.Name, invite.Code);
+        }
+
+        private async void DeleteInvite_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not InviteItem invite)
+                return;
+            try
+            {
+                await InvitesService.DeleteAsync(invite.Code);
+                await LoadInvitesAsync();
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
         }
 
         /// <summary>Without the SanctuaryVault service the line stays hidden.</summary>

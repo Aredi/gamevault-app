@@ -13,6 +13,8 @@ namespace GameVault.Uploader.Tests
     internal sealed class FakeGameVault : HttpMessageHandler
     {
         public int Calls;
+        /// <summary>The accounts activated by the service, with the administrator's API key "admin-key".</summary>
+        public readonly List<int> Activated = new();
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -27,6 +29,25 @@ namespace GameVault.Uploader.Tests
                 return Task.FromResult(request.Headers.Authorization?.Parameter == "refresh-admin"
                     ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { access_token = "admin", refresh_token = "refresh-admin" }) }
                     : new HttpResponseMessage(HttpStatusCode.Unauthorized));
+            // Users: "newbie" (11) waits for its activation, "player" is active, "gone" (13) waits but was deleted
+            if (path.EndsWith("/api/users") && request.Method == HttpMethod.Get)
+                return Task.FromResult(!request.Headers.TryGetValues("X-Api-Key", out var key) || key.Single() != "admin-key"
+                    ? new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                    : new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = JsonContent.Create(new object[]
+                        {
+                            new { id = 2, username = "player", activated = true, deleted_at = (string?)null },
+                            new { id = 11, username = "Newbie", activated = Activated.Contains(11), deleted_at = (string?)null },
+                            new { id = 13, username = "gone", activated = false, deleted_at = "2025-01-01T00:00:00.000Z" },
+                        }),
+                    });
+            if (path.StartsWith("/api/users/") && request.Method == HttpMethod.Put && request.Headers.TryGetValues("X-Api-Key", out var admin) && admin.Single() == "admin-key")
+            {
+                lock (Activated)
+                    Activated.Add(int.Parse(path["/api/users/".Length..]));
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { }) });
+            }
             if (path.EndsWith("/api/games/6"))
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 6, title = "Prey" }) });
             if (path.EndsWith("/api/games") && request.Headers.Authorization?.Parameter == "admin")
@@ -182,6 +203,7 @@ namespace GameVault.Uploader.Tests
         private readonly string retroPlayers = Path.Combine(Path.GetTempPath(), $"gv-retro-players-{Guid.NewGuid():N}");
         private readonly string rooms = Path.Combine(Path.GetTempPath(), $"gv-rooms-{Guid.NewGuid():N}");
         private readonly string reports = Path.Combine(Path.GetTempPath(), $"gv-reports-{Guid.NewGuid():N}");
+        private readonly string invites = Path.Combine(Path.GetTempPath(), $"gv-invites-{Guid.NewGuid():N}");
         private readonly FakeZeroTier zeroTier = new();
         private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
@@ -222,6 +244,8 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("ZEROTIER_API_SECRET", "zt-secret");
                 host.UseSetting("ROOMS_DIRECTORY", rooms);
                 host.UseSetting("REPORTS_DIRECTORY", reports);
+                host.UseSetting("INVITES_DIRECTORY", invites);
+                host.UseSetting("GAMEVAULT_API_KEY", "admin-key");
                 host.ConfigureServices(services =>
                 {
                     services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
@@ -245,6 +269,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(retroPlayers, true); } catch { }
             try { Directory.Delete(rooms, true); } catch { }
             try { Directory.Delete(reports, true); } catch { }
+            try { Directory.Delete(invites, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -418,6 +443,45 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Hades", category = "broken" })).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").PostAsync("/reports/nope/resolve", null)).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/reports")).StatusCode);
+        }
+
+        [Fact]
+        public async Task AnInvitation_ActivatesOneWaitingAccount_Once_AndSaysWhoUsedIt()
+        {
+            var admin = Client("admin");
+            Assert.Equal(HttpStatusCode.Forbidden, (await Client("user").PostAsJsonAsync("/invites", new { name = "Me" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/invites", new { name = " " })).StatusCode);
+            var made = await admin.PostAsJsonAsync("/invites", new { name = "Cousin Lucas" });
+            Assert.Equal(HttpStatusCode.Created, made.StatusCode);
+            string code = JsonDocument.Parse(await made.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString()!;
+            Assert.Matches("^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$", code);
+
+            // No sign-in: the account can not sign in before it is activated
+            var anyone = Client(null);
+            Assert.Equal(HttpStatusCode.NotFound, (await anyone.PostAsJsonAsync("/invites/redeem", new { code = "AAAA-BBBB-CCCC", username = "newbie" })).StatusCode);
+            // An active account, a deleted one, or nobody: the code stays usable
+            foreach (string username in new[] { "player", "gone", "nobody" })
+                Assert.Equal(HttpStatusCode.NotFound, (await anyone.PostAsJsonAsync("/invites/redeem", new { code, username })).StatusCode);
+            Assert.Empty(gameVault.Activated);
+            // As typed: lower case, spaces
+            Assert.Equal(HttpStatusCode.NoContent, (await anyone.PostAsJsonAsync("/invites/redeem", new { code = " " + code.ToLowerInvariant().Replace("-", " "), username = "newbie" })).StatusCode);
+            Assert.Equal(new[] { 11 }, gameVault.Activated);
+            Assert.Equal(HttpStatusCode.NotFound, (await anyone.PostAsJsonAsync("/invites/redeem", new { code, username = "newbie" })).StatusCode);
+
+            using (JsonDocument list = JsonDocument.Parse(await admin.GetStringAsync("/invites")))
+            {
+                JsonElement invite = list.RootElement[0];
+                Assert.Equal("Cousin Lucas", invite.GetProperty("name").GetString());
+                Assert.Equal(11, invite.GetProperty("userId").GetInt32());
+                Assert.Equal("Newbie", invite.GetProperty("username").GetString());
+            }
+            // A used code stays, to tell who came with it; an unused one goes
+            Assert.Equal(HttpStatusCode.Conflict, (await admin.DeleteAsync($"/invites/{code}")).StatusCode);
+            string other = JsonDocument.Parse(await (await admin.PostAsJsonAsync("/invites", new { name = "Unused" })).Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString()!;
+            Assert.Equal(HttpStatusCode.Forbidden, (await Client("user").DeleteAsync($"/invites/{other}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.DeleteAsync($"/invites/{other}")).StatusCode);
+            Assert.Equal(1, JsonDocument.Parse(await admin.GetStringAsync("/invites")).RootElement.GetArrayLength());
+            Assert.True(JsonDocument.Parse(await anyone.GetStringAsync("/status")).RootElement.GetProperty("invites").GetBoolean());
         }
 
         [Fact]

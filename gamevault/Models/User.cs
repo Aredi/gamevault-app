@@ -50,5 +50,8 @@ namespace gamevault.Models
         /// <summary>When the player last had the client open (admin console), told by the SanctuaryVault service.</summary>
         [JsonIgnore]
         public string? LastSeenText { get; set; }
+        /// <summary>"Invitation code NAME": the code this account was activated with (admin console); older accounts have none.</summary>
+        [JsonIgnore]
+        public string? InviteText { get; set; }
     }
 }
