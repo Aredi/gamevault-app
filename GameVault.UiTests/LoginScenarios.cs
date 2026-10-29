@@ -5,6 +5,7 @@ using Avalonia.VisualTree;
 using gamevault.Helper;
 using gamevault.Localization;
 using gamevault.Models;
+using gamevault.UserControls;
 using gamevault.ViewModels;
 using gamevault.Windows;
 
@@ -96,6 +97,51 @@ namespace GameVault.UiTests
                 // The failed sign in replaced the credentials of the session
                 await LoginManager.Instance.Login(me, "admin", "admin-password");
                 LoginManager.Instance.SetUserProfile(me);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task AnSsoProfile_ChangesToItsPassword_InItsSettings()
+        {
+            var session = await TestSession.GetAsync();
+            UserProfile profile = ProfileManager.CreateUserProfile("ssotopassword");
+            profile.Name = "admin";
+            profile.ServerUrl = session.Server.Url;
+            Preferences.Set(AppConfigKey.ServerUrl, session.Server.Url, profile.UserConfigFile, true);
+            Preferences.Set(AppConfigKey.IsLoggedInWithSSO, "1", profile.UserConfigFile);
+            var window = new LoginWindow(skipBootTasks: true);
+            var model = (LoginWindowViewModel)window.DataContext!;
+            window.Show();
+            try
+            {
+                model.UserProfiles.Add(profile);
+                window.OpenProfileEdit(profile);
+                Layout(window);
+                var sso = window.FindControl<CheckBox>("uiEditSso")!;
+                Assert.True(sso.IsChecked);
+                sso.IsChecked = false;
+                model.EditUser.Password = "admin-password";
+                Layout(window);
+                window.GetVisualDescendants().OfType<IconButton>().First(b => b.IsEffectivelyVisible && b.Text == Loc.T("Save"))
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal((int)LoginStep.ChooseProfile, model.LoginStepIndex);
+                Assert.NotEqual("1", Preferences.Get(AppConfigKey.IsLoggedInWithSSO, profile.UserConfigFile));
+                Assert.Equal("admin-password", Preferences.Get(AppConfigKey.Password, profile.UserConfigFile, true));
+
+                // And back to SSO
+                window.OpenProfileEdit(profile);
+                Layout(window);
+                Assert.False(sso.IsChecked);
+                sso.IsChecked = true;
+                Layout(window);
+                window.GetVisualDescendants().OfType<IconButton>().First(b => b.IsEffectivelyVisible && b.Text == Loc.T("Save"))
+                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal("1", Preferences.Get(AppConfigKey.IsLoggedInWithSSO, profile.UserConfigFile));
+            }
+            finally
+            {
+                window.Close();
+                ProfileManager.DeleteUserProfile(profile);
             }
         }
     }

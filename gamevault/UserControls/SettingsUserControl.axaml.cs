@@ -180,7 +180,9 @@ namespace gamevault.UserControls
                 {
                     bool isLoggedInWithSSO = Preferences.Get(AppConfigKey.IsLoggedInWithSSO, LoginManager.Instance.GetUserProfile().UserConfigFile) == "1";
                     Preferences.DeleteKey(AppConfigKey.SessionToken, LoginManager.Instance.GetUserProfile().UserConfigFile);
-                    await WebHelper.PostAsync($"{SettingsViewModel.Instance.ServerUrl}/api/auth/revoke", "{" + $"\"refresh_token\": \"{WebHelper.GetRefreshToken()}\"" + "}");
+                    // Offline or refused (an SSO sign-in turned down opens the library offline): this device is logged out all the same
+                    try { await WebHelper.PostAsync($"{SettingsViewModel.Instance.ServerUrl}/api/auth/revoke", "{" + $"\"refresh_token\": \"{WebHelper.GetRefreshToken()}\"" + "}"); }
+                    catch (Exception ex) { Log.Ignored(ex); }
                     if (!isLoggedInWithSSO)
                     {
                         Preferences.DeleteKey(AppConfigKey.Password, LoginManager.Instance.GetUserProfile().UserConfigFile);
