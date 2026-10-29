@@ -56,6 +56,8 @@ namespace gamevault.Helper
                 ToastMessageHelper.CreateToastMessage(title, names);
                 MainWindowViewModel.Instance.AppBarText = Loc.F("{0}: {1}", title, names);
                 Log.Info($"{title}: {names}");
+                // The row of recently added games is only loaded with the library otherwise
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => MainWindowViewModel.Instance.Library.LoadShowcase());
             }
             catch (Exception ex) { Log.Ignored(ex); }
             finally { checking.Release(); }

@@ -231,6 +231,42 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task ANewGameOnTheServer_ShowsInRecentlyAdded_WhenTold_AndOnReload()
+        {
+            var session = await TestSession.GetAsync();
+            var library = MainWindowViewModel.Instance.Library;
+            var recent = library.Model.RecentGames;
+            bool notify = SettingsViewModel.Instance.NotifyNewGames;
+            SettingsViewModel.Instance.NotifyNewGames = true;
+            // The games seen before
+            Preferences.Set(AppConfigKey.LastSeenGameId, "99000", LoginManager.Instance.GetUserProfile().UserConfigFile);
+            try
+            {
+                Game told = NewGame(99001, "Told Quest");
+                told.CreatedAt = DateTime.UtcNow.AddYears(1);
+                session.Server.AddGame(told, new byte[1024]);
+                await NewGamesNotifier.CheckAsync();
+                Assert.Contains(recent, g => g.ID == 99001);
+
+                // Without the notification: the reload button
+                SettingsViewModel.Instance.NotifyNewGames = false;
+                Game reloaded = NewGame(99002, "Reload Quest");
+                reloaded.CreatedAt = DateTime.UtcNow.AddYears(1).AddMinutes(1);
+                session.Server.AddGame(reloaded, new byte[1024]);
+                library.FindControl<Button>("uiBtnReloadLibrary")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                await TestSession.WaitUntil(() => recent.Any(g => g.ID == 99002), TimeSpan.FromSeconds(10), "the new game in recently added after reload");
+            }
+            finally
+            {
+                SettingsViewModel.Instance.NotifyNewGames = notify;
+                session.Server.RemoveGame(99001);
+                session.Server.RemoveGame(99002);
+                foreach (Game game in recent.Where(g => g.ID >= 99001).ToList())
+                    recent.Remove(game);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task ANewCover_ShowsInRecentlyAdded_Too()
         {
             await TestSession.GetAsync();

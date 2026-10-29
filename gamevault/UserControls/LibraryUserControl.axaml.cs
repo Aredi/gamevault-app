@@ -260,6 +260,7 @@ namespace gamevault.UserControls
 
             uiBtnReloadLibrary.IsEnabled = false;
             await Search();
+            await LoadShowcase();
             if (e is KeyEventArgs { Key: Key.F5 })
             {
                 await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();

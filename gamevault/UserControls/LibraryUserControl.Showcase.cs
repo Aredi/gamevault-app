@@ -150,7 +150,7 @@ namespace gamevault.UserControls
         }
 
         /// <summary>Recently added games and the user's play data, then the banner.</summary>
-        private async Task LoadShowcase()
+        internal async Task LoadShowcase()
         {
             if (!LoginManager.Instance.IsLoggedIn())
             {
