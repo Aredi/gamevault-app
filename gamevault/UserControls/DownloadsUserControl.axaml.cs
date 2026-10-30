@@ -267,6 +267,8 @@ namespace gamevault.UserControls
                 string? driveName = PlatformInfo.GetDriveForPath(selectedDirectory)?.Name ?? Path.GetPathRoot(selectedDirectory);
                 return Fail(Loc.F("Not enough space available for drive {0}", driveName));
             }
+            if (!unattended)
+                await HypervisorNoticePopup.ShowOnceAsync(game);
             GameDownloadUserControl? oldDownloadEntry = DownloadsViewModel.Instance.DownloadedGames.Where(g => g.GetGameId() == game.ID).FirstOrDefault();
             if (oldDownloadEntry != null)
             {

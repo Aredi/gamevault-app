@@ -204,6 +204,7 @@ namespace GameVault.Uploader.Tests
         private readonly string rooms = Path.Combine(Path.GetTempPath(), $"gv-rooms-{Guid.NewGuid():N}");
         private readonly string reports = Path.Combine(Path.GetTempPath(), $"gv-reports-{Guid.NewGuid():N}");
         private readonly string invites = Path.Combine(Path.GetTempPath(), $"gv-invites-{Guid.NewGuid():N}");
+        private readonly string hypervisor = Path.Combine(Path.GetTempPath(), $"gv-hypervisor-{Guid.NewGuid():N}");
         private readonly FakeZeroTier zeroTier = new();
         private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
@@ -245,6 +246,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("ROOMS_DIRECTORY", rooms);
                 host.UseSetting("REPORTS_DIRECTORY", reports);
                 host.UseSetting("INVITES_DIRECTORY", invites);
+                host.UseSetting("HYPERVISOR_DIRECTORY", hypervisor);
                 host.UseSetting("GAMEVAULT_API_KEY", "admin-key");
                 host.ConfigureServices(services =>
                 {
@@ -270,6 +272,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(rooms, true); } catch { }
             try { Directory.Delete(reports, true); } catch { }
             try { Directory.Delete(invites, true); } catch { }
+            try { Directory.Delete(hypervisor, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -443,6 +446,25 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Hades", category = "broken" })).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").PostAsync("/reports/nope/resolve", null)).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/reports")).StatusCode);
+        }
+
+        [Fact]
+        public async Task TheAdmins_MarkHypervisorGames_AndWriteTheText_PlayersOnlyReadThem()
+        {
+            var admin = Client("admin");
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/hypervisor/games/7", new { on = true })).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/hypervisor/text", new { text = "Mine" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/hypervisor/text", new { text = new string('a', 4001) })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/hypervisor/games/7", new { on = true })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/hypervisor/games/8", new { on = true })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/hypervisor/games/7", new { on = false })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/hypervisor/text", new { text = "Read this" })).StatusCode);
+
+            using JsonDocument seen = JsonDocument.Parse(await player.GetStringAsync("/hypervisor"));
+            Assert.Equal(8, Assert.Single(seen.RootElement.GetProperty("games").EnumerateArray()).GetInt32());
+            Assert.Equal("Read this", seen.RootElement.GetProperty("text").GetString());
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/hypervisor")).StatusCode);
         }
 
         [Fact]

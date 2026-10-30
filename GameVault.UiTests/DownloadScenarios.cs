@@ -1,4 +1,6 @@
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Interactivity;
 using gamevault.Helper;
 using gamevault.Models;
 using gamevault.UserControls;
@@ -67,6 +69,49 @@ namespace GameVault.UiTests
                 Assert.DoesNotContain(DownloadsViewModel.Instance.DownloadedGames, d => d.GetGameId() == game.ID);
             }
             finally { GameDownloadUserControl.FreeSpace = freeSpace; }
+        }
+
+        [AvaloniaFact]
+        public async Task AGameUsingAHypervisor_ShowsTheAdminsText_OnItsFirstDownload_Once()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            Game game = session.Server.AddGame(9143, "Hyper Game", GameType.LINUX_PORTABLE, TestSession.LinuxGameArchive(100_000), "Hyper Game (L_P).tar.gz");
+            Game other = session.Server.AddGame(9144, "Plain Game", GameType.LINUX_PORTABLE, TestSession.LinuxGameArchive(100_000), "Plain Game (L_P).tar.gz");
+            var model = MainWindowViewModel.Instance;
+            try
+            {
+                await HypervisorService.SetGameAsync(game.ID, true);
+                await HypervisorService.SetTextAsync("Read this first");
+
+                // Kept unchecked: shown again
+                var first = HypervisorNoticePopup.ShowOnceAsync(game);
+                await TestSession.WaitUntil(() => model.Popup is HypervisorNoticePopup, TimeSpan.FromSeconds(10), "the notice");
+                var popup = (HypervisorNoticePopup)model.Popup!;
+                Assert.Equal("Read this first", popup.FindControl<SelectableTextBlock>("uiText")!.Text);
+                popup.FindControl<CheckBox>("uiDontShow")!.IsChecked = false;
+                popup.FindControl<Button>("uiUnderstood")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await first;
+
+                // The download waits for the answer
+                var download = model.Downloads.TryStartDownload(game);
+                await TestSession.WaitUntil(() => model.Popup is HypervisorNoticePopup, TimeSpan.FromSeconds(10), "the notice again");
+                Assert.False(download.IsCompleted);
+                ((HypervisorNoticePopup)model.Popup!).FindControl<Button>("uiUnderstood")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Null(await download);
+                await TestSession.WaitUntil(() => File.Exists(Path.Combine(session.DownloadFolder(game), "Extract", "start.sh")), Timeout, "the game to be extracted");
+
+                await HypervisorNoticePopup.ShowOnceAsync(game);// seen
+                await HypervisorNoticePopup.ShowOnceAsync(other);// not marked
+                Assert.Null(model.Popup);
+            }
+            finally
+            {
+                model.ClosePopup();
+                session.Server.HypervisorGames.Clear();
+                session.Server.HypervisorText = "";
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
         }
 
         [Fact]
