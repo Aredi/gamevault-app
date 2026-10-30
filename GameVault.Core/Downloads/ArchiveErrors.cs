@@ -15,12 +15,21 @@ namespace GameVault.Core.Downloads
 
         private static readonly string[] OtherCauses =
         {
-            "Wrong password", "No space left on device", "There is not enough space on the disk", "Permission denied", "Access is denied",
+            "Wrong password", "Permission denied", "Access is denied",
         };
+
+        // 7-Zip prints the system's message, in the language of Windows
+        private static readonly string[] DiskFullMarkers =
+        {
+            "No space left on device", "There is not enough space on the disk", "Espace insuffisant sur le disque",
+        };
+
+        public static bool IsDiskFull(string? output) =>
+            !string.IsNullOrEmpty(output) && DiskFullMarkers.Any(marker => output.Contains(marker, StringComparison.OrdinalIgnoreCase));
 
         public static bool IsDamaged(string? output)
         {
-            if (string.IsNullOrWhiteSpace(output) || OtherCauses.Any(cause => output.Contains(cause, StringComparison.OrdinalIgnoreCase)))
+            if (string.IsNullOrWhiteSpace(output) || IsDiskFull(output) || OtherCauses.Any(cause => output.Contains(cause, StringComparison.OrdinalIgnoreCase)))
                 return false;
             return DamageMarkers.Any(marker => output.Contains(marker, StringComparison.OrdinalIgnoreCase));
         }

@@ -75,5 +75,17 @@ namespace GameVault.Core.Tests
         [InlineData("")]
         [InlineData(null)]
         public void OtherFailures_AreNot(string? output) => Assert.False(ArchiveErrors.IsDamaged(output));
+
+        [Theory]
+        [InlineData("System ERROR:\nerrno=28 : No space left on device")]
+        [InlineData("ERROR: There is not enough space on the disk. : data.bin")]
+        [InlineData("ERROR: Espace insuffisant sur le disque. : data.bin")]
+        public void AFullDisk_IsToldApart(string output) => Assert.True(ArchiveErrors.IsDiskFull(output));
+
+        [Theory]
+        [InlineData("ERROR: Data Error : game/level1.pak")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void OtherFailures_AreNotAFullDisk(string? output) => Assert.False(ArchiveErrors.IsDiskFull(output));
     }
 }
