@@ -303,10 +303,8 @@ namespace gamevault.UserControls
         }
         private bool IsEnoughDriveSpaceAvailable(long gameSize, string directory)
         {
-            DriveInfo? drive = PlatformInfo.GetDriveForPath(directory);
-            if (drive == null)
-                return false;
-            return (drive.AvailableFreeSpace - 1000) > gameSize;
+            // The archive stays next to what it extracts to, which is at least as big
+            return GameDownloadUserControl.FreeSpace(directory) is long free && free - 1000 > gameSize * 2;
         }
 
         private async void DeleteAllDownloads_Click(object sender, RoutedEventArgs e)

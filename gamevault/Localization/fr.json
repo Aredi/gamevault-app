@@ -410,6 +410,8 @@
   "No version found.": "Aucune version trouvée.",
   "Not enough space available for drive {0}": "Pas assez d'espace sur le disque {0}",
   "Not enough space available to update '{0}'": "Pas assez d'espace pour mettre à jour '{0}'",
+  "Not enough space to extract: {0} needed, {1} free. Free some space, then extract again.": "Pas assez d'espace pour extraire : il faut {0}, il reste {1}. Libère de la place, puis relance l'extraction.",
+  "The disk is full: free some space, then extract again.": "Le disque est plein : libère de la place, puis relance l'extraction.",
   "Notes": "Notes",
   "Nothing to clean up.": "Rien à nettoyer.",
   "Notify me when new games are added to the server": "Me prévenir quand de nouveaux jeux sont ajoutés au serveur",

@@ -30,6 +30,53 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AnArchiveThatWontFitOnTheDisk_IsNotExtracted_AndKept()
+        {
+            var session = await TestSession.GetAsync();
+            using var stream = new MemoryStream();
+            using (var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, true))
+            using (Stream entry = zip.CreateEntry("data.bin").Open())
+                entry.Write(new byte[1_000_000]);
+            Game game = session.Server.AddGame(9141, "Huge Game", GameType.LINUX_PORTABLE, stream.ToArray(), "Huge Game (L_P).zip");
+            string file = Path.Combine(session.DownloadFolder(game), "Huge Game (L_P).zip");
+            var freeSpace = GameDownloadUserControl.FreeSpace;
+            try
+            {
+                // Room for the small archive twice, not for what is in it
+                GameDownloadUserControl.FreeSpace = _ => 100_000;
+                await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+                var model = (GameDownloadViewModel)Download(game.ID).DataContext!;
+                string expected = gamevault.Localization.Loc.F("Not enough space to extract: {0} needed, {1} free. Free some space, then extract again.", GameVault.Core.Storage.StorageCleanup.FormatSize(1_000_000), GameVault.Core.Storage.StorageCleanup.FormatSize(100_000));
+                await TestSession.WaitUntil(() => model.State == expected, Timeout, "the missing space to be told");
+                Assert.False(Directory.Exists(Path.Combine(session.DownloadFolder(game), "Extract")));
+                Assert.True(File.Exists(file));
+            }
+            finally { GameDownloadUserControl.FreeSpace = freeSpace; }
+        }
+
+        [AvaloniaFact]
+        public async Task AGame_IsNotDownloaded_WithoutRoomForItsExtraction()
+        {
+            var session = await TestSession.GetAsync();
+            Game game = session.Server.AddGame(9142, "Tight Game", GameType.LINUX_PORTABLE, new byte[100_000], "Tight Game (L_P).zip");
+            var freeSpace = GameDownloadUserControl.FreeSpace;
+            try
+            {
+                GameDownloadUserControl.FreeSpace = _ => 150_000;// the archive alone would fit
+                await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+                Assert.DoesNotContain(DownloadsViewModel.Instance.DownloadedGames, d => d.GetGameId() == game.ID);
+            }
+            finally { GameDownloadUserControl.FreeSpace = freeSpace; }
+        }
+
+        [Fact]
+        public void TheSizeOfAnArchive_AddsUpItsFiles_NotTheArchiveItself()
+        {
+            string listing = "Path = game.zip\r\nType = zip\r\nPhysical Size = 999\r\n\r\n----------\r\nPath = a\r\nSize = 100\r\nPacked Size = 100\r\n\r\nPath = b\r\nSize = 150884680048\r\n";
+            Assert.Equal(150884680148, SevenZipHelper.SumSizes(listing));
+        }
+
+        [AvaloniaFact]
         public async Task ADownloadCutByTheServer_ResumesWhereItStopped()
         {
             var session = await TestSession.GetAsync();

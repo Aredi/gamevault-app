@@ -11,6 +11,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using gamevault.Helper.Platform;
 using GameVault.Core;
+using GameVault.Core.Storage;
 using gamevault.Converter;
 using gamevault.Helper;
 using gamevault.Models;
@@ -736,6 +737,9 @@ namespace gamevault.UserControls
             return (process.ExitCode, error);
         }
 
+        /// <summary>Free bytes on the disk of a folder, null when unknown.</summary>
+        internal static Func<string, long?> FreeSpace = directory => PlatformInfo.GetDriveForPath(directory)?.AvailableFreeSpace;
+
         private async Task Extract()
         {
             if (!Directory.Exists(m_DownloadPath))
@@ -783,6 +787,18 @@ namespace gamevault.UserControls
             string extractionError = "";
             bool useTar = !OperatingSystem.IsWindows() && IsTarArchive(files[0].Name) && PlatformInfo.FindInPath("tar") != null;
             bool isEncrypted = !useTar && await sevenZipHelper.IsArchiveEncrypted(Path.Combine(m_DownloadPath, files[0].Name));
+            // Told now rather than when the disk is full, after a long extraction which is thrown away
+            string extractDirectory = Path.Combine(m_DownloadPath, "Extract");
+            long needed = sevenZipHelper.ExtractedSize - (Directory.Exists(extractDirectory) ? StorageCleanup.DirectorySize(extractDirectory) : 0);
+            if (FreeSpace(m_DownloadPath) is long free && free < needed)
+            {
+                ViewModel.State = Loc.F("Not enough space to extract: {0} needed, {1} free. Free some space, then extract again.", StorageCleanup.FormatSize(needed), StorageCleanup.FormatSize(free));
+                Log.Info($"{ViewModel.Game?.Title}: {ViewModel.State}");
+                ViewModel.ExtractionUIVisibility = false;
+                if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
+                    ToastMessageHelper.CreateToastMessage(Loc.T("Extraction Failed"), ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game?.ID}.{ViewModel.Game?.Metadata?.Cover?.ID}"));
+                return;
+            }
             if (useTar)
             {
                 ViewModel.ExtractionInfo = Loc.T("Extracting archive...");
@@ -888,7 +904,11 @@ namespace gamevault.UserControls
                 }
                 else
                 {
-                    ViewModel.State = "Something went wrong during extraction";
+                    string failure = useTar ? extractionError : sevenZipHelper.LastError;
+                    Log.Info($"The extraction of {ViewModel.Game?.Title} failed ({result}): {failure.Trim()}");
+                    ViewModel.State = GameVault.Core.Downloads.ArchiveErrors.IsDiskFull(failure)
+                        ? "The disk is full: free some space, then extract again."
+                        : "Something went wrong during extraction";
                     if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))
                         ToastMessageHelper.CreateToastMessage(Loc.T("Extraction Failed"), ViewModel.Game.Title, Path.Combine(LoginManager.Instance.GetUserProfile().ImageCacheDir, "gbox", $"{ViewModel.Game?.ID}.{ViewModel.Game?.Metadata?.Cover?.ID}"));
                 }

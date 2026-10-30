@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 
@@ -75,6 +76,8 @@ namespace gamevault.Helper
         private Process process { get; set; }
         /// <summary>Error output of the last extraction (tells a damaged archive from other failures).</summary>
         public string LastError { get; private set; } = "";
+        /// <summary>Bytes the archive takes once extracted, read by <see cref="IsArchiveEncrypted"/>: 0 when it hides its list of files.</summary>
+        public long ExtractedSize { get; private set; }
         public delegate void ProcessHandler(object sender, SevenZipProgressEventArgs e);
         public event ProcessHandler Process;
         private ProcessStartInfo CreateProcessHeader()
@@ -103,6 +106,7 @@ namespace gamevault.Helper
             string output = await outputTask;
             string error = await errorTask;
             await process.WaitForExitAsync();
+            ExtractedSize = SumSizes(output);
             if (error.Contains("encrypted", StringComparison.OrdinalIgnoreCase) || output.Contains("Encrypted = +"))
             {
                 result = true;
@@ -110,6 +114,8 @@ namespace gamevault.Helper
             ProcessShepherd.Instance.RemoveProcess(process);
             return result;
         }
+        internal static long SumSizes(string listing) =>
+            System.Text.RegularExpressions.Regex.Matches(listing, @"^Size = (\d+)", System.Text.RegularExpressions.RegexOptions.Multiline).Sum(m => long.Parse(m.Groups[1].Value));
         /// <param name="excludedNames">Files or folders of these names are left in the archive (wherever they are).</param>
         internal async Task<int> ExtractArchive(string archivePath, string outputDir, string password = "", IEnumerable<string>? excludedNames = null)
         {
