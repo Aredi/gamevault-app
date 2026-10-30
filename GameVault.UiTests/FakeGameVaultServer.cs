@@ -134,6 +134,8 @@ namespace GameVault.UiTests
         public List<Dictionary<string, object?>> Reports { get; } = new();
         /// <summary>The invitation codes the service keeps; "WAIT-ING0-USER" is the account waiting for its activation's name.</summary>
         public List<Dictionary<string, object?>> Invites { get; } = new();
+        public ConcurrentDictionary<int, bool> HypervisorGames { get; } = new();
+        public string HypervisorText { get; set; } = "";
 
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
         public List<object> RetroLatest { get; } = new();
@@ -607,6 +609,26 @@ namespace GameVault.UiTests
                         invite["username"] = username;
                         response.StatusCode = 204;
                     }
+                }
+                else if (path == "/hypervisor")
+                {
+                    await Json(response, new { games = HypervisorGames.Keys.ToArray(), text = HypervisorText });
+                }
+                else if (path.StartsWith("/hypervisor/games/"))
+                {
+                    using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    int game = int.Parse(path.Split('/')[3]);
+                    if (asked.RootElement.GetProperty("on").GetBoolean())
+                        HypervisorGames[game] = true;
+                    else
+                        HypervisorGames.TryRemove(game, out _);
+                    response.StatusCode = 204;
+                }
+                else if (path == "/hypervisor/text")
+                {
+                    using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    HypervisorText = asked.RootElement.GetProperty("text").GetString() ?? "";
+                    response.StatusCode = 204;
                 }
                 else if (path == "/invites" && request.HttpMethod == "POST")
                 {

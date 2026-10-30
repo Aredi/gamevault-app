@@ -65,6 +65,7 @@ namespace gamevault.UserControls
                 User[]? users = JsonSerializer.Deserialize<User[]>(userList);
                 await AddLastSeenAsync(users);
                 await LoadInvitesAsync(users);
+                await LoadHypervisorAsync();
                 ViewModel.Users = users;
             }
             catch (Exception ex)
@@ -126,6 +127,27 @@ namespace gamevault.UserControls
                     user.InviteText = invites?.FirstOrDefault(i => i.UserId == user.ID) is InviteItem used ? Loc.F("Invitation code {0}", used.Name) : null;
             }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        internal async Task LoadHypervisorAsync()
+        {
+            try
+            {
+                HypervisorNotice? notice = await HypervisorService.GetAsync();
+                uiHypervisorCard.IsVisible = notice != null;
+                uiHypervisorText.Text = notice?.Text;
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        private async void SaveHypervisorText_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await HypervisorService.SetTextAsync(uiHypervisorText.Text ?? "");
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Saved");
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
         }
 
         private async void CreateInvite_Click(object? sender, RoutedEventArgs e)

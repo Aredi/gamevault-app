@@ -312,6 +312,39 @@ namespace GameVault.Uploader
                 return reports.Resolve(id, check.User) ? Results.NoContent() : Results.Json(new { error = "This report no longer exists." }, statusCode: StatusCodes.Status404NotFound);
             });
 
+            // The games using a hypervisor: their first download shows the administrators' text
+            app.MapGet("/hypervisor", async (HttpRequest request, AdminCheck users, HypervisorStore hypervisor, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return hypervisor.Enabled ? Results.Json(hypervisor.Get()) : HypervisorOff();
+            });
+
+            app.MapPut("/hypervisor/games/{gameId:int}", async (int gameId, HypervisorGame asked, HttpRequest request, AdminCheck admins, HypervisorStore hypervisor, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!hypervisor.Enabled)
+                    return HypervisorOff();
+                hypervisor.SetGame(gameId, asked.On);
+                return Results.NoContent();
+            });
+
+            app.MapPut("/hypervisor/text", async (HypervisorText asked, HttpRequest request, AdminCheck admins, HypervisorStore hypervisor, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!hypervisor.Enabled)
+                    return HypervisorOff();
+                if ((asked.Text ?? "").Length > 4000)
+                    return Results.Json(new { error = "The text is too long." }, statusCode: StatusCodes.Status400BadRequest);
+                hypervisor.SetText(asked.Text ?? "");
+                return Results.NoContent();
+            });
+
             // Invitation codes: a new account is activated only with one, which then says who used it
             app.MapGet("/invites", async (HttpRequest request, AdminCheck admins, InviteStore invites, CancellationToken ct) =>
             {
@@ -657,6 +690,8 @@ namespace GameVault.Uploader
             }
         }
 
+        private static IResult HypervisorOff() => Results.Json(new { error = "Hypervisor notices are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
         private static IResult InvitesOff() => Results.Json(new { error = "Invitation codes are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
         private static string? Cut(string? text, int length) => text?.Trim() is { Length: > 0 } t ? t[..Math.Min(t.Length, length)] : null;
@@ -682,6 +717,10 @@ namespace GameVault.Uploader
     public sealed record RoomGame(int? GameId, string? GameTitle);
     public sealed record LanGame(bool Lan);
     public sealed record HiddenPlay(int? GameId);
+    public sealed record HypervisorGame(bool On);
+
+    public sealed record HypervisorText(string? Text);
+
     public sealed record NewInvite(string? Name);
     public sealed record RedeemInvite(string? Code, string? Username);
     public sealed record ProblemReport(string? Kind, int GameId, string? Platform, string? Title, string? Category, string? Details, string? Context);

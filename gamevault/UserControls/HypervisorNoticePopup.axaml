@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.HypervisorNoticePopup"
+             Width="620" Focusable="True">
+    <!-- The text an administrator wrote, before the first download of a game marked as using a hypervisor -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="28,22,28,26" Spacing="18">
+            <TextBlock x:Name="uiTitle" Classes="sectionTitle" FontSize="22" TextWrapping="Wrap" />
+            <ScrollViewer MaxHeight="420">
+                <SelectableTextBlock x:Name="uiText" TextWrapping="Wrap" />
+            </ScrollViewer>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
+                <CheckBox x:Name="uiDontShow" IsChecked="True" Content="{l:T 'Do not show again'}" />
+                <Button x:Name="uiUnderstood" Grid.Column="1" Classes="action" Click="Understood_Click" Content="{l:T 'I understand'}" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

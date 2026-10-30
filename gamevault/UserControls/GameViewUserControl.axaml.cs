@@ -97,6 +97,7 @@ namespace gamevault.UserControls
                     catch (Exception ex) { Log.Ignored(ex); }
                 }
                 _ = ShowLanAsync();
+                _ = ShowHypervisorAdminAsync();
                 ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
                 ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
                 ViewModel.IsUpdateAvailable = HasUpdate(ViewModel.Game);
@@ -302,6 +303,32 @@ namespace gamevault.UserControls
             }
             // The server has no LAN rooms: nothing shown
             catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>The administrators mark the games using a hypervisor; without the service the box stays hidden.</summary>
+        private async Task ShowHypervisorAdminAsync()
+        {
+            if (ViewModel.Game is not Game game || LoginManager.Instance.GetCurrentUser()?.Role != PERMISSION_ROLE.ADMIN)
+                return;
+            try
+            {
+                HypervisorNotice? notice = await HypervisorService.GetAsync();
+                uiHypervisorAdmin.IsVisible = notice != null;
+                uiHypervisorAdmin.IsChecked = notice?.Games.Contains(game.ID) == true;
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private async void HypervisorAdmin_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game is not Game game)
+                return;
+            try { await HypervisorService.SetGameAsync(game.ID, uiHypervisorAdmin.IsChecked == true); }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
+                uiHypervisorAdmin.IsChecked = !uiHypervisorAdmin.IsChecked;
+            }
         }
 
         private void LanPlay_Click(object? sender, RoutedEventArgs e)

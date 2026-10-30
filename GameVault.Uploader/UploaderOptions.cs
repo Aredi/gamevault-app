@@ -39,6 +39,8 @@ namespace GameVault.Uploader
         public string ReportsDirectory { get; init; } = "/data/reports";
         /// <summary>INVITES_DIRECTORY: the invitation codes new accounts need (a volume, e.g. /data/invites).</summary>
         public string InvitesDirectory { get; init; } = "/data/invites";
+        /// <summary>HYPERVISOR_DIRECTORY: the games using a hypervisor and the text shown to who downloads them (a volume, e.g. /data/hypervisor).</summary>
+        public string HypervisorDirectory { get; init; } = "/data/hypervisor";
         /// <summary>GAMEVAULT_API_KEY: an administrator's API key of the GameVault server, to activate the accounts invited (AUTH_API_KEY_ENABLED on the server).</summary>
         public string? GameVaultApiKey { get; init; }
 
@@ -48,7 +50,7 @@ namespace GameVault.Uploader
             string files = configuration["FILES_DIRECTORY"] ?? "/files";
             if (!Directory.Exists(files))
                 throw new InvalidOperationException($"FILES_DIRECTORY '{files}' does not exist: mount the games folder of the GameVault server there.");
-            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote", RommCommUrl = configuration["ROMM_COMM_URL"], RommCommApiKey = configuration["ROMM_COMM_API_KEY"], RetroSavesDirectory = configuration["RETRO_SAVES_DIRECTORY"] ?? "/data/retro-saves", RetroPlayersDirectory = configuration["RETRO_PLAYERS_DIRECTORY"] ?? "/data/retro-players", RommUrl = configuration["ROMM_URL"], RommUsername = configuration["ROMM_USERNAME"], RommPublicUrl = configuration["ROMM_PUBLIC_URL"], RommPassword = configuration["ROMM_PASSWORD"], ZeroTierControllerUrl = configuration["ZEROTIER_CONTROLLER_URL"], ZeroTierApiSecret = configuration["ZEROTIER_API_SECRET"], RoomsDirectory = configuration["ROOMS_DIRECTORY"] ?? "/data/rooms", ReportsDirectory = configuration["REPORTS_DIRECTORY"] ?? "/data/reports", InvitesDirectory = configuration["INVITES_DIRECTORY"] ?? "/data/invites", GameVaultApiKey = configuration["GAMEVAULT_API_KEY"] };
+            return new UploaderOptions { HypervisorDirectory = configuration["HYPERVISOR_DIRECTORY"] ?? "/data/hypervisor", GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote", RommCommUrl = configuration["ROMM_COMM_URL"], RommCommApiKey = configuration["ROMM_COMM_API_KEY"], RetroSavesDirectory = configuration["RETRO_SAVES_DIRECTORY"] ?? "/data/retro-saves", RetroPlayersDirectory = configuration["RETRO_PLAYERS_DIRECTORY"] ?? "/data/retro-players", RommUrl = configuration["ROMM_URL"], RommUsername = configuration["ROMM_USERNAME"], RommPublicUrl = configuration["ROMM_PUBLIC_URL"], RommPassword = configuration["ROMM_PASSWORD"], ZeroTierControllerUrl = configuration["ZEROTIER_CONTROLLER_URL"], ZeroTierApiSecret = configuration["ZEROTIER_API_SECRET"], RoomsDirectory = configuration["ROOMS_DIRECTORY"] ?? "/data/rooms", ReportsDirectory = configuration["REPORTS_DIRECTORY"] ?? "/data/reports", InvitesDirectory = configuration["INVITES_DIRECTORY"] ?? "/data/invites", GameVaultApiKey = configuration["GAMEVAULT_API_KEY"] };
         }
     }
 }

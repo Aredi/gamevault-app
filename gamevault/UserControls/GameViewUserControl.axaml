@@ -301,6 +301,7 @@
                                 </StackPanel>
                             </Border>
                             <CheckBox x:Name="uiLanAdmin" IsVisible="False" Click="LanAdmin_Click" Content="{l:T 'Playable in LAN (administrator)'}" />
+                            <CheckBox x:Name="uiHypervisorAdmin" IsVisible="False" Click="HypervisorAdmin_Click" Content="{l:T 'Uses a hypervisor (administrator)'}" />
                         </StackPanel>
                     </Grid>
 

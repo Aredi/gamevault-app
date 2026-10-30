@@ -127,6 +127,16 @@
                     </StackPanel>
                 </Border>
 
+                <!-- The text shown to who downloads a game using a hypervisor (SanctuaryVault service) -->
+                <Border x:Name="uiHypervisorCard" Classes="card" IsVisible="False">
+                    <StackPanel Spacing="10">
+                        <TextBlock Classes="cardTitle" Text="{l:T 'Hypervisor'}" />
+                        <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{l:T 'Shown once to who downloads a game marked on its page. Nothing is shown while the text is empty.'}" />
+                        <TextBox x:Name="uiHypervisorText" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" MaxLength="4000" />
+                        <Button Classes="small" HorizontalAlignment="Right" Click="SaveHypervisorText_Click" Content="{l:T 'Save'}" />
+                    </StackPanel>
+                </Border>
+
                 <!-- Users -->
                 <Border Classes="card">
                     <Grid RowDefinitions="Auto,*">

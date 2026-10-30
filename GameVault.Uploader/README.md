@@ -34,6 +34,7 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `ROOMS_DIRECTORY` | `/data/rooms` | The LAN rooms and the games playable in LAN |
 | `REPORTS_DIRECTORY` | `/data/reports` | The problems the players report on games (admin console) |
 | `INVITES_DIRECTORY` | `/data/invites` | The invitation codes new accounts need (admin console) |
+| `HYPERVISOR_DIRECTORY` | `/data/hypervisor` | The games using a hypervisor and the text shown to who downloads them (admin console) |
 | `GAMEVAULT_API_KEY` | - | An administrator's API key of the GameVault server: activates the accounts that give an invitation code. The server needs `AUTH_API_KEY_ENABLED=true`, and `SERVER_ACCOUNT_ACTIVATION_DISABLED=false` so that new accounts wait for one |
 
 ## LAN rooms
