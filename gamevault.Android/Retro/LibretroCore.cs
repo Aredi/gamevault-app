@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace gamevault.Android.Retro
@@ -73,6 +74,10 @@ namespace gamevault.Android.Retro
             ["citra_mouse_touchscreen"] = "disabled",
         };
         private readonly System.Collections.Generic.Dictionary<string, IntPtr> optionValues = new();
+        /// <summary>This device's own options (the PS2's renderer without OpenGL ES 3.2).</summary>
+        private readonly System.Collections.Generic.Dictionary<string, string> overrides = new();
+        /// <summary>Each option's default, as the core declared it ("Description; default|other|..."): the BIOS of LRPS2 is one.</summary>
+        private readonly System.Collections.Generic.Dictionary<string, string> defaults = new();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         [return: MarshalAs(UnmanagedType.U1)]
@@ -116,7 +121,15 @@ namespace gamevault.Android.Retro
         /// <param name="language">libretro's language number (0 English, 2 French...).</param>
         public LibretroCore(string file, string systemDirectory, string saveDirectory, uint language)
         {
-            library = NativeLibrary.Load(file);
+            string name = Path.GetFileName(file);
+            // Without OpenGL ES 3.2: LRPS2 draws with the CPU (its GPU renderer would show nothing); Citra has no other
+            // renderer and stops the whole app
+            if (name.StartsWith("citra_", StringComparison.Ordinal) && !GlContext.IsModern)
+                throw new InvalidOperationException(gamevault.Localization.Loc.T("The 3DS needs OpenGL ES 3.2, which this device's GPU does not have."));
+            if (name.StartsWith("pcsx2_", StringComparison.Ordinal) && !GlContext.IsModern)
+                overrides["pcsx2_renderer"] = "Software (SW)";
+            // LRPS2: free room next to it for its recompilers' maps
+            library = (Path.GetFileName(file).StartsWith("pcsx2_", StringComparison.Ordinal) ? NearLoader.Load(file) : null) ?? NativeLibrary.Load(file);
             this.systemDirectory = Marshal.StringToCoTaskMemUTF8(systemDirectory);
             this.saveDirectory = Marshal.StringToCoTaskMemUTF8(saveDirectory);
             this.language = language;
@@ -155,6 +168,7 @@ namespace gamevault.Android.Retro
             // Kept until the game is unloaded: some cores keep the path
             gamePath = pathText;
             bool loaded = ((delegate* unmanaged[Cdecl]<GameInfo*, byte>)Export("retro_load_game"))(&game) != 0;
+            gameLoaded = loaded;
             if (loaded)
             {
                 SystemAvInfo av;
@@ -185,8 +199,14 @@ namespace gamevault.Android.Retro
             return data == IntPtr.Zero || size == 0 ? Span<byte>.Empty : new Span<byte>((void*)data, (int)size);
         }
 
+        private bool gameLoaded;
+
+        /// <summary>The game unloaded: only a loaded one (unloading after a failed load crashes some cores).</summary>
         public void UnloadGame()
         {
+            if (!gameLoaded)
+                return;
+            gameLoaded = false;
             ((delegate* unmanaged[Cdecl]<void>)Export("retro_unload_game"))();
             if (Gl != null && contextDestroy != IntPtr.Zero)
                 ((delegate* unmanaged[Cdecl]<void>)contextDestroy)();
@@ -224,6 +244,13 @@ namespace gamevault.Android.Retro
             {
                 switch (command & ~0x10000u)// RETRO_ENVIRONMENT_EXPERIMENTAL
                 {
+                    case 27:// GET_LOG_INTERFACE: bionic's syslog(priority, format, ...) is libretro's log(level, format, ...), in Android's log
+                        if (NativeLibrary.TryGetExport(NativeLibrary.Load("libc.so"), "syslog", out IntPtr syslog))
+                        {
+                            *(IntPtr*)data = syslog;
+                            return true;
+                        }
+                        return false;
                     case 3:// GET_CAN_DUPE
                         *(byte*)data = 1;
                         return true;
@@ -231,7 +258,6 @@ namespace gamevault.Android.Retro
                     case 8:// SET_PERFORMANCE_LEVEL
                     case 11:// SET_INPUT_DESCRIPTORS
                     case 13:// SET_DISK_CONTROL_INTERFACE
-                    case 16:// SET_VARIABLES: the cores' defaults are used
                     case 35:// SET_CONTROLLER_INFO
                     case 44:// SET_SERIALIZATION_QUIRKS
                         return true;
@@ -247,11 +273,20 @@ namespace gamevault.Android.Retro
                             return false;
                         Format = (PixelFormat)format;
                         return true;
-                    case 15:// GET_VARIABLE: the app's own options, else the default
+                    case 16:// SET_VARIABLES: their defaults, the first of each list
+                        for (var variable = (Variable*)data; variable->Key != IntPtr.Zero; variable++)
+                        {
+                            string description = Marshal.PtrToStringUTF8(variable->Value) ?? "";
+                            int values = description.IndexOf("; ", StringComparison.Ordinal);
+                            if (values >= 0)
+                                defaults[Marshal.PtrToStringUTF8(variable->Key) ?? ""] = description[(values + 2)..].Split('|')[0];
+                        }
+                        return true;
+                    case 15:// GET_VARIABLE: the app's own options, else the core's default
                         {
                             var variable = (Variable*)data;
                             string key = Marshal.PtrToStringUTF8(variable->Key) ?? "";
-                            if (!Options.TryGetValue(key, out string? value))
+                            if (!overrides.TryGetValue(key, out string? value) && !Options.TryGetValue(key, out value) && !defaults.TryGetValue(key, out value))
                             {
                                 variable->Value = IntPtr.Zero;
                                 return false;

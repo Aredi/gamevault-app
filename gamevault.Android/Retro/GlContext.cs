@@ -28,6 +28,7 @@ namespace gamevault.Android.Retro
         [DllImport(Egl)] private static extern bool eglDestroySurface(IntPtr display, IntPtr surface);
         [DllImport(Egl)] private static extern IntPtr eglGetProcAddress(string name);
 
+        [DllImport(Gles)] private static extern IntPtr glGetString(uint name);
         [DllImport(Gles)] private static extern void glGenFramebuffers(int n, uint* ids);
         [DllImport(Gles)] private static extern void glBindFramebuffer(uint target, uint id);
         [DllImport(Gles)] private static extern void glGenTextures(int n, uint* ids);
@@ -52,6 +53,36 @@ namespace gamevault.Android.Retro
         private byte[] readBack = Array.Empty<byte>();
 
         public uint Framebuffer => framebuffer;
+
+        private static bool? modern;
+        /// <summary>
+        /// OpenGL ES 3.2, or 3.1 with the shader blocks of 3.2 (the PS2's and the 3DS's renderers need them). Asked once,
+        /// in a context made for the question.
+        /// </summary>
+        public static bool IsModern
+        {
+            get
+            {
+                if (modern is bool known)
+                    return known;
+                try
+                {
+                    using var probe = new GlContext();
+                    string version = Marshal.PtrToStringUTF8(glGetString(0x1F02)) ?? "";// GL_VERSION: "OpenGL ES 3.2 ..."
+                    string extensions = Marshal.PtrToStringUTF8(glGetString(0x1F03)) ?? "";// GL_EXTENSIONS
+                    var match = System.Text.RegularExpressions.Regex.Match(version, @"OpenGL ES (\d+)\.(\d+)");
+                    int major = match.Success ? int.Parse(match.Groups[1].Value) : 0, minor = match.Success ? int.Parse(match.Groups[2].Value) : 0;
+                    modern = major > 3 || (major == 3 && minor >= 2) || extensions.Contains("GL_EXT_shader_io_blocks");
+                    GameVault.Core.Log.Info($"GPU: {version} ({(modern == true ? "3.2 renderers" : "no 3.2 renderer")})");
+                }
+                catch (Exception ex)
+                {
+                    GameVault.Core.Log.Ignored(ex);
+                    modern = false;
+                }
+                return modern.Value;
+            }
+        }
 
         public GlContext()
         {

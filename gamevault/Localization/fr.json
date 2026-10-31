@@ -1686,5 +1686,6 @@
   "Not now": "Pas maintenant",
   "Approve the code {0} on RomM's page that opened, then come back": "Approuve le code {0} sur la page RomM qui s'est ouverte, puis reviens ici",
   "Cloud saves (sent after a game, taken before)": "Sauvegardes cloud (envoyées après une partie, récupérées avant)",
-  "Cloud saves off: the saves stay on this device": "Sauvegardes cloud désactivées : les sauvegardes restent sur cet appareil"
+  "Cloud saves off: the saves stay on this device": "Sauvegardes cloud désactivées : les sauvegardes restent sur cet appareil",
+  "The 3DS needs OpenGL ES 3.2, which this device's GPU does not have.": "La 3DS a besoin d'OpenGL ES 3.2, que la puce graphique de cet appareil n'a pas."
 }
