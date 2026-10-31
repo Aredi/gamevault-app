@@ -58,6 +58,17 @@ namespace gamevault.Android.Retro
         /// <summary>A finger on the game's picture (the DS's touch screen): -32767..32767, or none.</summary>
         public volatile int PointerX, PointerY, PointerDown;
 
+        private readonly System.Collections.Concurrent.ConcurrentQueue<(string Key, string Value)> options = new();
+
+        /// <summary>A core option the player's screen sets (by the touch pad or a controller), given to the core on its thread.</summary>
+        public void SetOption(string key, string value) => options.Enqueue((key, value));
+
+        private void ApplyOptions()
+        {
+            while (options.TryDequeue(out var option))
+                core!.SetOption(option.Key, option.Value);
+        }
+
         public Task Completion => done.Task;
         public FrameBuffer Frame { get; } = new();
         public float AspectRatio { get; private set; } = 4f / 3f;
@@ -111,6 +122,7 @@ namespace gamevault.Android.Retro
                     touchThisFrame = Interlocked.Exchange(ref touchTapped, 0);
                     for (int port = 0; port < 4; port++)
                         tappedThisFrame[port] = Interlocked.Exchange(ref tapped[port], 0);
+                    ApplyOptions();
                     core.Run();
                     UpdateGeometry();
                     if ((Buttons.Any(b => (b & (1 << Select)) != 0 && (b & (1 << Start)) != 0)))
@@ -170,6 +182,7 @@ namespace gamevault.Android.Retro
             core.Audio = WriteAudio;
             core.Input = InputState;
 
+            ApplyOptions();
             string rom = PlayableRom(game.Rom, core.ValidExtensions);
             long size = 0;
             if (core.Info.NeedFullpath == 0)

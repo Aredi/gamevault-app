@@ -146,6 +146,10 @@ namespace gamevault.Android
 
         public bool PlaysBuiltIn(string core) => BuiltInCores.Contains(core);
 
+        // Asked away from the screen's thread: the question makes an OpenGL context current, which would take Avalonia's
+        public async Task<string?> UnsupportedAsync(string core) =>
+            core == "citra" && !await Task.Run(() => Retro.GlContext.IsModern) ? Loc.T("The 3DS needs OpenGL ES 3.2, which this device's GPU does not have.") : null;
+
         private int running;
 
         public IDisposable KeepRunning()

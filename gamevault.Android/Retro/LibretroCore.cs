@@ -73,8 +73,9 @@ namespace gamevault.Android.Retro
             ["citra_touch_touchscreen"] = "enabled",
             ["citra_mouse_touchscreen"] = "disabled",
         };
+        /// <summary>The values given to the core, by their text: kept until the end, a core may hold one.</summary>
         private readonly System.Collections.Generic.Dictionary<string, IntPtr> optionValues = new();
-        /// <summary>This device's own options (the PS2's renderer without OpenGL ES 3.2).</summary>
+        /// <summary>This device's own options (the PS2's renderer without OpenGL ES 3.2), and the player's (see SetOption).</summary>
         private readonly System.Collections.Generic.Dictionary<string, string> overrides = new();
         /// <summary>Each option's default, as the core declared it ("Description; default|other|..."): the BIOS of LRPS2 is one.</summary>
         private readonly System.Collections.Generic.Dictionary<string, string> defaults = new();
@@ -192,6 +193,17 @@ namespace gamevault.Android.Retro
 
         public void Run() => run();
 
+        private bool optionsChanged;
+
+        /// <summary>An option of the app's own, from the player's thread: before the game is loaded, or during it (the core reads it again).</summary>
+        public void SetOption(string key, string value)
+        {
+            if (overrides.TryGetValue(key, out string? current) && current == value)
+                return;
+            overrides[key] = value;
+            optionsChanged = gameLoaded;
+        }
+
         public Span<byte> Memory(uint kind)
         {
             IntPtr data = ((delegate* unmanaged[Cdecl]<uint, IntPtr>)Export("retro_get_memory_data"))(kind);
@@ -292,8 +304,8 @@ namespace gamevault.Android.Retro
                                 variable->Value = IntPtr.Zero;
                                 return false;
                             }
-                            if (!optionValues.TryGetValue(key, out IntPtr text))
-                                optionValues[key] = text = Marshal.StringToCoTaskMemUTF8(value);
+                            if (!optionValues.TryGetValue(value, out IntPtr text))
+                                optionValues[value] = text = Marshal.StringToCoTaskMemUTF8(value);
                             variable->Value = text;
                             return true;
                         }
@@ -314,8 +326,9 @@ namespace gamevault.Android.Retro
                     case 56:// GET_PREFERRED_HW_RENDER: OpenGL ES 3
                         *(uint*)data = 4;
                         return true;
-                    case 17:// GET_VARIABLE_UPDATE
-                        *(byte*)data = 0;
+                    case 17:// GET_VARIABLE_UPDATE: an option changed during the game (see SetOption)
+                        *(byte*)data = optionsChanged ? (byte)1 : (byte)0;
+                        optionsChanged = false;
                         return true;
                     case 32:// SET_SYSTEM_AV_INFO
                         AvInfo = *(SystemAvInfo*)data;

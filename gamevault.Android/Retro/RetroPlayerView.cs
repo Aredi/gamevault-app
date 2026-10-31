@@ -34,6 +34,7 @@ namespace gamevault.Android.Retro
         }
 
         private readonly RetroPlayer player;
+        private readonly string platform;
         private readonly Screen picture = new();
         private readonly TouchPad pad;
         private readonly Button menuButton;
@@ -49,6 +50,7 @@ namespace gamevault.Android.Retro
         public RetroPlayerView(RetroPlayer player, string platform, string title)
         {
             this.player = player;
+            this.platform = platform;
             Background = Brushes.Black;
             pad = new TouchPad(platform);
             pad.ButtonsChanged += player.SetTouchButtons;
@@ -129,8 +131,23 @@ namespace gamevault.Android.Retro
             pad.InvalidateVisual();
             // With a controller: Back or Select+Start, nothing over the game
             menuButton.IsVisible = show;
+            foreach (var (key, value) in TouchOptions(platform, show))
+                player.SetOption(key, value);
             InvalidateArrange();
         }
+
+        /// <summary>
+        /// What the cores change with the touch pad: the Wiimote aims where a finger is on the picture (else with the
+        /// right stick, the core's own settings); the DS's screens one above the other between the controls (else side
+        /// by side, larger).
+        /// </summary>
+        private static (string Key, string Value)[] TouchOptions(string platform, bool touch) => platform switch
+        {
+            // The pointer's field and height measured on Wii Play: the Wiimote's cursor under the finger
+            "wii" => new[] { ("dolphin_ir_mode", touch ? "2" : "1"), ("dolphin_ir_yaw", touch ? "14" : "25"), ("dolphin_ir_pitch", touch ? "16" : "25"), ("dolphin_ir_offset", touch ? "24" : "0") },
+            "nds" => new[] { ("melonds_screen_layout1", touch ? "top-bottom" : "left-right") },
+            _ => Array.Empty<(string, string)>(),
+        };
 
         public bool IsMenuOpen => menu.IsVisible;
 
@@ -236,7 +253,8 @@ namespace gamevault.Android.Retro
             double top = pad.ShowButtons && portrait ? 52 : (finalSize.Height - height) / 2;
             picture.Arrange(new Rect((finalSize.Width - width) / 2, top, width, height));
             pad.Arrange(new Rect(finalSize));
-            menuButton.Arrange(new Rect(finalSize));
+            // Beside the picture with the touch pad (on its inner edge, above the cross), else at the top
+            menuButton.Arrange(room > 0 ? new Rect(room * 0.86 - 40, 0, 80, 60) : new Rect(finalSize));
             menu.Arrange(new Rect(finalSize));
             return finalSize;
         }

@@ -52,6 +52,8 @@ namespace gamevault.Android.Retro
             "psx" or "ps2" => new[] { ("○", RetroPlayer.A, 0), ("✕", RetroPlayer.B, 1), ("□", RetroPlayer.Y, 2), ("△", RetroPlayer.X, 3) },
             // FinalBurn Neo's Neo Geo: A B C D on B A Y X
             "neogeoaes" => new[] { ("B", RetroPlayer.A, 0), ("A", RetroPlayer.B, 1), ("C", RetroPlayer.Y, 2), ("D", RetroPlayer.X, 3) },
+            // Dolphin's upright Wiimote: A B 1 2 on A B X Y
+            "wii" => new[] { ("A", RetroPlayer.A, 0), ("B", RetroPlayer.B, 1), ("1", RetroPlayer.X, 2), ("2", RetroPlayer.Y, 3) },
             _ => new[] { ("A", RetroPlayer.A, 0), ("B", RetroPlayer.B, 1), ("Y", RetroPlayer.Y, 2), ("X", RetroPlayer.X, 3) },
         };
 
@@ -60,8 +62,20 @@ namespace gamevault.Android.Retro
             "nes" => Array.Empty<(string, int)>(),
             "psx" or "ps2" => new[] { ("L1", RetroPlayer.L), ("R1", RetroPlayer.R), ("L2", RetroPlayer.L2), ("R2", RetroPlayer.R2) },
             // Dolphin: the triggers are L2 and R2, Z is R (right, under R)
-            "ngc" or "wii" => new[] { ("L", RetroPlayer.L2), ("R", RetroPlayer.R2), ("", -1), ("Z", RetroPlayer.R) },
+            "ngc" => new[] { ("L", RetroPlayer.L2), ("R", RetroPlayer.R2), ("", -1), ("Z", RetroPlayer.R) },
+            // The Wiimote's Home is R3
+            "wii" => new[] { ("", -1), ("HOME", RetroPlayer.R3) },
             _ => new[] { ("L", RetroPlayer.L), ("R", RetroPlayer.R) },
+        };
+
+        /// <summary>The buttons at the bottom, as the console names them; the GameCube has no Select (its menu quits).</summary>
+        private (string Label, int Id)[] Middle => platform switch
+        {
+            "ngc" => new[] { ("START", RetroPlayer.Start) },
+            "wii" => new[] { ("−", RetroPlayer.Select), ("+", RetroPlayer.Start) },
+            // FinalBurn Neo: Select puts a coin in
+            "neogeoaes" => new[] { ("COIN", RetroPlayer.Select), ("START", RetroPlayer.Start) },
+            _ => new[] { ("SELECT", RetroPlayer.Select), ("START", RetroPlayer.Start) },
         };
 
         protected override Size ArrangeOverride(Size finalSize)
@@ -98,8 +112,13 @@ namespace gamevault.Android.Retro
                 double y = h > w ? h - unit * (0.72 + 0.15 * (i / 2)) : unit * (0.1 + 0.15 * (i / 2));
                 list.Add(new Button(shoulders[i].Label, shoulders[i].Id, right ? w - unit * 0.16 : unit * 0.16, y, unit * 0.065));
             }
-            list.Add(new Button("SELECT", RetroPlayer.Select, w / 2 - unit * 0.13, h - unit * 0.07, unit * 0.05));
-            list.Add(new Button("START", RetroPlayer.Start, w / 2 + unit * 0.13, h - unit * 0.07, unit * 0.05));
+            // Upright: under the picture, in the middle. Lying: on the picture's edges, under the cross and the buttons
+            double middle = h > w ? unit * 0.13 : w / 2 - unit * 0.435;
+            foreach (var (label, id) in Middle)
+            {
+                bool right = id == RetroPlayer.Start;
+                list.Add(new Button(label, id, right ? w / 2 + middle : w / 2 - middle, h - unit * 0.07, unit * 0.05));
+            }
             buttons = list;
         }
 

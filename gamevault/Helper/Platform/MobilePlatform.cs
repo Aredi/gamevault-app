@@ -41,6 +41,9 @@ namespace gamevault.Helper.Platform
         /// <summary>Starts the game in RetroArch; completes once SanctuaryVault is back on the screen.</summary>
         Task PlayAsync(string core, string rom);
 
+        /// <summary>Why this device can not play this core's games at all (its GPU), or null: asked before a download.</summary>
+        Task<string?> UnsupportedAsync(string core);
+
         /// <summary>The app plays this core's games itself (its pictures are drawn without the GPU): no RetroArch.</summary>
         bool PlaysBuiltIn(string core);
 

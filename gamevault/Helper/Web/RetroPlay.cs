@@ -106,7 +106,7 @@ namespace gamevault.Helper
                 game.Status = Loc.F("{0} games are not playable on Android yet.", game.Platform.Name);
                 return;
             }
-            if (mobile.CannotPlay(core) is string why)
+            if ((mobile.CannotPlay(core) ?? await mobile.UnsupportedAsync(core)) is string why)
             {
                 game.Status = why;
                 return;

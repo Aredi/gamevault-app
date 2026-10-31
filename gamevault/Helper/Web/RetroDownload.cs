@@ -429,6 +429,10 @@ namespace gamevault.Helper
             }
             if ((SettingsViewModel.Instance.RootDirectories?.Count ?? 0) == 0)
                 return Loc.T("No Root Directory configured! Go to ⚙️Settings->Data");
+            // A console this device can not play (the 3DS without OpenGL ES 3.2): told before the game comes down
+            if (Helper.Platform.MobilePlatform.Current is Helper.Platform.IMobilePlatform device && RetroPlay.AndroidCore(game.Platform.System) is string androidCore
+                && await device.UnsupportedAsync(androidCore) is string unsupported)
+                return unsupported;
             // A PS3 package is installed into the console with its licence: not done here, told before gigabytes come down
             if (game.Platform.System.IsRpcs3 && string.Equals(Path.GetExtension(game.FileName), ".pkg", StringComparison.OrdinalIgnoreCase))
                 return Loc.T("PS3 packages (.pkg) can not be played here: an ISO or the game's folder is needed in RomM.");
