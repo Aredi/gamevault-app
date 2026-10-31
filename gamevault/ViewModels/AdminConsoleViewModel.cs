@@ -7,6 +7,13 @@ using System.Threading.Tasks;
 
 namespace gamevault.ViewModels
 {
+    public enum AdminConsoleSection
+    {
+        Players,
+        Reports,
+        Invites,
+        Server
+    }
     internal class AdminConsoleViewModel : ViewModelBase
     {
         private User[] m_Users { get; set; }

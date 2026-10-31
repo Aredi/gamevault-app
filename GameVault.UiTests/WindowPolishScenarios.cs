@@ -62,6 +62,74 @@ namespace GameVault.UiTests
             }
         }
 
+        /// <summary>A counter of the console opens its part; the others close.</summary>
+        [AvaloniaFact]
+        public async Task TheAdminCounters_OpenTheirPart()
+        {
+            await TestSession.GetAsync();
+            var console = new AdminConsoleUserControl();
+            var players = console.FindControl<Panel>("uiSectionPlayers")!;
+            var server = console.FindControl<StackPanel>("uiSectionServer")!;
+            Assert.True(players.IsVisible);
+            Assert.False(server.IsVisible);
+            console.FindControl<Avalonia.Controls.Primitives.ToggleButton>("uiTileServer")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Assert.False(players.IsVisible);
+            Assert.True(server.IsVisible);
+            Assert.False(console.FindControl<Avalonia.Controls.Primitives.ToggleButton>("uiTilePlayers")!.IsChecked);
+        }
+
+        /// <summary>The search of the settings looks in every tab, a chosen result opens its tab.</summary>
+        [AvaloniaFact]
+        public async Task TheSettingsSearch_FindsASettingOfAnotherTab_AndOpensIt()
+        {
+            await TestSession.GetAsync();
+            var vm = MainWindowViewModel.Instance;
+            vm.SetActiveControl(MainControl.Settings);
+            Dispatcher.UIThread.RunJobs();
+            try
+            {
+                var settings = vm.Settings;
+                var tabs = settings.FindControl<TabControl>("uiTabControl")!;
+                tabs.SelectedIndex = 0;
+                settings.FindControl<TextBox>("uiSearch")!.Text = gamevault.Localization.Loc.T("Auto-Extract Downloaded Games")[..10];
+                Dispatcher.UIThread.RunJobs();
+                var hits = (IEnumerable<SettingsUserControl.SearchHit>)settings.FindControl<ItemsControl>("uiSearchHits")!.ItemsSource!;
+                var hit = hits.First(h => h.Title == gamevault.Localization.Loc.T("Auto-Extract Downloaded Games"));
+                ClickHit(settings, hit);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Same(hit.Item, tabs.SelectedItem);
+                Assert.False(settings.FindControl<Border>("uiSearchResults")!.IsVisible);
+            }
+            finally
+            {
+                vm.Settings.FindControl<TextBox>("uiSearch")!.Text = "";
+                vm.SetActiveControl(MainControl.Library);
+            }
+
+            static void ClickHit(SettingsUserControl settings, SettingsUserControl.SearchHit hit)
+            {
+                var button = settings.FindControl<ItemsControl>("uiSearchHits")!.GetRealizedContainers().SelectMany(c => c.GetVisualDescendants()).OfType<Button>().First(b => b.DataContext == hit);
+                button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            }
+        }
+
+        /// <summary>The disk's slices are measured away from the UI thread (a brush made there threw, the bar stayed empty).</summary>
+        [AvaloniaFact]
+        public async Task TheDiskUsage_MeasuredOnAnotherThread_IsShownAsABar()
+        {
+            var session = await TestSession.GetAsync();
+            var game = session.Server.AddGame(9871, "Disk Bar Game", gamevault.Models.GameType.LINUX_PORTABLE, new byte[16], "Disk Bar Game (L_P).tar.gz");
+            var settings = new GameSettingsUserControl(game);
+            var slices = await Task.Run(() => new List<DiskSlice>
+            {
+                new("This game", 30, Avalonia.Media.Colors.Orange, "3 GB"),
+                new("Free", 70, Avalonia.Media.Colors.Transparent, "7 GB"),
+            });
+            settings.ShowDiskUsage(slices);
+            Assert.Equal(2, settings.FindControl<Grid>("uiDiskBar")!.Children.Count);
+            Assert.Same(slices, settings.FindControl<ItemsControl>("uiDiskLegend")!.ItemsSource);
+        }
+
         /// <summary>A message is a card in the middle of the window, its main action on the right.</summary>
         [AvaloniaFact]
         public async Task ADialog_IsACard_WithItsMainActionOnTheRight()

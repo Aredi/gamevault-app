@@ -82,6 +82,27 @@
         </Style>
     </ControlTheme>
 
+    <!-- SettingRow -->
+    <ControlTheme x:Key="{x:Type uc:SettingRow}" TargetType="uc:SettingRow">
+        <Setter Property="Padding" Value="16,11" />
+        <Setter Property="MinHeight" Value="60" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" MinHeight="{TemplateBinding MinHeight}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20" VerticalAlignment="Center">
+                        <StackPanel VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{TemplateBinding Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Classes="muted" Text="{TemplateBinding Hint}" FontSize="12.5" TextWrapping="Wrap"
+                                       IsVisible="{TemplateBinding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                        <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
     <!-- ProgressRing -->
     <ControlTheme x:Key="{x:Type uc:ProgressRing}" TargetType="uc:ProgressRing">
         <Setter Property="Width" Value="60" />

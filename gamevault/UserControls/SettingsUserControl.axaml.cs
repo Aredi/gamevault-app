@@ -36,6 +36,67 @@ namespace gamevault.UserControls
     /// </summary>
     public partial class SettingsUserControl : UserControl
     {
+        public sealed record SearchHit(string Title, string Tab, TabItem Item, Control Target);
+
+        /// <summary>A setting (its row) or a part of a page (its title) whose text has what was typed, in every tab shown.</summary>
+        private List<SearchHit> FindSettings(string text)
+        {
+            var hits = new List<SearchHit>();
+            bool Has(string? value) => value?.Contains(text, StringComparison.CurrentCultureIgnoreCase) == true;
+            void Walk(object? node, TabItem tab, string tabName)
+            {
+                switch (node)
+                {
+                    case SettingRow row:
+                        if (Has(row.Title) || Has(row.Hint))
+                            hits.Add(new SearchHit(row.Title ?? "", tabName, tab, row));
+                        break;
+                    case TextBlock title when title.Classes.Contains("h1"):
+                        if (Has(title.Text))
+                            hits.Add(new SearchHit(title.Text!, tabName, tab, title));
+                        break;
+                    case Panel panel:
+                        foreach (Control child in panel.Children)
+                            Walk(child, tab, tabName);
+                        break;
+                    case Decorator decorator:
+                        Walk(decorator.Child, tab, tabName);
+                        break;
+                    case ContentControl content:
+                        Walk(content.Content, tab, tabName);
+                        break;
+                }
+            }
+            foreach (TabItem tab in uiTabControl.Items.OfType<TabItem>().Where(t => t.IsVisible))
+                Walk(tab.Content, tab, (tab.Header as Panel)?.Children.OfType<TextBlock>().FirstOrDefault()?.Text ?? "");
+            return hits;
+        }
+
+        private void Search_TextChanged(object? sender, TextChangedEventArgs e)
+        {
+            string text = uiSearch.Text?.Trim() ?? "";
+            uiSearchResults.IsVisible = text.Length >= 2;
+            if (!uiSearchResults.IsVisible)
+                return;
+            List<SearchHit> hits = FindSettings(text);
+            uiSearchHits.ItemsSource = hits;
+            uiSearchNothing.IsVisible = hits.Count == 0;
+        }
+
+        private void Search_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+                uiSearch.Text = "";
+        }
+
+        private void SearchHit_Click(object? sender, RoutedEventArgs e)
+        {
+            var hit = (SearchHit)((Control)sender!).DataContext!;
+            uiSearch.Text = "";
+            uiTabControl.SelectedItem = hit.Item;
+            Dispatcher.UIThread.Post(() => hit.Target.BringIntoView(), DispatcherPriority.Loaded);
+        }
+
         private SettingsViewModel ViewModel { get; set; }
         private bool loaded = false;
         public SettingsUserControl()
