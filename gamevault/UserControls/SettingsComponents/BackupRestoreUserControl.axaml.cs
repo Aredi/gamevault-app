@@ -24,7 +24,7 @@ namespace gamevault.UserControls.SettingsComponents
             InitializeComponent();
 
         }
-        private void BackupRestorePopup_Close(object? sender, PointerReleasedEventArgs e)
+        private void BackupRestorePopup_Close(object? sender, RoutedEventArgs e)
         {
             MainWindowViewModel.Instance.ClosePopup();
         }

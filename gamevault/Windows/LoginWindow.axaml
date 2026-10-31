@@ -6,18 +6,29 @@
         xmlns:local="clr-namespace:gamevault.Windows"
         x:Class="gamevault.Windows.LoginWindow"
         Title="SanctuaryVault" Icon="/Resources/Images/icon.ico"
-        Width="720" Height="500" CanResize="False" WindowStartupLocation="CenterScreen"
+        Width="960" Height="620" CanResize="False" WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Brush.Background2}">
     <Window.Resources>
         <conv:InverseBoolConverter x:Key="invBoolConv" />
     </Window.Resources>
     <Window.Styles>
-        <!-- Profile tiles: details, settings button and blur only while hovered -->
-        <Style Selector="Button.profile Border.hoverBlur, Button.profile Button.profileSettings, Button.profile StackPanel.profileInfo">
-            <Setter Property="Opacity" Value="0" />
+        <!-- Profile rows -->
+        <Style Selector="Button.profile">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="PART_Bg" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="14" Padding="14,0" Height="76">
+                        <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" VerticalAlignment="Center" HorizontalContentAlignment="Stretch" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
-        <Style Selector="Button.profile:pointerover Border.hoverBlur, Button.profile:pointerover Button.profileSettings, Button.profile:pointerover StackPanel.profileInfo">
-            <Setter Property="Opacity" Value="1" />
+        <Style Selector="Button.profile:pointerover /template/ Border#PART_Bg">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent2}" />
         </Style>
         <Style Selector="Image.rotating">
             <Setter Property="RenderTransform">
@@ -35,8 +46,9 @@
             </Style.Animations>
         </Style>
         <Style Selector="TextBlock.label">
-            <Setter Property="TextDecorations" Value="Underline" />
-            <Setter Property="Margin" Value="0,15,0,5" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,12,0,5" />
         </Style>
         <Style Selector="TextBlock.mandatory">
             <Setter Property="Margin" Value="5,0,0,0" />
@@ -45,84 +57,95 @@
     </Window.Styles>
 
     <Panel>
-        <Carousel SelectedIndex="{Binding LoginStepIndex}">
+        <Grid ColumnDefinitions="360,*">
+        <!-- The covers already on this computer, or the logo alone: nothing is fetched before signing in -->
+        <Panel ClipToBounds="True" Background="{DynamicResource Brush.Background2}">
+            <Image x:Name="uiArtLogo" Source="/Resources/Images/icon.png" Width="150" Height="150" Margin="0,0,0,90" />
+            <Grid x:Name="uiArtWall" ColumnDefinitions="*,*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="12" Width="460" HorizontalAlignment="Left" VerticalAlignment="Top"
+                  Margin="-36,-44,0,0" RenderTransform="rotate(-7deg)" />
+            <Border>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{DynamicResource GameVault.Colors.BackgroundClear}" />
+                        <GradientStop Offset="0.55" Color="{DynamicResource GameVault.Colors.BackgroundSoft}" />
+                        <GradientStop Offset="0.92" Color="{DynamicResource GameVault.Colors.Background}" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+            <StackPanel VerticalAlignment="Bottom" Margin="32,0,32,30" Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Image Source="/Resources/Images/icon.png" Width="40" Height="40" />
+                    <TextBlock Classes="display" Text="SanctuaryVault" FontSize="21" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="muted" FontSize="14" TextWrapping="Wrap" Text="{l:T 'Your games, on your server, wherever you play.'}" />
+            </StackPanel>
+        </Panel>
+        <Carousel Grid.Column="1" SelectedIndex="{Binding LoginStepIndex}">
             <!-- 0: Loading -->
             <Grid Height="220" VerticalAlignment="Center">
-                <Image Classes="rotating" Source="/Resources/Images/icon.png" Height="130" VerticalAlignment="Top" Margin="15" />
+                <Image Classes="rotating" Source="/Resources/Images/icon.png" Height="110" VerticalAlignment="Top" Margin="15" />
                 <TextBlock Text="{Binding StatusText, Converter={x:Static l:LocConverter.Instance}}" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="10" FontSize="15" FontWeight="Bold" />
             </Grid>
 
             <!-- 1: Choose profile -->
-            <Grid>
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <TextBlock Text="{l:T 'Choose Your Profile'}" FontSize="30" HorizontalAlignment="Center" />
-                    <StackPanel Margin="0,30,0,0" Orientation="Horizontal" HorizontalAlignment="Center">
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MaxWidth="560">
-                            <!-- Room for the hover scale and the profile info, the ScrollViewer clips its content -->
-                            <ItemsControl ItemsSource="{Binding UserProfiles}" Margin="12,8,0,15" ClipToBounds="False">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Button Classes="wrapper profile" Click="ProfileLogin_Click" Margin="0,0,25,0" VerticalAlignment="Top" ClipToBounds="False">
-                                            <StackPanel Classes="hover" Background="Transparent">
-                                                <Border Background="{DynamicResource Brush.Background}" CornerRadius="5">
-                                                    <Grid Height="100" Width="100">
-                                                        <uc:CacheImage UseUriSource="True" ImageCacheType="UserAvatar" Data="{Binding UserCacheAvatar}" CornerRadius="5" />
-                                                        <Border Classes="hoverBlur" Background="{DynamicResource GameVault.Brushes.Blur}" CornerRadius="5" />
-                                                        <Button Classes="wrapper profileSettings" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,5,5" Click="UserProfileContextMenu_Click">
-                                                            <Border Classes="hover" Background="Transparent" CornerRadius="5">
-                                                                <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="White" />
-                                                            </Border>
-                                                            <Button.ContextMenu>
-                                                                <ContextMenu>
-                                                                    <MenuItem Header="{l:T 'Edit User Profile'}" Click="EditUserProfile_Click" />
-                                                                    <MenuItem Header="{l:T 'Delete User Profile'}" Click="DeleteUserProfile_Click" />
-                                                                </ContextMenu>
-                                                            </Button.ContextMenu>
-                                                        </Button>
-                                                    </Grid>
-                                                </Border>
-                                                <StackPanel Classes="profileInfo" Width="100">
-                                                    <TextBlock Text="{Binding Name}" FontSize="17" HorizontalAlignment="Center" TextAlignment="Center" TextTrimming="CharacterEllipsis" FontWeight="Bold" />
-                                                    <TextBlock Text="{Binding ServerUrl}" TextAlignment="Center" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                        <StackPanel Margin="0,20,0,0">
-                            <Button Classes="wrapper" Height="50" Width="50" HorizontalAlignment="Center" Click="NewProfile_Click">
-                                <Grid Classes="hover" Background="Transparent">
-                                    <Path Data="{StaticResource IconAddSimple}" Fill="White" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                            </Button>
-                            <TextBlock Text="{l:T 'New Profile'}" FontSize="15" HorizontalAlignment="Center" />
-                        </StackPanel>
+            <Grid RowDefinitions="Auto,*,Auto" Margin="40,30,40,16">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="pageTitle" Text="{l:T 'Who is playing?'}" />
+                        <TextBlock Classes="muted" FontSize="14" Text="{l:T 'Choose a profile to open your library.'}" />
                     </StackPanel>
-                </StackPanel>
-                <Button Classes="wrapper" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,5,5,0" Click="LoginWindowSettings_Click" ToolTip.Tip="{l:T 'Client Settings'}">
-                    <Border Classes="hover" Background="Transparent" CornerRadius="5">
-                        <Path Data="{StaticResource IconInstalledGamesSettings}" Fill="White" Margin="0,0,5,2" />
-                    </Border>
-                </Button>
-                <CheckBox Content="{l:T 'Remember Me'}" IsChecked="{Binding RememberMe}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,10" />
+                    <Button Grid.Column="1" Classes="round" VerticalAlignment="Top" Click="LoginWindowSettings_Click" ToolTip.Tip="{l:T 'Client Settings'}">
+                        <Path Data="{StaticResource IconInstalledGamesSettings}" Stretch="None" Width="NaN" Height="NaN" />
+                    </Button>
+                </Grid>
+                <ScrollViewer Grid.Row="1" Margin="0,22,0,10" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding UserProfiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="profile" Click="ProfileLogin_Click">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                                            <Border Width="48" Height="48" CornerRadius="24" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                                <uc:CacheImage UseUriSource="True" ImageCacheType="UserAvatar" Data="{Binding UserCacheAvatar}" Stretch="UniformToFill" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="muted" Text="{Binding ServerUrl}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Classes="round small" VerticalAlignment="Center" Click="UserProfileContextMenu_Click" ToolTip.Tip="{l:T 'Edit User Profile'}">
+                                                <Path Data="{StaticResource IconInstalledGamesSettings}" Stretch="None" Width="NaN" Height="NaN" />
+                                                <Button.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="{l:T 'Edit User Profile'}" Click="EditUserProfile_Click" />
+                                                        <MenuItem Header="{l:T 'Delete User Profile'}" Click="DeleteUserProfile_Click" />
+                                                    </ContextMenu>
+                                                </Button.ContextMenu>
+                                            </Button>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="52" CornerRadius="14" Click="NewProfile_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Path Data="{StaticResource IconAddSimple}" />
+                                <TextBlock Text="{l:T 'New Profile'}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+                <CheckBox Grid.Row="2" Content="{l:T 'Remember Me'}" IsChecked="{Binding RememberMe}" />
             </Grid>
 
             <!-- 2: Sign in or sign up -->
             <Grid>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="{l:T 'Sign In or Sign Up'}" FontSize="30" />
+                    <TextBlock Classes="pageTitle" Text="{l:T 'Sign In or Sign Up'}" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,30,0,0">
                         <StackPanel>
                             <Button Classes="wrapper" Height="50" Width="50" HorizontalAlignment="Center" Click="SignIn_Click">
                                 <Grid Classes="hover" Background="Transparent">
-                                    <Path Data="{StaticResource IconLogin}" Fill="White" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource IconLogin}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Grid>
                             </Button>
                             <TextBlock Text="{l:T 'Sign In'}" FontSize="15" HorizontalAlignment="Center" />
@@ -130,27 +153,31 @@
                         <StackPanel Margin="80,0,0,0">
                             <Button Classes="wrapper" Height="50" Width="50" HorizontalAlignment="Center" Click="SignUp_Click">
                                 <Grid Classes="hover" Background="Transparent">
-                                    <Path Data="{StaticResource IconAddSimple}" Fill="White" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource IconAddSimple}" Fill="{DynamicResource Brush.Foreground}" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Grid>
                             </Button>
                             <TextBlock Text="{l:T 'Sign Up'}" FontSize="15" HorizontalAlignment="Center" />
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
-                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" Width="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
+                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" MinWidth="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
             </Grid>
 
             <!-- 3: Sign in -->
             <Grid>
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="400">
-                    <TextBlock Text="{l:T 'Sign In'}" FontSize="30" HorizontalAlignment="Center" />
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="460" Margin="0,0,0,40">
+                    <TextBlock Classes="pageTitle" Text="{l:T 'Sign In'}" />
                     <TextBlock Classes="label" Text="{l:T 'Specify Your Server URL'}" />
                     <Panel>
                         <TextBox Text="{Binding LoginUser.ServerUrl}" Watermark="https://gamevault.example.com" TextChanged="ServerUrlInput_TextChanged" KeyDown="UserLoginTextBox_KeyDown" />
-                        <Path Data="{StaticResource IconCheck}" Fill="Green" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding LoginServerInfo.IsAvailable}" />
-                        <Path Data="{StaticResource IconErrorCircle}" Fill="IndianRed" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
+                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource Brush.Success}" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding LoginServerInfo.IsAvailable}" />
+                        <Path Data="{StaticResource IconErrorCircle}" Fill="{DynamicResource Brush.Danger}" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
                               IsVisible="{Binding LoginServerInfo.HasError}" ToolTip.Tip="{Binding LoginServerInfo.ErrorMessage}" />
                     </Panel>
+                    <!-- The server signs in through an identity provider (Authentik, with the Plex accounts): one click -->
+                    <uc:IconButton x:Name="uiSsoLogin" Text="{l:T 'Sign in with Plex / your account (SSO)'}" Icon="{StaticResource IconLogin}" IconMargin="0,0,8,0"
+                                   Height="44" FontSize="15" HorizontalAlignment="Stretch" Margin="0,15,0,0" Click="SsoLogin_Click"
+                                   IsVisible="{Binding LoginServerInfo.IsSSOEnabled}" />
                     <StackPanel>
                         <StackPanel.IsEnabled>
                             <MultiBinding Converter="{x:Static BoolConverters.And}">
@@ -164,37 +191,36 @@
                         <TextBox Text="{Binding LoginUser.Password}" PasswordChar="●" Classes="revealPasswordButton" KeyDown="UserLoginTextBox_KeyDown" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
-                        <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
-                        <TextBlock Text="{l:T 'OR'}" Margin="10,0,10,0" />
-                        <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
+                        <Rectangle Fill="{DynamicResource Brush.Line}" Width="70" Height="1" VerticalAlignment="Center" />
+                        <TextBlock Classes="muted" FontSize="13" Text="{l:T 'OR'}" Margin="10,0,10,0" />
+                        <Rectangle Fill="{DynamicResource Brush.Line}" Width="70" Height="1" VerticalAlignment="Center" />
                     </StackPanel>
-                    <!-- The server signs in through an identity provider (Authentik, with the Plex accounts): one click -->
-                    <uc:IconButton x:Name="uiSsoLogin" Text="{l:T 'Sign in with Plex / your account (SSO)'}" Icon="{StaticResource IconLogin}" IconMargin="0,0,8,0"
-                                   Height="38" FontSize="15" HorizontalAlignment="Stretch" Margin="0,15,0,0" Click="SsoLogin_Click"
-                                   IsVisible="{Binding LoginServerInfo.IsSSOEnabled}" />
                     <CheckBox IsChecked="{Binding LoginUser.IsLoggedInWithSSO}" IsEnabled="{Binding LoginServerInfo.IsSSOEnabled}" Content="{l:T 'Sign in using your Identity Provider'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
                 </StackPanel>
-                <uc:IconButton Text="{l:T 'Save'}" Kind="Skeleton" Height="30" BorderThickness="1" Margin="0,0,210,10" Width="100" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="SaveWithoutLogin_Click">
-                    <uc:IconButton.IsEnabled>
-                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                            <Binding Path="!LoginServerInfo.IsBasicAuthEnabled" />
-                            <Binding Path="!LoginUser.IsLoggedInWithSSO" />
-                        </MultiBinding>
-                    </uc:IconButton.IsEnabled>
-                </uc:IconButton>
-                <uc:IconButton Text="{l:T 'Save and Login'}" Height="30" Margin="0,0,10,10" Width="190" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="SaveAndLogin_Click" />
-                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" Width="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.SignInOrSignUp}" />
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10">
+                    <uc:IconButton Text="{l:T 'Save'}" Kind="Skeleton" Height="34" BorderThickness="1" MinWidth="100" Click="SaveWithoutLogin_Click">
+                        <uc:IconButton.IsEnabled>
+                            <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                                <Binding Path="!LoginServerInfo.IsBasicAuthEnabled" />
+                                <Binding Path="!LoginUser.IsLoggedInWithSSO" />
+                            </MultiBinding>
+                        </uc:IconButton.IsEnabled>
+                    </uc:IconButton>
+                    <uc:IconButton Text="{l:T 'Save and Login'}" Height="34" MinWidth="190" Click="SaveAndLogin_Click" />
+                </StackPanel>
+                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" MinWidth="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.SignInOrSignUp}" />
             </Grid>
 
             <!-- 4: Sign up -->
-            <Grid>
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="400" Margin="0,8,0,0">
-                    <TextBlock Text="{l:T 'Sign Up'}" FontSize="30" HorizontalAlignment="Center" />
+            <Grid RowDefinitions="*,Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel HorizontalAlignment="Center" Width="440" Margin="0,24,0,12">
+                    <TextBlock Classes="pageTitle" Text="{l:T 'Sign Up'}" />
                     <TextBlock Classes="label" Text="{l:T 'Specify Your Server URL'}" />
                     <Panel>
                         <TextBox Text="{Binding SignupUser.ServerUrl}" Tag="signup" TextChanged="ServerUrlInput_TextChanged" KeyDown="UserRegistrationTextBox_KeyDown" />
-                        <Path Data="{StaticResource IconCheck}" Fill="Green" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding SignUpServerInfo.IsAvailable}" />
-                        <Path Data="{StaticResource IconErrorCircle}" Fill="IndianRed" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
+                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource Brush.Success}" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding SignUpServerInfo.IsAvailable}" />
+                        <Path Data="{StaticResource IconErrorCircle}" Fill="{DynamicResource Brush.Danger}" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
                               IsVisible="{Binding SignUpServerInfo.HasError}" ToolTip.Tip="{Binding SignUpServerInfo.ErrorMessage}" />
                     </Panel>
                     <StackPanel>
@@ -204,41 +230,41 @@
                                 <Binding Path="!SignupUser.IsLoggedInWithSSO" />
                             </MultiBinding>
                         </StackPanel.IsEnabled>
-                        <Grid ColumnDefinitions="195,10,195">
+                        <Grid ColumnDefinitions="*,10,*">
                             <StackPanel Grid.Column="0">
                                 <TextBlock Classes="label" Text="{l:T 'Username'}" />
                                 <TextBox Text="{Binding SignupUser.Username}" KeyDown="UserRegistrationTextBox_KeyDown" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <StackPanel Orientation="Horizontal" Margin="0,15,0,5">
-                                    <TextBlock Text="{l:T 'Birth Date'}" TextDecorations="Underline" />
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,5">
+                                    <TextBlock Text="{l:T 'Birth Date'}" FontSize="13" FontWeight="SemiBold" />
                                     <TextBlock Classes="mandatory" Text="{l:T '(Mandatory)'}" IsVisible="{Binding SignUpServerInfo.IsBirthDateMandatory}" />
                                 </StackPanel>
                                 <CalendarDatePicker SelectedDate="{Binding SignupUser.BirthDate}" HorizontalAlignment="Stretch" KeyDown="UserRegistrationTextBox_KeyDown" />
                             </StackPanel>
                         </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,15,0,5">
-                            <TextBlock Text="{l:T 'E-Mail'}" TextDecorations="Underline" />
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,5">
+                            <TextBlock Text="{l:T 'E-Mail'}" FontSize="13" FontWeight="SemiBold" />
                             <TextBlock Classes="mandatory" Text="{l:T '(Mandatory)'}" IsVisible="{Binding SignUpServerInfo.IsEMailMandatory}" />
                         </StackPanel>
                         <TextBox Text="{Binding SignupUser.EMail}" KeyDown="UserRegistrationTextBox_KeyDown" />
-                        <Grid ColumnDefinitions="195,10,195">
+                        <Grid ColumnDefinitions="*,10,*">
                             <StackPanel Grid.Column="0">
-                                <StackPanel Orientation="Horizontal" Margin="0,15,0,5">
-                                    <TextBlock Text="{l:T 'First Name'}" TextDecorations="Underline" />
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,5">
+                                    <TextBlock Text="{l:T 'First Name'}" FontSize="13" FontWeight="SemiBold" />
                                     <TextBlock Classes="mandatory" Text="{l:T '(Mandatory)'}" IsVisible="{Binding SignUpServerInfo.IsFirstNameMandatory}" />
                                 </StackPanel>
                                 <TextBox Text="{Binding SignupUser.FirstName}" KeyDown="UserRegistrationTextBox_KeyDown" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <StackPanel Orientation="Horizontal" Margin="0,15,0,5">
-                                    <TextBlock Text="{l:T 'Last Name'}" TextDecorations="Underline" />
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,5">
+                                    <TextBlock Text="{l:T 'Last Name'}" FontSize="13" FontWeight="SemiBold" />
                                     <TextBlock Classes="mandatory" Text="{l:T '(Mandatory)'}" IsVisible="{Binding SignUpServerInfo.IsLastNameMandatory}" />
                                 </StackPanel>
                                 <TextBox Text="{Binding SignupUser.LastName}" KeyDown="UserRegistrationTextBox_KeyDown" />
                             </StackPanel>
                         </Grid>
-                        <Grid ColumnDefinitions="195,10,195">
+                        <Grid ColumnDefinitions="*,10,*">
                             <StackPanel Grid.Column="0">
                                 <TextBlock Classes="label" Text="{l:T 'Password'}" />
                                 <TextBox Text="{Binding SignupUser.Password}" PasswordChar="●" Classes="revealPasswordButton" KeyDown="UserRegistrationTextBox_KeyDown" />
@@ -249,9 +275,9 @@
                             </StackPanel>
                         </Grid>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
-                            <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
-                            <TextBlock Text="{l:T 'OR'}" Margin="10,0,10,0" />
-                            <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
+                            <Rectangle Fill="{DynamicResource Brush.Line}" Width="70" Height="1" VerticalAlignment="Center" />
+                            <TextBlock Classes="muted" FontSize="13" Text="{l:T 'OR'}" Margin="10,0,10,0" />
+                            <Rectangle Fill="{DynamicResource Brush.Line}" Width="70" Height="1" VerticalAlignment="Center" />
                         </StackPanel>
                     </StackPanel>
                     <CheckBox IsChecked="{Binding SignupUser.IsLoggedInWithSSO}" IsEnabled="{Binding SignUpServerInfo.IsSSOEnabled}" Content="{l:T 'Sign up using your Identity Provider'}" HorizontalAlignment="Center" Margin="0,15,0,0" />
@@ -259,14 +285,15 @@
                     <TextBox x:Name="uiSignupInvite" Text="{Binding SignupUser.InviteCode}" Watermark="XXXX-XXXX-XXXX" KeyDown="UserRegistrationTextBox_KeyDown" />
                     <TextBlock Classes="muted" FontSize="12" Margin="0,4,0,0" Text="{l:T 'Ask the administrator for one.'}" />
                 </StackPanel>
-                <uc:IconButton Text="{l:T 'Save and Sign Up'}" Height="30" Margin="0,0,10,10" Width="190" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="SaveAndSignUp_Click" />
-                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" Width="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.SignInOrSignUp}" />
+                </ScrollViewer>
+                <uc:IconButton Text="{l:T 'Save and Sign Up'}" Grid.Row="1" Height="34" Margin="0,8,10,10" MinWidth="190" HorizontalAlignment="Right" Click="SaveAndSignUp_Click" />
+                <uc:IconButton Text="{l:T 'Back'}" Grid.Row="1" Kind="Skeleton" BorderThickness="1" Height="34" Margin="10,8,0,10" MinWidth="100" HorizontalAlignment="Left" Click="Back_Click" Tag="{x:Static local:LoginStep.SignInOrSignUp}" />
             </Grid>
 
             <!-- 5: Edit profile -->
             <Grid>
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="400">
-                    <TextBlock Text="{l:T 'Edit User Profile'}" FontSize="30" HorizontalAlignment="Center" />
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="460">
+                    <TextBlock Classes="pageTitle" Text="{l:T 'Edit User Profile'}" />
                     <TextBlock Classes="label" Text="{l:T 'Specify Your Server URL'}" />
                     <TextBox Text="{Binding EditUser.ServerUrl}" />
                     <TextBlock Classes="label" Text="{l:T 'Username or Email'}" />
@@ -275,45 +302,47 @@
                     <TextBox Text="{Binding EditUser.Password}" PasswordChar="●" Classes="revealPasswordButton" IsEnabled="{Binding !EditUser.IsLoggedInWithSSO}" />
                     <CheckBox x:Name="uiEditSso" IsChecked="{Binding EditUser.IsLoggedInWithSSO}" Content="{l:T 'Sign in using your Identity Provider'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
                 </StackPanel>
-                <uc:IconButton Text="{l:T 'Save'}" Height="30" Margin="0,0,10,10" Width="100" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="UserProfileEditSave_Click" />
-                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" Width="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
+                <uc:IconButton Text="{l:T 'Save'}" Height="30" Margin="0,0,10,10" MinWidth="100" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="UserProfileEditSave_Click" />
+                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" MinWidth="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
             </Grid>
 
             <!-- 6: Pending activation -->
-            <Grid>
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="{l:T 'Your Account is pending Admin Approval'}" FontSize="30" HorizontalAlignment="Center" />
-                    <uc:ProgressRing HorizontalAlignment="Center" IsActive="True" Margin="0,40,0,0" />
-                    <TextBlock Text="{l:T 'You can wait or close this screen and check again later.'}" HorizontalAlignment="Center" Margin="0,30,0,0" FontSize="20" />
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="440" Margin="0,16">
+                    <uc:ProgressRing HorizontalAlignment="Center" IsActive="True" Width="36" Height="36" />
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'Your Account is pending Admin Approval'}" FontSize="22" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,14,0,0" />
+                    <TextBlock Classes="muted" Text="{l:T 'You can wait or close this screen and check again later.'}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="14" />
                     <!-- An invitation code activates it at once -->
-                    <StackPanel Width="400" Margin="0,24,0,0">
-                        <TextBlock Text="{l:T 'Have an invitation code? It activates your account.'}" HorizontalAlignment="Center" TextWrapping="Wrap" FontSize="15" />
+                    <StackPanel Margin="0,20,0,0">
+                        <TextBlock Text="{l:T 'Have an invitation code? It activates your account.'}" HorizontalAlignment="Center" TextWrapping="Wrap" FontSize="14" FontWeight="SemiBold" />
                         <TextBlock Classes="label" Text="{l:T 'Username'}" />
                         <TextBox x:Name="uiPendingUsername" Text="{Binding PendingUser.Username}" />
                         <TextBlock Classes="label" Text="{l:T 'Invitation code'}" />
                         <TextBox x:Name="uiPendingInvite" Text="{Binding PendingUser.InviteCode}" Watermark="XXXX-XXXX-XXXX" />
-                        <uc:IconButton x:Name="uiActivate" Text="{l:T 'Activate'}" Height="30" Width="150" HorizontalAlignment="Right" Margin="0,10,0,0" Click="ActivateWithInvite_Click" />
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,14,0,0">
+                            <uc:IconButton Text="{l:T 'Back to Profile Selection'}" Kind="Skeleton" BorderThickness="1" Height="34" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
+                            <uc:IconButton Grid.Column="2" x:Name="uiActivate" Text="{l:T 'Activate'}" Height="34" MinWidth="120" Click="ActivateWithInvite_Click" />
+                        </Grid>
                     </StackPanel>
-                    <uc:IconButton Text="{l:T 'Back to Profile Selection'}" Height="30" Width="250" HorizontalAlignment="Center" Margin="0,20,0,0" FontSize="20" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
                 </StackPanel>
-            </Grid>
+            </ScrollViewer>
 
             <!-- 7: Client settings -->
             <Grid>
-                <TextBlock Text="{l:T 'Client Settings'}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,10,0,0" />
-                <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,40,0,0">
+                <TextBlock Classes="pageTitle" Text="{l:T 'Client Settings'}" Margin="20,30,0,0" />
+                <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,76,0,0">
                     <TextBlock Text="{l:T 'Advanced'}" FontSize="16" FontWeight="Bold" />
                     <TextBlock Text="{l:T 'Additional Request Headers'}" FontSize="15" Margin="10,10,0,0" />
-                    <ScrollViewer MaxHeight="250" VerticalScrollBarVisibility="Auto" Width="580" HorizontalAlignment="Left" Margin="10,10,0,0">
+                    <ScrollViewer MaxHeight="250" VerticalScrollBarVisibility="Auto" Width="540" HorizontalAlignment="Left" Margin="10,10,0,0">
                         <ItemsControl ItemsSource="{Binding AdditionalRequestHeaders}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,5">
-                                        <TextBox Text="{Binding Name}" Watermark="{l:T 'Name'}" Width="245" />
-                                        <TextBox Text="{Binding Value}" Watermark="{l:T 'Value'}" Width="245" />
+                                        <TextBox Text="{Binding Name}" Watermark="{l:T 'Name'}" Width="225" />
+                                        <TextBox Text="{Binding Value}" Watermark="{l:T 'Value'}" Width="225" />
                                         <Button Classes="wrapper" Height="30" Width="30" Click="RemoveAdditionalRequestHeader_Click">
                                             <Grid Classes="hover" Background="Transparent">
-                                                <Path Data="{StaticResource IconErrorCross}" Stroke="IndianRed" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <Path Data="{StaticResource IconErrorCross}" Stroke="{DynamicResource Brush.Danger}" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Grid>
                                         </Button>
                                     </StackPanel>
@@ -322,17 +351,19 @@
                         </ItemsControl>
                     </ScrollViewer>
                     <StackPanel Orientation="Horizontal" Margin="10,5,0,0" Spacing="10">
-                        <uc:IconButton Icon="{StaticResource IconAddTag}" Text="{l:T 'Add'}" FontSize="15" IconMargin="0,0,5,2" Width="100" Height="30" Click="AddAdditionalRequestHeader_Click" />
-                        <uc:IconButton Icon="{StaticResource IconGameSettingsSave}" Text="{l:T 'Save'}" FontSize="15" IconMargin="0,0,5,2" Width="100" Height="30" Click="SaveAdditionalHeaders_Click" />
+                        <uc:IconButton Icon="{StaticResource IconAddTag}" Text="{l:T 'Add'}" FontSize="15" IconMargin="0,0,5,2" MinWidth="100" Height="30" Click="AddAdditionalRequestHeader_Click" />
+                        <uc:IconButton Icon="{StaticResource IconGameSettingsSave}" Text="{l:T 'Save'}" FontSize="15" IconMargin="0,0,5,2" MinWidth="100" Height="30" Click="SaveAdditionalHeaders_Click" />
                     </StackPanel>
                 </StackPanel>
-                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" Width="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
+                <uc:IconButton Text="{l:T 'Back'}" Kind="Skeleton" BorderThickness="1" Height="30" Margin="10,0,0,10" MinWidth="100" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="Back_Click" Tag="{x:Static local:LoginStep.ChooseProfile}" />
             </Grid>
         </Carousel>
+        </Grid>
 
         <!-- App bar (bottom toast) -->
-        <Border Classes="appBar" IsVisible="{Binding IsAppBarOpen}" VerticalAlignment="Bottom" Height="80" Background="{DynamicResource Brush.Background}" ZIndex="2">
-            <TextBlock VerticalAlignment="Center" Text="{Binding AppBarText}" FontSize="20" TextWrapping="Wrap" Margin="10,0,35,0" />
+        <Border Classes="appBar" IsVisible="{Binding IsAppBarOpen}" VerticalAlignment="Bottom" Margin="16" MinHeight="48" CornerRadius="14" Padding="16,12"
+                Background="{DynamicResource Brush.Surface3}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" BoxShadow="0 12 30 -10 #99000000" ZIndex="2">
+            <TextBlock VerticalAlignment="Center" Text="{Binding AppBarText}" FontSize="14" TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis" />
         </Border>
 
         <Panel x:Name="DialogLayer" IsHitTestVisible="False" ZIndex="10" />

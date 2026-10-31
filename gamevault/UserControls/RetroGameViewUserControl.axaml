@@ -201,7 +201,7 @@
                                 </Button>
                                 <Button Classes="round" Width="48" Height="48" Margin="0,0,8,10" Click="Delete_Click" IsVisible="{Binding Game.Installed}"
                                         ToolTip.Tip="{l:T 'Delete from this PC (the saves are kept)'}">
-                                    <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="18" Height="18" />
+                                    <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource Brush.Danger}" Width="18" Height="18" />
                                 </Button>
                             </WrapPanel>
                             <!-- What is going on (download, unpacking, playing), on a pill: readable whatever the artwork behind -->

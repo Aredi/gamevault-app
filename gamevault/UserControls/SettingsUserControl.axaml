@@ -106,10 +106,10 @@
                             <TextBlock Classes="h1" Text="{l:T 'Theme'}" />
                             <TextBlock Text="{l:T 'Installed Themes'}" Margin="10,5,0,0" FontSize="14" />
                             <WrapPanel Orientation="Horizontal" Margin="10,10,0,0">
-                                <ComboBox x:Name="uiCbTheme" ItemsSource="{Binding Themes}" Width="520" SelectionChanged="Themes_SelectionChanged">
+                                <ComboBox x:Name="uiCbTheme" ItemsSource="{Binding Themes}" MaxWidth="520" HorizontalAlignment="Stretch" SelectionChanged="Themes_SelectionChanged">
                                     <ComboBox.ItemTemplate>
                                         <DataTemplate>
-                                            <StackPanel Width="470" ToolTip.Tip="{Binding Description}">
+                                            <StackPanel MaxWidth="470" ToolTip.Tip="{Binding Description}">
                                                 <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" />
                                                 <TextBlock Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Text="{Binding Author, StringFormat={l:T 'Author: {0}'}}" FontSize="10" />
@@ -145,7 +145,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="36,0,28,40" MaxWidth="900" HorizontalAlignment="Left">
                         <TextBlock Classes="h1" Text="{l:T 'Downloads'}" />
-                        <Border Classes="group" Width="510">
+                        <Border Classes="group" MaxWidth="510" HorizontalAlignment="Stretch">
                             <StackPanel>
                                 <TextBlock Text="{l:T 'Download Bandwidth Limit (KB/s, 0 = unlimited)'}" FontWeight="Bold" />
                                 <TextBox x:Name="uiDownloadLimit" Text="{Binding DownloadLimitUIValue}" Margin="0,10,0,5" MaxLength="8" UseFloatingWatermark="True"
@@ -153,7 +153,7 @@
                                 <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{StaticResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="80" Height="30" HorizontalAlignment="Left" Click="DownloadLimit_Save" />
                             </StackPanel>
                         </Border>
-                        <Border Classes="group" Width="510">
+                        <Border Classes="group" MaxWidth="510" HorizontalAlignment="Stretch">
                             <StackPanel Spacing="6">
                                 <TextBlock Text="{l:T 'Download queue'}" FontWeight="Bold" />
                                 <StackPanel Orientation="Horizontal" Spacing="10">
@@ -178,7 +178,7 @@
                         <StackPanel Classes="section">
                             <TextBlock Classes="h1" Text="{l:T 'Extraction'}" />
                             <ToggleSwitch Content="{l:T 'Auto-Extract Downloaded Games'}" IsChecked="{Binding AutoExtract}" />
-                            <Border Classes="group" Width="510">
+                            <Border Classes="group" MaxWidth="510" HorizontalAlignment="Stretch">
                                 <StackPanel>
                                     <TextBlock Text="{l:T 'Default extraction password'}" FontWeight="Bold" />
                                     <TextBlock Text="{l:T 'Tried when extracting games.'}" TextWrapping="Wrap" FontSize="14" />
@@ -229,7 +229,7 @@
                         <TextBlock Classes="h1" Text="{l:T 'File System'}" />
                         <StackPanel Margin="10,10,0,0">
                             <TextBlock Text="{l:T 'Root Directories (the games go in a subfolder)'}" Margin="0,2,0,2" FontSize="15" />
-                            <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Width="560" HorizontalAlignment="Left">
+                            <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" MaxWidth="560" HorizontalAlignment="Stretch">
                                 <ItemsControl ItemsSource="{Binding RootDirectories}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -237,7 +237,7 @@
                                                 <TextBox IsReadOnly="True" Text="{Binding Uri}" Width="510" />
                                                 <Button Classes="wrapper" Height="30" Width="30" Click="RemoveRootDirectory_Click" ToolTip.Tip="{l:T 'Remove'}">
                                                     <Grid Classes="hover" Background="Transparent">
-                                                        <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="IndianRed" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Danger}" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                     </Grid>
                                                 </Button>
                                             </StackPanel>
@@ -274,13 +274,13 @@
 
                         <!-- Free up disk space -->
                         <StackPanel Classes="section" IsVisible="{Binding PlaysPcGames}">
-                            <Grid ColumnDefinitions="*,Auto" Width="900" HorizontalAlignment="Left">
+                            <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Classes="h1" Text="{l:T 'Free up disk space'}" />
                                 <local:IconButton Grid.Column="1" Text="{l:T 'Analyze'}" Icon="{StaticResource IconCleanup}" IconScale="0.06" IconMargin="-110,-100,-105,-100" FontSize="14" MinWidth="120" Height="32" Click="AnalyzeStorage_Click" IsEnabled="{Binding !IsStorageCleanupRunning}" />
                             </Grid>
-                            <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
+                            <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" Opacity="0.8"
                                        Text="{l:T 'Leftover archives and downloads, unused prefixes and Proton/Wine builds. Nothing is deleted without confirmation.'}" />
-                            <Border Classes="group" Width="900" HorizontalAlignment="Left" IsVisible="{Binding StorageCleanupSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <Border Classes="group" HorizontalAlignment="Stretch" IsVisible="{Binding StorageCleanupSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <StackPanel Spacing="4">
                                     <ItemsControl ItemsSource="{Binding StorageCleanupItems}">
                                         <ItemsControl.ItemTemplate>
@@ -349,7 +349,7 @@
                                     <TextBlock Text="{l:T 'Custom Ludusavi Manifests'}" Margin="0,2,0,2" FontSize="15" VerticalAlignment="Center" />
                                     <CheckBox Content="{l:T 'Use Primary Manifest'}" IsChecked="{Binding UsePrimaryCloudSaveManifest}" Margin="15,0,0,0" ToolTip.Tip="{l:T 'Disable primary Ludusavi manifest to only use the custom ones'}" />
                                 </StackPanel>
-                                <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Width="560" HorizontalAlignment="Left">
+                                <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" MaxWidth="560" HorizontalAlignment="Stretch">
                                     <ItemsControl ItemsSource="{Binding CustomCloudSaveManifests}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -357,7 +357,7 @@
                                                     <TextBox Text="{Binding Uri}" Watermark="{l:T 'File path or URL'}" Width="510" />
                                                     <Button Classes="wrapper" Height="30" Width="30" Click="RemoveCustomCloudSaveManifest_Click">
                                                         <Grid Classes="hover" Background="Transparent">
-                                                            <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="IndianRed" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                            <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Danger}" StrokeThickness="2" RenderTransform="scale(2)" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                                         </Grid>
                                                     </Button>
                                                 </StackPanel>
@@ -402,9 +402,9 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="30,0,20,20" Spacing="10">
                         <TextBlock Classes="h1" Text="{l:T 'Running Windows games'}" />
-                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0">
-                            <TextBlock Text="{l:T 'Default tool'}" FontSize="15" VerticalAlignment="Center" MinWidth="200" />
-                            <ComboBox x:Name="uiDefaultCompatibilityTool" ItemsSource="{Binding CompatibilityTools}" SelectedItem="{Binding DefaultCompatibilityTool}" Width="500">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="10,5,0,0">
+                            <TextBlock Text="{l:T 'Default tool'}" FontSize="15" VerticalAlignment="Center" MinWidth="170" />
+                            <ComboBox Grid.Column="1" x:Name="uiDefaultCompatibilityTool" ItemsSource="{Binding CompatibilityTools}" SelectedItem="{Binding DefaultCompatibilityTool}" MaxWidth="500" HorizontalAlignment="Stretch">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel MaxWidth="480">
@@ -414,32 +414,32 @@
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                        </StackPanel>
-                        <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
+                        </Grid>
+                        <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" Opacity="0.8"
                                    Text="{l:T 'Used by the games without a tool of their own (Game settings → Launch options).'}" />
-                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0" IsVisible="{Binding IsCustomRunner}">
-                            <TextBlock Text="{l:T 'Custom command'}" FontSize="15" VerticalAlignment="Center" MinWidth="200" />
-                            <TextBox Text="{Binding CustomRunnerCommand}" Watermark="{l:T 'gamemoderun wine {exe} {args}'}" Width="500" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,5,0,0">
-                            <TextBlock Text="{l:T 'Shared Wine prefix'}" FontSize="15" VerticalAlignment="Center" MinWidth="200" />
-                            <TextBox Text="{Binding WinePrefix}" Watermark="{Binding EffectiveWinePrefix}" Width="500" />
-                            <local:IconButton Text="{l:T 'Browse'}" FontSize="14" MinWidth="90" Height="32" Click="BrowseWinePrefix_Click" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="10,5,0,0" IsVisible="{Binding IsCustomRunner}">
+                            <TextBlock Text="{l:T 'Custom command'}" FontSize="15" VerticalAlignment="Center" MinWidth="170" />
+                            <TextBox Grid.Column="1" Text="{Binding CustomRunnerCommand}" Watermark="{l:T 'gamemoderun wine {exe} {args}'}" MaxWidth="500" HorizontalAlignment="Stretch" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="10,5,0,0">
+                            <TextBlock Text="{l:T 'Shared Wine prefix'}" FontSize="15" VerticalAlignment="Center" MinWidth="170" />
+                            <TextBox Grid.Column="1" Text="{Binding WinePrefix}" Watermark="{Binding EffectiveWinePrefix}" MaxWidth="500" HorizontalAlignment="Stretch" />
+                            <local:IconButton Grid.Column="2" Text="{l:T 'Browse'}" FontSize="14" MinWidth="90" Height="32" Click="BrowseWinePrefix_Click" />
+                        </Grid>
 
                         <!-- Compatibility tool manager -->
-                        <Grid ColumnDefinitions="*,Auto" Margin="0,15,0,0" MaxWidth="900" HorizontalAlignment="Left" Width="900">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,15,0,0">
                             <TextBlock Classes="h1" Text="{l:T 'Compatibility tools'}" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
                                 <local:IconButton Text="{l:T 'Open folder'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,0" FontSize="14" Height="32" Padding="10,0" Click="OpenManagedToolsFolder_Click" />
                                 <local:IconButton Text="{l:T 'Refresh'}" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" FontSize="14" Height="32" Padding="10,0" Click="RefreshCompatibilityTools_Click" />
                             </StackPanel>
                         </Grid>
-                        <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Opacity="0.8"
+                        <TextBlock Margin="10,0,0,0" FontSize="13" TextWrapping="Wrap" Opacity="0.8"
                                    Text="{l:T 'Proton and Wine builds found on this computer'}" />
-                        <Border Classes="group" Width="900" HorizontalAlignment="Left" Margin="10,0,0,0">
+                        <Border Classes="group" HorizontalAlignment="Stretch" Margin="10,0,0,0">
                             <Panel>
-                                <TextBlock Text="{l:T 'No Proton or Wine build found yet. Download one below.'}" Opacity="0.7" IsVisible="{Binding !InstalledCompatibilityBuilds.Count}" />
+                                <TextBlock TextWrapping="Wrap" Text="{l:T 'No Proton or Wine build found yet. Download one below.'}" Opacity="0.7" IsVisible="{Binding !InstalledCompatibilityBuilds.Count}" />
                                 <ItemsControl x:Name="uiInstalledTools" ItemsSource="{Binding InstalledCompatibilityBuilds}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -465,7 +465,7 @@
                             </Panel>
                         </Border>
                         <TextBlock Text="{l:T 'Download a version'}" FontSize="15" FontWeight="Bold" Margin="10,10,0,0" />
-                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,0,0,0" IsEnabled="{Binding !IsToolDownloadRunning}">
+                        <WrapPanel ItemSpacing="10" LineSpacing="10" Margin="10,0,0,0" IsEnabled="{Binding !IsToolDownloadRunning}">
                             <ComboBox ItemsSource="{Binding ToolFlavors}" SelectedItem="{Binding SelectedToolFlavor}" Width="170">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
@@ -474,16 +474,16 @@
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
                             <local:IconButton Text="{l:T 'Load versions'}" FontSize="14" Height="32" MinWidth="130" Click="LoadToolVersions_Click" />
-                            <ComboBox ItemsSource="{Binding AvailableToolDownloads}" SelectedItem="{Binding SelectedToolDownload}" Width="300" PlaceholderText="{l:T 'Load the versions first'}" />
+                            <ComboBox ItemsSource="{Binding AvailableToolDownloads}" SelectedItem="{Binding SelectedToolDownload}" Width="240" PlaceholderText="{l:T 'Load the versions first'}" />
                             <local:IconButton Text="{l:T 'Install'}" Icon="{DynamicResource IconDownload}" IconMargin="0,0,5,0" IconScale="0.8" FontSize="14" Height="32" MinWidth="110" Click="InstallTool_Click"
                                               IsEnabled="{Binding SelectedToolDownload, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                        </StackPanel>
-                        <StackPanel Margin="10,0,0,0" Spacing="4" IsVisible="{Binding ToolDownloadStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Width="900" HorizontalAlignment="Left">
+                        </WrapPanel>
+                        <StackPanel Margin="10,0,0,0" Spacing="4" IsVisible="{Binding ToolDownloadStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                             <ProgressBar Minimum="0" Maximum="1" Value="{Binding ToolDownloadProgress}" Height="6" IsVisible="{Binding IsToolDownloadRunning}" />
                             <TextBlock Text="{Binding ToolDownloadStatus}" FontSize="13" TextWrapping="Wrap" />
                         </StackPanel>
                         <TextBlock Classes="h1" Text="{l:T 'Detected tools'}" Margin="0,15,0,0" />
-                        <Border Classes="group" Width="760">
+                        <Border Classes="group" MaxWidth="760" HorizontalAlignment="Stretch">
                             <SelectableTextBlock x:Name="uiDetectedTools" Text="{Binding DetectedCompatibilityTools}" FontFamily="monospace" FontSize="13" TextWrapping="Wrap" />
                         </Border>
                     </StackPanel>

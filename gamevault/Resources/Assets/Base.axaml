@@ -8,8 +8,8 @@
     <!-- Typefaces: Figtree for text, Sora for titles (embedded, with the system font as fallback) -->
     <FontFamily x:Key="Font.Body">avares://gamevault/Resources/Fonts#Figtree, $Default</FontFamily>
     <FontFamily x:Key="Font.Display">avares://gamevault/Resources/Fonts#Sora, avares://gamevault/Resources/Fonts#Figtree, $Default</FontFamily>
-    <CornerRadius x:Key="ControlCornerRadius">5</CornerRadius>
-    <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+    <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">12</CornerRadius>
 
     <!-- IconButton -->
     <ControlTheme x:Key="{x:Type uc:IconButton}" TargetType="uc:IconButton">
@@ -17,10 +17,11 @@
         <Setter Property="Background" Value="{DynamicResource GameVault.Brushes.Button}" />
         <Setter Property="BorderBrush" Value="{DynamicResource GameVault.Brushes.Button}" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="CornerRadius" Value="5" />
-        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="Padding" Value="14,0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Template">
             <ControlTemplate>
                 <Panel>
@@ -41,20 +42,19 @@
                                    FontWeight="{TemplateBinding FontWeight}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
-                    <Border Name="PART_Disabled"
-                            IsVisible="False"
-                            CornerRadius="{TemplateBinding CornerRadius}"
-                            Background="{DynamicResource GameVault.Brushes.Button.Disabled}" />
                 </Panel>
             </ControlTemplate>
         </Setter>
 
         <Style Selector="^:skeleton">
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
         </Style>
         <Style Selector="^:danger">
-            <Setter Property="Background" Value="IndianRed" />
-            <Setter Property="BorderBrush" Value="IndianRed" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Danger}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
+            <Setter Property="Foreground" Value="White" />
         </Style>
 
         <Style Selector="^:primary:pointerover /template/ Border#PART_Border">
@@ -62,8 +62,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource GameVault.Brushes.Button.MouseOver}" />
         </Style>
         <Style Selector="^:skeleton:pointerover /template/ Border#PART_Border">
-            <Setter Property="Background" Value="{DynamicResource GameVault.Brushes.Button.MouseOver}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource GameVault.Brushes.Button.MouseOver}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
         </Style>
         <Style Selector="^:danger:pointerover /template/ Border#PART_Border">
             <Setter Property="Opacity" Value="0.8" />
@@ -73,18 +72,13 @@
             <Setter Property="BorderBrush" Value="{DynamicResource GameVault.Brushes.Button.Focus}" />
         </Style>
         <Style Selector="^:skeleton:pressed /template/ Border#PART_Border">
-            <Setter Property="Background" Value="{DynamicResource GameVault.Brushes.Button.Focus}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource GameVault.Brushes.Button.Focus}" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
         </Style>
         <Style Selector="^:danger:pressed /template/ Border#PART_Border">
             <Setter Property="Opacity" Value="0.6" />
         </Style>
-        <Style Selector="^:disabled /template/ Border#PART_Disabled">
-            <Setter Property="IsVisible" Value="True" />
-        </Style>
-        <Style Selector="^:disabled /template/ Border#PART_Border">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.45" />
         </Style>
     </ControlTheme>
 

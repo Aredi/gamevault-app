@@ -17,37 +17,45 @@
         </Style>
         <Style Selector="ListBox.settingsNav ListBoxItem">
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Padding" Value="5,6" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
         </Style>
         <Style Selector="ListBox.settingsNav ListBoxItem /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="12" />
         </Style>
-        <Style Selector="ListBox.settingsNav ListBoxItem TextBlock">
-            <Setter Property="FontSize" Value="22" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Margin" Value="5,0,0,0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
+        <Style Selector="ListBox.settingsNav ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <Style Selector="ListBox.settingsNav ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent3}" />
+        </Style>
+        <Style Selector="ListBox.settingsNav ListBoxItem:selected, ListBox.settingsNav ListBoxItem:pointerover">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
         </Style>
-        <Style Selector="ListBox.settingsNav ListBoxItem Path">
-            <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
+        <Style Selector="ListBox.settingsNav ListBoxItem TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="10,0,0,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{Binding $parent[ListBoxItem].Foreground}" />
         </Style>
-        <Style Selector="ListBox.settingsNav ListBoxItem:selected TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
-        </Style>
-        <Style Selector="ListBox.settingsNav ListBoxItem:selected Path">
-            <Setter Property="Fill" Value="{DynamicResource Brush.Accent}" />
-        </Style>
-        <Style Selector="ListBox.settingsNav ListBoxItem:pointerover">
-            <Setter Property="Opacity" Value="0.8" />
+        <Style Selector="ListBox.settingsNav ListBoxItem Path">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="-3" />
+            <Setter Property="RenderTransform" Value="scale(0.75)" />
+            <Setter Property="Fill" Value="{Binding $parent[ListBoxItem].Foreground}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <!-- Content -->
         <Style Selector="TextBlock.section">
-            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="TextDecorations" Value="Underline" />
-            <Setter Property="Margin" Value="0,10,0,5" />
+            <Setter Property="Margin" Value="0,12,0,5" />
         </Style>
         <Style Selector="TextBlock.text">
             <Setter Property="FontSize" Value="15" />
@@ -71,12 +79,12 @@
         </Style>
     </UserControl.Styles>
     <Border Padding="5" CornerRadius="5" ClipToBounds="True" BoxShadow="0 0 7 0 #80000000">
-        <Grid ColumnDefinitions="101*,299*">
+        <Grid ColumnDefinitions="240,*">
             <Grid Grid.Column="0" Background="{DynamicResource Brush.Background2}">
-                <TextBlock Text="{l:T 'Game Settings'}" FontSize="30" Margin="10" />
-                <StackPanel VerticalAlignment="Top" Margin="40,70,0,0">
+                <TextBlock Classes="sectionTitle" Text="{l:T 'Game Settings'}" FontSize="20" Margin="20,22,12,0" TextWrapping="Wrap" />
+                <StackPanel VerticalAlignment="Top" Margin="10,70,10,0">
                     <StackPanel IsVisible="{Binding Game, Converter={StaticResource tabVisConv}, ConverterParameter=local}">
-                        <TextBlock Text="{l:T 'Your Computer'}" FontSize="30" />
+                        <TextBlock Classes="eyebrow muted" Text="{l:T 'Your Computer'}" Margin="12,0,0,6" />
                         <ListBox x:Name="uiSettingsHeadersLocal" Classes="settingsNav" SelectionChanged="SettingsTabControl_SelectionChanged">
                             <ListBoxItem>
                                 <Grid ColumnDefinitions="Auto,*">
@@ -93,7 +101,7 @@
                         </ListBox>
                     </StackPanel>
                     <StackPanel IsVisible="{Binding Game, Converter={StaticResource tabVisConv}, ConverterParameter=server}">
-                        <TextBlock Text="{l:T 'Server'}" FontSize="30" Margin="0,30,0,0" />
+                        <TextBlock Classes="eyebrow muted" Text="{l:T 'Server'}" Margin="12,22,0,6" />
                         <ListBox x:Name="uiSettingsHeadersRemote" Classes="settingsNav" SelectionChanged="SettingsTabControl_SelectionChanged">
                             <ListBoxItem>
                                 <Grid ColumnDefinitions="Auto,*">
@@ -118,7 +126,7 @@
                 </StackPanel>
             </Grid>
             <StackPanel Grid.Column="0" VerticalAlignment="Bottom" Margin="10">
-                <TextBlock FontSize="16" TextWrapping="Wrap">
+                <TextBlock Classes="muted" FontSize="12.5" TextWrapping="Wrap">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="{}{0} ({1})">
                             <Binding Path="Game.Title" />
@@ -356,7 +364,7 @@
                                             <local:CacheImage x:Name="uiImgCurrentMergedGame" ImageCacheType="GameCover" Data="{Binding Game}" Height="120" Width="90" CornerRadius="5" />
                                             <Button Classes="wrapper copy" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="1" Opacity="0.7" Margin="0,0,4,5" ToolTip.Tip="{l:T 'Copy Image to Clipboard'}" Click="CopyImageToClipboard_Click">
                                                 <Grid Classes="hover" Background="#02000000">
-                                                    <Path Data="{StaticResource IconCopy}" Fill="White" />
+                                                    <Path Data="{StaticResource IconCopy}" Fill="{DynamicResource Brush.Foreground}" />
                                                 </Grid>
                                             </Button>
                                         </Grid>
@@ -377,7 +385,7 @@
                                             <local:CacheImage x:Name="uiImgCurrentShownMappedGame" DoNotCache="True" ImageCacheType="GameCover" Data="{Binding CurrentShownMappedGame}" Height="120" Width="90" CornerRadius="5" />
                                             <Button Classes="wrapper copy" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="1" Opacity="0.7" Margin="0,0,4,5" ToolTip.Tip="{l:T 'Copy Image to Clipboard'}" Click="CopyImageToClipboard_Click" Tag="CurrentShownMappedGame">
                                                 <Grid Classes="hover" Background="#02000000">
-                                                    <Path Data="{StaticResource IconCopy}" Fill="White" />
+                                                    <Path Data="{StaticResource IconCopy}" Fill="{DynamicResource Brush.Foreground}" />
                                                 </Grid>
                                             </Button>
                                         </Grid>
