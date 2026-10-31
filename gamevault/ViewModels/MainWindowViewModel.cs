@@ -28,7 +28,8 @@ namespace gamevault.ViewModels
         {
             m_Settings = new SettingsUserControl();
             m_Downloads = new DownloadsUserControl();
-            m_Library = new LibraryUserControl();
+            // Shown when it becomes the active page (never on a Mac)
+            m_Library = new LibraryUserControl { IsVisible = false };
             m_Retro = new RetroUserControl();
             m_Community = new CommunityUserControl();
             m_Activity = new ActivityUserControl();
@@ -148,8 +149,11 @@ namespace gamevault.ViewModels
                     m_ActiveControl.IsVisible = true;
                 }
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(TransitioningPage));
             }
         }
+        /// <summary>The library stays in the window, hidden: attaching it again took 350 ms at each return. The other pages come through the transition.</summary>
+        public UserControl? TransitioningPage => m_ActiveControl == m_Library ? null : m_ActiveControl;
         public Control Popup
         {
             get { return m_Popup; }

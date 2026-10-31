@@ -10,6 +10,32 @@ namespace GameVault.UiTests
 {
     public class MenuScenarios
     {
+        /// <summary>Attaching the library again took 350 ms at each return to it: it stays in the window, hidden.</summary>
+        [AvaloniaFact]
+        public async Task TheLibrary_StaysInTheWindow_WhileAnotherPageIsShown()
+        {
+            var session = await TestSession.GetAsync();
+            var vm = MainWindowViewModel.Instance;
+            var library = vm.Library;
+            try
+            {
+                vm.SetActiveControl(MainControl.Settings);
+                Dispatcher.UIThread.RunJobs();
+                Assert.False(library.IsVisible);
+                Assert.True(library.GetVisualAncestors().Contains(session.Window));
+                Assert.Same(vm.Settings, vm.TransitioningPage);
+
+                vm.SetActiveControl(MainControl.Library);
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(library.IsEffectivelyVisible);
+                Assert.Null(vm.TransitioningPage);
+            }
+            finally
+            {
+                vm.SetActiveControl(MainControl.Library);
+            }
+        }
+
         /// <summary>The icons of the menu and of the Settings' tabs: in their own box, on the middle line of their title.</summary>
         [AvaloniaFact]
         public async Task TheMenuIcons_AreCenteredOnTheirTitle()

@@ -27,6 +27,7 @@ namespace gamevault.Windows
         {
             InitializeComponent();
             this.DataContext = MainWindowViewModel.Instance;
+            uiLibraryHost.Content = MainWindowViewModel.Instance.Library;
             InitSidebar();
             // The Mac's version: its PC games are Windows' (the library, the LAN rooms)
             uiNavLibrary.IsVisible = uiNavRooms.IsVisible = !PlatformInfo.IsMac;
