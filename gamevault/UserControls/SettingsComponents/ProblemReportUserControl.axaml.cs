@@ -65,6 +65,6 @@ namespace gamevault.UserControls.SettingsComponents
         private void GitHub_Click(object sender, RoutedEventArgs e) =>
             PlatformInfo.OpenUrl($"https://github.com/{AppRepository.Owner}/{AppRepository.Name}/issues/new");
 
-        private void Close_Click(object? sender, PointerReleasedEventArgs e) => MainWindowViewModel.Instance.ClosePopup();
+        private void Close_Click(object? sender, RoutedEventArgs e) => MainWindowViewModel.Instance.ClosePopup();
     }
 }

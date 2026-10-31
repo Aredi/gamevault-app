@@ -347,7 +347,7 @@
                                                         <Path Data="{StaticResource IconChevronDown}" Width="11" Height="11" />
                                                     </Button>
                                                     <Button Classes="round small" Click="ModuleRemove_Click" ToolTip.Tip="{l:T 'Remove this section'}">
-                                                        <Path Data="{StaticResource IconTrash}" Width="12" Height="12" Fill="IndianRed" />
+                                                        <Path Data="{StaticResource IconTrash}" Width="12" Height="12" Fill="{DynamicResource Brush.Danger}" />
                                                     </Button>
                                                 </StackPanel>
                                             </Grid>
@@ -565,7 +565,7 @@
                                                 <Button Grid.Column="2" Classes="round small" Width="30" Height="30" CornerRadius="8" VerticalAlignment="Top" Background="Transparent"
                                                         Click="DeleteProgress_Click" ToolTip.Tip="{l:T 'Delete'}"
                                                         IsVisible="{Binding #uiSelectUser.SelectedIndex, Converter={StaticResource roleToVisConv}}">
-                                                    <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
+                                                    <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource Brush.Danger}" Width="13" Height="13" />
                                                 </Button>
                                             </Grid>
                                         </Border>

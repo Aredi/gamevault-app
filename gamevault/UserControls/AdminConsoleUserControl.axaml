@@ -26,20 +26,18 @@
             <Setter Property="Background" Value="#26FF0000" />
         </Style>
     </UserControl.Styles>
-    <Grid RowDefinitions="50,*">
-        <Border Background="{DynamicResource Brush.Background2}" Grid.Row="0">
-            <TextBlock Text="{l:T 'Admin Console'}" FontSize="35" Margin="20,0,0,0" VerticalAlignment="Center" />
-        </Border>
+    <Grid RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Classes="pageTitle" Text="{l:T 'Admin Console'}" Margin="28,20,28,14" />
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel MaxWidth="1200" Margin="20,0,20,20">
+            <StackPanel MaxWidth="1200" Margin="28,0,28,28">
                 <!-- Server information -->
                 <Border Classes="card">
                     <StackPanel Spacing="5">
                         <TextBlock Classes="cardTitle" Text="{l:T 'Server Information'}" />
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <TextBlock Text="{Binding ServerVersionInfo.Key}" FontSize="16" VerticalAlignment="Center" />
-                            <Button Classes="link" Content="{l:T '(Update Available)'}" Foreground="Red" FontSize="16" VerticalAlignment="Center" Click="ServerUpdate_Navigate"
+                            <Button Classes="link" Content="{l:T '(Update Available)'}" Foreground="{DynamicResource Brush.Danger}" FontSize="16" VerticalAlignment="Center" Click="ServerUpdate_Navigate"
                                     IsVisible="{Binding ServerVersionInfo.Value, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
                         <TextBlock Text="{Binding Source={x:Static vm:SettingsViewModel.Instance}, Path=ServerUrl, StringFormat={l:T 'Server Address: {0}'}}" FontSize="16" />
@@ -49,19 +47,21 @@
                 <!-- Actions -->
                 <Border Classes="card">
                     <StackPanel Spacing="10">
-                        <TextBlock Classes="cardTitle" Text="{l:T 'Action Buttons'}" />
-                        <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="cardTitle" Text="{l:T 'Action Buttons'}" />
+                            <Grid Grid.Column="1" x:Name="uiBtnReload" Classes="hover" Background="Transparent" Cursor="Hand" VerticalAlignment="Center"
+                                  ToolTip.Tip="{l:T 'Refresh admin console (F5)'}">
+                                <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" />
+                            </Grid>
+                        </Grid>
+                        <WrapPanel ItemSpacing="10" LineSpacing="10">
                             <local:IconButton Text="{l:T 'Publish a Game'}" Icon="{StaticResource IconAddSimple}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="PublishGame_Click" />
                             <local:IconButton Text="{l:T 'Backup / Restore Database'}" Icon="{StaticResource IconDatabase}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="BackupRestore_Click" />
                             <local:IconButton Text="{l:T 'Automatic mapping'}" Icon="{StaticResource IconTick}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="AutoMatch_Click"
                                               ToolTip.Tip="{l:T 'Map the games without metadata from their file name'}" />
                             <local:IconButton Text="{l:T 'Reindex Games'}" Icon="{StaticResource IconReload}" IconMargin="0,0,5,0" FontSize="15" Height="33" Padding="10,0" Click="Reindex_Click" />
                             <ToggleSwitch Content="{l:T 'Show deleted Users'}" IsChecked="{Binding ShowDeletedUsers}" VerticalAlignment="Center" Margin="20,0,0,0" />
-                            <Grid x:Name="uiBtnReload" Classes="hover" Background="Transparent" Cursor="Hand" VerticalAlignment="Center" Margin="10,0,0,0"
-                                  ToolTip.Tip="{l:T 'Refresh admin console (F5)'}">
-                                <Path Data="{StaticResource IconReload}" Fill="{DynamicResource Brush.Foreground}" />
-                            </Grid>
-                        </StackPanel>
+                        </WrapPanel>
                     </StackPanel>
                 </Border>
 
@@ -103,7 +103,7 @@
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{l:T 'A new account waits for its activation until it gives a code. Each code is used once and never expires.'}" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                             <TextBox x:Name="uiInviteName" Watermark="{l:T 'Who it is for (e.g. Cousin Lucas)'}" MaxLength="60" KeyDown="InviteName_KeyDown" />
-                            <Button Grid.Column="1" Classes="small" Click="CreateInvite_Click" Content="{l:T 'Create a code'}" />
+                            <Button Grid.Column="1" Classes="action small" Click="CreateInvite_Click" Content="{l:T 'Create a code'}" />
                         </Grid>
                         <ItemsControl x:Name="uiInvites">
                             <ItemsControl.ItemTemplate>
@@ -133,7 +133,7 @@
                         <TextBlock Classes="cardTitle" Text="{l:T 'Hypervisor'}" />
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{l:T 'Shown once to who downloads a game marked on its page. Nothing is shown while the text is empty.'}" />
                         <TextBox x:Name="uiHypervisorText" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" MaxLength="4000" />
-                        <Button Classes="small" HorizontalAlignment="Right" Click="SaveHypervisorText_Click" Content="{l:T 'Save'}" />
+                        <Button Classes="action small" HorizontalAlignment="Right" Click="SaveHypervisorText_Click" Content="{l:T 'Save'}" />
                     </StackPanel>
                 </Border>
 
@@ -181,7 +181,7 @@
                                             </Button>
                                             <Button Grid.Column="5" Classes="wrapper" VerticalAlignment="Center" Cursor="Hand" Margin="0,0,5,0" Click="DeleteUser_Clicked">
                                                 <Grid Classes="hover" Background="Transparent">
-                                                    <Path Data="{DynamicResource IconTrash}" Fill="IndianRed" ToolTip.Tip="{l:T 'Delete user'}"
+                                                    <Path Data="{DynamicResource IconTrash}" Fill="{DynamicResource Brush.Danger}" ToolTip.Tip="{l:T 'Delete user'}"
                                                           IsVisible="{Binding DeletedAt, Converter={x:Static ObjectConverters.IsNull}}" />
                                                     <Path Data="{DynamicResource IconReload}" Fill="{DynamicResource Brush.Foreground}" ToolTip.Tip="{l:T 'Recover user'}"
                                                           IsVisible="{Binding DeletedAt, Converter={x:Static ObjectConverters.IsNotNull}}" />

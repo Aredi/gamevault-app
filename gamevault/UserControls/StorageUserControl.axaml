@@ -59,7 +59,7 @@
             <!-- The retro games checked below, deleted together (their saves stay) -->
             <Button x:Name="uiDeleteSelected" Classes="ghost small" Background="{DynamicResource Brush.Surface}" Margin="14,0,0,6" IsVisible="False" Click="DeleteSelected_Click">
                 <StackPanel Orientation="Horizontal" Spacing="7">
-                    <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
+                    <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource Brush.Danger}" Width="13" Height="13" />
                     <TextBlock x:Name="uiDeleteSelectedText" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
@@ -98,7 +98,7 @@
                                         </Button>
                                         <Button Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="Uninstall_Click">
                                             <StackPanel Orientation="Horizontal" Spacing="7">
-                                                <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
+                                                <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource Brush.Danger}" Width="13" Height="13" />
                                                 <TextBlock Text="{l:T 'Uninstall'}" VerticalAlignment="Center" />
                                             </StackPanel>
                                         </Button>

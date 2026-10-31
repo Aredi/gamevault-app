@@ -206,6 +206,7 @@ namespace gamevault.Helper
             res["Brush.Success"] = new SolidColorBrush(isLight ? Color.Parse("#1E8A55") : Color.Parse("#5FD39A"));
             res["Brush.Warning"] = new SolidColorBrush(isLight ? Color.Parse("#B85E12") : Color.Parse("#F2A65A"));
             res["Brush.Special"] = new SolidColorBrush(isLight ? Color.Parse("#7A3FC2") : Color.Parse("#D6B4FF"));
+            res["Brush.Danger"] = new SolidColorBrush(isLight ? Color.Parse("#C0392B") : Color.Parse("#CD5C5C"));
             app.RequestedThemeVariant = isLight ? ThemeVariant.Light : ThemeVariant.Dark;
             ApplyFluentPalette(app, isLight ? ThemeVariant.Light : ThemeVariant.Dark, foreground, background, background2, accent, border);
         }

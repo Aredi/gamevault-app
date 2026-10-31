@@ -51,9 +51,9 @@
         </Border>
 
         <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Margin="36,28,36,28" MaxWidth="900" HorizontalAlignment="Left" Spacing="20">
+            <StackPanel Margin="36,28,36,28" MaxWidth="900" Spacing="20">
                 <TextBlock x:Name="uiStatus" TextWrapping="Wrap" FontSize="13" IsVisible="False" />
-                <TextBlock x:Name="uiNothing" Classes="muted" FontSize="14" TextWrapping="Wrap" Text="{l:T 'Choose a room, or create one.'}" />
+                <TextBlock x:Name="uiNothing" Classes="muted" FontSize="15" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" Margin="0,120,0,0" Text="{l:T 'Choose a room, or create one.'}" />
 
                 <StackPanel x:Name="uiDetail" Spacing="20" IsVisible="False">
                     <Grid ColumnDefinitions="*,Auto">

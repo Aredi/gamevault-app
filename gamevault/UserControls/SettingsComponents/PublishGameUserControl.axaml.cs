@@ -145,7 +145,7 @@ namespace gamevault.UserControls.SettingsComponents
         }
         #endregion
 
-        private void Close_Click(object? sender, PointerReleasedEventArgs e)
+        private void Close_Click(object? sender, RoutedEventArgs e)
         {
             if (ViewModel.IsIdle)
                 MainWindowViewModel.Instance.ClosePopup();

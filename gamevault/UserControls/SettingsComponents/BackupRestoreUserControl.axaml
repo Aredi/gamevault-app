@@ -4,39 +4,39 @@
              xmlns:controls="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.SettingsComponents.BackupRestoreUserControl">
     <Grid>
-        <Grid Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,5,7,0" ZIndex="1" Height="20" Width="20" Cursor="Hand" PointerReleased="BackupRestorePopup_Close">
-            <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" Margin="-2,-1,0,0" />
-        </Grid>
-        <Border Background="{DynamicResource Brush.Background}" Padding="10" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" CornerRadius="10">
-            <TabControl Width="520" Height="285">
+        <Button Classes="round small" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,14,0" ZIndex="1" Click="BackupRestorePopup_Close" ToolTip.Tip="{l:T 'Close (Esc)'}">
+            <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+        </Button>
+        <Border Background="{DynamicResource Brush.Background}" Padding="24,20" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+            <TabControl Width="520" Padding="0,8,0,0">
                 <TabItem Header="{l:T 'Backup'}">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="{l:T 'An unencrypted file with all the server\&#x27;s data: keep it safe.'}" FontSize="15" TextWrapping="Wrap" />
-                        <TextBlock Text="{l:T 'Select a directory in which the backup file should be saved.'}" FontSize="15" TextWrapping="Wrap" />
+                        <TextBlock Text="{l:T 'An unencrypted file with all the server\&#x27;s data: keep it safe.'}" FontSize="14" TextWrapping="Wrap" />
+                        <TextBlock Text="{l:T 'Select a directory in which the backup file should be saved.'}" FontSize="14" TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <controls:IconButton Text="{l:T 'Select Directory'}" MinWidth="130" Height="28" FontSize="15" Click="ChooseBackupDirectory_Click" />
-                            <TextBlock x:Name="uiBackupDirectory" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Width="370" TextTrimming="CharacterEllipsis" />
+                            <controls:IconButton Text="{l:T 'Select Directory'}" MinWidth="130" Height="34" FontSize="14" Click="ChooseBackupDirectory_Click" />
+                            <TextBlock x:Name="uiBackupDirectory" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" MaxWidth="340" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBox x:Name="uiBackupDatabasePassword" PasswordChar="●" Classes="revealPasswordButton" Width="347" TextChanged="Backup_PasswordChanged" />
-                            <TextBlock Text="{l:T 'Database Password'}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{l:T 'Database Password'}" FontSize="13" FontWeight="SemiBold" />
+                            <TextBox x:Name="uiBackupDatabasePassword" PasswordChar="●" Classes="revealPasswordButton" TextChanged="Backup_PasswordChanged" />
                         </StackPanel>
-                        <controls:IconButton x:Name="uiBtnStartBackup" Text="{l:T 'Start Backup'}" IsEnabled="False" FontSize="15" Height="30" Click="StartBackup_Click" />
+                        <controls:IconButton x:Name="uiBtnStartBackup" Text="{l:T 'Start Backup'}" IsEnabled="False" FontSize="14" Height="36" Click="StartBackup_Click" />
                     </StackPanel>
                 </TabItem>
                 <TabItem Header="{l:T 'Restore'}">
                     <StackPanel Spacing="10">
-                        <TextBlock Text="{l:T 'Restoring replaces the whole database. Use a backup of the same server version.'}" FontSize="13" TextWrapping="Wrap" />
-                        <TextBlock Text="{l:T 'Select the Database File to upload.'}" FontSize="13" TextWrapping="Wrap" />
+                        <TextBlock Text="{l:T 'Restoring replaces the whole database. Use a backup of the same server version.'}" FontSize="14" TextWrapping="Wrap" />
+                        <TextBlock Text="{l:T 'Select the Database File to upload.'}" FontSize="14" TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <controls:IconButton Text="{l:T 'Select Database File'}" MinWidth="160" Height="28" FontSize="15" Click="ChooseRestoreFile_Click" />
-                            <TextBlock x:Name="uiRestoreFile" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" />
+                            <controls:IconButton Text="{l:T 'Select Database File'}" MinWidth="160" Height="34" FontSize="14" Click="ChooseRestoreFile_Click" />
+                            <TextBlock x:Name="uiRestoreFile" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" MaxWidth="320" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBox x:Name="uiRestoreDatabasePassword" PasswordChar="●" Classes="revealPasswordButton" Width="347" TextChanged="Restore_PasswordChanged" />
-                            <TextBlock Text="{l:T 'Database Password'}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{l:T 'Database Password'}" FontSize="13" FontWeight="SemiBold" />
+                            <TextBox x:Name="uiRestoreDatabasePassword" PasswordChar="●" Classes="revealPasswordButton" TextChanged="Restore_PasswordChanged" />
                         </StackPanel>
-                        <controls:IconButton x:Name="uiBtnStartRestore" Text="{l:T 'Start Restore'}" IsEnabled="False" Height="30" FontSize="15" Click="StartRestore_Click" />
+                        <controls:IconButton x:Name="uiBtnStartRestore" Text="{l:T 'Start Restore'}" IsEnabled="False" Height="36" FontSize="14" Click="StartRestore_Click" />
                     </StackPanel>
                 </TabItem>
             </TabControl>

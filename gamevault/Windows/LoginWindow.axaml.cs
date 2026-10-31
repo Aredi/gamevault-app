@@ -21,7 +21,9 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Text.Json;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 
 
 namespace gamevault.Windows
@@ -87,7 +89,64 @@ namespace gamevault.Windows
             InputTimer.Tick += ServerUrlInput_Tick;
 
             Opened += LoginWindow_Loaded;
+            Opened += (_, _) => _ = LoadArtWallAsync();
             Closed += LoginWindow_Closed;
+            Closed += (_, _) =>
+            {
+                uiArtWall.Children.Clear();
+                foreach (Bitmap cover in artWall)
+                    cover.Dispose();
+                artWall.Clear();
+            };
+        }
+
+        private const int ArtWallCovers = 6;
+        private readonly List<Bitmap> artWall = new();
+
+        /// <summary>Covers already in the image cache, whatever the server: without enough of them the logo stays.</summary>
+        private async Task LoadArtWallAsync()
+        {
+            List<Bitmap> covers = await Task.Run(() =>
+            {
+                var loaded = new List<Bitmap>();
+                try
+                {
+                    string[] files = Directory.GetDirectories(ProfileManager.ProfileRootDirectory)
+                        .Select(server => Path.Combine(server, "ImageCache", "gbox"))
+                        .Where(Directory.Exists)
+                        .SelectMany(Directory.GetFiles)
+                        .ToArray();
+                    Random.Shared.Shuffle(files);
+                    foreach (string file in files)
+                    {
+                        if (loaded.Count == ArtWallCovers)
+                            break;
+                        try
+                        {
+                            using FileStream stream = File.OpenRead(file);
+                            loaded.Add(Bitmap.DecodeToWidth(stream, 240));
+                        }
+                        catch (Exception unreadable) { Log.Ignored(unreadable); }
+                    }
+                }
+                catch (Exception ignored) { Log.Ignored(ignored); }
+                return loaded;
+            });
+            if (covers.Count < ArtWallCovers || !IsVisible)
+            {
+                covers.ForEach(cover => cover.Dispose());
+                return;
+            }
+            artWall.AddRange(covers);
+            uiArtLogo.IsVisible = false;
+            for (int i = 0; i < covers.Count; i++)
+            {
+                var image = new Image { Source = covers[i], Stretch = Stretch.UniformToFill, Height = 214 };
+                var card = new Border { CornerRadius = new CornerRadius(12), ClipToBounds = true, Child = image, Margin = new Thickness(0, i % 3 == 1 ? 40 : 0, 0, 0) };
+                Grid.SetColumn(card, i % 3);
+                Grid.SetRow(card, i / 3);
+                uiArtWall.Children.Add(card);
+            }
         }
 
         private async void LoginWindow_Loaded(object? sender, EventArgs e)

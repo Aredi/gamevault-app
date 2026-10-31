@@ -517,7 +517,7 @@ namespace gamevault.UserControls
             catch { defaultName = CompatibilityManager.DisplayName(CompatibilitySettings.DefaultToolId); }
             var tools = new List<CompatibilityTool>
             {
-                new CompatibilityTool(CompatibilityToolId.Default, Loc.F("Default ({0})", defaultName), CompatibilityToolKind.Wine, null, "the default tool of Settings → Linux", false),
+                new CompatibilityTool(CompatibilityToolId.Default, Loc.F("Default ({0})", defaultName), CompatibilityToolKind.Wine, null, Loc.T("the default tool of Settings → Linux"), false),
             };
             tools.AddRange(CompatibilityManager.GetTools(refresh: true).Where(t => t.Id != CompatibilityToolId.Auto));
             // Keep a tool that was deleted meanwhile visible, so the choice is not silently changed

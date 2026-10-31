@@ -266,7 +266,7 @@
                             <Path Data="{StaticResource IconGameSettingsFolder}" Width="14" Height="14" />
                         </Button>
                         <Button Classes="round small" Click="DeleteFile_Click" ToolTip.Tip="{l:T 'Delete Download'}">
-                            <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="IndianRed" />
+                            <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="{DynamicResource Brush.Danger}" />
                         </Button>
                     </StackPanel>
 

@@ -112,16 +112,17 @@ namespace gamevault.Helper
 
             TextBox? inputBox = input ? new TextBox { Text = settings.DefaultText, Margin = new Thickness(0, 15, 0, 0), MinWidth = 300 } : null;
 
-            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 10, Margin = new Thickness(0, 25, 0, 0) };
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 10, Margin = new Thickness(0, 22, 0, 0) };
 
-            var content = new StackPanel { MaxWidth = 900 };
+            var content = new StackPanel { Width = 520 };
             if (!string.IsNullOrEmpty(title))
             {
                 content.Children.Add(new TextBlock
                 {
                     Text = title,
-                    FontSize = double.IsNaN(settings.DialogTitleFontSize) ? 24 : settings.DialogTitleFontSize,
+                    FontSize = double.IsNaN(settings.DialogTitleFontSize) ? 20 : settings.DialogTitleFontSize,
                     FontWeight = FontWeight.Bold,
+                    FontFamily = (Application.Current!.TryGetResource("Font.Display", null, out object? display) ? display as FontFamily : null) ?? FontFamily.Default,
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 0, 0, 10),
                 });
@@ -131,7 +132,7 @@ namespace gamevault.Helper
                 content.Children.Add(new SelectableTextBlock
                 {
                     Text = message,
-                    FontSize = double.IsNaN(settings.DialogMessageFontSize) ? 15 : settings.DialogMessageFontSize,
+                    FontSize = double.IsNaN(settings.DialogMessageFontSize) ? 14 : settings.DialogMessageFontSize,
                     TextWrapping = TextWrapping.Wrap,
                 });
             }
@@ -141,17 +142,19 @@ namespace gamevault.Helper
 
             var dialog = new Border
             {
-                Background = Brush("Brush.Background2"),
-                BorderBrush = Brush("Brush.Accent"),
-                BorderThickness = new Thickness(0, 2, 0, 2),
-                Padding = new Thickness(40, 25),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Background = Brush("Brush.Background"),
+                BorderBrush = Brush("Brush.Line"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(18),
+                BoxShadow = BoxShadows.Parse("0 30 80 -20 #E6000000"),
+                Padding = new Thickness(28, 24),
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Child = new Panel { Children = { new Border { Child = content, HorizontalAlignment = HorizontalAlignment.Center } } },
+                Child = content,
             };
             var overlay = new Panel
             {
-                Background = new SolidColorBrush(Color.FromArgb(0x99, 0, 0, 0)),
+                Background = new SolidColorBrush(Color.FromArgb(0xA6, 0, 0, 0)),
                 Children = { dialog },
                 ZIndex = 1000,
             };
@@ -178,14 +181,14 @@ namespace gamevault.Helper
                 {
                     Text = text,
                     MinWidth = 100,
-                    Height = 32,
-                    Padding = new Thickness(12, 0),
-                    FontSize = 15,
+                    Height = 38,
+                    Padding = new Thickness(16, 0),
                     Kind = primary ? ButtonKind.Primary : ButtonKind.Skeleton,
                     BorderThickness = new Thickness(primary ? 0 : 1),
                 };
                 button.Click += (_, _) => Close(result);
-                buttons.Children.Add(button);
+                // The main action last, on the right, as in the popups
+                buttons.Children.Insert(0, button);
             }
 
             AddButton(settings.AffirmativeButtonText, MessageDialogResult.Affirmative, true);

@@ -75,7 +75,7 @@
                 <Button Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="DeleteAllDownloads_Click" ToolTip.Tip="{l:T 'Delete all Downloads'}"
                         IsVisible="{Binding DownloadedGames.Count, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
                     <StackPanel Orientation="Horizontal" Spacing="7">
-                        <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
+                        <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource Brush.Danger}" Width="13" Height="13" />
                         <TextBlock Text="{l:T 'Delete all'}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
@@ -142,7 +142,7 @@
                                                 <Path Data="{StaticResource IconGameSettingsFolder}" Width="14" Height="14" />
                                             </Button>
                                             <Button Classes="round small" Click="RetroCancel_Click" ToolTip.Tip="{l:T 'Cancel Download'}" IsVisible="{Binding !IsDone}">
-                                                <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="IndianRed" />
+                                                <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="{DynamicResource Brush.Danger}" />
                                             </Button>
                                         </StackPanel>
                                         <Button Classes="ghost small" HorizontalAlignment="Stretch" IsVisible="{Binding CanPause}" Click="RetroPauseResume_Click" Background="{DynamicResource Brush.Surface3}">

@@ -11,7 +11,7 @@ namespace gamevault.Helper
 {
     internal class ProfileManager
     {
-        private static string ProfileRootDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GameVault", "profiles");
+        internal static string ProfileRootDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GameVault", "profiles");
         public static string ProfileConfigFile { get; private set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GameVault", "profileconfig");
         public static string ErrorLogDir { get; private set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GameVault", "errorlog");
         public static void EnsureRootDirectory()
