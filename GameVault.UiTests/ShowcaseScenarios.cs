@@ -20,7 +20,7 @@ namespace GameVault.UiTests
     /// points to a folder with games.json and the images of each game (&lt;appid&gt;/cover.jpg, hero.jpg, shot*.jpg);
     /// the PNG files are written to SHOWCASE_DIR/out.
     /// </summary>
-    public class ShowcaseScenarios
+    public partial class ShowcaseScenarios
     {
         public static string? Folder => Environment.GetEnvironmentVariable("SHOWCASE_DIR");
         public static bool Enabled => !string.IsNullOrEmpty(Folder);
@@ -49,7 +49,7 @@ namespace GameVault.UiTests
             CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("fr-FR");
             var session = await TestSession.GetAsync();
             Step("session");
-            string output = Path.Combine(Folder!, "out");
+            string output = Path.Combine(Folder!, Environment.GetEnvironmentVariable("SHOWCASE_OUT") ?? "out");
             Directory.CreateDirectory(output);
             var data = JsonSerializer.Deserialize<List<ShowcaseGame>>(File.ReadAllText(Path.Combine(Folder!, "games.json")))!;
 
@@ -161,6 +161,11 @@ namespace GameVault.UiTests
             Step("library loaded");
             await Settle(4000);
             Capture(session, output, "01-library");
+            if (Environment.GetEnvironmentVariable("SHOWCASE_GALLERY_ONLY") == "1")
+            {
+                await Gallery(session, games, output);
+                return;
+            }
             // Each game of the banner: its cover and its art are shown
             var heroLibrary = MainWindowViewModel.Instance.Library;
             for (int h = 0; h < heroLibrary.Model.HeroItems.Count; h++)
@@ -540,14 +545,16 @@ namespace GameVault.UiTests
             }
         }
 
-        private static void Capture(TestSession session, string folder, string name, Control? within = null)
+        private static void Capture(TestSession session, string folder, string name, Control? within = null) => Capture(session.Window, folder, name, within);
+
+        private static void Capture(Window window, string folder, string name, Control? within = null)
         {
             Dispatcher.UIThread.RunJobs();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            var frame = session.Window.CaptureRenderedFrame();
+            var frame = window.CaptureRenderedFrame();
             Assert.NotNull(frame);
             frame!.Save(Path.Combine(folder, name + ".png"));
-            File.WriteAllText(Path.Combine(folder, name + ".txt"), LayoutReport(session.Window, within));
+            File.WriteAllText(Path.Combine(folder, name + ".txt"), LayoutReport(window, within));
             Step(name);
         }
     }
