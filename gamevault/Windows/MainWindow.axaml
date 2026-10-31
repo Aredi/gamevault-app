@@ -315,12 +315,12 @@
                                 <Border Width="13" Height="13" CornerRadius="7" HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="2"
                                         BorderBrush="{DynamicResource Brush.Background2}" Background="{DynamicResource Brush.Success}" IsVisible="{Binding !IsOffline}" />
                                 <Border Width="13" Height="13" CornerRadius="7" HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="2"
-                                        BorderBrush="{DynamicResource Brush.Background2}" Background="IndianRed" IsVisible="{Binding IsOffline}" ToolTip.Tip="{l:T 'Offline'}" />
+                                        BorderBrush="{DynamicResource Brush.Background2}" Background="{DynamicResource Brush.Danger}" IsVisible="{Binding IsOffline}" ToolTip.Tip="{l:T 'Offline'}" />
                             </Panel>
                             <StackPanel Grid.Column="1" Classes="wide" Margin="11,0,0,0" VerticalAlignment="Center" Spacing="1">
                                 <TextBlock Text="{Binding UserAvatar.Username}" FontWeight="Bold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
                                 <TextBlock x:Name="uiServerName" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsOffline}" />
-                                <TextBlock Classes="muted" FontSize="11.5" Text="{l:T 'Offline'}" Foreground="IndianRed" IsVisible="{Binding IsOffline}" />
+                                <TextBlock Classes="muted" FontSize="11.5" Text="{l:T 'Offline'}" Foreground="{DynamicResource Brush.Danger}" IsVisible="{Binding IsOffline}" />
                             </StackPanel>
                         </Grid>
                     </Button>
@@ -328,7 +328,8 @@
             </Border>
 
             <!-- Pages -->
-            <TransitioningContentControl Grid.Column="1" Content="{Binding ActiveControl}">
+            <ContentControl Grid.Column="1" x:Name="uiLibraryHost" />
+            <TransitioningContentControl Grid.Column="1" Content="{Binding TransitioningPage}">
                 <TransitioningContentControl.PageTransition>
                     <CrossFade Duration="0:0:0.15" />
                 </TransitioningContentControl.PageTransition>
