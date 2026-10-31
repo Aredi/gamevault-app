@@ -207,9 +207,10 @@ namespace gamevault.Android.Retro
             if (!gameLoaded)
                 return;
             gameLoaded = false;
-            ((delegate* unmanaged[Cdecl]<void>)Export("retro_unload_game"))();
+            // Its GPU objects first, as RetroArch: LRPS2 unloading with them still there never returned
             if (Gl != null && contextDestroy != IntPtr.Zero)
                 ((delegate* unmanaged[Cdecl]<void>)contextDestroy)();
+            ((delegate* unmanaged[Cdecl]<void>)Export("retro_unload_game"))();
         }
 
         public void Dispose()
