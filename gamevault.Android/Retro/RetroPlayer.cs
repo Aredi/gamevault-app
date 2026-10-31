@@ -136,10 +136,9 @@ namespace gamevault.Android.Retro
                         WriteSave();
                         autosave.Restart();
                     }
-                    // The sound sets the pace (its writes wait while its buffer is full): a clock as well would leave it
-                    // without samples now and then, heard as cuts. Without sound, the clock
-                    if (audio != null)
-                        continue;
+                    // A clock at the console's pace: the sound only follows (see WriteAudio). Paced by the sound, the
+                    // pictures came in bursts each time Android took a batch of it (about 100 ms on a phone), seen as jerks
+                    AdjustAudioRate();
                     frame++;
                     double ahead = frame / fps - clock.Elapsed.TotalSeconds;
                     if (ahead > 0.002)
@@ -271,9 +270,10 @@ namespace gamevault.Android.Retro
             {
                 int rate = (int)Math.Round(sampleRate > 0 ? sampleRate : 44100);
                 int minimum = AudioTrack.GetMinBufferSize(rate, ChannelOut.Stereo, Encoding.Pcm16bit);
-                // About 80 ms: small enough for the controls to feel right; twice for the GPU's consoles, whose pictures
-                // come less evenly (GameCube, Wii)
-                int bytes = Math.Max(minimum * 2, rate / (core?.Gl != null ? 6 : 12) * 4);
+                // Room for 250 ms; about AudioTarget of it kept filled (see AdjustAudioRate)
+                int bytes = Math.Max(minimum * 2, rate / 4 * 4);
+                audioRate = rate;
+                audioWritten = 0;
                 audio = new AudioTrack.Builder()
                     .SetAudioAttributes(new AudioAttributes.Builder().SetUsage(AudioUsageKind.Game)!.SetContentType(AudioContentType.Music)!.Build()!)!
                     .SetAudioFormat(new AudioFormat.Builder().SetSampleRate(rate)!.SetEncoding(Encoding.Pcm16bit)!.SetChannelMask(ChannelOut.Stereo)!.Build()!)!
@@ -289,6 +289,28 @@ namespace gamevault.Android.Retro
             }
         }
 
+        private int audioRate, audioAdjusted;
+        private long audioWritten;
+        /// <summary>The sound kept ahead of what is heard: enough for an uneven picture now and then, short enough for the controls.</summary>
+        private const double AudioTarget = 0.08;
+
+        /// <summary>
+        /// The sound played a little faster or slower (half a percent at most, not heard) to keep AudioTarget ahead:
+        /// the console's clock and the phone's sound do not run at exactly the same pace, as RetroArch's rate control.
+        /// </summary>
+        private void AdjustAudioRate()
+        {
+            if (audio == null || ++audioAdjusted % 15 != 0)
+                return;
+            try
+            {
+                double ahead = (audioWritten - (audio.PlaybackHeadPosition & 0xFFFFFFFFL)) / (double)audioRate;
+                double change = Math.Clamp((ahead - AudioTarget) / AudioTarget * 0.005, -0.005, 0.005);
+                audio.SetPlaybackRate((int)Math.Round(audioRate * (1 + change)));
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
         private void WriteAudio(IntPtr data, int frames)
         {
             if (audio == null || frames <= 0)
@@ -297,7 +319,8 @@ namespace gamevault.Android.Retro
             if (audioBuffer.Length < samples)
                 audioBuffer = new short[samples];
             Marshal.Copy(data, audioBuffer, 0, samples);
-            try { audio.Write(audioBuffer, 0, samples); }
+            // Never waits (the clock sets the pace): what does not fit is dropped, the rate catches up (AdjustAudioRate)
+            try { audioWritten += Math.Max(0, audio.Write(audioBuffer, 0, samples, WriteMode.NonBlocking)) / 2; }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
         }
 

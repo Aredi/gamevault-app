@@ -41,7 +41,8 @@ namespace gamevault.Android.Retro
         private readonly Border menu;
         private readonly Button resumeButton, quitButton;
         private long shown = -1;
-        private readonly DispatcherTimer refresh;
+        /// <summary>The screen the view is on, while it is.</summary>
+        private TopLevel? screen;
         private int menuChoice;
 
         /// <summary>Quit chosen (menu, Select+Start).</summary>
@@ -98,18 +99,21 @@ namespace gamevault.Android.Retro
             Children.Add(menuButton);
             Children.Add(menu);
 
-            refresh = new DispatcherTimer(TimeSpan.FromMilliseconds(8), DispatcherPriority.Render, (_, _) => Present());
             AttachedToVisualTree += (_, _) =>
             {
-                refresh.Start();
-                if (TopLevel.GetTopLevel(this) is TopLevel top)
-                    top.BackRequested += Back;
+                screen = TopLevel.GetTopLevel(this);
+                if (screen == null)
+                    return;
+                screen.BackRequested += Back;
+                screen.RequestAnimationFrame(NextFrame);
             };
+            // The screen kept from before: once detached, the view has none any more, and its Back stayed (the next
+            // game's Back went to this one's menu)
             DetachedFromVisualTree += (_, _) =>
             {
-                refresh.Stop();
-                if (TopLevel.GetTopLevel(this) is TopLevel top)
-                    top.BackRequested -= Back;
+                if (screen != null)
+                    screen.BackRequested -= Back;
+                screen = null;
             };
         }
 
@@ -206,6 +210,18 @@ namespace gamevault.Android.Retro
             player.PointerX = (int)Math.Clamp((p.X - area.X) / area.Width * 65534 - 32767, -32767, 32767);
             player.PointerY = (int)Math.Clamp((p.Y - area.Y) / area.Height * 65534 - 32767, -32767, 32767);
             player.PointerDown = 1;
+        }
+
+        /// <summary>
+        /// Each refresh of the screen (its vsync): a timer of its own came at other moments, and a picture now and then
+        /// stayed twice as long.
+        /// </summary>
+        private void NextFrame(TimeSpan time)
+        {
+            if (screen == null)
+                return;
+            Present();
+            screen.RequestAnimationFrame(NextFrame);
         }
 
         /// <summary>The newest picture of the core, copied once to the screen.</summary>
