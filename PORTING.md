@@ -18,7 +18,7 @@ Linux and Windows. The WPF version stays available on the `unlock-plus` branch.
 | WebView2 (SSO, YouTube trailers)      | `Avalonia.Controls.WebView` (WebView2 / WebKitGTK)    |
 | Markdig.Wpf                           | Markdown.Avalonia                                     |
 | VirtualizingWrapPanel                 | `ItemsRepeater` + `UniformGridLayout`                 |
-| LiveCharts pie chart                  | `PieChart` control drawn with Avalonia geometry       |
+| LiveCharts pie chart                  | Stacked bar in the game settings                      |
 | WinForms `NotifyIcon`, JumpList       | Avalonia `TrayIcon` (JumpList dropped)                |
 | Windows toast notifications           | DesktopNotifications (FreeDesktop DBus / Windows)     |
 | `Lib/Preferences.dll`                 | `GameVault.Core/Preferences.cs`                       |

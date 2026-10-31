@@ -57,6 +57,14 @@
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Margin" Value="0,12,0,5" />
         </Style>
+        <Style Selector="Border.panel">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
         <Style Selector="TextBlock.text">
             <Setter Property="FontSize" Value="15" />
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -78,91 +86,143 @@
             <Setter Property="IsVisible" Value="True" />
         </Style>
     </UserControl.Styles>
-    <Border Padding="5" CornerRadius="5" ClipToBounds="True" BoxShadow="0 0 7 0 #80000000">
-        <Grid ColumnDefinitions="240,*">
-            <Grid Grid.Column="0" Background="{DynamicResource Brush.Background2}">
-                <TextBlock Classes="sectionTitle" Text="{l:T 'Game Settings'}" FontSize="20" Margin="20,22,12,0" TextWrapping="Wrap" />
-                <StackPanel VerticalAlignment="Top" Margin="10,70,10,0">
-                    <StackPanel IsVisible="{Binding Game, Converter={StaticResource tabVisConv}, ConverterParameter=local}">
-                        <TextBlock Classes="eyebrow muted" Text="{l:T 'Your Computer'}" Margin="12,0,0,6" />
+    <Border ClipToBounds="True">
+        <Grid RowDefinitions="170,Auto,*">
+            <!-- The game -->
+            <Panel ClipToBounds="True">
+                <local:CacheImage ImageCacheType="GameBackground" Data="{Binding Game}" Stretch="UniformToFill" />
+                <Border>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                            <GradientStop Offset="0" Color="{DynamicResource GameVault.Colors.BackgroundStrong}" />
+                            <GradientStop Offset="0.6" Color="{DynamicResource GameVault.Colors.BackgroundSoft}" />
+                            <GradientStop Offset="1" Color="{DynamicResource GameVault.Colors.BackgroundClear}" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="18" Margin="28,0,120,18" VerticalAlignment="Bottom">
+                    <Border Width="88" Height="132" CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                        <local:CacheImage ImageCacheType="GameCover" Data="{Binding Game}" Stretch="UniformToFill" DecodeWidthOverride="264" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Bottom" Spacing="3">
+                        <TextBlock Classes="eyebrow" Text="{l:T 'Game Settings'}" />
+                        <TextBlock Classes="display" Text="{Binding Game.Title}" FontSize="30" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                            <TextBlock FontSize="13" Text="{Binding Game.ReleaseDate.Year, FallbackValue='?', TargetNullValue='?'}" />
+                            <TextBlock FontSize="13" Text="{Binding Game.ID, StringFormat={l:T 'ID {0}'}}" />
+                            <TextBlock FontSize="13" Text="{Binding Game.Version, StringFormat={l:T 'Version {0}'}, TargetNullValue={l:T 'Version N/A'}}" />
+                            <TextBlock FontSize="13" Text="{Binding InstalledGameVersion, StringFormat={l:T 'Installed Version {0}'}, TargetNullValue={l:T 'Installed Version N/A'}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,14,0">
+                    <Button Classes="round small" Click="Help_Click" ToolTip.Tip="{l:T 'Help'}">
+                        <Path Data="{DynamicResource IconGameSettingsHelp}" Stretch="None" Width="NaN" Height="NaN" />
+                    </Button>
+                    <Button Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
+                        <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                    </Button>
+                </StackPanel>
+            </Panel>
+
+            <!-- Tabs: this computer's, then the server's -->
+            <Border Grid.Row="1" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,0,1" Padding="16,6">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <StackPanel IsVisible="{Binding Game, Converter={StaticResource tabVisConv}, ConverterParameter=local}">
                         <ListBox x:Name="uiSettingsHeadersLocal" Classes="settingsNav" SelectionChanged="SettingsTabControl_SelectionChanged">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
                             <ListBoxItem>
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconGameSettingsFolder}" />
-                                    <TextBlock Grid.Column="1" Text="{l:T 'Installation'}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Installation'}" />
                                 </Grid>
                             </ListBoxItem>
                             <ListBoxItem>
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconGameSettingsLaunchOptions}" />
-                                    <TextBlock Grid.Column="1" Text="{l:T 'Launch Options'}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Launch Options'}" />
                                 </Grid>
                             </ListBoxItem>
                         </ListBox>
-                    </StackPanel>
-                    <StackPanel IsVisible="{Binding Game, Converter={StaticResource tabVisConv}, ConverterParameter=server}">
-                        <TextBlock Classes="eyebrow muted" Text="{l:T 'Server'}" Margin="12,22,0,6" />
+                        </StackPanel>
+                        <StackPanel IsVisible="{Binding Game, Converter={StaticResource tabVisConv}, ConverterParameter=server}">
                         <ListBox x:Name="uiSettingsHeadersRemote" Classes="settingsNav" SelectionChanged="SettingsTabControl_SelectionChanged">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
                             <ListBoxItem>
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconGameSettingsEditImages}" />
-                                    <TextBlock Grid.Column="1" Text="{l:T 'Edit Images'}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Edit Images'}" />
                                 </Grid>
                             </ListBoxItem>
                             <ListBoxItem>
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconDatabase}" />
-                                    <TextBlock Grid.Column="1" Text="{l:T 'Metadata'}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Metadata'}" />
                                 </Grid>
                             </ListBoxItem>
                             <ListBoxItem>
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Path Data="{DynamicResource IconGameSettingsEditDetails}" />
-                                    <TextBlock Grid.Column="1" Text="{l:T 'Custom Metadata'}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Column="1" Text="{l:T 'Custom Metadata'}" />
                                 </Grid>
                             </ListBoxItem>
                         </ListBox>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-            </Grid>
-            <StackPanel Grid.Column="0" VerticalAlignment="Bottom" Margin="10">
-                <TextBlock Classes="muted" FontSize="12.5" TextWrapping="Wrap">
-                    <TextBlock.Text>
-                        <MultiBinding StringFormat="{}{0} ({1})">
-                            <Binding Path="Game.Title" />
-                            <Binding Path="Game.ReleaseDate.Year" FallbackValue="?" TargetNullValue="?" />
-                        </MultiBinding>
-                    </TextBlock.Text>
-                </TextBlock>
-                <TextBlock Text="{Binding Game.ID, StringFormat={l:T 'ID {0}'}}" FontSize="16" />
-                <TextBlock Text="{Binding Game.Version, StringFormat={l:T 'Version {0}'}, TargetNullValue={l:T 'Version N/A'}}" FontSize="16" />
-                <TextBlock Text="{Binding InstalledGameVersion, StringFormat={l:T 'Installed Version {0}'}, TargetNullValue={l:T 'Installed Version N/A'}}" FontSize="16" />
-            </StackPanel>
+                </ScrollViewer>
+            </Border>
 
-            <Grid Grid.Column="1" Background="{DynamicResource Brush.Background}" ClipToBounds="True">
+            <Grid Grid.Row="2" Background="{DynamicResource Brush.Background}" ClipToBounds="True">
                 <Carousel x:Name="uiSettingsContent">
                     <!-- Installation -->
-                    <StackPanel Margin="20,20,20,0">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{DynamicResource IconGameSettingsFolder}" Fill="{DynamicResource Brush.Foreground}" Margin="0,2,0,0" />
-                            <TextBlock Text="{l:T 'Installation'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
-                        </StackPanel>
-                        <TextBlock Classes="text" Text="{l:T 'Here you can manage your Game Installation'}" />
-                        <TextBlock Classes="section" Text="{l:T 'Installation'}" Margin="0,20,0,0" />
-                        <TextBlock Text="{l:T 'This Game was installed to:'}" FontSize="15" FontWeight="Bold" Margin="0,10,0,0" />
-                        <Border CornerRadius="5" Background="{DynamicResource Brush.Background2}" Margin="0,5,0,10" Padding="10">
-                            <SelectableTextBlock Text="{Binding Directory}" FontSize="15" TextWrapping="Wrap" />
-                        </Border>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <local:IconButton Kind="Danger" Text="{l:T 'Uninstall Game'}" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" MinWidth="150" Height="33" FontSize="15" Click="Uninstall_Click" />
-                            <local:IconButton Text="{l:T 'Open Directory'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" MinWidth="150" Height="33" FontSize="15" Click="OpenDirectory_Click" />
-                            <local:IconButton Text="{l:T 'Move to another folder'}" Icon="{DynamicResource IconHardDrive}" IconMargin="0,0,5,2" MinWidth="150" Height="33" FontSize="15" Click="MoveGame_Click"
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Grid ColumnDefinitions="3*,2*" ColumnSpacing="16" Margin="24,20">
+                            <Border Classes="panel">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="sectionTitle" FontSize="17" Text="{l:T 'Installation'}" />
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Classes="muted" FontSize="13" Text="{l:T 'This Game was installed to:'}" />
+                                        <SelectableTextBlock Text="{Binding Directory}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <WrapPanel ItemSpacing="8" LineSpacing="8" Margin="0,6,0,0">
+                                        <local:IconButton Kind="Skeleton" BorderThickness="1" Text="{l:T 'Open Directory'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,2" MinWidth="150" Height="38" FontSize="14" Click="OpenDirectory_Click" />
+                                        <local:IconButton Kind="Skeleton" BorderThickness="1" Text="{l:T 'Move to another folder'}" Icon="{DynamicResource IconHardDrive}" IconMargin="0,0,5,2" MinWidth="150" Height="38" FontSize="14" Click="MoveGame_Click"
                                               ToolTip.Tip="{l:T 'Saves and settings are kept.'}" />
-                        </StackPanel>
-                        <TextBlock Classes="section" Text="{l:T 'Disk Usage:'}" Margin="0,20,0,0" />
-                        <TextBlock Text="{Binding DiskSize}" FontSize="15" FontWeight="Bold" Margin="0,5,0,0" />
-                        <local:PieChart x:Name="uiDiscUsagePieChart" Width="600" Height="400" HorizontalAlignment="Left" Foreground="{DynamicResource Brush.Foreground}" />
-                    </StackPanel>
+                                        <local:IconButton Kind="Danger" Text="{l:T 'Uninstall Game'}" Icon="{DynamicResource IconTrash}" IconMargin="0,0,5,2" MinWidth="150" Height="38" FontSize="14" Click="Uninstall_Click" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Classes="panel">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="sectionTitle" FontSize="17" Text="{l:T 'Disk Usage:'}" />
+                                    <TextBlock Classes="muted" Text="{Binding DiskSize}" FontSize="13" TextWrapping="Wrap" />
+                                    <Border Height="12" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                        <Grid x:Name="uiDiskBar" />
+                                    </Border>
+                                    <ItemsControl x:Name="uiDiskLegend">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,3">
+                                                    <Border Width="10" Height="10" CornerRadius="3" Background="{Binding Brush}" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Label}" FontSize="13" FontWeight="SemiBold" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
 
                     <!-- Launch options -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -594,12 +654,6 @@
                         <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="115" Height="33" Margin="0,10,0,0" HorizontalAlignment="Right" Click="SaveGameDetails_Click" />
                     </StackPanel>
                 </Carousel>
-            </Grid>
-            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,10,10,0" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
-                <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" RenderTransform="scale(1.2)" />
-            </Grid>
-            <Grid Grid.Column="1" Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,50,0" Cursor="Hand" PointerReleased="Help_Click" ToolTip.Tip="{l:T 'Documentation'}">
-                <Path Fill="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconGameSettingsHelp}" />
             </Grid>
         </Grid>
     </Border>

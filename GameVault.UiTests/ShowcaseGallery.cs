@@ -105,10 +105,13 @@ namespace GameVault.UiTests
             server.Invites.Add(new Dictionary<string, object?> { ["code"] = "K7Q4-MXAB-2CD3", ["name"] = "Pour Léa", ["createdAt"] = DateTime.UtcNow.AddDays(-2), ["usedAt"] = null, ["userId"] = null, ["username"] = null });
             await Settle(3500);
             Capture(session, output, "33-admin");
-            var adminScroll = ((Control)vm.ActiveControl!).GetVisualDescendants().OfType<ScrollViewer>().First();
-            adminScroll.Offset = new Avalonia.Vector(0, 100000);
-            await Settle(1200);
-            Capture(session, output, "33b-admin-bottom");
+            var admin = (Control)vm.ActiveControl!;
+            foreach (string tile in new[] { "uiTileReports", "uiTileInvites", "uiTileServer", "uiTilePlayers" })
+            {
+                admin.FindControl<Avalonia.Controls.Primitives.ToggleButton>(tile)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await Settle(700);
+                Capture(session, output, $"33-admin-{tile}");
+            }
 
             vm.SetActiveControl(MainControl.Settings);
             await Settle(1500);
@@ -122,6 +125,10 @@ namespace GameVault.UiTests
                 Capture(session, output, $"34-settings-{i}");
             }
             tabs.SelectedIndex = 0;
+            ((Control)vm.ActiveControl!).FindControl<TextBox>("uiSearch")!.Text = "limite";
+            await Settle(800);
+            Capture(session, output, "34-settings-search");
+            ((Control)vm.ActiveControl!).FindControl<TextBox>("uiSearch")!.Text = "";
 
             var quickSearch = session.Window.FindControl<QuickSearchUserControl>("uiQuickSearch")!;
             vm.SetActiveControl(MainControl.Library);

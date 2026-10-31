@@ -54,6 +54,7 @@ namespace gamevault.UserControls
                 await InitUserList();
                 await LoadReportsAsync();
                 ViewModel.ServerVersionInfo = await GetServerVersionInfo();
+                uiCountServer.Text = ViewModel.ServerVersionInfo.Key.Split(':').Last().Trim();
             }
         }
 
@@ -67,12 +68,23 @@ namespace gamevault.UserControls
                 await LoadInvitesAsync(users);
                 await LoadHypervisorAsync();
                 ViewModel.Users = users;
+                uiCountPlayers.Text = (users?.Count(u => u.DeletedAt == null) ?? 0).ToString();
             }
             catch (Exception ex)
             {
                 string msg = WebExceptionHelper.TryGetServerMessage(ex);
                 MainWindowViewModel.Instance.AppBarText = msg;
             }
+        }
+
+        /// <summary>A counter opens its part of the console; one is always open.</summary>
+        private void Section_Click(object? sender, RoutedEventArgs e)
+        {
+            var section = (AdminConsoleSection)((Control)sender!).Tag!;
+            uiTilePlayers.IsChecked = uiSectionPlayers.IsVisible = section == AdminConsoleSection.Players;
+            uiTileReports.IsChecked = uiSectionReports.IsVisible = section == AdminConsoleSection.Reports;
+            uiTileInvites.IsChecked = uiSectionInvites.IsVisible = section == AdminConsoleSection.Invites;
+            uiTileServer.IsChecked = uiSectionServer.IsVisible = section == AdminConsoleSection.Server;
         }
 
         /// <summary>The open problem reports; without the SanctuaryVault service (or its reports) the card stays hidden.</summary>
@@ -85,6 +97,7 @@ namespace gamevault.UserControls
                 uiReports.ItemsSource = open;
                 uiReportsTitle.Text = Loc.F("Problem reports ({0} open)", open?.Count ?? 0);
                 uiReportsEmpty.IsVisible = open?.Count == 0;
+                uiCountReports.Text = (open?.Count ?? 0).ToString();
             }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
         }
@@ -123,6 +136,7 @@ namespace gamevault.UserControls
                 var invites = await InvitesService.ListAsync();
                 uiInvitesCard.IsVisible = invites != null;
                 uiInvites.ItemsSource = invites;
+                uiCountInvites.Text = (invites?.Count(i => i.IsUnused) ?? 0).ToString();
                 foreach (User user in users ?? Array.Empty<User>())
                     user.InviteText = invites?.FirstOrDefault(i => i.UserId == user.ID) is InviteItem used ? Loc.F("Invitation code {0}", used.Name) : null;
             }

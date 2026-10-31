@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:helper="clr-namespace:gamevault.Helper"
+        xmlns:uc="clr-namespace:gamevault.UserControls"
         xmlns:l="clr-namespace:gamevault.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ctxt="clr-namespace:ColorTextBlock.Avalonia;assembly=ColorTextBlock.Avalonia">
@@ -504,6 +505,29 @@
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="CornerRadius" Value="13" />
         <Setter Property="Margin" Value="-4" />
+    </Style>
+
+    <!-- A card of settings: rows split by a hairline -->
+    <Style Selector="Border.rows">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.rows uc|SettingRow">
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Border.rows uc|SettingRow:nth-child(1)">
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="uc|SettingRow ToggleSwitch">
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="uc|SettingRow ComboBox">
+        <Setter Property="MinWidth" Value="140" />
     </Style>
 
     <!-- Thin scroll bars on the library pages -->
