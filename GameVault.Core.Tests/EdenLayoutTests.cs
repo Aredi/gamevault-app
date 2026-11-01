@@ -81,7 +81,8 @@ namespace GameVault.Core.Tests
         public void ANewerNightly_IsOffered_WithThisPcsBuild_AndKeptOnceInstalled()
         {
             var layout = new EdenLayout(Path.Combine(Root, Guid.NewGuid().ToString("N")), windows: false);
-            string Feed(string tag, string file) => $"{{\"tag_name\":\"{tag}\",\"assets\":[{{\"name\":\"{file}\"}}]}}";
+            // As the forge answers: no asset, the files linked in the notes
+            string Feed(string tag, string file) => $"{{\"tag_name\":\"{tag}\",\"body\":\"| amd64 | [AppImage](https://nightly.eden-emu.dev/{tag}/{file}) |\",\"assets\":[]}}";
             const string newer = "v1792500000.989768aa46";
             Assert.Equal(newer, layout.NewerNightly(Feed(newer, "Eden-Linux-989768aa46-amd64-clang-pgo.AppImage")));
             // Not newer, or without the build this PC takes: nothing offered
@@ -102,6 +103,51 @@ namespace GameVault.Core.Tests
             Assert.Equal(newer, new EdenLayout(layout.Directory, windows: false).Tag);
             File.WriteAllText(layout.VersionFile, "v1700000000.0123456789");
             Assert.Equal(EdenLayout.Pinned, new EdenLayout(layout.Directory, windows: false).Tag);
+        }
+
+        [Fact]
+        public void AnOlderProcessor_TakesTheBuildItCanRun_InPlaceOfTheOtherOne()
+        {
+            string folder = Path.Combine(Root, Guid.NewGuid().ToString("N"));
+            string commit = EdenLayout.Pinned[(EdenLayout.Pinned.IndexOf('.') + 1)..];
+            var linux = new EdenLayout(folder, windows: false, x86V3: false);
+            Assert.EndsWith($"/Eden-Linux-{commit}-legacy-clang-pgo.AppImage", linux.PackageUrl);
+            Assert.EndsWith($"/Eden-Windows-{commit}-amd64-msvc-standard.zip", new EdenLayout(folder, windows: true, x86V3: false).PackageUrl);
+            Assert.EndsWith($"/Eden-macOS-{commit}.dmg", new EdenLayout(folder, windows: false, mac: true, x86V3: false).PackageUrl);
+
+            // The main build already there, on a processor that dies on it: installed again, once
+            Directory.CreateDirectory(Path.Combine(folder, "app"));
+            File.WriteAllText(linux.Executable, "");
+            File.WriteAllText(linux.VersionFile, EdenLayout.Pinned);
+            Assert.False(linux.IsInstalled);
+            File.WriteAllText(linux.VersionFile, linux.Version);
+            Assert.True(linux.IsInstalled);
+            Assert.Equal(EdenLayout.Pinned, linux.Tag);
+
+            // A newer nightly of its own build, not of the main one
+            const string newer = "v1792500000.989768aa46";
+            string Feed(string file) => $"{{\"tag_name\":\"{newer}\",\"body\":\"{file}\",\"assets\":[]}}";
+            Assert.Null(linux.NewerNightly(Feed("Eden-Linux-989768aa46-amd64-clang-pgo.AppImage")));
+            Assert.Equal(newer, linux.NewerNightly(Feed("Eden-Linux-989768aa46-legacy-clang-pgo.AppImage")));
+        }
+
+        [Theory]
+        [InlineData(0, 2, EmulatorFailure.None)]
+        [InlineData(1, 60, EmulatorFailure.None)]
+        [InlineData(132, 2, EmulatorFailure.OlderProcessor)]
+        [InlineData(unchecked((int)0xC000001D), 2, EmulatorFailure.OlderProcessor)]
+        [InlineData(unchecked((int)0xC0000135), 2, EmulatorFailure.MissingRuntime)]
+        [InlineData(1, 2, EmulatorFailure.Other)]
+        public void AnEmulator_ThatDiesAtItsStart_IsTold(int exitCode, int seconds, EmulatorFailure failure)
+        {
+            Assert.Equal(failure, EmulatorExit.Of(exitCode, TimeSpan.FromSeconds(seconds)));
+        }
+
+        [Fact]
+        public void ItsExitCode_IsWrittenAsTheSystemDocumentsIt()
+        {
+            Assert.Equal("0xC000001D", EmulatorExit.CodeText(unchecked((int)0xC000001D)));
+            Assert.Equal("139", EmulatorExit.CodeText(139));
         }
 
         [Fact]

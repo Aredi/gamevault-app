@@ -77,11 +77,17 @@ namespace gamevault.Helper
             }
         }
 
-        /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then its time counted and its saves sent.</summary>
-        private static async Task WhenClosedAsync(Process process, RetroGame game, System.Collections.Generic.Dictionary<string, long> before)
+        /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then its time counted and its saves sent; told when it died at its start.</summary>
+        internal static async Task WhenClosedAsync(Process process, RetroGame game, System.Collections.Generic.Dictionary<string, long> before)
         {
             DateTime started = DateTime.UtcNow;
             await process.WaitForExitAsync();
+            string? failure = FailureOf(process.ExitCode, DateTime.UtcNow - started, StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch");
+            if (failure != null)
+            {
+                Log.Info($"{game.Name}: {failure}");
+                MainWindowViewModel.Instance.AppBarText = failure;
+            }
             DiscordHelper.Instance.RetroStopped();
             try
             {
@@ -104,8 +110,16 @@ namespace gamevault.Helper
                     await RetroAchievementsAccount.ShareAsync(game);
                 }
             }
-            game.Status = "";
+            game.Status = failure ?? "";
             game.Busy = false;
         }
+
+        private static string? FailureOf(int exitCode, TimeSpan ran, string emulator) => EmulatorExit.Of(exitCode, ran) switch
+        {
+            EmulatorFailure.None => null,
+            EmulatorFailure.OlderProcessor => Loc.F("{0} stopped as it started: this PC's processor can not run it.", emulator),
+            EmulatorFailure.MissingRuntime => Loc.F("{0} could not start: install the Microsoft Visual C++ Redistributable (x64) on this PC.", emulator),
+            _ => Loc.F("{0} stopped as it started (code {1}).", emulator, EmulatorExit.CodeText(exitCode)),
+        };
     }
 }

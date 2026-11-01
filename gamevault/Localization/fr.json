@@ -1681,5 +1681,8 @@
   "Create a code": "Créer un code",
   "Copy": "Copier",
   "Invitation code {0}": "Code d'invitation {0}",
-  "Invitation code for {0} copied: {1}": "Code d'invitation pour {0} copié : {1}"
+  "Invitation code for {0} copied: {1}": "Code d'invitation pour {0} copié : {1}",
+  "{0} stopped as it started: this PC's processor can not run it.": "{0} s'est arrêté dès son lancement : le processeur de ce PC ne peut pas le faire tourner.",
+  "{0} could not start: install the Microsoft Visual C++ Redistributable (x64) on this PC.": "{0} n'a pas pu démarrer : installe Microsoft Visual C++ Redistributable (x64) sur ce PC.",
+  "{0} stopped as it started (code {1}).": "{0} s'est arrêté dès son lancement (code {1})."
 }
