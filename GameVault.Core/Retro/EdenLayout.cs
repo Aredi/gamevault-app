@@ -9,7 +9,8 @@ namespace GameVault.Core.Retro
     /// working folder on Linux and a Mac), where the console's keys and firmware from RomM are copied as Eden's own installation
     /// does. Each GameVault player is the console's first user while they play, so each has their saves.
     /// </summary>
-    public sealed class EdenLayout(string directory, bool windows, bool mac = false) : StandaloneLayout(directory, windows, mac)
+    /// <param name="x86V3">The processor runs Eden's main builds (<see cref="EmulatorExit.ProcessorIsX86V3"/>), else the build for older ones is taken.</param>
+    public sealed class EdenLayout(string directory, bool windows, bool mac = false, bool x86V3 = true) : StandaloneLayout(directory, windows, mac)
     {
         /// <summary>The nightly the client's settings were checked with: the oldest one it plays with.</summary>
         public const string Pinned = "v1792353251.de7e6e01d4";
@@ -24,35 +25,44 @@ namespace GameVault.Core.Retro
             set => chosen = value;
         }
 
-        public override string Version => Tag;
+        /// <summary>After the tag in the version file: the build for older processors, so that the other one, which dies at its start on them, is replaced.</summary>
+        private const string OlderProcessorBuild = "+older-processor";
+        private bool ForOlderProcessor => !x86V3 && !Mac;
+
+        public override string Version => ForOlderProcessor ? Tag + OlderProcessorBuild : Tag;
+        private string? InstalledVersion => File.Exists(VersionFile) ? File.ReadAllText(VersionFile).Trim() : null;
         /// <summary>The nightly in the folder: its tag (before 1.26.3, the commit of <see cref="Pinned"/>).</summary>
-        private string? InstalledTag => File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() is string text
+        private string? InstalledTag => InstalledVersion?.Replace(OlderProcessorBuild, "") is string text
             ? (Pinned.EndsWith("." + text, StringComparison.Ordinal) ? Pinned : text)
             : null;
-        public override bool IsInstalled => File.Exists(Executable) && InstalledTag == Tag;
+        public override bool IsInstalled => File.Exists(Executable) && InstalledTag == Tag && InstalledVersion!.EndsWith(OlderProcessorBuild, StringComparison.Ordinal) == ForOlderProcessor;
 
         /// <summary>"v1792353251.de7e6e01d4": built at that Unix time.</summary>
         public static DateTimeOffset BuiltAt(string tag) => DateTimeOffset.FromUnixTimeSeconds(long.TryParse(tag.TrimStart('v').Split('.')[0], out long time) ? time : 0);
         public static bool IsNewer(string tag, string than) => BuiltAt(tag) > BuiltAt(than);
 
-        /// <summary>The latest nightly of <see cref="LatestNightlyApi"/>'s answer when it is newer than the one played with and has this PC's build; else null.</summary>
+        /// <summary>
+        /// The latest nightly of <see cref="LatestNightlyApi"/>'s answer when it is newer than the one played with and has
+        /// this PC's build; else null. The release's files are not attached to it, its notes link to them.
+        /// </summary>
         public string? NewerNightly(string json)
         {
             var release = System.Text.Json.Nodes.JsonNode.Parse(json);
-            if (release?["tag_name"]?.GetValue<string>() is not string tag || !IsNewer(tag, Tag) || release["assets"] is not System.Text.Json.Nodes.JsonArray assets)
+            if (release?["tag_name"]?.GetValue<string>() is not string tag || !IsNewer(tag, Tag))
                 return null;
             string package = Path.GetFileName(PackageUrlOf(tag));
-            return assets.Any(a => a?["name"]?.GetValue<string>() == package) ? tag : null;
+            return release["body"]?.GetValue<string>().Contains(package, StringComparison.Ordinal) == true ? tag : null;
         }
 
         public override string PackageUrl => PackageUrlOf(Tag);
         private string PackageUrlOf(string tag)
         {
             string commit = tag[(tag.IndexOf('.') + 1)..];
+            // Windows' build for older processors is MSVC's: it needs the Visual C++ Redistributable, the others nothing
             return Windows
-                ? $"https://nightly.eden-emu.dev/{tag}/Eden-Windows-{commit}-amd64-clang-pgo.zip"
+                ? $"https://nightly.eden-emu.dev/{tag}/Eden-Windows-{commit}-{(ForOlderProcessor ? "amd64-msvc-standard" : "amd64-clang-pgo")}.zip"
                 : Mac ? $"https://nightly.eden-emu.dev/{tag}/Eden-macOS-{commit}.dmg"
-                : $"https://nightly.eden-emu.dev/{tag}/Eden-Linux-{commit}-amd64-clang-pgo.AppImage";
+                : $"https://nightly.eden-emu.dev/{tag}/Eden-Linux-{commit}-{(ForOlderProcessor ? "legacy" : "amd64")}-clang-pgo.AppImage";
         }
         protected override string WindowsExecutable => "eden.exe";
         protected override string MacExecutable => Path.Combine("eden.app", "Contents", "MacOS", "eden");

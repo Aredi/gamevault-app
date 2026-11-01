@@ -8,6 +8,7 @@ using GameVault.Core.Retro;
 using gamevault.Helper;
 using gamevault.UserControls;
 using gamevault.ViewModels;
+using System.Diagnostics;
 using System.Text;
 
 namespace GameVault.UiTests
@@ -466,6 +467,14 @@ namespace GameVault.UiTests
                 Assert.True(layout.HasFirmware);
                 Assert.Equal("master_key_00 = 00", File.ReadAllText(Path.Combine(layout.KeysDirectory, "prod.keys")));
                 Assert.Equal(2, Directory.GetFiles(layout.FirmwareDirectory, "*.nca").Length);
+
+                // Dead at its start (an instruction the processor does not have): told where the player looks, and the game free again
+                game.Busy = true;
+                await RetroPlay.WhenClosedAsync(Process.Start(OperatingSystem.IsWindows() ? "cmd" : "sh", OperatingSystem.IsWindows() ? "/c exit 132" : "-c \"exit 132\""), game, new());
+                Assert.Contains("Eden", game.Status);
+                Assert.Equal(game.Status, MainWindowViewModel.Instance.AppBarText);
+                MainWindowViewModel.Instance.IsAppBarOpen = false;
+                Assert.False(game.Busy);
 
                 // The player is the console's first user when the game starts (Eden itself is not run here), the updates and DLC read from the games' folders
                 Assert.ThrowsAny<Exception>(() => StandaloneEmulator.Eden.Launch(RetroArchManager.Player, game.RomFile!, "French"));
