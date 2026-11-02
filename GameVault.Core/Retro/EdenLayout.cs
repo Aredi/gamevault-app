@@ -75,6 +75,15 @@ namespace GameVault.Core.Retro
         public override IReadOnlyList<(string Link, string Target)> Links => Mac ? new[] { (Path.Combine(AppDirectory, "user"), UserDirectory) } : base.Links;
 
         public string UserDirectory => Path.Combine(Directory, "user");
+        /// <summary>The newest of its "log" folder: it keeps the previous start's log there too.</summary>
+        public override string? LogFile
+        {
+            get
+            {
+                var logs = new DirectoryInfo(Path.Combine(UserDirectory, "log"));
+                return logs.Exists ? logs.GetFiles().OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault()?.FullName : null;
+            }
+        }
         private string Nand => Path.Combine(UserDirectory, "nand");
         public string KeysDirectory => Path.Combine(UserDirectory, "keys");
         public const string KeysFile = "prod.keys", TitleKeysFile = "title.keys";

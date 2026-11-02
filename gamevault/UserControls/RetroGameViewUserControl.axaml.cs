@@ -266,6 +266,7 @@ namespace gamevault.UserControls
         }
 
         private void ReportProblem_Click(object? sender, RoutedEventArgs e) => ReportProblemPopup.Open(ViewModel.Game);
+        private void DismissFailure_Click(object? sender, RoutedEventArgs e) => ViewModel.Game.Failure = null;
 
         private void Video_Click(object? sender, RoutedEventArgs e)
         {

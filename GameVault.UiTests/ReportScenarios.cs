@@ -4,11 +4,68 @@ using gamevault.Helper;
 using gamevault.Localization;
 using gamevault.Models;
 using gamevault.UserControls;
+using GameVault.Core.Diagnostics;
 
 namespace GameVault.UiTests
 {
     public class ReportScenarios
     {
+        [AvaloniaFact]
+        public async Task AFailedStart_GoesToTheAdminsWithItsDiagnostic_ShownToThePlayerFirst()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            Loc.Initialize("fr");
+            var game = new RetroGame { Id = 78, Name = "Hades", FileName = "Hades.nsp", Platform = new RetroPlatform { Slug = "switch", Name = "Nintendo Switch" } };
+            game.Failure = new GameFailure("Eden s'est arrêté dès son lancement (code 0xC000001D).", unchecked((int)0xC000001D), 3, DateTime.UtcNow);
+            try
+            {
+                Assert.True(game.HasFailure);
+                Assert.Contains("3 s", game.FailureAdvice);
+
+                // Reported as a game that does not start, its diagnostic shown before anything leaves
+                var popup = ReportProblemPopup.For(game);
+                new Window { Content = popup }.Show();
+                Assert.True(popup.Categories.Single(c => c.Code == "launch").IsChecked);
+                await WaitUntilAsync(() => !string.IsNullOrEmpty(popup.FindControl<SelectableTextBlock>("uiDiagnosticText")!.Text));
+                Assert.True(popup.FindControl<Border>("uiDiagnostic")!.IsVisible);
+                Assert.Contains("0xC000001D", popup.FindControl<SelectableTextBlock>("uiDiagnosticText")!.Text);
+                Assert.DoesNotContain(Environment.UserName, popup.FindControl<SelectableTextBlock>("uiDiagnosticText")!.Text);
+                await popup.SendAsync();
+                var sent = session.Server.Reports.Single();
+                Assert.Equal(true, sent["hasDiagnostic"]);
+
+                // The administrators read it, with what its code tells
+                var console = new AdminConsoleUserControl();
+                await console.LoadReportsAsync();
+                var item = Assert.Single((IEnumerable<ProblemReportItem>)console.FindControl<ItemsControl>("uiReports")!.ItemsSource!);
+                Assert.True(item.HasDiagnostic);
+                var read = new ReportDiagnosticPopup(item, await ReportsService.DiagnosticAsync(item.Id));
+                Assert.Equal("Processeur trop ancien pour Eden", read.FindControl<TextBlock>("uiHintTitle")!.Text);
+
+                // Without the switch nothing is joined
+                var second = ReportProblemPopup.For(game);
+                new Window { Content = second }.Show();
+                second.FindControl<ToggleSwitch>("uiAttach")!.IsChecked = false;
+                await second.SendAsync();
+                Assert.Equal(false, session.Server.Reports[^1]["hasDiagnostic"]);
+            }
+            finally
+            {
+                Loc.Initialize("en");
+                lock (session.Server.Reports)
+                    session.Server.Reports.Clear();
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        private static async Task WaitUntilAsync(Func<bool> done)
+        {
+            for (int i = 0; i < 200 && !done(); i++)
+                await Task.Delay(25);
+            Assert.True(done());
+        }
+
         [AvaloniaFact]
         public async Task APlayer_ReportsAProblem_AndTheAdminsSeeItInTheirConsole()
         {

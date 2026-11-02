@@ -29,6 +29,41 @@
                          Watermark="{l:T 'What happens, and when (e.g. black screen after the intro)'}" />
                 <TextBlock x:Name="uiContext" Classes="muted" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
+            <!-- What the game's failure leaves on this PC: shown as it is sent -->
+            <Border x:Name="uiDiagnostic" IsVisible="False" Background="{DynamicResource Brush.Surface}" CornerRadius="14" Padding="16,14">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <StackPanel Spacing="1">
+                            <TextBlock FontSize="15" FontWeight="Bold" Text="{l:T 'Attach the diagnostic'}" />
+                            <TextBlock Classes="muted" FontSize="13" Text="{l:T 'Only the administrators see it'}" />
+                        </StackPanel>
+                        <ToggleSwitch x:Name="uiAttach" Grid.Column="1" IsChecked="True" MinWidth="0" OnContent="" OffContent="" VerticalAlignment="Center"
+                                      ToolTip.Tip="{l:T 'Attach the diagnostic'}" />
+                    </Grid>
+                    <StackPanel Spacing="10" IsVisible="{Binding #uiAttach.IsChecked}">
+                        <ItemsControl x:Name="uiDiagnosticFacts">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock FontSize="13" Margin="0,2,12,2" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}">
+                                        <Run Text="{Binding Key}" Foreground="{DynamicResource Brush.Muted}" />
+                                        <Run Text="{Binding Value}" FontWeight="SemiBold" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button x:Name="uiPreview" Classes="ghost small" HorizontalAlignment="Left" Click="Preview_Click" Content="{l:T 'See what will be sent'}" />
+                        <ScrollViewer x:Name="uiPreviewBox" MaxHeight="170" IsVisible="False" HorizontalScrollBarVisibility="Disabled">
+                            <SelectableTextBlock x:Name="uiDiagnosticText" FontFamily="monospace" FontSize="12" TextWrapping="Wrap" />
+                        </ScrollViewer>
+                        <TextBlock Classes="muted" FontSize="12.5" TextWrapping="Wrap" Text="{l:T 'Passwords, tokens and the name of your session are removed before it is sent.'}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
             <!-- The player's earlier reports on this game -->
             <ItemsControl x:Name="uiMine" IsVisible="False">
                 <ItemsControl.ItemTemplate>

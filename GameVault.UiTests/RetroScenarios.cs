@@ -471,8 +471,11 @@ namespace GameVault.UiTests
                 // Dead at its start (an instruction the processor does not have): told where the player looks, and the game free again
                 game.Busy = true;
                 await RetroPlay.WhenClosedAsync(Process.Start(OperatingSystem.IsWindows() ? "cmd" : "sh", OperatingSystem.IsWindows() ? "/c exit 132" : "-c \"exit 132\""), game, new());
-                Assert.Contains("Eden", game.Status);
-                Assert.Equal(game.Status, MainWindowViewModel.Instance.AppBarText);
+                Assert.Contains("Eden", game.Failure!.Message);
+                Assert.Equal(132, game.Failure.ExitCode);
+                Assert.Equal("", game.Status);
+                Assert.Equal(game.Failure.Message, MainWindowViewModel.Instance.AppBarText);
+                game.Failure = null;
                 MainWindowViewModel.Instance.IsAppBarOpen = false;
                 Assert.False(game.Busy);
 

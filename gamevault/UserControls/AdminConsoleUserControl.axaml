@@ -198,6 +198,7 @@
                                                 <TextBlock Text="{Binding Context}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Button Classes="action small" Click="ReportDiagnostic_Click" Content="{l:T 'Diagnostic'}" IsVisible="{Binding HasDiagnostic}" />
                                                 <Button Classes="ghost small" Click="ReportOpenGame_Click" Content="{l:T 'Game page'}" />
                                                 <Button Classes="ghost small" Click="ReportResolve_Click" Content="{l:T 'Resolved'}" />
                                             </StackPanel>

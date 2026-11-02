@@ -31,6 +31,19 @@ namespace GameVault.Core.Tests
             Assert.Equal("Download of Hades: 4 of 8 parts", Redactor.Redact("Download of Hades: 4 of 8 parts"));
         }
 
+        [Theory]
+        [InlineData(@"Loading C:\Users\jean\AppData\Local\Eden\eden.exe", @"Loading C:\Users\[session]\AppData\Local\Eden\eden.exe")]
+        [InlineData("/home/aredi/.local/share/game.nsp", "/home/[session]/.local/share/game.nsp")]
+        [InlineData("/Users/zoe/Library/Caches/rpcs3", "/Users/[session]/Library/Caches/rpcs3")]
+        public void TheSession_IsHiddenInAPath(string text, string expected) => Assert.Equal(expected, Redactor.HideSession(text));
+
+        [Fact]
+        public void ANameWithASpace_IsHiddenWhole_AndOtherWordsKept()
+        {
+            string hidden = Redactor.HideSession(@"C:\Users\Jean Dupont\game.nsp, PC of jean dupont; Dupontel", "Jean Dupont", "Dupont");
+            Assert.Equal(@"C:\Users\[session]\game.nsp, PC of [session]; Dupontel", hidden);
+        }
+
         [Fact]
         public void Tail_StartsAtAWholeLine()
         {

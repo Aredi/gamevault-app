@@ -190,6 +190,22 @@ namespace GameVault.UiTests
             vm.SetActiveControl(new RetroGameViewUserControl(zelda));
             await Settle(3000);
             Capture(session, output, "41-retro-game");
+            zelda.Failure = new GameVault.Core.Diagnostics.GameFailure("Eden s'est arrêté dès son lancement (code 0xC0000005).", unchecked((int)0xC0000005), 3, DateTime.UtcNow);
+            await Settle(500);
+            Capture(session, output, "28-retro-failure");
+            vm.OpenPopup(ReportProblemPopup.For(zelda));
+            await Settle(1500);
+            Capture(session, output, "28-retro-failure-report");
+            vm.OpenPopup(new ReportDiagnosticPopup(new ProblemReportItem { Kind = "retro", Title = zelda.Name, Platform = "Nintendo Switch", Category = "launch", Username = "Zoé", Details = "Ça coupe tout de suite" },
+                new GameVault.Core.Diagnostics.GameDiagnostic
+                {
+                    ExitCode = unchecked((int)0xC0000005), Seconds = 3, Failure = "Eden s'est arrêté", Emulator = "Eden v1792353251", Client = "SanctuaryVault 1.40.9", System = "Microsoft Windows 10.0.26100 (X64)",
+                    Processor = "Intel(R) Core(TM) i5-4460", Graphics = "Intel(R) HD Graphics 4600", LogName = "eden_log.txt", Log = "Render.Vulkan <Info> Device: Intel(R) HD Graphics 4600\nRender.Vulkan <Error> vkCreateDevice failed\nCore <Critical> Failed to initialize renderer",
+                }));
+            await Settle(800);
+            Capture(session, output, "28-retro-failure-admin");
+            vm.ClosePopup();
+            zelda.Failure = null;
             vm.OpenPopup(new RetroControlsUserControl(zelda));
             await Settle(1800);
             Capture(session, output, "42-retro-controls");

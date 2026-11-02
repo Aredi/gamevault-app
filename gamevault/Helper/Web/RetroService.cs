@@ -218,6 +218,26 @@ namespace gamevault.Helper
         [JsonIgnore]
         public string Status { get => status; set { status = value; OnPropertyChanged(); } }
 
+        private GameVault.Core.Diagnostics.GameFailure? failure;
+        /// <summary>The last start failed: told on the game's page until it is closed or the game started again.</summary>
+        [JsonIgnore]
+        public GameVault.Core.Diagnostics.GameFailure? Failure
+        {
+            get => failure;
+            set
+            {
+                failure = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasFailure));
+                OnPropertyChanged(nameof(FailureAdvice));
+            }
+        }
+        [JsonIgnore]
+        public bool HasFailure => failure != null;
+        [JsonIgnore]
+        public string FailureAdvice => failure?.ExitCode == null ? Loc.T("You can try again, or tell the administrators with the diagnostic.")
+            : Loc.F("It ran for {0} s. You can try again, or tell the administrators with the diagnostic.", failure.Seconds);
+
         private bool isSelected;
         /// <summary>Selected with the keyboard (the card gets the library's selection frame).</summary>
         [JsonIgnore]
