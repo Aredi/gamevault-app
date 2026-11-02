@@ -71,6 +71,10 @@ namespace GameVault.UiTests
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 Rect last = new Rect(remapButtons[^1].Bounds.Size).TransformToAABB(remapButtons[^1].TransformToVisual(scroll)!.Value);
                 Assert.True(last.Top >= 0 && last.Bottom <= scroll.Viewport.Height + 1, $"the last Remap button is visible ({last})");
+                // A window too short for the header and the list: the page scrolls to it
+                var page = settings.FindControl<ScrollViewer>("uiMetadataScroller")!;
+                page.Offset = new Vector(0, page.Extent.Height);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
                 Rect popup = new Rect(scroll.Bounds.Size).TransformToAABB(scroll.TransformToVisual(session.Window)!.Value);
                 Assert.True(popup.Bottom <= session.Window.Bounds.Height, "the list ends inside the window");
 

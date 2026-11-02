@@ -178,6 +178,12 @@ namespace gamevault.UserControls
             }
         }
 
+        private void MetadataPage_SizeChanged(object? sender, SizeChangedEventArgs e)
+        {
+            // Its margins out, and at least its header with the results' 200
+            uiMetadataPage.Height = Math.Max(uiMetadataScroller.Bounds.Height - 32, uiMetadataHeader.Bounds.Height + 210);
+        }
+
         private void Close_Click(object? sender, RoutedEventArgs e)
         {
             MainWindowViewModel.Instance.ClosePopup();

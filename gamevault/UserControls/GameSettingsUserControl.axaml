@@ -296,16 +296,17 @@
                     </ScrollViewer>
 
                     <!-- Edit images -->
-                    <Grid Margin="0,20,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,20,0,20">
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Top">
                             <Path Data="{DynamicResource IconGameSettingsEditImages}" Fill="{DynamicResource Brush.Foreground}" Margin="0,1,0,0" />
                             <TextBlock Text="{l:T 'Edit Images'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <Grid ColumnDefinitions="*,*" Margin="10,70,10,40">
+                        <Grid ColumnDefinitions="*,*" Margin="10,16,10,0">
                             <Border Grid.Column="0" CornerRadius="5" Margin="0,0,5,0" Background="{DynamicResource Brush.Background2}">
                                 <StackPanel>
                                     <TextBlock Text="{l:T 'Background'}" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
-                                    <Border Classes="dropZone" x:Name="uiBackgroundDropZone" CornerRadius="5" BorderThickness="2" Margin="10" Height="380" Background="{DynamicResource Brush.Background}" Cursor="Hand"
+                                    <Border Classes="dropZone" x:Name="uiBackgroundDropZone" CornerRadius="5" BorderThickness="2" Margin="10" Height="340" Background="{DynamicResource Brush.Background}" Cursor="Hand"
                                             DragDrop.AllowDrop="True" PointerReleased="ChooseImage" Focusable="True">
                                         <StackPanel>
                                             <Grid HorizontalAlignment="Center" Margin="0,20,0,0">
@@ -315,7 +316,7 @@
                                                     <Image Source="{Binding BackgroundImageSource}" Stretch="Fill" />
                                                 </Border>
                                             </Grid>
-                                            <StackPanel HorizontalAlignment="Center" Margin="0,65,0,0">
+                                            <StackPanel HorizontalAlignment="Center" Margin="0,24,0,0">
                                                 <TextBlock Text="{l:T 'Click to Upload, Paste or Drag and Drop'}" FontWeight="Bold" />
                                                 <TextBlock Text="{l:T 'JPG, PNG, GIF, TIF, ICO or BMP'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
                                                 <TextBlock Text="{l:T 'Recommended: 1920 × 1080'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
@@ -331,7 +332,7 @@
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <TextBox Margin="10" Watermark="https://example.com/example.png" UseFloatingWatermark="False" TextChanged="BackgoundImageUrl_TextChanged" />
-                                    <Grid Margin="10,20,10,10">
+                                    <Grid Margin="10,4,10,10">
                                         <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding BackgroundImageChanged}" MinWidth="115" Height="33" HorizontalAlignment="Right" Click="BackgroundImage_Save" />
                                         <local:IconButton Text="{l:T 'Find Images'}" FontSize="15" Icon="{DynamicResource IconGameSettingsGoogle}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="33" MinWidth="125" Tag="Game Background Art" Click="FindImages_Click" />
                                     </Grid>
@@ -340,7 +341,7 @@
                             <Border Grid.Column="1" CornerRadius="5" Margin="5,0,0,0" Background="{DynamicResource Brush.Background2}">
                                 <StackPanel>
                                     <TextBlock Text="{l:T 'Box Art'}" HorizontalAlignment="Center" FontSize="15" Margin="0,5,0,0" />
-                                    <Border Classes="dropZone" x:Name="uiBoxDropZone" CornerRadius="5" BorderThickness="2" Margin="10" Height="380" Background="{DynamicResource Brush.Background}" Cursor="Hand"
+                                    <Border Classes="dropZone" x:Name="uiBoxDropZone" CornerRadius="5" BorderThickness="2" Margin="10" Height="340" Background="{DynamicResource Brush.Background}" Cursor="Hand"
                                             DragDrop.AllowDrop="True" PointerReleased="ChooseImage" Focusable="True" Tag="box">
                                         <StackPanel>
                                             <Grid HorizontalAlignment="Center">
@@ -350,7 +351,7 @@
                                                     <Image Source="{Binding GameCoverImageSource}" Stretch="Fill" />
                                                 </Border>
                                             </Grid>
-                                            <StackPanel HorizontalAlignment="Center" Margin="0,50,0,0">
+                                            <StackPanel HorizontalAlignment="Center" Margin="0,10,0,0">
                                                 <TextBlock Text="{l:T 'Click to Upload, Paste or Drag and Drop'}" FontWeight="Bold" />
                                                 <TextBlock Text="{l:T 'JPG, PNG, GIF, TIF, ICO or BMP'}" HorizontalAlignment="Center" Margin="0,10,0,0" />
                                                 <TextBlock Text="{l:T 'Recommended: 600 × 900'}" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0" />
@@ -366,18 +367,21 @@
                                         <Rectangle Fill="{DynamicResource Brush.Foreground}" Width="70" Height="2" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <TextBox Margin="10" Watermark="https://example.com/example.png" UseFloatingWatermark="False" TextChanged="BoxImageUrl_TextChanged" />
-                                    <Grid Margin="10,20,10,10">
+                                    <Grid Margin="10,4,10,10">
                                         <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" IsEnabled="{Binding GameCoverImageChanged}" MinWidth="115" Height="33" HorizontalAlignment="Right" Click="BoxImage_Save" />
                                         <local:IconButton Text="{l:T 'Find Images'}" FontSize="15" Icon="{DynamicResource IconGameSettingsGoogle}" IconMargin="0,0,5,2" HorizontalAlignment="Left" Height="33" MinWidth="125" Tag="Game Box Art" Click="FindImages_Click" />
                                     </Grid>
                                 </StackPanel>
                             </Border>
                         </Grid>
-                    </Grid>
+                    </StackPanel>
+                    </ScrollViewer>
 
                     <!-- Metadata -->
-                    <DockPanel Margin="20,20,20,12" IsEnabled="{Binding MetadataProvidersLoaded}" LastChildFill="True">
-                      <StackPanel DockPanel.Dock="Top">
+                    <!-- As tall as the page, to keep the results in their own scroll; a small window scrolls the page to reach them -->
+                    <ScrollViewer x:Name="uiMetadataScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" SizeChanged="MetadataPage_SizeChanged">
+                    <DockPanel x:Name="uiMetadataPage" Margin="20,20,20,12" IsEnabled="{Binding MetadataProvidersLoaded}" LastChildFill="True">
+                      <StackPanel x:Name="uiMetadataHeader" DockPanel.Dock="Top" SizeChanged="MetadataPage_SizeChanged">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{DynamicResource IconDatabase}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
                             <TextBlock Text="{l:T 'Metadata'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
@@ -513,18 +517,20 @@
                             </ItemsControl>
                       </ScrollViewer>
                     </DockPanel>
+                    </ScrollViewer>
 
                     <!-- Custom metadata -->
-                    <StackPanel Margin="20,20,20,0">
-                        <StackPanel Orientation="Horizontal">
+                    <DockPanel Margin="20,20,20,12" LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
                             <Path Data="{DynamicResource IconGameSettingsEditDetails}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />
                             <TextBlock Text="{l:T 'Custom Metadata'}" FontSize="20" FontWeight="Bold" Margin="5,0,0,0" />
                         </StackPanel>
-                        <Grid>
+                        <Grid DockPanel.Dock="Top">
                             <TextBlock Classes="text" Text="{l:T 'Blank fields stay unchanged.'}" Margin="0,5,220,0" />
                             <local:IconButton Kind="Danger" Text="{l:T 'Wipe Custom Metadata'}" FontSize="15" Icon="{StaticResource IconCleanup}" IconScale="0.08" IconMargin="-110,-100,-105,-100" MinWidth="210" Height="30" HorizontalAlignment="Right" Click="ClearUserData_Click" />
                         </Grid>
-                        <ScrollViewer Background="Transparent" Height="640" Margin="0,5,0,0">
+                        <local:IconButton DockPanel.Dock="Bottom" Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="115" Height="33" Margin="0,10,0,0" HorizontalAlignment="Right" Click="SaveGameDetails_Click" />
+                        <ScrollViewer Background="Transparent" Margin="0,5,0,0">
                             <StackPanel Margin="0,0,15,0">
                                 <TextBlock Classes="section" Text="{l:T 'Title'}" />
                                 <TextBox TextWrapping="Wrap" Watermark="{Binding Game.Metadata.Title}" Text="{Binding UpdateGame.UserMetadata.Title, TargetNullValue='', FallbackValue={x:Null}}" />
@@ -651,8 +657,7 @@
                                 <TextBox Text="{Binding UpdateGame.UserMetadata.UrlScreenshots, Converter={StaticResource stringToArrayConv}, ConverterParameter=','}" Watermark="{Binding Game.Metadata.ScreenshotNames}" Margin="0,0,0,10" />
                             </StackPanel>
                         </ScrollViewer>
-                        <local:IconButton Text="{l:T 'Save'}" FontSize="15" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="115" Height="33" Margin="0,10,0,0" HorizontalAlignment="Right" Click="SaveGameDetails_Click" />
-                    </StackPanel>
+                    </DockPanel>
                 </Carousel>
             </Grid>
         </Grid>

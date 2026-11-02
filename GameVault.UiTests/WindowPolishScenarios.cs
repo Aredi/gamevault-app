@@ -130,6 +130,45 @@ namespace GameVault.UiTests
             Assert.Same(slices, settings.FindControl<ItemsControl>("uiDiskLegend")!.ItemsSource);
         }
 
+        /// <summary>Under the game's header, every page shows its buttons or scrolls to them, in a window of a laptop's size too.</summary>
+        [AvaloniaTheory]
+        [InlineData(1244, 856, 0)]
+        [InlineData(1244, 856, 1)]
+        [InlineData(1244, 856, 2)]
+        [InlineData(960, 600, 0)]
+        [InlineData(960, 600, 1)]
+        [InlineData(960, 600, 2)]
+        public async Task EveryPageOfAGamesSettings_ReachesItsButtons(int width, int height, int page)
+        {
+            var session = await TestSession.GetAsync();
+            var game = session.Server.AddGame(9872 + width + page, "Tall Pages Game", gamevault.Models.GameType.LINUX_PORTABLE, new byte[16], "Tall Pages Game (L_P).tar.gz");
+            var settings = new GameSettingsUserControl(game);
+            var window = new Window { Width = width, Height = height, Content = settings };
+            window.Show();
+            try
+            {
+                // Once it has opened on its first page
+                await Task.Delay(800);
+                Dispatcher.UIThread.RunJobs();
+                var remote = settings.FindControl<ListBox>("uiSettingsHeadersRemote")!;
+                var content = settings.FindControl<Carousel>("uiSettingsContent")!;
+                remote.SelectedIndex = page;
+                Assert.Equal(page + settings.FindControl<ListBox>("uiSettingsHeadersLocal")!.Items.Count, content.SelectedIndex);
+                await Task.Delay(800);
+                Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+                var controls = content.GetVisualDescendants().OfType<Control>().Where(c => c.IsEffectivelyVisible && c is IconButton or TextBox or ScrollViewer { MinHeight: 200 }).ToList();
+                Assert.NotEmpty(controls);
+                foreach (Control control in controls)
+                {
+                    double bottom = control.TranslatePoint(new Avalonia.Point(0, control.Bounds.Height), content)!.Value.Y;
+                    if (bottom > content.Bounds.Height + 0.5)
+                        Assert.True(control.GetVisualAncestors().OfType<ScrollViewer>().Any(s => s.Extent.Height > s.Viewport.Height), $"{control.GetType().Name} {control.Name} ends at {bottom}, the page at {content.Bounds.Height}, nothing scrolls to it");
+                }
+            }
+            finally { window.Close(); }
+        }
+
         /// <summary>A message is a card in the middle of the window, its main action on the right.</summary>
         [AvaloniaFact]
         public async Task ADialog_IsACard_WithItsMainActionOnTheRight()
