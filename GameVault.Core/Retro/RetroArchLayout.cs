@@ -65,6 +65,8 @@ namespace GameVault.Core.Retro
         }
         public string ConfigFile => Path.Combine(directory, "sanctuaryvault.cfg");
         public string VersionFile => Path.Combine(directory, "version");
+        /// <summary>The last game's log, written again at each start, for a problem report.</summary>
+        public string LogFile => Path.Combine(directory, "retroarch.log");
 
         /// <summary>
         /// Left in the package: 13 000 of its 15 000 files (other menu themes, shaders, touch overlays, the game
@@ -195,8 +197,8 @@ namespace GameVault.Core.Retro
 
         /// <param name="stateSlot">The save state the game starts from, or none.</param>
         public IReadOnlyList<string> Arguments(string core, string rom, int? stateSlot = null) => stateSlot is int slot
-            ? new[] { "-L", CoreFile(core), "--config", ConfigFile, "--entryslot", slot.ToString(), rom }
-            : new[] { "-L", CoreFile(core), "--config", ConfigFile, rom };
+            ? new[] { "-L", CoreFile(core), "--config", ConfigFile, "--entryslot", slot.ToString(), "-v", "--log-file", LogFile, rom }
+            : new[] { "-L", CoreFile(core), "--config", ConfigFile, "-v", "--log-file", LogFile, rom };
 
         /// <summary>A save state of a game: its slot (0 is ".state"), when, and its picture when RetroArch took one.</summary>
         public sealed record SaveState(int Slot, string File, DateTime Saved, string? Picture);

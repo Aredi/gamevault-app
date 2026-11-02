@@ -1,3 +1,4 @@
+using GameVault.Core.Diagnostics;
 using gamevault.Localization;
 using System;
 using System.Collections.Generic;
@@ -27,6 +28,8 @@ namespace gamevault.Helper
         [JsonPropertyName("username")] public string Username { get; set; } = "";
         [JsonPropertyName("at")] public DateTime At { get; set; }
         [JsonPropertyName("resolvedAt")] public DateTime? ResolvedAt { get; set; }
+        /// <summary>The service keeps a diagnostic for the administrators, until it is resolved.</summary>
+        [JsonPropertyName("hasDiagnostic")] public bool HasDiagnostic { get; set; }
 
         public bool IsRetro => Kind == "retro";
         public bool IsOpen => ResolvedAt == null;
@@ -65,15 +68,25 @@ namespace gamevault.Helper
             return JsonSerializer.Deserialize<List<ProblemReportItem>>(await response.Content.ReadAsStringAsync()) ?? new();
         }
 
-        public static async Task SendAsync(string kind, int gameId, string? platform, string title, string category, string? details, string context)
+        public static async Task SendAsync(string kind, int gameId, string? platform, string title, string category, string? details, string context, GameDiagnostic? diagnostic = null)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, $"{Service}/reports")
             {
-                Content = new StringContent(JsonSerializer.Serialize(new { kind, gameId, platform, title, category, details, context }), Encoding.UTF8, "application/json"),
+                Content = new StringContent(JsonSerializer.Serialize(new { kind, gameId, platform, title, category, details, context, diagnostic }), Encoding.UTF8, "application/json"),
             };
             using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
             if (!response.IsSuccessStatusCode)
                 throw new InvalidOperationException(ErrorOf(await response.Content.ReadAsStringAsync()) ?? Loc.T("The report could not be sent."));
+        }
+
+        public static async Task<GameDiagnostic> DiagnosticAsync(string id)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/reports/{Uri.EscapeDataString(id)}/diagnostic");
+            using HttpResponseMessage response = await WebHelper.SendLongAsync(request, CancellationToken.None);
+            string body = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException(ErrorOf(body) ?? Loc.T("This report no longer exists."));
+            return JsonSerializer.Deserialize<GameDiagnostic>(body)!;
         }
 
         public static async Task ResolveAsync(string id)

@@ -9,6 +9,24 @@ namespace GameVault.Core.Tests
         private static readonly string Root = Path.Combine(Path.GetTempPath(), "eden-layout");
 
         [Fact]
+        public void ItsLog_IsTheNewestOfItsLogFolder()
+        {
+            string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            try
+            {
+                var layout = new EdenLayout(root, windows: true);
+                Assert.Null(layout.LogFile);
+                string logs = Directory.CreateDirectory(Path.Combine(layout.UserDirectory, "log")).FullName;
+                string old = Path.Combine(logs, "eden_log.old.txt"), last = Path.Combine(logs, "eden_log.txt");
+                File.WriteAllText(old, "old");
+                File.WriteAllText(last, "last");
+                File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-1));
+                Assert.Equal(last, layout.LogFile);
+            }
+            finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+        }
+
+        [Fact]
         public void TheSwitch_StartsItsGames_NotTheirUpdatesAndDlc()
         {
             RetroSystem system = RetroSystems.All["switch"];

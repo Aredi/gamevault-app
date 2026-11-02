@@ -209,6 +209,21 @@
                                     IsVisible="{Binding Game.Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <TextBlock Text="{Binding Game.Status}" FontSize="13" TextWrapping="Wrap" />
                             </Border>
+                            <!-- The last start failed: why, and the way to tell the administrators -->
+                            <Border x:Name="uiFailure" Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                                    CornerRadius="14" Padding="18,14" Margin="0,4,0,8" MaxWidth="760" HorizontalAlignment="Left" IsVisible="{Binding Game.HasFailure}">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="14">
+                                    <Path Data="{StaticResource IconErrorCircle}" Fill="{DynamicResource Brush.Danger}" Width="22" Height="22" Stretch="Uniform" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Game.Failure.Message}" FontSize="15" FontWeight="Bold" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Game.FailureAdvice}" Classes="muted" FontSize="13" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Classes="action small" Click="ReportProblem_Click" Content="{l:T 'Send the diagnostic'}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="3" Classes="round small" Click="DismissFailure_Click" ToolTip.Tip="{l:T 'Close'}" VerticalAlignment="Center">
+                                        <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                                    </Button>
+                                </Grid>
+                            </Border>
                             <WrapPanel>
                                 <Button Classes="heroLink" Click="Manual_Click" IsVisible="{Binding Game.HasManual}">
                                     <TextBlock Text="{l:T 'Open the manual'}" />

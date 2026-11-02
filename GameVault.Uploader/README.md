@@ -32,7 +32,7 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `ZEROTIER_CONTROLLER_URL` | - | The API of a [ZeroTier](https://github.com/zerotier/ZeroTierOne) 1.14.2 network controller (e.g. `http://zerotier-controller:9993`): the client's **LAN rooms** are off without it |
 | `ZEROTIER_API_SECRET` | - | The controller's API token (`ZEROTIER_API_SECRET` of its container, or its `authtoken.secret`) |
 | `ROOMS_DIRECTORY` | `/data/rooms` | The LAN rooms and the games playable in LAN |
-| `REPORTS_DIRECTORY` | `/data/reports` | The problems the players report on games (admin console) |
+| `REPORTS_DIRECTORY` | `/data/reports` | The problems the players report on games, with their diagnostics until they are resolved (admin console) |
 | `INVITES_DIRECTORY` | `/data/invites` | The invitation codes new accounts need (admin console) |
 | `HYPERVISOR_DIRECTORY` | `/data/hypervisor` | The games using a hypervisor and the text shown to who downloads them (admin console) |
 | `GAMEVAULT_API_KEY` | - | An administrator's API key of the GameVault server: activates the accounts that give an invitation code. The server needs `AUTH_API_KEY_ENABLED=true`, and `SERVER_ACCOUNT_ACTIVATION_DISABLED=false` so that new accounts wait for one |

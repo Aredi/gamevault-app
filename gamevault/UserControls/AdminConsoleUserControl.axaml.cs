@@ -116,6 +116,14 @@ namespace gamevault.UserControls
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
 
+        private async void ReportDiagnostic_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ProblemReportItem report)
+                return;
+            try { MainWindowViewModel.Instance.OpenPopup(new ReportDiagnosticPopup(report, await ReportsService.DiagnosticAsync(report.Id))); }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
         private async void ReportResolve_Click(object? sender, RoutedEventArgs e)
         {
             if ((sender as Control)?.DataContext is not ProblemReportItem report)

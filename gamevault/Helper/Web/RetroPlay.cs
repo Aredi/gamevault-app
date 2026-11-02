@@ -1,4 +1,5 @@
 using GameVault.Core;
+using GameVault.Core.Diagnostics;
 using GameVault.Core.Retro;
 using gamevault.Localization;
 using gamevault.ViewModels;
@@ -45,6 +46,7 @@ namespace gamevault.Helper
                 return;
             }
             game.Busy = true;
+            game.Failure = null;
             try
             {
                 if (game.Platform.System.IsEden)
@@ -71,8 +73,9 @@ namespace gamevault.Helper
             }
             catch (Exception ex)
             {
-                Log.Ignored(ex);
-                game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
+                Log.Error(ex);
+                game.Failure = new GameFailure(Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex)), null, 0, DateTime.UtcNow);
+                game.Status = "";
                 game.Busy = false;
             }
         }
@@ -82,11 +85,13 @@ namespace gamevault.Helper
         {
             DateTime started = DateTime.UtcNow;
             await process.WaitForExitAsync();
-            string? failure = FailureOf(process.ExitCode, DateTime.UtcNow - started, StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch");
+            TimeSpan ran = DateTime.UtcNow - started;
+            string? failure = FailureOf(process.ExitCode, ran, StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch");
             if (failure != null)
             {
                 Log.Info($"{game.Name}: {failure}");
                 MainWindowViewModel.Instance.AppBarText = failure;
+                game.Failure = new GameFailure(failure, process.ExitCode, (int)ran.TotalSeconds, started);
             }
             DiscordHelper.Instance.RetroStopped();
             try
@@ -110,7 +115,7 @@ namespace gamevault.Helper
                     await RetroAchievementsAccount.ShareAsync(game);
                 }
             }
-            game.Status = failure ?? "";
+            game.Status = "";
             game.Busy = false;
         }
 

@@ -21,7 +21,7 @@ namespace GameVault.Core.Tests
             // The only menu theme unpacked
             Assert.Contains("menu_driver = \"ozone\"\n", config);
             Assert.DoesNotContain("ozone", RetroArchLayout.UnusedPackageFolders);
-            Assert.Equal(new[] { "-L", "/data/retroarch/cores/mgba_libretro.so", "--config", "/data/retroarch/sanctuaryvault.cfg", "/games/a.gba" }, layout.Arguments("mgba", "/games/a.gba"));
+            Assert.Equal(new[] { "-L", "/data/retroarch/cores/mgba_libretro.so", "--config", "/data/retroarch/sanctuaryvault.cfg", "-v", "--log-file", "/data/retroarch/retroarch.log", "/games/a.gba" }, layout.Arguments("mgba", "/games/a.gba"));
         }
 
         [Fact]
@@ -106,7 +106,7 @@ namespace GameVault.Core.Tests
             Assert.Equal(new[] { 4, 0 }, states.Select(s => s.Slot));
             Assert.Null(states[0].Picture);
             Assert.EndsWith("Zelda.state.png", states[1].Picture);
-            Assert.Equal(new[] { "-L", Path.Combine(root, "cores", "mesen_libretro.so"), "--config", layout.ConfigFile, "--entryslot", "4", "/games/Zelda.nes" }, layout.Arguments("mesen", "/games/Zelda.nes", 4));
+            Assert.Equal(new[] { "-L", Path.Combine(root, "cores", "mesen_libretro.so"), "--config", layout.ConfigFile, "--entryslot", "4", "-v", "--log-file", layout.LogFile, "/games/Zelda.nes" }, layout.Arguments("mesen", "/games/Zelda.nes", 4));
             Assert.Empty(layout.SaveStates("4", "mesen", "/games/Zelda.nes"));
             Directory.Delete(root, true);
         }

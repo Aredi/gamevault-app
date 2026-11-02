@@ -565,6 +565,7 @@ namespace GameVault.UiTests
                     report["username"] = "admin";
                     report["at"] = DateTime.UtcNow;
                     report["resolvedAt"] = null;
+                    report["hasDiagnostic"] = report.GetValueOrDefault("diagnostic") is JsonElement { ValueKind: JsonValueKind.Object };
                     lock (Reports)
                         Reports.Add(report);
                     response.StatusCode = 201;
@@ -576,6 +577,16 @@ namespace GameVault.UiTests
                     lock (Reports)
                         reports = Reports.ToArray();
                     await Json(response, reports);
+                }
+                else if (path.StartsWith("/reports/") && path.EndsWith("/diagnostic"))
+                {
+                    object? diagnostic;
+                    lock (Reports)
+                        diagnostic = Reports.FirstOrDefault(r => r["id"]?.ToString() == path.Split('/')[2])?.GetValueOrDefault("diagnostic");
+                    if (diagnostic != null)
+                        await Json(response, diagnostic);
+                    else
+                        response.StatusCode = 404;
                 }
                 else if (path.StartsWith("/reports/") && path.EndsWith("/resolve"))
                 {

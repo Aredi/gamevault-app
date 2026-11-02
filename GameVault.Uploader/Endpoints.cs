@@ -27,6 +27,7 @@ namespace GameVault.Uploader
     /// PUT  /rooms/{id}/game                      the room's game (its owner)
     /// GET  /lan-games, PUT /lan-games/{gameId}   the games playable in LAN (PCGamingWiki, read in the background) / an administrator marks or unmarks one
     /// POST /reports, GET /reports                a player reports a problem on a game / the reports (all for an administrator, else the player's)
+    /// GET  /reports/{id}/diagnostic              what an administrator reads of a report's diagnostic
     /// POST /reports/{id}/resolve                 an administrator says a report is handled
     /// GET  /invites, POST /invites, DELETE /invites/{code}   an administrator's invitation codes / a new one, named / an unused one dropped
     /// POST /invites/redeem                       a new account waiting for its activation gives its code (no sign-in: it can not yet)
@@ -287,8 +288,11 @@ namespace GameVault.Uploader
                 if (asked.Kind is not ("pc" or "retro") || title.Length is 0 or > 200 || !ReportStore.Categories.Contains(asked.Category)
                     || asked.Category == "other" && string.IsNullOrWhiteSpace(asked.Details))
                     return Results.Json(new { error = "Describe the problem." }, statusCode: StatusCodes.Status400BadRequest);
+                string? diagnostic = asked.Diagnostic?.ValueKind == JsonValueKind.Object ? asked.Diagnostic.Value.GetRawText() : null;
+                if (diagnostic?.Length > ReportStore.MaxDiagnosticLength)
+                    return Results.Json(new { error = "The diagnostic is too big." }, statusCode: StatusCodes.Status413PayloadTooLarge);
                 var added = reports.Add(new ReportStore.Report("", asked.Kind, asked.GameId, Cut(asked.Platform, 50), title, asked.Category!, Cut(asked.Details, 1000), Cut(asked.Context, 300),
-                    check.Id, check.User, default, null, null));
+                    check.Id, check.User, default, null, null), diagnostic);
                 return added == null
                     ? Results.Json(new { error = "You already have many open reports: wait for some to be handled." }, statusCode: StatusCodes.Status409Conflict)
                     : Results.Json(added, statusCode: StatusCodes.Status201Created);
@@ -302,6 +306,14 @@ namespace GameVault.Uploader
                 if (!reports.Enabled)
                     return Results.Json(new { error = "Problem reports are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
                 return Results.Json(reports.List(check.Admin ? null : check.Id));
+            });
+
+            app.MapGet("/reports/{id}/diagnostic", async (string id, HttpRequest request, AdminCheck admins, ReportStore reports, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return reports.Diagnostic(id) is string diagnostic ? Results.Text(diagnostic, "application/json") : Results.Json(new { error = "This report no longer exists." }, statusCode: StatusCodes.Status404NotFound);
             });
 
             app.MapPost("/reports/{id}/resolve", async (string id, HttpRequest request, AdminCheck admins, ReportStore reports, CancellationToken ct) =>
@@ -723,5 +735,5 @@ namespace GameVault.Uploader
 
     public sealed record NewInvite(string? Name);
     public sealed record RedeemInvite(string? Code, string? Username);
-    public sealed record ProblemReport(string? Kind, int GameId, string? Platform, string? Title, string? Category, string? Details, string? Context);
+    public sealed record ProblemReport(string? Kind, int GameId, string? Platform, string? Title, string? Category, string? Details, string? Context, JsonElement? Diagnostic = null);
 }

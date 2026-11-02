@@ -31,7 +31,7 @@ namespace GameVault.Core.Retro
                 ["XDG_CACHE_HOME"] = Path.Combine(Directory, "cache"),
             };
         /// <summary>Where it tells what it did: the firmware's installation is read there.</summary>
-        public string LogFile => Windows ? Path.Combine(Directory, "RPCS3.log")
+        public override string LogFile => Windows ? Path.Combine(Directory, "RPCS3.log")
             : Mac ? Path.Combine(MacHome, "Library", "Caches", "rpcs3", "RPCS3.log") : Path.Combine(Directory, "cache", "rpcs3", "RPCS3.log");
 
         /// <summary>RPCS3 checks this module of the firmware before any game.</summary>

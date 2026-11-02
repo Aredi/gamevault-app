@@ -422,6 +422,41 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task ADiagnostic_IsReadByTheAdministratorsOnly_AndGoesWhenResolved()
+        {
+            var player = Client("user");
+            var sent = await player.PostAsJsonAsync("/reports", new { kind = "retro", gameId = 12, platform = "switch", title = "Hades", category = "launch", context = "1.0", diagnostic = new { exitCode = -1073741819, log = "Render.Vulkan <Error> vkCreateDevice failed" } });
+            Assert.Equal(HttpStatusCode.Created, sent.StatusCode);
+            string id, file;
+            using (JsonDocument report = JsonDocument.Parse(await sent.Content.ReadAsStringAsync()))
+            {
+                id = report.RootElement.GetProperty("id").GetString()!;
+                Assert.True(report.RootElement.GetProperty("hasDiagnostic").GetBoolean());
+                Assert.DoesNotContain("vkCreateDevice", await player.GetStringAsync("/reports"));
+                file = Path.Combine(reports, "diagnostics", id + ".json");
+            }
+
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.GetAsync($"/reports/{id}/diagnostic")).StatusCode);
+            using (JsonDocument diagnostic = JsonDocument.Parse(await Client("admin").GetStringAsync($"/reports/{id}/diagnostic")))
+                Assert.Equal("Render.Vulkan <Error> vkCreateDevice failed", diagnostic.RootElement.GetProperty("log").GetString());
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").GetAsync("/reports/..%2Freports/diagnostic")).StatusCode);
+
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PostAsync($"/reports/{id}/resolve", null)).StatusCode);
+            Assert.False(File.Exists(file));
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").GetAsync($"/reports/{id}/diagnostic")).StatusCode);
+
+            // A report without one stays as it was; one too big is refused, nothing kept
+            var plain = await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Celeste", category = "file" });
+            using (JsonDocument report = JsonDocument.Parse(await plain.Content.ReadAsStringAsync()))
+            {
+                Assert.False(report.RootElement.GetProperty("hasDiagnostic").GetBoolean());
+                Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").GetAsync($"/reports/{report.RootElement.GetProperty("id").GetString()}/diagnostic")).StatusCode);
+            }
+            var tooBig = await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Celeste", category = "launch", diagnostic = new { log = new string('x', ReportStore.MaxDiagnosticLength) } });
+            Assert.Equal(HttpStatusCode.RequestEntityTooLarge, tooBig.StatusCode);
+        }
+
+        [Fact]
         public async Task AProblemReport_IsSeenByTheAdministrators_ThenResolved()
         {
             var player = Client("user");
