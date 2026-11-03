@@ -12,16 +12,17 @@ using System.Threading.Tasks;
 namespace gamevault.Helper
 {
     /// <summary>
-    /// An emulator of its own for a console RetroArch does not play (RPCS3, Eden, xemu): installed the first time one of its
+    /// An emulator of its own for a console RetroArch does not play (RPCS3, Eden, Eglantine, xemu): installed the first time one of its
     /// games is played (in the client's data folder), with the console's system files from RomM, then started on the game.
     /// </summary>
     internal abstract class StandaloneEmulator
     {
         public static Rpcs3Manager Rpcs3 { get; } = new();
         public static EdenManager Eden { get; } = new();
+        public static EglantineManager Eglantine { get; } = new();
         public static XemuManager Xemu { get; } = new();
-        public static IEnumerable<StandaloneEmulator> All => new StandaloneEmulator[] { Rpcs3, Eden, Xemu };
-        public static StandaloneEmulator? Of(RetroSystem system) => system.IsRpcs3 ? Rpcs3 : system.IsEden ? Eden : system.IsXemu ? Xemu : null;
+        public static IEnumerable<StandaloneEmulator> All => new StandaloneEmulator[] { Rpcs3, Eden, Eglantine, Xemu };
+        public static StandaloneEmulator? Of(RetroSystem system) => system.IsRpcs3 ? Rpcs3 : system.IsEden ? Eden : system.IsEglantine ? Eglantine : system.IsXemu ? Xemu : null;
 
         /// <summary>"RPCS3".</summary>
         public abstract string Name { get; }
@@ -64,8 +65,11 @@ namespace gamevault.Helper
                 {
                     var sevenZip = new SevenZipHelper();
                     sevenZip.Process += (_, e) => status(Loc.F("Installing {0}, once for all the {1} games: unpacking {2}%", Name, Console, e.PercentageDone));
-                    if (await sevenZip.ExtractArchive(package, folder) != 0)
+                    string into = Layout.PackageInFolder ? Path.Combine(work, "unpacked") : folder;
+                    if (await sevenZip.ExtractArchive(package, into) != 0)
                         throw new IOException(sevenZip.LastError);
+                    if (Layout.PackageInFolder)
+                        MoveInto(Directory.GetDirectories(into).Single(), folder);
                 }
                 if (PlatformInfo.IsWindows)
                     // Over the previous version: its console storage (beside it) stays
@@ -107,6 +111,21 @@ namespace gamevault.Helper
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);
                 File.WriteAllText(file, Layout.Settings(File.Exists(file) ? File.ReadAllText(file) : ""));
+            }
+        }
+
+        /// <summary>A folder's files and folders moved into another, over the ones there of the same name (the others stay: the console's storage).</summary>
+        private static void MoveInto(string from, string to)
+        {
+            Directory.CreateDirectory(to);
+            foreach (string file in Directory.GetFiles(from))
+                File.Move(file, Path.Combine(to, Path.GetFileName(file)), overwrite: true);
+            foreach (string folder in Directory.GetDirectories(from))
+            {
+                string target = Path.Combine(to, Path.GetFileName(folder));
+                if (Directory.Exists(target))
+                    Directory.Delete(target, true);
+                Directory.Move(folder, target);
             }
         }
 

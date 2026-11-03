@@ -10,7 +10,7 @@ namespace GameVault.Core.Retro
         public static readonly string[] All = { "English", "French", "German", "Spanish", "Italian", "Japanese" };
 
         /// <summary>The cores (RetroArch's, or "rpcs3", "eden") whose console has a language; the others' games have their own.</summary>
-        public static readonly IReadOnlySet<string> Cores = new HashSet<string> { "azahar", "melondsds", "dolphin", "rpcs3", "eden" };
+        public static readonly IReadOnlySet<string> Cores = new HashSet<string> { "azahar", "melondsds", "dolphin", "rpcs3", "eden", "eglantine" };
 
         /// <summary>A RetroArch core's option for it; none for RPCS3 and Eden (their own files) or a console without.</summary>
         public static (string Key, string Value)? CoreOption(string core, string language) => core switch

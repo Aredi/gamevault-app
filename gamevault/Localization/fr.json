@@ -1145,7 +1145,7 @@
   "{0} needs its keys (prod.keys) and its firmware (a zip of its .nca files): an administrator adds them in RomM, in the Firmware of the platform.": "{0} a besoin de ses clés (prod.keys) et de son firmware (un zip de ses fichiers .nca) : un administrateur les ajoute dans RomM, dans le Firmware de la plateforme.",
   "Downloading the Switch keys and firmware...": "Téléchargement des clés et du firmware Switch...",
   "The Switch firmware in RomM has no .nca file: an administrator replaces it with a zip of the firmware's files.": "Le firmware Switch de RomM n'a aucun fichier .nca : un administrateur le remplace par un zip des fichiers du firmware.",
-  "An update or a DLC is not started: Eden takes it when its game is played.": "Une mise à jour ou un DLC ne se lance pas : Eden l'utilise quand vous jouez à son jeu.",
+  "An update or a DLC is not started: {0} takes it when its game is played.": "Une mise à jour ou un DLC ne se lance pas : {0} l'utilise quand vous jouez à son jeu.",
   "{0} / {1} achievements earned": "{0} / {1} succès obtenus",
   "{0} pts": "{0} pts",
   "Achievements": "Succès",
@@ -1263,7 +1263,7 @@
   "Controllers": "Manettes",
   "The controller the game is played with: RetroArch gives it to the console at the start": "La manette avec laquelle on joue : RetroArch la donne à la console au lancement",
   "The controller of the consoles that have several; a game's page can choose another.": "La manette des consoles qui en ont plusieurs ; la page d'un jeu peut en choisir une autre.",
-  "Controller: Eden plays with the keyboard until yours is chosen once in its window (Emulation > Configure > Controls > Input Device)": "Manette : Eden joue au clavier tant que la vôtre n'est pas choisie une fois dans sa fenêtre (Émulation > Configurer > Contrôles > Périphérique d'entrée)",
+  "Controller: {0} plays with the keyboard until yours is chosen once in its window (Emulation > Configure > Controls > Input Device)": "Manette : {0} joue au clavier tant que la vôtre n'est pas choisie une fois dans sa fenêtre (Émulation > Configurer > Contrôles > Périphérique d'entrée)",
   "Controller: RPCS3 plays with the keyboard until yours is chosen once in its window (Configuration > Pads, handler SDL)": "Manette : RPCS3 joue au clavier tant que la vôtre n'est pas choisie une fois dans sa fenêtre (Configuration > Pads, gestionnaire SDL)",
   "Keyboard": "Clavier",
   "The keys of each console played in RetroArch: click a button, then press its key (Escape cancels).": "Les touches de chaque console jouée dans RetroArch : clique sur un bouton, puis appuie sur sa touche (Échap annule).",
@@ -1709,5 +1709,8 @@
   "LEAD": "PISTE",
   "Diagnostic copied": "Diagnostic copié",
   "Hide what will be sent": "Masquer ce qui sera envoyé",
-  "Install the Microsoft Visual C++ Redistributable (x64) on this PC.": "Installer Microsoft Visual C++ Redistributable (x64) sur ce PC."
+  "Install the Microsoft Visual C++ Redistributable (x64) on this PC.": "Installer Microsoft Visual C++ Redistributable (x64) sur ce PC.",
+  "Eglantine update available": "Mise à jour d'Eglantine disponible",
+  "A newer release of Eglantine ({0}) is available: each one starts more Switch 2 games. The saves and settings are kept. Update it now?": "Une version plus récente d'Eglantine ({0}) est disponible : chacune lance plus de jeux Switch 2. Les sauvegardes et les réglages sont conservés. La mettre à jour maintenant ?",
+  "None needed: the Switch 2 games are decrypted dumps (NUP, NSP or folder)": "Aucun : les jeux Switch 2 sont des dumps déchiffrés (NUP, NSP ou dossier)"
 }
