@@ -40,9 +40,9 @@ namespace gamevault.Helper
         {
             if (game.Busy || game.RomFile is not string rom)
                 return;
-            if (game.Platform.System.IsEden && RetroSystems.IsSwitchAddOn(rom))
+            if (game.Platform.System.IsSwitch && RetroSystems.IsSwitchAddOn(rom))
             {
-                game.Status = Loc.T("An update or a DLC is not started: Eden takes it when its game is played.");
+                game.Status = Loc.F("An update or a DLC is not started: {0} takes it when its game is played.", StandaloneEmulator.Of(game.Platform.System)!.Name);
                 return;
             }
             game.Busy = true;
@@ -51,6 +51,8 @@ namespace gamevault.Helper
             {
                 if (game.Platform.System.IsEden)
                     await StandaloneEmulator.Eden.OfferUpdateAsync();
+                else if (game.Platform.System.IsEglantine)
+                    await StandaloneEmulator.Eglantine.OfferUpdateAsync();
                 await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
                 if (await RetroCloudSaves.TakeAsync(game, text => game.Status = text) is string kept)
                     MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);

@@ -16,7 +16,7 @@ namespace gamevault.Helper
     /// Eden for the Nintendo Switch games, with the console's keys and firmware from RomM copied in it, nothing to
     /// answer; each GameVault player is the console's user who plays.
     /// </summary>
-    internal sealed class EdenManager : StandaloneEmulator
+    internal sealed class EdenManager : SwitchEmulator
     {
         public override string Name => "Eden";
         public override string Core => "eden";
@@ -98,19 +98,12 @@ namespace gamevault.Helper
                 Layout.Tag = newer;
         }
 
-        public override string? ControllerHint => File.Exists(Layout.SettingsFiles.Single()) && EdenLayout.HasController(File.ReadAllText(Layout.SettingsFiles.Single()))
-            ? null
-            : Loc.T("Controller: Eden plays with the keyboard until yours is chosen once in its window (Emulation > Configure > Controls > Input Device)");
-
-        /// <summary>The player becomes the console's first user, the one the game is started as; the updates and DLC are the installed ones.</summary>
+        /// <summary>The updates and DLC are the installed ones, then the player is the console's first user.</summary>
         public override Process Launch(string player, string launchFile, string language)
         {
             string config = Layout.SettingsFiles.Single();
             File.WriteAllText(config, EdenLayout.ContentFolders(File.ReadAllText(config),
                 RetroService.SavedGames(downloading: false).Where(g => g.Game.Platform.System.IsEden).Select(g => g.Folder).ToList()));
-            byte[]? existing = File.Exists(Layout.ProfilesFile) ? File.ReadAllBytes(Layout.ProfilesFile) : null;
-            Directory.CreateDirectory(Path.GetDirectoryName(Layout.ProfilesFile)!);
-            File.WriteAllBytes(Layout.ProfilesFile, EdenLayout.Profiles(existing, player, LoginManager.Instance.GetCurrentUser()?.Username ?? "Player"));
             return base.Launch(player, launchFile, language);
         }
     }

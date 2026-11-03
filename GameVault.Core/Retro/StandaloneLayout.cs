@@ -19,6 +19,8 @@ namespace GameVault.Core.Retro
         /// <summary>The AppImage is unpacked once (no FUSE needed, nothing unpacked at each start, nothing left in /tmp when it is closed); a Mac's app is copied out of its archive or disk image.</summary>
         public string Executable => windows ? Path.Combine(directory, WindowsExecutable) : mac ? Path.Combine(AppDirectory, MacExecutable) : Path.Combine(AppDirectory, "AppRun");
         public string AppDirectory => windows ? directory : Path.Combine(directory, "app");
+        /// <summary>Its archive holds one folder (named after the release) with its files in it, not the files themselves.</summary>
+        public virtual bool PackageInFolder => false;
         public virtual string WorkingDirectory => AppDirectory;
         public string VersionFile => Path.Combine(directory, "version");
         public virtual bool IsInstalled => File.Exists(Executable) && File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() == Version;
