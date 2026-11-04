@@ -216,12 +216,12 @@
                                     </StackPanel>
                                 </Panel>
                             </ListBoxItem>
-                            <ListBoxItem ToolTip.Tip="{l:T 'Retro'}">
+                            <ListBoxItem ToolTip.Tip="{l:T 'Consoles and retro'}">
                                 <Panel>
                                     <Border Classes="mark" />
                                     <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
                                         <Path Data="{StaticResource IconNavRetro}" />
-                                        <TextBlock Classes="wide" Text="{l:T 'Retro'}" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Consoles and retro'}" />
                                     </StackPanel>
                                 </Panel>
                             </ListBoxItem>

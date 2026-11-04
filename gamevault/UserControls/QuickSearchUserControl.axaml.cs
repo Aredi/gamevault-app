@@ -218,7 +218,7 @@ namespace gamevault.UserControls
             bool pc = !Helper.Platform.PlatformInfo.IsMac;
             if (pc)
                 yield return Page("Library", "IconNavLibrary", MainControl.Library);
-            yield return Page("Retro", "IconNavRetro", MainControl.Retro, "The games of the other platforms");
+            yield return Page("Consoles and retro", "IconNavRetro", MainControl.Retro, "The games of the other platforms");
             yield return Page("Downloads", "IconNavDownloads", MainControl.Downloads);
             if (pc)
                 yield return new QuickSearchItem

@@ -1045,6 +1045,7 @@
   "No game of a supported platform on the server yet.": "Aucun jeu d'une plateforme prise en charge sur le serveur pour l'instant.",
   "Playing: Select+Start to quit": "En jeu : Select+Start pour quitter",
   "Retro": "Rétro",
+  "Consoles and retro": "Consoles et rétro",
   "The games of the other platforms are not available on this server.": "Les jeux des autres plateformes ne sont pas disponibles sur ce serveur.",
   "The games of the other platforms": "Les jeux des autres plateformes",
   "Installing RetroArch, once for all the games: downloading {0:0}%": "Installation de RetroArch, une seule fois pour tous les jeux : téléchargement {0:0} %",
