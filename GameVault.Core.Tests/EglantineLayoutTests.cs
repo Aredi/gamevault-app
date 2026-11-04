@@ -18,6 +18,13 @@ namespace GameVault.Core.Tests
             // A dump's folder, unzipped: started by its exefs/main
             string npdm = Path.Combine("g", "MKW", "exefs", "main.npdm");
             Assert.Equal(npdm, RetroSystems.LaunchFile(system, new[] { Path.Combine("g", "MKW", "romfs", "a.bin"), npdm, Path.Combine("g", "MKW", "exefs", "main") }));
+            // A dump whose base has no romfs (Pokopia's, in RomM): its update is the whole game
+            string update = Path.Combine("P", "updates", "655360", "exefs", "main.npdm");
+            Assert.Equal(update, RetroSystems.LaunchFile(system, new[] { Path.Combine("P", "base", "exefs", "main.npdm"), Path.Combine("P", "updates", "655360", "romfs", "LD_C0_R.BIN"), update }));
+            // Both with their romfs: the newest update
+            string newest = Path.Combine("Q", "updates", "720896", "exefs", "main.npdm");
+            Assert.Equal(newest, RetroSystems.LaunchFile(system, new[] { Path.Combine("Q", "base", "exefs", "main.npdm"), Path.Combine("Q", "base", "romfs", "a"),
+                Path.Combine("Q", "updates", "65536", "exefs", "main.npdm"), Path.Combine("Q", "updates", "65536", "romfs", "a"), newest, Path.Combine("Q", "updates", "720896", "romfs", "a") }));
             var layout = new EglantineLayout(Root, windows: true);
             Assert.Equal(new[] { "-u", "0", "-g", Path.Combine("g", "MKW", "exefs", "main") }, layout.Arguments("1", npdm));
             Assert.Equal(new[] { "-u", "0", "-g", "g/MKW.nup" }, layout.Arguments("1", "g/MKW.nup"));
