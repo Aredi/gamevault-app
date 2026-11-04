@@ -295,9 +295,9 @@ namespace gamevault.Helper
         private async Task PrepareAsync()
         {
             string downloaded = Directory.EnumerateFiles(Folder).Where(f => Path.GetFileName(f) != InfoFile).OrderByDescending(File.GetLastWriteTimeUtc).First();
-            if ((Game.Multi || Game.Platform.System.IsStandalone) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z")
+            if ((Game.Multi || Game.Platform.System.IsStandalone) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z" or ".rar")
             {
-                // A game in several files (a CD and its tracks, a PS3 game's folder): RomM sends them zipped; a PS3 ISO or a Switch card may be zipped too
+                // A game in several files (a CD and its tracks, a PS3 game's folder, a Switch 2 dump): RomM sends them zipped; a PS3 ISO or a Switch card may be zipped too
                 var sevenZip = new SevenZipHelper();
                 sevenZip.Process += (_, e) => Preparing(Loc.F("Unpacking... {0}%", e.PercentageDone));
                 State = Loc.F("Unpacking... {0}%", 0);

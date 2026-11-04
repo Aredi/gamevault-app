@@ -66,6 +66,27 @@ namespace GameVault.Core.Retro
             System.Text.RegularExpressions.Regex.Match(Path.GetFileName(path), @"\[(0[14]00[0-9A-Fa-f]{12})\]") is { Success: true } id && !id.Groups[1].Value.EndsWith("000")
             || Path.GetFileName(Path.GetDirectoryName(path)) is "update" or "dlc";
 
+        /// <summary>
+        /// A Switch 2 dump's program (&lt;game&gt;/base/exefs/main.npdm, &lt;game&gt;/updates/655360/exefs/main.npdm) with the
+        /// romfs folder beside its exefs: a dump's base often has none, its update holds the whole game.
+        /// </summary>
+        private static bool HasRomFs(string npdm, IEnumerable<string> files)
+        {
+            string? program = Path.GetDirectoryName(Path.GetDirectoryName(npdm));
+            if (program == null)
+                return false;
+            string romfs = Path.Combine(program, "romfs");
+            return files.Any(f => f.StartsWith(romfs + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || f.StartsWith(romfs + '/', StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>The version of an update's program (its folder under "updates"), 0 for the base.</summary>
+        private static long UpdateVersion(string npdm)
+        {
+            string? program = Path.GetDirectoryName(Path.GetDirectoryName(npdm));
+            return Path.GetFileName(Path.GetDirectoryName(program)) is string parent && parent.Equals("updates", StringComparison.OrdinalIgnoreCase)
+                && long.TryParse(Path.GetFileName(program), out long version) ? version : 0;
+        }
+
         /// <summary>The file to start in a game's folder; null when none has an extension the emulator knows.</summary>
         public static string? LaunchFile(RetroSystem system, IEnumerable<string> files)
         {
@@ -73,8 +94,9 @@ namespace GameVault.Core.Retro
             foreach (string extension in system.Extensions)
             {
                 string? match = extension.Contains('.')
-                    // The one nearest the top (a game's other EBOOT.BIN are deeper)
-                    ? list.Where(f => string.Equals(Path.GetFileName(f), extension, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f.Length).FirstOrDefault()
+                    // The one nearest the top (a game's other EBOOT.BIN are deeper); a Switch 2 dump's newest program with its romfs
+                    ? list.Where(f => string.Equals(Path.GetFileName(f), extension, StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(f => system.IsEglantine && HasRomFs(f, list)).ThenByDescending(f => system.IsEglantine ? UpdateVersion(f) : 0).ThenBy(f => f.Length).FirstOrDefault()
                     // A Switch game before its updates and DLC, which are not started (alone, the add-on is the game's file: it is installed)
                     : list.Where(f => string.Equals(Path.GetExtension(f).TrimStart('.'), extension, StringComparison.OrdinalIgnoreCase))
                         .OrderBy(f => system.IsSwitch && IsSwitchAddOn(f)).ThenBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
