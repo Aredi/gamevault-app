@@ -149,7 +149,7 @@ namespace gamevault
                 var menu = new NativeMenu();
                 if (!Helper.Platform.PlatformInfo.IsMac)
                     menu.Items.Add(CreateTrayItem(Loc.T("Library"), () => NavigateFromTray(MainControl.Library)));
-                menu.Items.Add(CreateTrayItem(Loc.T("Retro"), () => NavigateFromTray(MainControl.Retro)));
+                menu.Items.Add(CreateTrayItem(Loc.T("Consoles and retro"), () => NavigateFromTray(MainControl.Retro)));
                 menu.Items.Add(CreateTrayItem(Loc.T("Downloads"), () => NavigateFromTray(MainControl.Downloads)));
                 menu.Items.Add(CreateTrayItem(Loc.T("Community"), () => NavigateFromTray(MainControl.Community)));
                 menu.Items.Add(CreateTrayItem(Loc.T("Settings"), () => NavigateFromTray(MainControl.Settings)));
