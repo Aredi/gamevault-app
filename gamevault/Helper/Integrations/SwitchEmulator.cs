@@ -15,9 +15,13 @@ namespace gamevault.Helper
             ? null
             : Loc.F("Controller: {0} plays with the keyboard until yours is chosen once in its window (Emulation > Configure > Controls > Input Device)", Name);
 
+        /// <summary>What its settings need before a game, written in its "user" folder (a fork given to a game shares it).</summary>
+        internal virtual void PrepareLaunch() { }
+
         /// <summary>The player becomes the console's first user, the one the game is started as.</summary>
         public override Process Launch(string player, string launchFile, string language)
         {
+            PrepareLaunch();
             byte[]? existing = File.Exists(Layout.ProfilesFile) ? File.ReadAllBytes(Layout.ProfilesFile) : null;
             Directory.CreateDirectory(Path.GetDirectoryName(Layout.ProfilesFile)!);
             File.WriteAllBytes(Layout.ProfilesFile, SwitchLayout.Profiles(existing, player, LoginManager.Instance.GetCurrentUser()?.Username ?? "Player"));

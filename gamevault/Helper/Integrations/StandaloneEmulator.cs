@@ -22,6 +22,8 @@ namespace gamevault.Helper
         public static EglantineManager Eglantine { get; } = new();
         public static XemuManager Xemu { get; } = new();
         public static IEnumerable<StandaloneEmulator> All => new StandaloneEmulator[] { Rpcs3, Eden, Eglantine, Xemu };
+        /// <summary>The emulator an administrator gave the game for this system (see <see cref="GameEmulators"/>), else its console's; null for RetroArch.</summary>
+        public static StandaloneEmulator? Of(RetroGame game) => GameEmulators.For(game) ?? Of(game.Platform.System);
         public static StandaloneEmulator? Of(RetroSystem system) => system.IsRpcs3 ? Rpcs3 : system.IsEden ? Eden : system.IsEglantine ? Eglantine : system.IsXemu ? Xemu : null;
 
         /// <summary>"RPCS3".</summary>
@@ -44,7 +46,7 @@ namespace gamevault.Helper
             finally { preparing.Release(); }
         }
 
-        protected abstract Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status);
+        protected internal abstract Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status);
 
         /// <summary>What a settings row tells of the console's system files.</summary>
         public abstract string FirmwareState { get; }
@@ -69,7 +71,8 @@ namespace gamevault.Helper
                     if (await sevenZip.ExtractArchive(package, into) != 0)
                         throw new IOException(sevenZip.LastError);
                     if (Layout.PackageInFolder)
-                        MoveInto(Directory.GetDirectories(into).Single(), folder);
+                        // Its files in one folder (a release's name), else the files themselves
+                        MoveInto(Directory.GetFiles(into).Length == 0 && Directory.GetDirectories(into) is [string single] ? single : into, folder);
                 }
                 if (PlatformInfo.IsWindows)
                     // Over the previous version: its console storage (beside it) stays
@@ -105,13 +108,31 @@ namespace gamevault.Helper
             foreach (var (link, target) in Layout.Links.Where(l => !Directory.Exists(l.Link)))
             {
                 Directory.CreateDirectory(target);
-                Directory.CreateSymbolicLink(link, target);
+                await CreateLinkAsync(link, target);
             }
             foreach (string file in Layout.SettingsFiles)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);
                 File.WriteAllText(file, Layout.Settings(File.Exists(file) ? File.ReadAllText(file) : ""));
             }
+        }
+
+        /// <summary>A link to a folder; on Windows a junction, which needs neither the administrator nor the developer mode a link needs.</summary>
+        private static async Task CreateLinkAsync(string link, string target)
+        {
+            if (!PlatformInfo.IsWindows)
+            {
+                Directory.CreateSymbolicLink(link, target);
+                return;
+            }
+            var info = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+            foreach (string argument in new[] { "/c", "mklink", "/J", link, target })
+                info.ArgumentList.Add(argument);
+            using Process mklink = Process.Start(info)!;
+            string error = await mklink.StandardError.ReadToEndAsync();
+            await mklink.WaitForExitAsync();
+            if (mklink.ExitCode != 0)
+                throw new IOException(Loc.F("The folder {0} could not be linked: {1}", link, error.Trim()));
         }
 
         /// <summary>A folder's files and folders moved into another, over the ones there of the same name (the others stay: the console's storage).</summary>
@@ -202,6 +223,9 @@ namespace gamevault.Helper
                     DeleteExcept(entry, kept);
                 else if (Directory.Exists(entry) && !File.GetAttributes(entry).HasFlag(FileAttributes.ReparsePoint))
                     Directory.Delete(entry, true);
+                else if (Directory.Exists(entry) && PlatformInfo.IsWindows)
+                    // A junction: the link goes, not what it leads to
+                    Directory.Delete(entry);
                 else
                     File.Delete(entry);
             }

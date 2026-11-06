@@ -77,6 +77,7 @@ namespace gamevault.UserControls
             LoadStates();
             _ = RetroLibrary.LoadAsync();
             Task romm = LoadRommAsync();
+            _ = LoadEmulatorAsync();
             await ViewModel.Game.LoadScreenshotsAsync();
             ViewModel.SelectedScreenshot ??= ViewModel.Game.ScreenshotImages?.FirstOrDefault();
             await LoadPlayersAsync();
@@ -134,7 +135,7 @@ namespace gamevault.UserControls
             try
             {
                 RetroGame game = ViewModel.Game;
-                if (StandaloneEmulator.Of(game.Platform.System) != null || game.RomFile is not string rom)
+                if (StandaloneEmulator.Of(game) != null || game.RomFile is not string rom)
                 {
                     ViewModel.States = new();
                     return;
@@ -247,13 +248,50 @@ namespace gamevault.UserControls
         {
             try
             {
-                if (StandaloneEmulator.Of(ViewModel.Game.Platform.System) is StandaloneEmulator emulator)
+                if (StandaloneEmulator.Of(ViewModel.Game) is StandaloneEmulator emulator)
                     await emulator.OpenAsync(text => ViewModel.Game.Status = text);
                 else
                     await RetroArchManager.OpenMenuAsync(text => ViewModel.Game.Status = text);
             }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
             ViewModel.Game.Status = "";
+        }
+
+        private System.Collections.Generic.List<GameEmulators.Emulator?> emulatorChoices = new();
+        private bool showingEmulator;
+
+        /// <summary>The emulator given to the game (its settings button says it); an administrator chooses it here.</summary>
+        private async Task LoadEmulatorAsync()
+        {
+            RetroGame game = ViewModel.Game;
+            if (!game.Platform.System.IsSwitch || await GameEmulators.LoadAsync() is not GameEmulators.Catalog)
+                return;
+            ViewModel.EmulatorChanged();
+            if (LoginManager.Instance.GetCurrentUser()?.Role != PERMISSION_ROLE.ADMIN)
+                return;
+            emulatorChoices = GameEmulators.OfConsole(game.Platform.Slug).Cast<GameEmulators.Emulator?>().Prepend(null).ToList();
+            showingEmulator = true;
+            uiEmulatorChoice.ItemsSource = emulatorChoices.Select(e => e?.Name ?? Loc.F("{0} (console)", StandaloneEmulator.Of(game.Platform.System)!.Name)).ToList();
+            uiEmulatorChoice.SelectedIndex = Math.Max(0, emulatorChoices.FindIndex(e => e?.Id == GameEmulators.IdOf(game)));
+            showingEmulator = false;
+            uiEmulatorAdmin.IsVisible = emulatorChoices.Count > 1 || GameEmulators.IdOf(game) != null;
+        }
+
+        private async void EmulatorChoice_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (showingEmulator || uiEmulatorChoice.SelectedIndex < 0 || uiEmulatorChoice.SelectedIndex >= emulatorChoices.Count)
+                return;
+            try
+            {
+                await GameEmulators.SetGameAsync(ViewModel.Game, emulatorChoices[uiEmulatorChoice.SelectedIndex]?.Id);
+                ViewModel.EmulatorChanged();
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Saved");
+            }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
+                await LoadEmulatorAsync();
+            }
         }
 
         private void FixMatch_Click(object? sender, RoutedEventArgs e)

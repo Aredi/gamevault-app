@@ -9,7 +9,8 @@ namespace GameVault.Core.Retro
     /// (its working folder on Linux and a Mac) with the console's storage, keys and firmware; each GameVault player is the
     /// console's first user while they play, so each has their saves.
     /// </summary>
-    public abstract class SwitchLayout(string directory, bool windows, bool mac = false) : StandaloneLayout(directory, windows, mac)
+    /// <param name="userDirectory">Another emulator's "user" folder, linked beside this one (see <see cref="CustomSwitchLayout"/>); else its own.</param>
+    public abstract class SwitchLayout(string directory, bool windows, bool mac = false, string? userDirectory = null) : StandaloneLayout(directory, windows, mac)
     {
         /// <summary>On Linux Eden looks for its "user" folder in its working folder.</summary>
         public override string WorkingDirectory => Directory;
@@ -17,9 +18,11 @@ namespace GameVault.Core.Retro
         /// A Mac's Eden looks for it beside its app (it goes there itself as it starts): a link there to the one kept
         /// outside the app's folder, which an update replaces.
         /// </summary>
-        public override IReadOnlyList<(string Link, string Target)> Links => Mac ? new[] { (Path.Combine(AppDirectory, "user"), UserDirectory) } : base.Links;
+        public override IReadOnlyList<(string Link, string Target)> Links => Mac ? new[] { (Path.Combine(AppDirectory, "user"), UserDirectory) }
+            : userDirectory != null ? new[] { (Path.Combine(Directory, "user"), UserDirectory) }
+            : base.Links;
 
-        public string UserDirectory => Path.Combine(Directory, "user");
+        public string UserDirectory => userDirectory ?? Path.Combine(Directory, "user");
         /// <summary>The newest of its "log" folder: it keeps the previous start's log there too.</summary>
         public override string? LogFile
         {

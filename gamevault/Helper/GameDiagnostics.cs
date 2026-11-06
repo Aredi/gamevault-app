@@ -39,7 +39,7 @@ namespace gamevault.Helper
         /// <summary>A retro game: its emulator, and how it failed when it just did.</summary>
         public static Task<GameDiagnostic> OfAsync(RetroGame game) => Task.Run(() =>
         {
-            StandaloneEmulator? standalone = StandaloneEmulator.Of(game.Platform.System);
+            StandaloneEmulator? standalone = StandaloneEmulator.Of(game);
             string emulator = standalone != null
                 ? $"{standalone.Name} {VersionIn(standalone.Layout.VersionFile, standalone.Layout.Version)}"
                 : $"RetroArch {VersionIn(RetroArchManager.Layout.VersionFile, RetroArchLayout.Version)} · {game.Platform.System.Core}";

@@ -42,23 +42,29 @@ namespace gamevault.Helper
                 return;
             if (game.Platform.System.IsSwitch && RetroSystems.IsSwitchAddOn(rom))
             {
-                game.Status = Loc.F("An update or a DLC is not started: {0} takes it when its game is played.", StandaloneEmulator.Of(game.Platform.System)!.Name);
+                game.Status = Loc.F("An update or a DLC is not started: {0} takes it when its game is played.", StandaloneEmulator.Of(game)!.Name);
                 return;
             }
             game.Busy = true;
             game.Failure = null;
             try
             {
-                if (game.Platform.System.IsEden)
+                // The emulator an administrator gave it, else its console's (offered its newer release)
+                if (game.Platform.System.IsSwitch)
+                    await GameEmulators.LoadAsync();
+                if (StandaloneEmulator.Of(game) == StandaloneEmulator.Eden)
                     await StandaloneEmulator.Eden.OfferUpdateAsync();
-                else if (game.Platform.System.IsEglantine)
+                else if (StandaloneEmulator.Of(game) == StandaloneEmulator.Eglantine)
                     await StandaloneEmulator.Eglantine.OfferUpdateAsync();
-                await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
+                if (StandaloneEmulator.Of(game) is CustomSwitchEmulator own)
+                    await own.EnsureReadyAsync(game.Platform, text => game.Status = text);
+                else
+                    await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
                 if (await RetroCloudSaves.TakeAsync(game, text => game.Status = text) is string kept)
                     MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);
                 var saves = RetroCloudSaves.Of(game);
                 var before = saves.Snapshot();
-                StandaloneEmulator? emulator = StandaloneEmulator.Of(game.Platform.System);
+                StandaloneEmulator? emulator = StandaloneEmulator.Of(game);
                 Process process = emulator != null
                     ? emulator.Launch(RetroArchManager.Player, rom, RetroArchManager.LanguageOf(game))
                     : RetroArchManager.Launch(game.Platform.System, rom, RetroArchManager.LanguageOf(game), RetroArchManager.ControllerOf(game), stateSlot);
@@ -88,7 +94,7 @@ namespace gamevault.Helper
             DateTime started = DateTime.UtcNow;
             await process.WaitForExitAsync();
             TimeSpan ran = DateTime.UtcNow - started;
-            string? failure = FailureOf(process.ExitCode, ran, StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch");
+            string? failure = FailureOf(process.ExitCode, ran, StandaloneEmulator.Of(game)?.Name ?? "RetroArch");
             if (failure != null)
             {
                 Log.Info($"{game.Name}: {failure}");
@@ -111,7 +117,7 @@ namespace gamevault.Helper
             {
                 try { await RommAccount.PlayedAsync(game.Id); }
                 catch (Exception ex) { Log.Ignored(ex); }
-                if (StandaloneEmulator.Of(game.Platform.System) == null)
+                if (StandaloneEmulator.Of(game) == null)
                 {
                     await RetroAchievementsAccount.SyncRommAsync();
                     await RetroAchievementsAccount.ShareAsync(game);

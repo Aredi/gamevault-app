@@ -205,6 +205,7 @@ namespace GameVault.Uploader.Tests
         private readonly string reports = Path.Combine(Path.GetTempPath(), $"gv-reports-{Guid.NewGuid():N}");
         private readonly string invites = Path.Combine(Path.GetTempPath(), $"gv-invites-{Guid.NewGuid():N}");
         private readonly string hypervisor = Path.Combine(Path.GetTempPath(), $"gv-hypervisor-{Guid.NewGuid():N}");
+        private readonly string emulators = Path.Combine(Path.GetTempPath(), $"gv-emulators-{Guid.NewGuid():N}");
         private readonly FakeZeroTier zeroTier = new();
         private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
@@ -247,6 +248,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("REPORTS_DIRECTORY", reports);
                 host.UseSetting("INVITES_DIRECTORY", invites);
                 host.UseSetting("HYPERVISOR_DIRECTORY", hypervisor);
+                host.UseSetting("EMULATORS_DIRECTORY", emulators);
                 host.UseSetting("GAMEVAULT_API_KEY", "admin-key");
                 host.ConfigureServices(services =>
                 {
@@ -273,6 +275,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(reports, true); } catch { }
             try { Directory.Delete(invites, true); } catch { }
             try { Directory.Delete(hypervisor, true); } catch { }
+            try { Directory.Delete(emulators, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -481,6 +484,42 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Hades", category = "broken" })).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").PostAsync("/reports/nope/resolve", null)).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/reports")).StatusCode);
+        }
+
+        [Fact]
+        public async Task TheAdmins_GiveAGameAnEmulator_PlayersOnlyReadIt()
+        {
+            var admin = Client("admin");
+            var player = Client("user");
+            var starfox = new { name = "Eglantine Star Fox", console = "switch-2", windows = "https://github.com/x/Eglantine/releases/download/sf/e.zip", linux = (string?)null, mac = "" };
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/retro/emulators/starfox", starfox)).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { windows = "http://insecure/e.zip" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { console = "nes" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/Star Fox", starfox)).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { windows = "" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/retro/emulators/games/12", new { emulator = "starfox" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/other", starfox with { name = "Other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/retro/emulators/games/12", new { emulator = "starfox" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/games/12", new { emulator = "starfox" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/games/13", new { emulator = "other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/games/14", new { emulator = "other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/games/14", new { emulator = (string?)null })).StatusCode);
+            // Dropped: its games go back to their console's
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.DeleteAsync("/retro/emulators/other")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.DeleteAsync("/retro/emulators/other")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await admin.DeleteAsync("/retro/emulators/other")).StatusCode);
+
+            using JsonDocument seen = JsonDocument.Parse(await player.GetStringAsync("/retro/emulators"));
+            JsonElement emulator = Assert.Single(seen.RootElement.GetProperty("emulators").EnumerateArray());
+            Assert.Equal("starfox", emulator.GetProperty("id").GetString());
+            Assert.Equal("switch-2", emulator.GetProperty("console").GetString());
+            Assert.Equal(starfox.windows, emulator.GetProperty("windows").GetString());
+            Assert.Equal(JsonValueKind.Null, emulator.GetProperty("mac").ValueKind);
+            var games = seen.RootElement.GetProperty("games").EnumerateObject().ToList();
+            Assert.Equal("12", Assert.Single(games).Name);
+            Assert.Equal("starfox", games[0].Value.GetString());
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/emulators")).StatusCode);
         }
 
         [Fact]

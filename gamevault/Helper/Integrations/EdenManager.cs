@@ -28,7 +28,7 @@ namespace gamevault.Helper
             : Loc.T("Not downloaded yet");
 
         /// <summary>prod.keys (title.keys too when there), and the firmware: a zip of its .nca files, or the files themselves.</summary>
-        protected override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)
+        protected internal override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)
         {
             List<RetroService.Firmware> files;
             try { files = await RetroService.ListFirmwareAsync(platform); }
@@ -98,13 +98,12 @@ namespace gamevault.Helper
                 Layout.Tag = newer;
         }
 
-        /// <summary>The updates and DLC are the installed ones, then the player is the console's first user.</summary>
-        public override Process Launch(string player, string launchFile, string language)
+        /// <summary>The updates and DLC are the installed ones (in its settings, which a fork of it shares).</summary>
+        internal override void PrepareLaunch()
         {
             string config = Layout.SettingsFiles.Single();
             File.WriteAllText(config, EdenLayout.ContentFolders(File.ReadAllText(config),
                 RetroService.SavedGames(downloading: false).Where(g => g.Game.Platform.System.IsEden).Select(g => g.Folder).ToList()));
-            return base.Launch(player, launchFile, language);
         }
     }
 }
