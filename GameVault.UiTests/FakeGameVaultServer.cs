@@ -136,6 +136,8 @@ namespace GameVault.UiTests
         public List<Dictionary<string, object?>> Invites { get; } = new();
         public ConcurrentDictionary<int, bool> HypervisorGames { get; } = new();
         public string HypervisorText { get; set; } = "";
+        /// <summary>The service's emulators by game (GET /retro/emulators), as it answers them.</summary>
+        public string EmulatorsJson { get; set; } = "{\"emulators\":[],\"games\":{}}";
 
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
         public List<object> RetroLatest { get; } = new();
@@ -620,6 +622,16 @@ namespace GameVault.UiTests
                         invite["username"] = username;
                         response.StatusCode = 204;
                     }
+                }
+                else if (path == "/retro/emulators")
+                {
+                    response.ContentType = "application/json";
+                    byte[] body = System.Text.Encoding.UTF8.GetBytes(EmulatorsJson);
+                    await response.OutputStream.WriteAsync(body);
+                }
+                else if (path.StartsWith("/retro/emulators/"))
+                {
+                    response.StatusCode = 204;
                 }
                 else if (path == "/hypervisor")
                 {

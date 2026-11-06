@@ -1721,5 +1721,6 @@
   "EMULATOR (ADMINISTRATOR)": "ÉMULATEUR (ADMINISTRATEUR)",
   "Emulators by game": "Émulateurs par jeu",
   "The emulator that plays this game for all the players; the console emulator unless another plays it better": "L'émulateur qui lance ce jeu pour tous les joueurs ; celui de la console, sauf si un autre le joue mieux",
-  "The folder {0} could not be linked: {1}": "Le dossier {0} n'a pas pu être lié : {1}"
+  "The folder {0} could not be linked: {1}": "Le dossier {0} n'a pas pu être lié : {1}",
+  "No build for this system: {0} plays it on this PC": "Pas de build pour ce système : {0} le lance sur ce PC"
 }
