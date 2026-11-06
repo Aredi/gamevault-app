@@ -67,6 +67,7 @@ namespace gamevault.UserControls
                 await AddLastSeenAsync(users);
                 await LoadInvitesAsync(users);
                 await LoadHypervisorAsync();
+                await LoadEmulatorsAsync();
                 ViewModel.Users = users;
                 uiCountPlayers.Text = (users?.Count(u => u.DeletedAt == null) ?? 0).ToString();
             }
@@ -160,6 +161,72 @@ namespace gamevault.UserControls
                 uiHypervisorText.Text = notice?.Text;
             }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        /// <summary>An emulator given to some games, as the card edits it.</summary>
+        internal sealed class EmulatorRow
+        {
+            public static readonly string[] Slugs = { "switch-2", "switch" };
+            public string Id { get; init; } = Guid.NewGuid().ToString("N")[..12];
+            public string Name { get; set; } = "";
+            public string[] Consoles { get; } = Slugs.Select(s => GameVault.Core.Retro.RetroSystems.All[s].Name).ToArray();
+            public int ConsoleIndex { get; set; }
+            public string? Windows { get; set; }
+            public string? Linux { get; set; }
+            public string? Mac { get; set; }
+            public int Games { get; init; }
+            public string GamesText => Loc.F("{0} game(s)", Games);
+            public bool Saved { get; set; }
+
+            public GameEmulators.Emulator ToEmulator() => new() { Id = Id, Name = Name, Console = Slugs[Math.Max(0, ConsoleIndex)], Windows = Windows, Linux = Linux, Mac = Mac };
+        }
+
+        private readonly System.Collections.ObjectModel.ObservableCollection<EmulatorRow> emulators = new();
+
+        internal async Task LoadEmulatorsAsync()
+        {
+            GameEmulators.Catalog? catalog = await GameEmulators.LoadAsync();
+            uiEmulatorsCard.IsVisible = catalog != null;
+            emulators.Clear();
+            foreach (GameEmulators.Emulator e in catalog?.Emulators ?? new())
+                emulators.Add(new EmulatorRow
+                {
+                    Id = e.Id, Name = e.Name, ConsoleIndex = Math.Max(0, Array.IndexOf(EmulatorRow.Slugs, e.Console)), Windows = e.Windows, Linux = e.Linux, Mac = e.Mac,
+                    Games = catalog!.Games.Count(g => g.Value == e.Id), Saved = true,
+                });
+            uiEmulators.ItemsSource = emulators;
+        }
+
+        private void AddEmulator_Click(object? sender, RoutedEventArgs e) => emulators.Insert(0, new EmulatorRow());
+
+        private async void SaveEmulator_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not EmulatorRow row)
+                return;
+            try
+            {
+                await GameEmulators.SetAsync(row.ToEmulator());
+                row.Saved = true;
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Saved");
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+        }
+
+        private async void DeleteEmulator_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not EmulatorRow row)
+                return;
+            try
+            {
+                if (row.Saved)
+                {
+                    if (!await DialogService.ConfirmAsync(Loc.F("Delete the emulator '{0}'? Its games are played by their console emulator again.", row.Name)))
+                        return;
+                    await GameEmulators.DeleteAsync(row.Id);
+                }
+                emulators.Remove(row);
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
         }
 
         private async void SaveHypervisorText_Click(object? sender, RoutedEventArgs e)

@@ -27,7 +27,7 @@ namespace gamevault.Helper
             : Loc.T("Not downloaded yet");
 
         /// <summary>PS3UPDAT.PUP from RomM, installed by RPCS3: its window asks first; it is closed once its log tells it is done.</summary>
-        protected override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)
+        protected internal override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)
         {
             List<RetroService.Firmware> firmware;
             try { firmware = await RetroService.ListFirmwareAsync(platform); }

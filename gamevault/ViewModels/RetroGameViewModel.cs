@@ -114,6 +114,8 @@ namespace gamevault.ViewModels
         }
         /// <summary>Régler mes touches closed: what it is played with may have changed.</summary>
         public void ControlsChanged() => OnPropertyChanged(nameof(ControlsSummary));
+        /// <summary>Another emulator was given to the game, or the ones given were read.</summary>
+        public void EmulatorChanged() => OnPropertyChanged(nameof(MenuText));
         /// <summary>A controller of <see cref="GameVault.Core.Retro.RetroControllers"/>, in the client's language.</summary>
         public static string ControllerName(string name) => name switch
         {
@@ -140,7 +142,7 @@ namespace gamevault.ViewModels
             _ => Loc.T("In English"),
         };
         /// <summary>The settings of the game's emulator.</summary>
-        public string MenuText => Loc.F("Controls and picture: {0} settings", StandaloneEmulator.Of(Game.Platform.System)?.Name ?? "RetroArch");
+        public string MenuText => Loc.F("Controls and picture: {0} settings", StandaloneEmulator.Of(Game)?.Name ?? "RetroArch");
         public string PlayersText => string.IsNullOrEmpty(Game.Players) || Game.Players == "null" ? "—" : Game.Players;
 
         private Bitmap? selectedScreenshot;

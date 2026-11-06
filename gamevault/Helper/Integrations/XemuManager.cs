@@ -27,7 +27,7 @@ namespace gamevault.Helper
             : Loc.T("Not downloaded yet");
 
         /// <summary>RomM's files told by their size (their names vary): the boot ROM's 512 bytes, a BIOS of 256 KB or 1 MB (Complex 4627 first).</summary>
-        protected override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)
+        protected internal override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)
         {
             List<RetroService.Firmware> files;
             try { files = await RetroService.ListFirmwareAsync(platform); }

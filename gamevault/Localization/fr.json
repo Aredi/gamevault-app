@@ -1713,5 +1713,13 @@
   "Install the Microsoft Visual C++ Redistributable (x64) on this PC.": "Installer Microsoft Visual C++ Redistributable (x64) sur ce PC.",
   "Eglantine update available": "Mise à jour d'Eglantine disponible",
   "A newer release of Eglantine ({0}) is available: each one starts more Switch 2 games. The saves and settings are kept. Update it now?": "Une version plus récente d'Eglantine ({0}) est disponible : chacune lance plus de jeux Switch 2. Les sauvegardes et les réglages sont conservés. La mettre à jour maintenant ?",
-  "None needed: the Switch 2 games are decrypted dumps (NUP, NSP or folder)": "Aucun : les jeux Switch 2 sont des dumps déchiffrés (NUP, NSP ou dossier)"
+  "None needed: the Switch 2 games are decrypted dumps (NUP, NSP or folder)": "Aucun : les jeux Switch 2 sont des dumps déchiffrés (NUP, NSP ou dossier)",
+  "{0} (console)": "{0} (console)",
+  "A fork of Eden or Eglantine that plays some games better: its builds by system (https links to their zip or AppImage), then chosen on the page of each game. A system without a build plays with the console emulator. It shares its saves, settings and controller.": "Un fork d'Eden ou d'Eglantine qui joue mieux certains jeux : ses builds par système (liens https vers leur zip ou AppImage), puis choisi sur la page de chaque jeu. Un système sans build joue avec l'émulateur de la console. Il partage ses sauvegardes, ses réglages et sa manette.",
+  "Add an emulator": "Ajouter un émulateur",
+  "Delete the emulator '{0}'? Its games are played by their console emulator again.": "Supprimer l'émulateur « {0} » ? Ses jeux reprennent l'émulateur de leur console.",
+  "EMULATOR (ADMINISTRATOR)": "ÉMULATEUR (ADMINISTRATEUR)",
+  "Emulators by game": "Émulateurs par jeu",
+  "The emulator that plays this game for all the players; the console emulator unless another plays it better": "L'émulateur qui lance ce jeu pour tous les joueurs ; celui de la console, sauf si un autre le joue mieux",
+  "The folder {0} could not be linked: {1}": "Le dossier {0} n'a pas pu être lié : {1}"
 }

@@ -29,6 +29,9 @@ namespace GameVault.Uploader
     /// POST /reports, GET /reports                a player reports a problem on a game / the reports (all for an administrator, else the player's)
     /// GET  /reports/{id}/diagnostic              what an administrator reads of a report's diagnostic
     /// POST /reports/{id}/resolve                 an administrator says a report is handled
+    /// GET  /retro/emulators                      the emulators given to retro games instead of their console's, and their games
+    /// PUT|DELETE /retro/emulators/{id}           an administrator adds, changes or drops one (its builds' https links by system)
+    /// PUT  /retro/emulators/games/{romId}        an administrator gives a RomM game one ({ emulator: null }: its console's again)
     /// GET  /invites, POST /invites, DELETE /invites/{code}   an administrator's invitation codes / a new one, named / an unused one dropped
     /// POST /invites/redeem                       a new account waiting for its activation gives its code (no sign-in: it can not yet)
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
@@ -40,7 +43,7 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, InviteStore invites, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled, invites = invites.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, InviteStore invites, GameEmulatorStore emulators, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled, invites = invites.Enabled, emulators = emulators.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -342,6 +345,51 @@ namespace GameVault.Uploader
                     return HypervisorOff();
                 hypervisor.SetGame(gameId, asked.On);
                 return Results.NoContent();
+            });
+
+            // The emulators given to some retro games instead of their console's, and the games they play
+            app.MapGet("/retro/emulators", async (HttpRequest request, AdminCheck users, GameEmulatorStore emulators, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return emulators.Enabled ? Results.Json(emulators.Get()) : EmulatorsOff();
+            });
+
+            app.MapPut("/retro/emulators/{id}", async (string id, GameEmulatorStore.Emulator asked, HttpRequest request, AdminCheck admins, GameEmulatorStore emulators, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!emulators.Enabled)
+                    return EmulatorsOff();
+                var emulator = asked with { Id = id };
+                if (GameEmulatorStore.Invalid(emulator) is string invalid)
+                    return Results.Json(new { error = invalid }, statusCode: StatusCodes.Status400BadRequest);
+                emulators.Set(emulator);
+                return Results.NoContent();
+            });
+
+            app.MapDelete("/retro/emulators/{id}", async (string id, HttpRequest request, AdminCheck admins, GameEmulatorStore emulators, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!emulators.Enabled)
+                    return EmulatorsOff();
+                return emulators.Delete(id) ? Results.NoContent() : Results.NotFound();
+            });
+
+            app.MapPut("/retro/emulators/games/{romId:int}", async (int romId, GameEmulatorChoice asked, HttpRequest request, AdminCheck admins, GameEmulatorStore emulators, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!emulators.Enabled)
+                    return EmulatorsOff();
+                return emulators.SetGame(romId, string.IsNullOrEmpty(asked.Emulator) ? null : asked.Emulator)
+                    ? Results.NoContent()
+                    : Results.Json(new { error = "There is no such emulator." }, statusCode: StatusCodes.Status404NotFound);
             });
 
             app.MapPut("/hypervisor/text", async (HypervisorText asked, HttpRequest request, AdminCheck admins, HypervisorStore hypervisor, CancellationToken ct) =>
@@ -702,6 +750,8 @@ namespace GameVault.Uploader
             }
         }
 
+        private static IResult EmulatorsOff() => Results.Json(new { error = "Emulators by game are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
         private static IResult HypervisorOff() => Results.Json(new { error = "Hypervisor notices are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
         private static IResult InvitesOff() => Results.Json(new { error = "Invitation codes are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
@@ -732,6 +782,8 @@ namespace GameVault.Uploader
     public sealed record HypervisorGame(bool On);
 
     public sealed record HypervisorText(string? Text);
+
+    public sealed record GameEmulatorChoice(string? Emulator);
 
     public sealed record NewInvite(string? Name);
     public sealed record RedeemInvite(string? Code, string? Username);

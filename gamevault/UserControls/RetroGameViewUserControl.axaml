@@ -293,6 +293,12 @@
                                 <ComboBox x:Name="uiLanguage" MinWidth="170" MinHeight="30" ItemsSource="{Binding LanguageOptions}" SelectedIndex="{Binding LanguageIndex}"
                                           ToolTip.Tip="{l:T 'The language of the console the game starts in; a game without it keeps its own'}" />
                             </StackPanel>
+                            <!-- The emulator an administrator gives the game instead of its console's (admin console > Server) -->
+                            <StackPanel x:Name="uiEmulatorAdmin" Classes="stat" IsVisible="False">
+                                <TextBlock Classes="label" Text="{l:T 'EMULATOR (ADMINISTRATOR)'}" />
+                                <ComboBox x:Name="uiEmulatorChoice" MinWidth="200" MinHeight="30" SelectionChanged="EmulatorChoice_SelectionChanged"
+                                          ToolTip.Tip="{l:T 'The emulator that plays this game for all the players; the console emulator unless another plays it better'}" />
+                            </StackPanel>
                             <StackPanel Classes="stat">
                                 <TextBlock Classes="label" Text="{l:T 'CLOUD SAVES'}" />
                                 <StackPanel Orientation="Horizontal" Spacing="6">

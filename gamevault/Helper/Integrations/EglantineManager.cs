@@ -19,7 +19,7 @@ namespace gamevault.Helper
 
         public override string FirmwareState => Loc.T("None needed: the Switch 2 games are decrypted dumps (NUP, NSP or folder)");
 
-        protected override Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status) => Task.CompletedTask;
+        protected internal override Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status) => Task.CompletedTask;
 
         private bool updateOffered;
 

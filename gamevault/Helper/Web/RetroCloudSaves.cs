@@ -36,7 +36,7 @@ namespace gamevault.Helper
             string player = RetroArchManager.Player;
             string stem = Path.GetFileNameWithoutExtension(game.RomFile ?? game.FileName), destination = ToRomm ? "romm" : "";
             // A console's storage keeps its saves by game (serial, title id): what the game writes while it runs is its saves
-            if (StandaloneEmulator.Of(game.Platform.System) is StandaloneEmulator emulator)
+            if (StandaloneEmulator.Of(game) is StandaloneEmulator emulator)
                 return new RetroGameSaves(emulator.Layout.SavesDirectory(player), emulator.Layout.StatesDirectory, layout.SaveBackupsDirectory(player), SetOf(game), stem, destination);
             return new RetroGameSaves(layout.SavesDirectory(player), layout.StatesDirectory(player), layout.SaveBackupsDirectory(player), SetOf(game), stem, destination);
         }
