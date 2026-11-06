@@ -298,6 +298,7 @@
                                 <TextBlock Classes="label" Text="{l:T 'EMULATOR (ADMINISTRATOR)'}" />
                                 <ComboBox x:Name="uiEmulatorChoice" MinWidth="200" MinHeight="30" SelectionChanged="EmulatorChoice_SelectionChanged"
                                           ToolTip.Tip="{l:T 'The emulator that plays this game for all the players; the console emulator unless another plays it better'}" />
+                                <TextBlock x:Name="uiEmulatorNote" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxWidth="300" IsVisible="False" />
                             </StackPanel>
                             <StackPanel Classes="stat">
                                 <TextBlock Classes="label" Text="{l:T 'CLOUD SAVES'}" />

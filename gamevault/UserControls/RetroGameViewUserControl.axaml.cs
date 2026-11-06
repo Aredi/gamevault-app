@@ -271,10 +271,21 @@ namespace gamevault.UserControls
                 return;
             emulatorChoices = GameEmulators.OfConsole(game.Platform.Slug).Cast<GameEmulators.Emulator?>().Prepend(null).ToList();
             showingEmulator = true;
-            uiEmulatorChoice.ItemsSource = emulatorChoices.Select(e => e?.Name ?? Loc.F("{0} (console)", StandaloneEmulator.Of(game.Platform.System)!.Name)).ToList();
+            uiEmulatorChoice.ItemsSource = emulatorChoices.Select(e => e == null ? Loc.F("{0} (console)", StandaloneEmulator.Of(game.Platform.System)!.Name) : $"{e.Name} ({GameEmulators.SystemsOf(e)})").ToList();
             uiEmulatorChoice.SelectedIndex = Math.Max(0, emulatorChoices.FindIndex(e => e?.Id == GameEmulators.IdOf(game)));
             showingEmulator = false;
             uiEmulatorAdmin.IsVisible = emulatorChoices.Count > 1 || GameEmulators.IdOf(game) != null;
+            ShowEmulatorNote();
+        }
+
+        /// <summary>A fork without a build for this PC's system: its console's plays the game here, told.</summary>
+        private void ShowEmulatorNote()
+        {
+            RetroGame game = ViewModel.Game;
+            bool elsewhere = GameEmulators.IdOf(game) != null && GameEmulators.For(game) == null;
+            uiEmulatorNote.IsVisible = elsewhere;
+            if (elsewhere)
+                uiEmulatorNote.Text = Loc.F("No build for this system: {0} plays it on this PC", StandaloneEmulator.Of(game.Platform.System)!.Name);
         }
 
         private async void EmulatorChoice_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -285,6 +296,7 @@ namespace gamevault.UserControls
             {
                 await GameEmulators.SetGameAsync(ViewModel.Game, emulatorChoices[uiEmulatorChoice.SelectedIndex]?.Id);
                 ViewModel.EmulatorChanged();
+                ShowEmulatorNote();
                 MainWindowViewModel.Instance.AppBarText = Loc.T("Saved");
             }
             catch (Exception ex)

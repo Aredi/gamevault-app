@@ -67,6 +67,10 @@ namespace gamevault.Helper
         /// <summary>The emulators that can play a game of this console.</summary>
         public static IEnumerable<Emulator> OfConsole(string slug) => current?.Emulators.Where(e => e.Console == slug) ?? Enumerable.Empty<Emulator>();
 
+        /// <summary>"Windows, Linux": the systems it has a build for.</summary>
+        public static string SystemsOf(Emulator emulator) => string.Join(", ", new[] { ("Windows", emulator.Windows), ("Linux", emulator.Linux), ("Mac", emulator.Mac) }
+            .Where(s => !string.IsNullOrWhiteSpace(s.Item2)).Select(s => s.Item1));
+
         public static string? IdOf(RetroGame game) => current?.Games.TryGetValue(game.Id, out string? id) == true ? id : null;
 
         /// <summary>The game's own emulator when it has a build for this system; else null (its console's plays it).</summary>

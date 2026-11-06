@@ -100,6 +100,7 @@ namespace GameVault.UiTests
             await Settle(2500);
             Capture(session, output, "32b-rooms-empty");
 
+            server.EmulatorsJson = "{\"emulators\":[{\"id\":\"starfox\",\"name\":\"Eglantine Star Fox\",\"console\":\"switch-2\",\"windows\":\"https://github.com/pretend7979/Eglantine/releases/download/starfox-2026.11.04/Eglantine-Windows-x64-starfox-2026.11.04.zip\",\"linux\":null,\"mac\":null}],\"games\":{\"12\":\"starfox\"}}";
             vm.SetActiveControl(MainControl.AdminConsole);
             server.Reports.Add(new Dictionary<string, object?> { ["id"] = 1, ["kind"] = "pc", ["gameId"] = games[3].ID, ["title"] = games[3].Title, ["message"] = "Le jeu plante à la sortie du menu", ["username"] = "Zoé", ["createdAt"] = DateTime.UtcNow.AddHours(-3) });
             server.Invites.Add(new Dictionary<string, object?> { ["code"] = "K7Q4-MXAB-2CD3", ["name"] = "Pour Léa", ["createdAt"] = DateTime.UtcNow.AddDays(-2), ["usedAt"] = null, ["userId"] = null, ["username"] = null });
