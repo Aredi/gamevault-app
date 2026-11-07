@@ -91,6 +91,20 @@ namespace gamevault.Helper
             set => Preferences.Set(Models.AppConfigKey.RetroWidescreen, string.Join(",", value.Order()), ProfileConfig);
         }
 
+        /// <summary>Quick resume (Settings > Retro): on unless turned off.</summary>
+        public static bool QuickResume
+        {
+            get => Preferences.Get(Models.AppConfigKey.RetroQuickResume, ProfileConfig) != "0";
+            set => Preferences.Set(Models.AppConfigKey.RetroQuickResume, value ? "1" : "0", ProfileConfig);
+        }
+
+        /// <summary>Run-ahead (Settings > Retro): on unless turned off.</summary>
+        public static bool RunAhead
+        {
+            get => Preferences.Get(Models.AppConfigKey.RetroRunAhead, ProfileConfig) != "0";
+            set => Preferences.Set(Models.AppConfigKey.RetroRunAhead, value ? "1" : "0", ProfileConfig);
+        }
+
         /// <summary>The language of the consoles chosen in Settings > Retro (RomM's name, "French"), or "" for the client's.</summary>
         public static string LanguageSetting
         {
@@ -178,6 +192,15 @@ namespace gamevault.Helper
                 return;
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             File.WriteAllText(file, remap);
+        }
+
+        /// <summary>Quick resume and run-ahead for the console's core, in the client's config: see <see cref="RetroComfort"/>.</summary>
+        private static void SetComfort(string core)
+        {
+            string config = File.ReadAllText(Layout.ConfigFile);
+            foreach (var (key, value) in RetroComfort.Config(core, QuickResume, RunAhead))
+                config = RetroResolution.MergeOptions(config, key, value);
+            File.WriteAllText(Layout.ConfigFile, config);
         }
 
         /// <summary>The game's CRT preset written when its console has the look, removed when it no longer has it.</summary>
@@ -418,6 +441,7 @@ namespace gamevault.Helper
                 if (controller is int device)
                     SetController(system.Core, rom, device);
                 SetKeyboard(system, controller);
+                SetComfort(system.Core);
             }
             catch (Exception ex) { Log.Ignored(ex); }
             return Start(Layout.Arguments(system.Core, rom, stateSlot));

@@ -104,6 +104,10 @@ namespace gamevault.Models
         RetroResolution,
         //3D consoles drawn in 16:9, by their core (profileconfig): "dolphin,pcsx2"
         RetroWidescreen,
+        //A game resumed where it was left, on the consoles of RetroComfort.ResumeCores (profileconfig): "0" off, else on
+        RetroQuickResume,
+        //The gamepad's lag removed by run-ahead, on the consoles of RetroComfort.RunAheadCores (profileconfig): "0" off, else on
+        RetroRunAhead,
         //Language of the consoles that have one (profileconfig): RomM's name, "French"; "" for the client's
         RetroLanguage,
         //Language chosen for games (profileconfig): "559=French;12=Japanese"
