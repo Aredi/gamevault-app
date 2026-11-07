@@ -491,8 +491,11 @@ namespace GameVault.Uploader.Tests
         {
             var admin = Client("admin");
             var player = Client("user");
-            var starfox = new { name = "Eglantine Star Fox", console = "switch-2", windows = "https://github.com/x/Eglantine/releases/download/sf/e.zip", linux = (string?)null, mac = "" };
+            var starfox = new { name = "Eglantine Star Fox", console = "switch-2", windows = "https://github.com/x/Eglantine/releases/download/sf/e.zip", linux = (string?)null, mac = "", executable = " lichii.exe " };
             Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/retro/emulators/starfox", starfox)).StatusCode);
+            // Its program is a file of its build: never outside it
+            foreach (string program in new[] { "../evil.exe", "bin/../../evil.exe", "C:\\Windows\\evil.exe", "/usr/bin/evil", "lichii.exe;rm" })
+                Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { executable = program })).StatusCode);
             Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { windows = "http://insecure/e.zip" })).StatusCode);
             Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { console = "nes" })).StatusCode);
             Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/Star Fox", starfox)).StatusCode);
@@ -516,6 +519,7 @@ namespace GameVault.Uploader.Tests
             Assert.Equal("switch-2", emulator.GetProperty("console").GetString());
             Assert.Equal(starfox.windows, emulator.GetProperty("windows").GetString());
             Assert.Equal(JsonValueKind.Null, emulator.GetProperty("mac").ValueKind);
+            Assert.Equal("lichii.exe", emulator.GetProperty("executable").GetString());
             var games = seen.RootElement.GetProperty("games").EnumerateObject().ToList();
             Assert.Equal("12", Assert.Single(games).Name);
             Assert.Equal("starfox", games[0].Value.GetString());

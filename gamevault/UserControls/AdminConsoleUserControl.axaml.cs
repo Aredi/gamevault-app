@@ -174,11 +174,12 @@ namespace gamevault.UserControls
             public string? Windows { get; set; }
             public string? Linux { get; set; }
             public string? Mac { get; set; }
+            public string? Executable { get; set; }
             public int Games { get; init; }
             public string GamesText => Loc.F("{0} game(s)", Games);
             public bool Saved { get; set; }
 
-            public GameEmulators.Emulator ToEmulator() => new() { Id = Id, Name = Name, Console = Slugs[Math.Max(0, ConsoleIndex)], Windows = Windows, Linux = Linux, Mac = Mac };
+            public GameEmulators.Emulator ToEmulator() => new() { Id = Id, Name = Name, Console = Slugs[Math.Max(0, ConsoleIndex)], Windows = Windows, Linux = Linux, Mac = Mac, Executable = Executable };
         }
 
         private readonly System.Collections.ObjectModel.ObservableCollection<EmulatorRow> emulators = new();
@@ -191,7 +192,7 @@ namespace gamevault.UserControls
             foreach (GameEmulators.Emulator e in catalog?.Emulators ?? new())
                 emulators.Add(new EmulatorRow
                 {
-                    Id = e.Id, Name = e.Name, ConsoleIndex = Math.Max(0, Array.IndexOf(EmulatorRow.Slugs, e.Console)), Windows = e.Windows, Linux = e.Linux, Mac = e.Mac,
+                    Id = e.Id, Name = e.Name, ConsoleIndex = Math.Max(0, Array.IndexOf(EmulatorRow.Slugs, e.Console)), Windows = e.Windows, Linux = e.Linux, Mac = e.Mac, Executable = e.Executable,
                     Games = catalog!.Games.Count(g => g.Value == e.Id), Saved = true,
                 });
             uiEmulators.ItemsSource = emulators;

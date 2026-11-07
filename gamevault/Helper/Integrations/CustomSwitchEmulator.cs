@@ -19,7 +19,7 @@ namespace gamevault.Helper
             this.console = console;
             Name = definition.Name;
             Layout = new CustomSwitchLayout(Path.Combine(PlatformInfo.LocalDataDirectory, "emulators", definition.Id), console.Layout,
-                definition.Windows, definition.Linux, definition.Mac, PlatformInfo.IsWindows, PlatformInfo.IsMac);
+                definition.Windows, definition.Linux, definition.Mac, PlatformInfo.IsWindows, PlatformInfo.IsMac, definition.Executable);
         }
 
         public override string Name { get; }
