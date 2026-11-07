@@ -150,6 +150,8 @@
                                                                IsVisible="{Binding CoverImage, Converter={x:Static ObjectConverters.IsNull}}" />
                                                     <!-- Whole: a cover of another shape than the platform's is not cut -->
                                                     <Image Source="{Binding CoverImage}" Stretch="Uniform" />
+                                                    <!-- Hovered a moment: the game's screenshots -->
+                                                    <local:CoverSlideshow />
                                                 </Panel>
                                             </Border>
                                             <Border Classes="selection" BorderBrush="{Binding Accent, Converter={StaticResource accentBrushConv}}" IsVisible="{Binding IsSelected}" />
