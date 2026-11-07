@@ -320,8 +320,9 @@ namespace gamevault.UserControls
 
         private void Video_Click(object? sender, RoutedEventArgs e)
         {
+            // Played here, as a library game's trailers
             if (ViewModel.Game.Video is string video)
-                PlatformInfo.OpenUrl($"https://www.youtube.com/watch?v={Uri.EscapeDataString(video)}");
+                MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(new[] { $"https://www.youtube.com/watch?v={Uri.EscapeDataString(video)}" }, ViewModel.Game.Name));
         }
 
         private void PreviousScreenshot_Click(object? sender, RoutedEventArgs e) => ViewModel.MoveScreenshot(-1);

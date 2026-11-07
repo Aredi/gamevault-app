@@ -530,7 +530,11 @@
                                                 <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
                                                         BoxShadow="{Binding #cover.AccentColor, Converter={StaticResource accentShadowConv}, ConverterParameter='16 36 -8 0.75'}" />
                                                 <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
-                                                    <local:CacheImage x:Name="cover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
+                                                    <Panel>
+                                                        <local:CacheImage x:Name="cover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
+                                                        <!-- Hovered a moment: the game's screenshots -->
+                                                        <local:CoverSlideshow />
+                                                    </Panel>
                                                 </Border>
                                                 <Border Classes="selection" BorderBrush="{Binding #cover.AccentColor, Converter={StaticResource accentBrushConv}}">
                                                     <Border.IsVisible>
