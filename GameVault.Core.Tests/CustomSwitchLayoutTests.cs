@@ -33,6 +33,22 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void AForkWithItsOwnProgram_StartsIt_InsideItsBuildOnly()
+        {
+            var eglantine = new EglantineLayout("/sv/eglantine", windows: true);
+            CustomSwitchLayout With(string? program) => new("/sv/emulators/lichii", eglantine, Zip, null, null, windows: true, executable: program);
+            Assert.Equal(Path.Combine("/sv/emulators/lichii", "lichii.exe"), With(" lichii.exe ").Executable);
+            Assert.Equal(Path.Combine("/sv/emulators/lichii", "bin", "lichii.exe"), With("bin\\lichii.exe").Executable);
+            Assert.Equal(Path.Combine("/sv/emulators/lichii", "bin", "lichii.exe"), With("bin/lichii.exe").Executable);
+            // None, or one that would leave its folder: named as Eglantine's
+            foreach (string? program in new[] { null, "", "  ", "../evil.exe", "/usr/bin/evil" })
+                Assert.Equal(Path.Combine("/sv/emulators/lichii", "eglantine.exe"), With(program).Executable);
+            // An AppImage starts itself
+            var linux = new CustomSwitchLayout("/sv/emulators/lichii", new EglantineLayout("/sv/eglantine", windows: false), null, "https://x/l.AppImage", null, windows: false, executable: "lichii.exe");
+            Assert.Equal(Path.Combine("/sv/emulators/lichii", "app", "AppRun"), linux.Executable);
+        }
+
+        [Fact]
         public void OnLinuxAndAMac_TheUserFolderIsLinkedWhereTheForkLooks()
         {
             var linux = new CustomSwitchLayout("/sv/emulators/sf", new EglantineLayout("/sv/eglantine", windows: false), null, "https://x/e.AppImage", null, windows: false);

@@ -23,7 +23,8 @@ namespace GameVault.Uploader
         public bool Enabled { get; }
 
         /// <summary>A build per system, null where it has none: the console's emulator plays there.</summary>
-        public sealed record Emulator(string Id, string Name, string Console, string? Windows, string? Linux, string? Mac);
+        /// <param name="Executable">Its program in a Windows or Mac build ("lichii.exe", "bin/lichii.exe"), null when it is named as the console emulator's.</param>
+        public sealed record Emulator(string Id, string Name, string Console, string? Windows, string? Linux, string? Mac, string? Executable = null);
 
         /// <summary>The emulators, and each RomM game's one by its id.</summary>
         public sealed record Catalog(List<Emulator> Emulators, Dictionary<int, string> Games);
@@ -33,6 +34,10 @@ namespace GameVault.Uploader
 
         [GeneratedRegex("^[a-z0-9-]{1,40}$")]
         public static partial Regex IdPattern();
+
+        /// <summary>A path inside the build: names of letters, digits, spaces and ._()+-, by / or \ (never "..": the clients start it).</summary>
+        [GeneratedRegex(@"^[A-Za-z0-9 ._()+-]+([/\\][A-Za-z0-9 ._()+-]+)*$")]
+        public static partial Regex ExecutablePattern();
 
         public Catalog Get()
         {
@@ -57,6 +62,12 @@ namespace GameVault.Uploader
             // Downloaded and started by the players' clients: from a secure address only
             if (links.Any(l => !string.IsNullOrWhiteSpace(l) && (l.Length > 1000 || !Uri.TryCreate(l, UriKind.Absolute, out Uri? uri) || uri.Scheme != Uri.UriSchemeHttps)))
                 return "A build's link is an https address.";
+            if (!string.IsNullOrWhiteSpace(emulator.Executable))
+            {
+                string program = emulator.Executable.Trim();
+                if (program.Length > 200 || !ExecutablePattern().IsMatch(program) || program.Split('/', '\\').Any(part => part.Trim() is "." or ".."))
+                    return "The emulator's program is a file of its build: \"lichii.exe\" or \"bin/lichii.exe\".";
+            }
             return null;
         }
 
@@ -67,7 +78,7 @@ namespace GameVault.Uploader
             {
                 Catalog catalog = Get();
                 catalog.Emulators.RemoveAll(e => e.Id == emulator.Id);
-                catalog.Emulators.Add(emulator with { Name = emulator.Name.Trim(), Windows = Link(emulator.Windows), Linux = Link(emulator.Linux), Mac = Link(emulator.Mac) });
+                catalog.Emulators.Add(emulator with { Name = emulator.Name.Trim(), Windows = Link(emulator.Windows), Linux = Link(emulator.Linux), Mac = Link(emulator.Mac), Executable = Link(emulator.Executable) });
                 Write(catalog);
             }
         }

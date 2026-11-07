@@ -29,6 +29,8 @@ namespace gamevault.Helper
             [JsonPropertyName("windows")] public string? Windows { get; set; }
             [JsonPropertyName("linux")] public string? Linux { get; set; }
             [JsonPropertyName("mac")] public string? Mac { get; set; }
+            /// <summary>Its program in a Windows or Mac build ("lichii.exe"); null: named as the console emulator's.</summary>
+            [JsonPropertyName("executable")] public string? Executable { get; set; }
         }
 
         public sealed class Catalog
@@ -80,12 +82,12 @@ namespace gamevault.Helper
                 return null;
             if (StandaloneEmulator.Of(game.Platform.System) is not SwitchEmulator console)
                 return null;
-            var manager = managers.GetOrAdd($"{emulator.Id}\n{emulator.Windows}\n{emulator.Linux}\n{emulator.Mac}", _ => new CustomSwitchEmulator(emulator, console));
+            var manager = managers.GetOrAdd($"{emulator.Id}\n{emulator.Windows}\n{emulator.Linux}\n{emulator.Mac}\n{emulator.Executable}", _ => new CustomSwitchEmulator(emulator, console));
             return manager.Layout.IsAvailable ? manager : null;
         }
 
         public static Task SetAsync(Emulator emulator) => SendAsync(HttpMethod.Put, $"retro/emulators/{Uri.EscapeDataString(emulator.Id)}",
-            new { name = emulator.Name, console = emulator.Console, windows = emulator.Windows, linux = emulator.Linux, mac = emulator.Mac });
+            new { name = emulator.Name, console = emulator.Console, windows = emulator.Windows, linux = emulator.Linux, mac = emulator.Mac, executable = emulator.Executable });
 
         public static Task DeleteAsync(string id) => SendAsync(HttpMethod.Delete, $"retro/emulators/{Uri.EscapeDataString(id)}", null);
 

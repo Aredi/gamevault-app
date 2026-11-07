@@ -30,7 +30,7 @@ namespace GameVault.Uploader
     /// GET  /reports/{id}/diagnostic              what an administrator reads of a report's diagnostic
     /// POST /reports/{id}/resolve                 an administrator says a report is handled
     /// GET  /retro/emulators                      the emulators given to retro games instead of their console's, and their games
-    /// PUT|DELETE /retro/emulators/{id}           an administrator adds, changes or drops one (its builds' https links by system)
+    /// PUT|DELETE /retro/emulators/{id}           an administrator adds, changes or drops one (its builds' https links by system, its program's name)
     /// PUT  /retro/emulators/games/{romId}        an administrator gives a RomM game one ({ emulator: null }: its console's again)
     /// GET  /invites, POST /invites, DELETE /invites/{code}   an administrator's invitation codes / a new one, named / an unused one dropped
     /// POST /invites/redeem                       a new account waiting for its activation gives its code (no sign-in: it can not yet)

@@ -277,7 +277,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,0,0,10">
-                                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+                                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
                                             <TextBlock Classes="muted" FontSize="12.5" Text="{l:T 'Name'}" VerticalAlignment="Center" />
                                             <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                                 <TextBox Text="{Binding Name}" MaxLength="80" Watermark="Eglantine Star Fox" />
@@ -289,7 +289,9 @@
                                             <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Linux}" MaxLength="1000" Watermark="https://.../Eglantine-x86_64.AppImage" />
                                             <TextBlock Grid.Row="3" Classes="muted" FontSize="12.5" Text="Mac" VerticalAlignment="Center" />
                                             <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Mac}" MaxLength="1000" Watermark="https://.../Eglantine-macOS-arm64.zip" />
-                                            <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                            <TextBlock Grid.Row="4" Classes="muted" FontSize="12.5" Text="{l:T 'Program'}" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Executable}" MaxLength="200" Watermark="{l:T 'lichii.exe (empty: named as the console emulator)'}" />
+                                            <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                                                 <TextBlock Classes="muted" FontSize="12.5" Text="{Binding GamesText}" VerticalAlignment="Center" />
                                                 <Button Classes="ghost small" Click="DeleteEmulator_Click" Content="{l:T 'Delete'}" />
                                                 <Button Classes="action small" Click="SaveEmulator_Click" Content="{l:T 'Save'}" />

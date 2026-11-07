@@ -1719,6 +1719,8 @@
   "Add an emulator": "Ajouter un émulateur",
   "Delete the emulator '{0}'? Its games are played by their console emulator again.": "Supprimer l'émulateur « {0} » ? Ses jeux reprennent l'émulateur de leur console.",
   "EMULATOR (ADMINISTRATOR)": "ÉMULATEUR (ADMINISTRATEUR)",
+  "Program": "Programme",
+  "lichii.exe (empty: named as the console emulator)": "lichii.exe (vide : même nom que l'émulateur de la console)",
   "Emulators by game": "Émulateurs par jeu",
   "The emulator that plays this game for all the players; the console emulator unless another plays it better": "L'émulateur qui lance ce jeu pour tous les joueurs ; celui de la console, sauf si un autre le joue mieux",
   "The folder {0} could not be linked: {1}": "Le dossier {0} n'a pas pu être lié : {1}",
