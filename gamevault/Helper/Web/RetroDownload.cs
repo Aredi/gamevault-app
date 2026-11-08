@@ -271,7 +271,7 @@ namespace gamevault.Helper
                 if (currentBytesDownloaded > 0)
                     speed.UpdateSpeed(currentBytesDownloaded);
                 double perSecond = speed.GetCurrentSpeed();
-                string left = perSecond > 0 ? TimeSpan.FromSeconds(Math.Max(0, (totalFileSize - totalBytesDownloaded) / perSecond)).ToString(@"hh\:mm\:ss") : "--:--:--";
+                string left = GameVault.Core.Downloads.TimeLeft.Text(totalFileSize - totalBytesDownloaded, perSecond);
                 Info = currentBytesDownloaded > 0
                     ? Loc.F("{0} - {1} of {2} | Time left: {3}", $"{Size(perSecond, 1000)}/s", Size(totalBytesDownloaded), Size(totalFileSize), left)
                     : $"{Size(totalBytesDownloaded)} / {Size(totalFileSize)}";
