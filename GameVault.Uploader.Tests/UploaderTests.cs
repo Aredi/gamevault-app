@@ -757,6 +757,18 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public void ARetroGamesKey_TakesAPlatformWithADash()
+        {
+            // The Switch 2 is "switch-2": its plays, favorites and achievements were refused, missing from the activity
+            Assert.True(RetroPlayerStore.IsValidKey("switch-2:12"));
+            Assert.True(RetroPlayerStore.IsValidKey("psx:2161"));
+            Assert.False(RetroPlayerStore.IsValidKey("../x:1"));
+            Assert.False(RetroPlayerStore.IsValidKey("bad key"));
+            Assert.False(RetroPlayerStore.IsValidKey("Switch-2:12"));
+            Assert.False(RetroPlayerStore.IsValidKey("switch-2:"));
+        }
+
+        [Fact]
         public async Task RetroAchievements_OfEachPlayer_ShowOnTheirProfileAndInTheActivity()
         {
             var player = Client("user");
