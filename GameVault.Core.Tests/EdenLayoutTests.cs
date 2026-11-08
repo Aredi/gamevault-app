@@ -181,6 +181,17 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void ItsTextures_StayInTheVram_DecodedByTheGpu()
+        {
+            var layout = new EdenLayout(Root, windows: false);
+            string merged = layout.Settings("[Renderer]\nvram_usage_mode\\default=true\nvram_usage_mode=0\naccelerate_astc\\default=false\naccelerate_astc=2\nresolution_setup=6\n");
+            Assert.Contains("vram_usage_mode\\default=false\nvram_usage_mode=1", merged);
+            Assert.Contains("accelerate_astc\\default=false\naccelerate_astc=1", merged);
+            Assert.Contains("resolution_setup=6", merged);
+            Assert.Equal(merged, layout.Settings(merged));
+        }
+
+        [Fact]
         public void TheFirmware_IsItsNcaFiles_InTheConsolesStorage()
         {
             var layout = new EdenLayout(Path.Combine(Root, Guid.NewGuid().ToString("N")), windows: false);
