@@ -75,7 +75,7 @@ namespace GameVault.Uploader
         public const int KeptUnlocks = 20;
 
         /// <summary>"psx:2161": a game of RomM, by platform and id.</summary>
-        [GeneratedRegex("^[a-z0-9]{1,20}:[0-9]{1,10}$")]
+        [GeneratedRegex("^[a-z0-9-]{1,40}:[0-9]{1,10}$")]
         private static partial Regex KeyPattern();
 
         public static bool IsValidKey(string? key) => key != null && KeyPattern().IsMatch(key);
