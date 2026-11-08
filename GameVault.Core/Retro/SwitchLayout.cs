@@ -115,9 +115,16 @@ namespace GameVault.Core.Retro
             ("check_for_updates", "false"), ("confirmStop", "2"), ("gui_hide_backend_warning", "true"), ("select_user_on_boot", "false"),
         };
 
+        /// <summary>
+        /// The textures kept: Conservative empties the VRAM as soon as it fills, its textures vanish and come back a few
+        /// seconds later (Pokémon Legends Z-A). Decoded by the GPU, not late by the CPU (accelerate_astc: Cpu, Gpu, CpuAsynchronous).
+        /// </summary>
+        private static readonly (string Key, string Value)[] Renderer = { ("vram_usage_mode", "1"), ("accelerate_astc", "1") };
+
         /// <summary>Eden reads a value only when its "\default" says it is not the default.</summary>
         public override string Settings(string existing) =>
-            MergeIni(existing, "UI", Ui.SelectMany(s => new[] { ($"{s.Key}\\default", "false"), s }));
+            MergeIni(MergeIni(existing, "UI", Ui.SelectMany(s => new[] { ($"{s.Key}\\default", "false"), s })),
+                "Renderer", Renderer.SelectMany(s => new[] { ($"{s.Key}\\default", "false"), s }));
 
         /// <summary>
         /// Where Eden finds the games' updates and DLC at a game's start (it takes the newest update): the installed
