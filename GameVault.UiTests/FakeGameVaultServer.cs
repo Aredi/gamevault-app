@@ -23,6 +23,23 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<int, byte[]> Media { get; } = new();
         /// <summary>Players returned by /api/users (the admin is user 1); empty: only the admin.</summary>
         public ConcurrentDictionary<int, User> Users { get; } = new();
+
+        /// <summary>The chat, as the service keeps it: the messages of each conversation, and what the signed-in player (1) read.</summary>
+        public sealed record FakeChatMessage(string Id, string ConversationId, int SenderId, string SenderName, string? Text, string? Picture, DateTime SentAt);
+        public ConcurrentDictionary<string, List<FakeChatMessage>> Chat { get; } = new();
+        public ConcurrentDictionary<string, DateTime> ChatReadAt { get; } = new();
+        public ConcurrentDictionary<string, byte[]> ChatPictures { get; } = new();
+        public bool ChatOff { get; set; }
+
+        /// <summary>Another player writes to the signed-in player (the conversation "d-1-{sender}").</summary>
+        public FakeChatMessage ChatFrom(int sender, string name, string text)
+        {
+            var message = new FakeChatMessage(Guid.NewGuid().ToString("N")[..24], $"d-1-{sender}", sender, name, text, null, DateTime.UtcNow);
+            Chat.GetOrAdd(message.ConversationId, _ => new()).Add(message);
+            return message;
+        }
+
+        private static object ChatJson(FakeChatMessage m) => new { id = m.Id, conversationId = m.ConversationId, senderId = m.SenderId, senderName = m.SenderName, text = m.Text, picture = m.Picture, sentAt = m.SentAt };
         /// <summary>Play data returned by /api/progresses.</summary>
         public ConcurrentQueue<Progress> Progresses { get; } = new();
         /// <summary>The newest save of each game: GameVault names it "&lt;upload ms&gt;_&lt;installation id&gt;.zip".</summary>
@@ -707,6 +724,45 @@ namespace GameVault.UiTests
                         Status = report.RootElement.GetProperty("status").GetString()!,
                         Message = report.RootElement.TryGetProperty("message", out var said) && said.ValueKind == JsonValueKind.String ? said.GetString() : null,
                     };
+                    response.StatusCode = 204;
+                }
+                else if (path.StartsWith("/chat/") && ChatOff)
+                    response.StatusCode = 404;// an older service
+                else if (path == "/chat/conversations")
+                    await Json(response, Chat.Where(c => c.Value.Count > 0).OrderByDescending(c => c.Value[^1].SentAt).Select(c => new
+                    {
+                        id = c.Key, kind = c.Key.StartsWith("g-") ? "group" : "direct", name = (string?)null,
+                        members = c.Key.StartsWith("d-") ? c.Key.Split('-').Skip(1).Select(int.Parse).ToArray() : new[] { 1 },
+                        activeAt = c.Value[^1].SentAt, unread = c.Value.Count(m => m.SenderId != 1 && m.SentAt > ChatReadAt.GetValueOrDefault(c.Key)), last = ChatJson(c.Value[^1]),
+                    }).ToArray());
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages$")).Success && request.HttpMethod == "GET")
+                    await Json(response, (Chat.GetValueOrDefault(match.Groups[1].Value) ?? new()).Select(ChatJson).ToArray());
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages$")).Success)
+                {
+                    using JsonDocument sent = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    var message = new FakeChatMessage(Guid.NewGuid().ToString("N")[..24], match.Groups[1].Value, 1, "admin", sent.RootElement.GetProperty("text").GetString(), null, DateTime.UtcNow);
+                    Chat.GetOrAdd(message.ConversationId, _ => new()).Add(message);
+                    await Json(response, ChatJson(message));
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/pictures$")).Success)
+                {
+                    using var picture = new MemoryStream();
+                    await request.InputStream.CopyToAsync(picture);
+                    string name = Guid.NewGuid().ToString("N")[..24] + ".png";
+                    ChatPictures[name] = picture.ToArray();
+                    string? caption = request.QueryString["text"];
+                    var message = new FakeChatMessage(name[..24], match.Groups[1].Value, 1, "admin", caption, name, DateTime.UtcNow);
+                    Chat.GetOrAdd(message.ConversationId, _ => new()).Add(message);
+                    await Json(response, ChatJson(message));
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/pictures/(.+)$")).Success && ChatPictures.TryGetValue(match.Groups[2].Value, out byte[]? chatPicture))
+                {
+                    response.ContentType = "image/png";
+                    await response.OutputStream.WriteAsync(chatPicture);
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/read$")).Success)
+                {
+                    ChatReadAt[match.Groups[1].Value] = DateTime.UtcNow;
                     response.StatusCode = 204;
                 }
                 else if (path == "/rooms" && request.HttpMethod == "GET")

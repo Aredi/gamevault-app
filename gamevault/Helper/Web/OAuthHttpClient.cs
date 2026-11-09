@@ -78,6 +78,13 @@ namespace gamevault.Helper
             return await _longHttpClient.SendAsync(request, cancellationToken);
         }
 
+        /// <summary>The sign-in for a link that is no HTTP request (the chat's websocket).</summary>
+        public async Task<string?> AccessTokenAsync()
+        {
+            await EnsureSignedInAsync();
+            return _accessToken;
+        }
+
         private Task? signingIn;
         private readonly object signInLock = new();
 

@@ -71,6 +71,15 @@ namespace gamevault.Windows
             // Who is online and what they play (not in the tests: no desktop session there)
             if (PipeServiceHandler.Instance != null)
                 _ = ActivityService.Instance.StartAsync();
+            // The chat with the other players (when the service keeps one)
+            if (PipeServiceHandler.Instance != null)
+                ChatService.Instance.Start();
+            // The notices go left of the chat: over it they would hide what is being written
+            uiChatHost.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == IsVisibleProperty)
+                    uiToast.Margin = new Thickness(0, 0, uiChatHost.IsVisible ? 24 + uiChat.Width : 24, 24);
+            };
             // Savegames of games closed offline in a previous session
             Task.Run(async () =>
             {
@@ -348,6 +357,13 @@ namespace gamevault.Windows
         }
         #endregion
 
+        private void Chat_Click(object? sender, RoutedEventArgs e)
+        {
+            MainWindowViewModel.Instance.IsChatOpen = !MainWindowViewModel.Instance.IsChatOpen;
+            if (MainWindowViewModel.Instance.IsChatOpen)
+                _ = ChatService.Instance.RefreshAsync();
+        }
+
         private void News_Click(object? sender, RoutedEventArgs e)
         {
             MainWindowViewModel.Instance.OpenPopup(new NewsPopup());
@@ -410,6 +426,7 @@ namespace gamevault.Windows
             if (PipeServiceHandler.Instance != null)
                 PipeServiceHandler.Instance.IsReadyForCommands = false;
             _ = ActivityService.Instance.StopAsync();
+            ChatService.Instance.Stop();
             MainWindowViewModel.Instance.UserAvatar = null;
             this.Close();
         }

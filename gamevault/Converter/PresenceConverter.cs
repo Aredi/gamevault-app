@@ -20,7 +20,27 @@ namespace gamevault.Converter
         /// <summary>Titles of the games being played, filled by the community page.</summary>
         public static readonly Dictionary<int, string> GameTitles = new();
 
-        private static readonly IBrush Online = new SolidColorBrush(Color.Parse("#22C55E"));
+        /// <summary>The titles of the games being played that are not known yet (the community page, the chat).</summary>
+        public static async System.Threading.Tasks.Task LoadTitlesAsync()
+        {
+            foreach (int gameId in ActivityService.Instance.All.Where(a => a.IsPlaying).Select(a => a.GameId!.Value).Distinct().ToList())
+            {
+                if (GameTitles.ContainsKey(gameId))
+                    continue;
+                Game? known = ViewModels.MainWindowViewModel.Instance.Library?.Model.GameCards.FirstOrDefault(g => g.ID == gameId)
+                    ?? ViewModels.InstallViewModel.Instance.InstalledGames.Select(g => g.Key).FirstOrDefault(g => g?.ID == gameId);
+                try
+                {
+                    known ??= System.Text.Json.JsonSerializer.Deserialize<Game>(await WebHelper.GetAsync($"{ViewModels.SettingsViewModel.Instance.ServerUrl}/api/games/{gameId}"));
+                }
+                catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+                // An unknown game (or one not found yet) is asked again next time, not kept without a title
+                if ((known?.Metadata?.Title ?? known?.Title) is { Length: > 0 } title)
+                    GameTitles[gameId] = title;
+            }
+        }
+
+        public static readonly IBrush Online = new SolidColorBrush(Color.Parse("#22C55E"));
 
         public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
         {

@@ -169,7 +169,7 @@
     </Window.Styles>
 
     <Panel>
-        <Grid ColumnDefinitions="Auto,*">
+        <Grid ColumnDefinitions="Auto,*,Auto">
             <!-- Navigation bar -->
             <Border x:Name="uiSidebar" Grid.Column="0" Background="{DynamicResource Brush.Background2}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0" ClipToBounds="True">
                 <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
@@ -288,6 +288,15 @@
 
                     <!-- News, problems, links -->
                     <StackPanel Grid.Row="4" Margin="12,0,12,10">
+                        <!-- The chat: the friends and the conversations on the right -->
+                        <Button Classes="navItem" x:Name="uiChatButton" Click="Chat_Click" ToolTip.Tip="{l:T 'Friends and messages'}" IsVisible="{Binding IsChatAvailable}">
+                            <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
+                                <uc:Badged Badge="{Binding ChatBadge}" BadgeBackground="{DynamicResource Brush.Accent}">
+                                    <Path Data="{StaticResource IconChat}" />
+                                </uc:Badged>
+                                <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'Messages'}" Margin="13,0,0,0" />
+                            </Grid>
+                        </Button>
                         <Button Classes="navItem" Click="News_Click" ToolTip.Tip="{l:T 'Open News'}">
                             <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
                                 <uc:Badged x:Name="uiNewsBadge" Badge="{Binding NewsBadge}" BadgeBackground="{DynamicResource Brush.Warning}">
@@ -334,6 +343,18 @@
                     <CrossFade Duration="0:0:0.15" />
                 </TransitioningContentControl.PageTransition>
             </TransitioningContentControl>
+
+            <!-- The chat, as Steam's friends: beside the page, not over it -->
+            <!-- (the panel has its own data: the window's is read on its host) -->
+            <Panel x:Name="uiChatHost" Grid.Column="2">
+                <Panel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="IsChatOpen" />
+                        <Binding Path="IsChatAvailable" />
+                    </MultiBinding>
+                </Panel.IsVisible>
+                <uc:ChatPanel x:Name="uiChat" />
+            </Panel>
         </Grid>
 
         <!-- Popups (game settings, user settings, news, ...): shown at their real size, only scaled down when the window is too small -->
