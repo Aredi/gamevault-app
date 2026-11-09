@@ -18,6 +18,9 @@ namespace GameVault.Uploader
         public const int MaxGroupName = 60;
         public const int MaxGroupMembers = 20;
         public const long MaxPicture = 10 * 1024 * 1024;
+        public const int MaxReactions = 20;
+        /// <summary>The administrators' announcements: every player reads them, only an administrator writes.</summary>
+        public const string NewsId = "news";
         /// <summary>The pictures are kept with their own extension only: never served as a page.</summary>
         public static readonly IReadOnlyDictionary<string, string> PictureTypes = new Dictionary<string, string>
         {
@@ -79,6 +82,35 @@ namespace GameVault.Uploader
             [JsonPropertyName("activeAt")] public DateTime ActiveAt { get; set; }
             /// <summary>When each member last read it: the messages after are unread.</summary>
             [JsonPropertyName("readAt")] public Dictionary<int, DateTime> ReadAt { get; set; } = new();
+            /// <summary>The announcements: the games already announced ("pc:12", "retro:snes:40"), told once.</summary>
+            [JsonPropertyName("posted")] public List<string>? Posted { get; set; }
+
+            [JsonIgnore] public bool IsNews => Id == NewsId;
+        }
+
+        /// <summary>The message answered: a few words of it, kept as they were.</summary>
+        public sealed class Reply
+        {
+            [JsonPropertyName("id")] public string Id { get; set; } = "";
+            [JsonPropertyName("senderName")] public string SenderName { get; set; } = "";
+            [JsonPropertyName("text")] public string? Text { get; set; }
+        }
+
+        /// <summary>A game shown in a message (shared, or an invitation to play it).</summary>
+        public sealed class SharedGame
+        {
+            /// <summary>"pc" (the library) or "retro" (RomM).</summary>
+            [JsonPropertyName("kind")] public string Kind { get; set; } = "pc";
+            [JsonPropertyName("id")] public int Id { get; set; }
+            [JsonPropertyName("platform")] public string? Platform { get; set; }
+            [JsonPropertyName("platformName")] public string? PlatformName { get; set; }
+            [JsonPropertyName("title")] public string Title { get; set; } = "";
+            /// <summary>A retro game's cover, as RomM serves it (/retro/media/...).</summary>
+            [JsonPropertyName("cover")] public string? Cover { get; set; }
+            [JsonPropertyName("coverVersion")] public string? CoverVersion { get; set; }
+            [JsonPropertyName("invite")] public bool Invite { get; set; }
+
+            [JsonIgnore] public string Key => Kind == "retro" ? $"retro:{Platform}:{Id}" : $"pc:{Id}";
         }
 
         public sealed class Message
@@ -91,12 +123,19 @@ namespace GameVault.Uploader
             /// <summary>The picture's file name, in the conversation's pictures.</summary>
             [JsonPropertyName("picture")] public string? Picture { get; set; }
             [JsonPropertyName("sentAt")] public DateTime SentAt { get; set; }
+            [JsonPropertyName("replyTo")] public Reply? ReplyTo { get; set; }
+            [JsonPropertyName("game")] public SharedGame? Game { get; set; }
+            [JsonPropertyName("editedAt")] public DateTime? EditedAt { get; set; }
+            /// <summary>Taken back by its sender: its text and picture are gone, its place stays.</summary>
+            [JsonPropertyName("deleted")] public bool Deleted { get; set; }
+            /// <summary>Emoji → the players who put it.</summary>
+            [JsonPropertyName("reactions")] public Dictionary<string, List<int>>? Reactions { get; set; }
         }
 
         /// <summary>A conversation as a member sees it in their list.</summary>
         public sealed record Summary(Conversation Conversation, Message? Last, int Unread);
 
-        [GeneratedRegex("^(d-[0-9]{1,10}-[0-9]{1,10}|g-[0-9a-f]{16})$")]
+        [GeneratedRegex("^(d-[0-9]{1,10}-[0-9]{1,10}|g-[0-9a-f]{16}|news)$")]
         private static partial Regex IdPattern();
 
         [GeneratedRegex("^[0-9a-f]{24}\\.(png|jpg|gif|webp)$")]
@@ -195,7 +234,9 @@ namespace GameVault.Uploader
             {
                 Prune();
                 if (All().FirstOrDefault(c => c.Id == id) is Conversation known)
-                    return known.Members.Contains(userId) ? known : null;
+                    return known.IsNews || known.Members.Contains(userId) ? known : null;
+                if (id == NewsId)
+                    return new Conversation { Id = NewsId, Kind = "news", CreatedAt = DateTime.UtcNow, ActiveAt = DateTime.UtcNow };
                 return DirectMembers(id) is (int a, int b) && (a == userId || b == userId)
                     ? new Conversation { Id = id, Kind = "direct", Members = new() { a, b }, CreatedAt = DateTime.UtcNow, ActiveAt = DateTime.UtcNow }
                     : null;
@@ -208,11 +249,11 @@ namespace GameVault.Uploader
             lock (gate)
             {
                 Prune();
-                return All().Where(c => c.Members.Contains(userId)).OrderByDescending(c => c.ActiveAt).Select(c =>
+                return All().Where(c => c.IsNews || c.Members.Contains(userId)).OrderByDescending(c => c.ActiveAt).Select(c =>
                 {
                     List<Message> list = MessagesOf(c.Id);
                     DateTime read = c.ReadAt.GetValueOrDefault(userId);
-                    return new Summary(c, list.LastOrDefault(), list.Count(m => m.SentAt > read && m.SenderId != userId));
+                    return new Summary(c, list.LastOrDefault(), list.Count(m => m.SentAt > read && m.SenderId != userId && !m.Deleted));
                 }).ToList();
             }
         }
@@ -283,7 +324,7 @@ namespace GameVault.Uploader
         }
 
         /// <param name="pictureType">"png", ...: the type of <paramref name="picture"/>, kept sealed under the message's name.</param>
-        public Message Add(Conversation conversation, int userId, string userName, string? text, string? pictureType = null, byte[]? picture = null)
+        public Message Add(Conversation conversation, int userId, string userName, string? text, string? pictureType = null, byte[]? picture = null, string? replyTo = null, SharedGame? game = null)
         {
             lock (gate)
             {
@@ -298,7 +339,16 @@ namespace GameVault.Uploader
                     SenderName = userName,
                     Text = text,
                     SentAt = DateTime.UtcNow,
+                    Game = game,
                 };
+                // A few words of the message answered (a message taken back is answered without them)
+                if (replyTo != null && MessagesOf(conversation.Id).FirstOrDefault(m => m.Id == replyTo) is Message answered)
+                    message.ReplyTo = new Reply
+                    {
+                        Id = answered.Id,
+                        SenderName = answered.SenderName,
+                        Text = answered.Deleted ? null : Excerpt(answered.Text ?? (answered.Game?.Title) ?? (answered.Picture != null ? "📷" : null)),
+                    };
                 if (pictureType != null && picture != null)
                 {
                     message.Picture = $"{message.Id}.{pictureType}";
@@ -321,15 +371,109 @@ namespace GameVault.Uploader
             }
         }
 
-        public void MarkRead(Conversation conversation, int userId)
+        /// <returns>When it was read; null when the conversation has no message yet.</returns>
+        public DateTime? MarkRead(Conversation conversation, int userId)
         {
             lock (gate)
             {
                 if (All().FirstOrDefault(c => c.Id == conversation.Id) is not Conversation kept)
-                    return;
-                kept.ReadAt[userId] = DateTime.UtcNow;
+                    return null;
+                DateTime now = DateTime.UtcNow;
+                kept.ReadAt[userId] = now;
                 WriteConversations();
+                return now;
             }
+        }
+
+        private static string? Excerpt(string? text) =>
+            text == null ? null : text.ReplaceLineEndings(" ") is string line && line.Length > 120 ? line[..120] + "…" : text.ReplaceLineEndings(" ");
+
+        public enum Change { Done, Missing, NotYours }
+
+        /// <summary>Its sender writes it again; a message taken back stays so.</summary>
+        public (Change Result, Message? Message) Edit(string conversationId, string messageId, int userId, string text)
+        {
+            lock (gate)
+            {
+                if (MessagesOf(conversationId).FirstOrDefault(m => m.Id == messageId) is not Message message || message.Deleted)
+                    return (Change.Missing, null);
+                if (message.SenderId != userId)
+                    return (Change.NotYours, null);
+                message.Text = text;
+                message.EditedAt = DateTime.UtcNow;
+                Rewrite(conversationId);
+                return (Change.Done, message);
+            }
+        }
+
+        /// <summary>Its sender takes it back (an administrator too, in the announcements): its text, picture and game go.</summary>
+        public (Change Result, Message? Message) Remove(string conversationId, string messageId, int userId, bool admin)
+        {
+            lock (gate)
+            {
+                if (MessagesOf(conversationId).FirstOrDefault(m => m.Id == messageId) is not Message message || message.Deleted)
+                    return (Change.Missing, null);
+                if (message.SenderId != userId && !(admin && conversationId == NewsId))
+                    return (Change.NotYours, null);
+                if (message.Picture != null)
+                    try { File.Delete(Path.Combine(PicturesDirectory(conversationId), message.Picture)); } catch (IOException) { }
+                (message.Text, message.Picture, message.Game, message.Reactions, message.Deleted, message.EditedAt) = (null, null, null, null, true, null);
+                Rewrite(conversationId);
+                return (Change.Done, message);
+            }
+        }
+
+        /// <summary>The player's emoji on a message: put, or taken away when it was there.</summary>
+        public Message? React(string conversationId, string messageId, int userId, string emoji)
+        {
+            lock (gate)
+            {
+                if (MessagesOf(conversationId).FirstOrDefault(m => m.Id == messageId) is not Message message || message.Deleted)
+                    return null;
+                message.Reactions ??= new();
+                if (message.Reactions.TryGetValue(emoji, out List<int>? who))
+                {
+                    if (!who.Remove(userId))
+                        who.Add(userId);
+                    if (who.Count == 0)
+                        message.Reactions.Remove(emoji);
+                }
+                else if (message.Reactions.Count < MaxReactions)
+                    message.Reactions[emoji] = new() { userId };
+                else
+                    return null;
+                if (message.Reactions.Count == 0)
+                    message.Reactions = null;
+                Rewrite(conversationId);
+                return message;
+            }
+        }
+
+        /// <summary>A new game of the library in the announcements, once, whichever administrator's client saw it first.</summary>
+        public Message? Announce(int userId, string userName, SharedGame game)
+        {
+            lock (gate)
+            {
+                Conversation news = All().FirstOrDefault(c => c.IsNews) ?? new Conversation { Id = NewsId, Kind = "news", CreatedAt = DateTime.UtcNow, ActiveAt = DateTime.UtcNow };
+                news.Posted ??= new();
+                if (news.Posted.Contains(game.Key))
+                    return null;
+                news.Posted.Add(game.Key);
+                // The last ones are enough: a game is not announced twice within months
+                if (news.Posted.Count > 2000)
+                    news.Posted.RemoveRange(0, news.Posted.Count - 2000);
+                game.Invite = false;
+                return Add(news, userId, userName, null, game: game);
+            }
+        }
+
+        /// <summary>The conversation's messages written again whole (a message changed): sealed, then put in place.</summary>
+        private void Rewrite(string conversationId)
+        {
+            string file = MessagesFile(conversationId), part = file + ".part";
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            File.WriteAllLines(part, MessagesOf(conversationId).Select(m => Cipher.SealText(JsonSerializer.Serialize(m))));
+            File.Move(part, file, overwrite: true);
         }
 
         /// <summary>A picture of the conversation, opened; null when there is none (or it can not be opened).</summary>
@@ -374,9 +518,7 @@ namespace GameVault.Uploader
                 foreach (Message message in old.Where(m => m.Picture != null))
                     try { File.Delete(Path.Combine(PicturesDirectory(conversation.Id), message.Picture!)); } catch (IOException) { }
                 list.RemoveAll(m => m.SentAt < limit);
-                string file = MessagesFile(conversation.Id), part = file + ".part";
-                File.WriteAllLines(part, list.Select(m => Cipher.SealText(JsonSerializer.Serialize(m))));
-                File.Move(part, file, overwrite: true);
+                Rewrite(conversation.Id);
             }
             if (changed)
                 WriteConversations();

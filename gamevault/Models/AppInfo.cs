@@ -131,6 +131,9 @@ namespace gamevault.Models
         PublishTargetDirectory,
         PublishUploaderUrl,
         ShareActivity,
+        //The chat: the status chosen (online, away, busy, invisible), desktop notifications on or off
+        ChatStatus,
+        ChatNotifications,
         PublishDestination,
         //Library layout: cover size, "gallery" / "shelf", showcase on ("1") or off ("0")
         LibraryCardWidth,

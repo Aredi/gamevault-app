@@ -20,6 +20,7 @@ builder.Services.AddSingleton<GameEmulatorStore>();
 builder.Services.AddSingleton<ChatStore>();
 builder.Services.AddSingleton<ChatHub>();
 builder.Services.AddSingleton<RetroPresenceStore>();
+builder.Services.AddSingleton<PlayerStatusStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");

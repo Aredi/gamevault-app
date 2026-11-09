@@ -25,7 +25,23 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<int, User> Users { get; } = new();
 
         /// <summary>The chat, as the service keeps it: the messages of each conversation, and what the signed-in player (1) read.</summary>
-        public sealed record FakeChatMessage(string Id, string ConversationId, int SenderId, string SenderName, string? Text, string? Picture, DateTime SentAt);
+        public sealed record FakeChatMessage(string Id, string ConversationId, int SenderId, string SenderName, string? Text, string? Picture, DateTime SentAt)
+        {
+            public object? ReplyTo { get; set; }
+            public JsonElement? Game { get; set; }
+            public DateTime? EditedAt { get; set; }
+            public bool Deleted { get; set; }
+            public Dictionary<string, List<int>>? Reactions { get; set; }
+        }
+        /// <summary>When the others read each conversation ("Seen").</summary>
+        public ConcurrentDictionary<string, Dictionary<int, DateTime>> ChatOthersReadAt { get; } = new();
+        /// <summary>The conversations the player said they were writing in.</summary>
+        public ConcurrentQueue<string> ChatTyping { get; } = new();
+        /// <summary>The last status the client said (PUT /chat/presence/me), and the players' statuses it reads.</summary>
+        public string? ChatPresenceSaid { get; set; }
+        public List<object> ChatStatuses { get; } = new();
+        /// <summary>The games an administrator's client announced.</summary>
+        public ConcurrentQueue<string> ChatAnnounced { get; } = new();
         public ConcurrentDictionary<string, List<FakeChatMessage>> Chat { get; } = new();
         public ConcurrentDictionary<string, DateTime> ChatReadAt { get; } = new();
         public ConcurrentDictionary<string, byte[]> ChatPictures { get; } = new();
@@ -39,7 +55,19 @@ namespace GameVault.UiTests
             return message;
         }
 
-        private static object ChatJson(FakeChatMessage m) => new { id = m.Id, conversationId = m.ConversationId, senderId = m.SenderId, senderName = m.SenderName, text = m.Text, picture = m.Picture, sentAt = m.SentAt };
+        private static object ChatJson(FakeChatMessage m) => new
+        {
+            id = m.Id, conversationId = m.ConversationId, senderId = m.SenderId, senderName = m.SenderName, text = m.Text, picture = m.Picture, sentAt = m.SentAt,
+            replyTo = m.ReplyTo, game = m.Game, editedAt = m.EditedAt, deleted = m.Deleted, reactions = m.Reactions,
+        };
+
+        private FakeChatMessage? ChatMessageOf(string conversation, string id) => Chat.GetValueOrDefault(conversation)?.FirstOrDefault(m => m.Id == id);
+
+        private void ChatReplace(FakeChatMessage before, FakeChatMessage after)
+        {
+            List<FakeChatMessage> list = Chat[before.ConversationId];
+            list[list.IndexOf(before)] = after;
+        }
         /// <summary>Play data returned by /api/progresses.</summary>
         public ConcurrentQueue<Progress> Progresses { get; } = new();
         /// <summary>The newest save of each game: GameVault names it "&lt;upload ms&gt;_&lt;installation id&gt;.zip".</summary>
@@ -731,7 +759,7 @@ namespace GameVault.UiTests
                 else if (path == "/chat/conversations")
                     await Json(response, Chat.Where(c => c.Value.Count > 0).OrderByDescending(c => c.Value[^1].SentAt).Select(c => new
                     {
-                        id = c.Key, kind = c.Key.StartsWith("g-") ? "group" : "direct", name = (string?)null,
+                        id = c.Key, kind = c.Key.StartsWith("g-") ? "group" : c.Key == "news" ? "news" : "direct", name = (string?)null, readAt = ChatOthersReadAt.GetValueOrDefault(c.Key),
                         members = c.Key.StartsWith("d-") ? c.Key.Split('-').Skip(1).Select(int.Parse).ToArray() : new[] { 1 },
                         activeAt = c.Value[^1].SentAt, unread = c.Value.Count(m => m.SenderId != 1 && m.SentAt > ChatReadAt.GetValueOrDefault(c.Key)), last = ChatJson(c.Value[^1]),
                     }).ToArray());
@@ -740,7 +768,12 @@ namespace GameVault.UiTests
                 else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages$")).Success)
                 {
                     using JsonDocument sent = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
-                    var message = new FakeChatMessage(Guid.NewGuid().ToString("N")[..24], match.Groups[1].Value, 1, "admin", sent.RootElement.GetProperty("text").GetString(), null, DateTime.UtcNow);
+                    string? text = sent.RootElement.TryGetProperty("text", out var said) && said.ValueKind == JsonValueKind.String && said.GetString()!.Length > 0 ? said.GetString() : null;
+                    var message = new FakeChatMessage(Guid.NewGuid().ToString("N")[..24], match.Groups[1].Value, 1, "admin", text, null, DateTime.UtcNow);
+                    if (sent.RootElement.TryGetProperty("game", out var game) && game.ValueKind == JsonValueKind.Object)
+                        message.Game = game.Clone();
+                    if (sent.RootElement.TryGetProperty("replyTo", out var replyTo) && replyTo.ValueKind == JsonValueKind.String && ChatMessageOf(match.Groups[1].Value, replyTo.GetString()!) is FakeChatMessage answered)
+                        message.ReplyTo = new { id = answered.Id, senderName = answered.SenderName, text = answered.Text };
                     Chat.GetOrAdd(message.ConversationId, _ => new()).Add(message);
                     await Json(response, ChatJson(message));
                 }
@@ -759,6 +792,52 @@ namespace GameVault.UiTests
                 {
                     response.ContentType = "image/png";
                     await response.OutputStream.WriteAsync(chatPicture);
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages/([0-9a-f]+)/reactions$")).Success && ChatMessageOf(match.Groups[1].Value, match.Groups[2].Value) is FakeChatMessage reacted)
+                {
+                    using JsonDocument reaction = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string emoji = reaction.RootElement.GetProperty("emoji").GetString()!;
+                    reacted.Reactions ??= new();
+                    List<int> who = reacted.Reactions.TryGetValue(emoji, out var known) ? known : reacted.Reactions[emoji] = new();
+                    if (!who.Remove(1))
+                        who.Add(1);
+                    if (who.Count == 0)
+                        reacted.Reactions.Remove(emoji);
+                    await Json(response, ChatJson(reacted));
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages/([0-9a-f]+)$")).Success && ChatMessageOf(match.Groups[1].Value, match.Groups[2].Value) is FakeChatMessage chatChanged)
+                {
+                    FakeChatMessage after;
+                    if (request.HttpMethod == "DELETE")
+                    {
+                        after = chatChanged with { Text = null, Picture = null };
+                        (after.Deleted, after.Game, after.Reactions) = (true, null, null);
+                    }
+                    else
+                    {
+                        using JsonDocument edit = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                        after = chatChanged with { Text = edit.RootElement.GetProperty("text").GetString() };
+                        after.EditedAt = DateTime.UtcNow;
+                    }
+                    ChatReplace(chatChanged, after);
+                    await Json(response, ChatJson(after));
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/typing$")).Success)
+                {
+                    ChatTyping.Enqueue(match.Groups[1].Value);
+                    response.StatusCode = 204;
+                }
+                else if (path == "/chat/presence/me")
+                {
+                    ChatPresenceSaid = await new StreamReader(request.InputStream).ReadToEndAsync();
+                    response.StatusCode = 204;
+                }
+                else if (path == "/chat/presence")
+                    await Json(response, ChatStatuses.ToArray());
+                else if (path == "/chat/news/games")
+                {
+                    ChatAnnounced.Enqueue(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    response.StatusCode = 204;
                 }
                 else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/read$")).Success)
                 {
