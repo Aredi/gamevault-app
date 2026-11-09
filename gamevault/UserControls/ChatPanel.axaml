@@ -1,0 +1,286 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.ChatPanel"
+             x:DataType="local:ChatPanelModel"
+             Width="320">
+    <UserControl.Styles>
+        <Style Selector="Button.entry">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.entry:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="Margin" Value="12,14,12,4" />
+        </Style>
+        <Style Selector="Border.unread">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="MinWidth" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <!-- A message: the player's own on the right, in the accent color -->
+        <Style Selector="Border.bubble">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+            <Setter Property="CornerRadius" Value="14,14,14,4" />
+            <Setter Property="Padding" Value="11,7" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="MaxWidth" Value="250" />
+        </Style>
+        <Style Selector="Border.bubble.mine">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="CornerRadius" Value="14,14,4,14" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style Selector="Border.bubble.mine TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="StackPanel.message.mine">
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style Selector="Button.emoji">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="{DynamicResource Brush.Background2}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1,0,0,0">
+        <Panel>
+            <!-- The friends and the groups -->
+            <DockPanel x:Name="uiList" IsVisible="{Binding !IsConversationOpen}">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="16,18,10,6">
+                    <TextBlock Classes="pageTitle" FontSize="20" Text="{l:T 'Friends'}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="round small" Width="32" Height="32" Click="NewGroup_Click" ToolTip.Tip="{l:T 'New group'}">
+                        <Path Data="{StaticResource IconAddSimple}" Width="13" Height="13" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+                    </Button>
+                    <Button Grid.Column="2" Classes="round small" Width="32" Height="32" Margin="4,0,0,0" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                        <Path Data="{StaticResource IconChevronRight}" Width="11" Height="11" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+                    </Button>
+                </Grid>
+                <TextBlock DockPanel.Dock="Top" Classes="muted" FontSize="12" Margin="16,0,16,6" TextWrapping="Wrap"
+                           Text="{Binding StatusText}" IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                <!-- A new group: its name, its players -->
+                <Border DockPanel.Dock="Top" x:Name="uiNewGroup" IsVisible="{Binding IsMakingGroup}" Margin="10,4,10,6" Padding="12" CornerRadius="12"
+                        Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="{l:T 'New group'}" FontWeight="Bold" />
+                        <TextBox x:Name="uiGroupName" Watermark="{l:T 'Name of the group'}" MaxLength="60" />
+                        <TextBlock Classes="muted" FontSize="12" Text="{l:T 'Who is in it?'}" />
+                        <ItemsControl ItemsSource="{Binding Friends}" MaxHeight="190">
+                            <ItemsControl.Template>
+                                <ControlTemplate>
+                                    <ScrollViewer><ItemsPresenter /></ScrollViewer>
+                                </ControlTemplate>
+                            </ItemsControl.Template>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:ChatEntry">
+                                    <CheckBox Content="{Binding Title}" IsChecked="{Binding IsPicked}" FontSize="13" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                            <Button Classes="ghost small" Content="{l:T 'Cancel'}" Click="CancelGroup_Click" />
+                            <Button Classes="action small" Content="{l:T 'Create'}" Click="CreateGroup_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer>
+                    <StackPanel Margin="6,0,6,12">
+                        <TextBlock Classes="section" Text="{l:T 'GROUPS'}" IsVisible="{Binding HasGroups}" />
+                        <ItemsControl ItemsSource="{Binding Groups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:ChatEntry">
+                                    <Button Classes="entry" Click="Entry_Click">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Border Width="36" Height="36" CornerRadius="12" Background="{DynamicResource Brush.Surface3}">
+                                                <Path Data="{StaticResource IconNavCommunity}" Width="17" Height="17" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center" Spacing="1">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Border Grid.Column="2" Classes="unread" IsVisible="{Binding HasUnread}">
+                                                <TextBlock Text="{Binding Unread}" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Classes="section" Text="{Binding FriendsHeader}" />
+                        <ItemsControl ItemsSource="{Binding Friends}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:ChatEntry">
+                                    <Button Classes="entry" Click="Entry_Click" Opacity="{Binding Opacity}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Panel>
+                                                <Border Width="36" Height="36" CornerRadius="18" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                                    <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding User}" />
+                                                </Border>
+                                                <Ellipse Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Stroke="{DynamicResource Brush.Background2}" StrokeThickness="2"
+                                                         Fill="{Binding Dot}" IsVisible="{Binding Dot, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            </Panel>
+                                            <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center" Spacing="1">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <Border Grid.Column="2" Classes="unread" IsVisible="{Binding HasUnread}">
+                                                <TextBlock Text="{Binding Unread}" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+
+            <!-- A conversation -->
+            <DockPanel x:Name="uiConversation" IsVisible="{Binding IsConversationOpen}" DragDrop.AllowDrop="True">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*,Auto" Margin="8,14,10,8">
+                    <Button Classes="round small" Width="32" Height="32" Click="Back_Click" ToolTip.Tip="{l:T 'Back'}">
+                        <Path Data="{StaticResource IconChevronLeft}" Width="11" Height="11" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+                    </Button>
+                    <Border Grid.Column="1" Width="34" Height="34" CornerRadius="17" ClipToBounds="True" Margin="6,0,0,0" Background="{DynamicResource Brush.Surface3}">
+                        <Panel>
+                            <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding Open.User}" IsVisible="{Binding !Open.IsGroup}" />
+                            <Path Data="{StaticResource IconNavCommunity}" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" IsVisible="{Binding Open.IsGroup}" />
+                        </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="2" Margin="10,0,4,0" VerticalAlignment="Center" Spacing="1">
+                        <TextBlock Text="{Binding Open.Title}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Open.Subtitle}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Button Grid.Column="3" Classes="round small" Width="32" Height="32" IsVisible="{Binding Open.IsGroup}" ToolTip.Tip="{l:T 'Group'}">
+                        <Path Data="{StaticResource IconNavSettings}" Width="14" Height="14" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuItem Header="{l:T 'Add players'}" Click="AddPlayers_Click" />
+                                <MenuItem Header="{l:T 'Leave the group'}" Click="LeaveGroup_Click" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+
+                <!-- Players to add to the group -->
+                <Border DockPanel.Dock="Top" IsVisible="{Binding IsAddingPlayers}" Margin="10,0,10,6" Padding="12" CornerRadius="12"
+                        Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <ItemsControl ItemsSource="{Binding Addable}" MaxHeight="170">
+                            <ItemsControl.Template>
+                                <ControlTemplate>
+                                    <ScrollViewer><ItemsPresenter /></ScrollViewer>
+                                </ControlTemplate>
+                            </ItemsControl.Template>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:ChatEntry">
+                                    <CheckBox Content="{Binding Title}" IsChecked="{Binding IsPicked}" FontSize="13" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                            <Button Classes="ghost small" Content="{l:T 'Cancel'}" Click="CancelAdd_Click" />
+                            <Button Classes="action small" Content="{l:T 'Add'}" Click="ConfirmAdd_Click" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Writing: a picture waiting to be sent, the text, the emojis -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="10,6,10,12" Spacing="6">
+                    <Grid IsVisible="{Binding DraftPicture, Converter={x:Static ObjectConverters.IsNotNull}}" ColumnDefinitions="Auto,*">
+                        <Border CornerRadius="8" ClipToBounds="True" MaxHeight="90" MaxWidth="160" HorizontalAlignment="Left">
+                            <Image Source="{Binding DraftPicture}" Stretch="Uniform" />
+                        </Border>
+                        <Button Grid.Column="1" Classes="round small" Width="26" Height="26" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="6,0,0,0"
+                                Click="DropPicture_Click" ToolTip.Tip="{l:T 'Remove the picture'}">
+                            <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+                        </Button>
+                    </Grid>
+                    <Border CornerRadius="14" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" Padding="4">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                            <Button x:Name="uiEmojiButton" Classes="round small" Width="32" Height="32" Background="Transparent" ToolTip.Tip="{l:T 'Emojis'}">
+                                <Path Data="{StaticResource IconEmoji}" Width="17" Height="17" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" />
+                                <Button.Flyout>
+                                    <Flyout Placement="TopEdgeAlignedLeft">
+                                        <ItemsControl x:Name="uiEmojis" Width="280">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <Button Classes="emoji" Content="{Binding}" Click="Emoji_Click" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                            <Button Grid.Column="1" Classes="round small" Width="32" Height="32" Background="Transparent" Click="AttachPicture_Click"
+                                    ToolTip.Tip="{l:T 'Send a picture (or paste it with Ctrl+V, or drop it here)'}">
+                                <Path Data="{StaticResource IconAddPicture}" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" />
+                            </Button>
+                            <TextBox x:Name="uiDraft" Grid.Column="2" Watermark="{l:T 'Write a message'}" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="120"
+                                     MaxLength="2000" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center" />
+                            <Button Grid.Column="3" Classes="action small" Width="34" Height="32" Padding="0" Click="Send_Click" ToolTip.Tip="{l:T 'Send (Enter)'}" IsEnabled="{Binding !IsSending}">
+                                <Path Data="{StaticResource IconSend}" Width="14" Height="14" Stretch="Uniform" Fill="White" />
+                            </Button>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <ScrollViewer x:Name="uiMessagesScroll">
+                    <StackPanel Margin="12,4,12,8" Spacing="4">
+                        <Button Classes="ghost small" HorizontalAlignment="Center" Content="{l:T 'Older messages'}" IsVisible="{Binding HasOlder}" Click="Older_Click" />
+                        <TextBlock Classes="muted" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="10,30"
+                                   Text="{l:T 'No message yet. Say hello!'}" IsVisible="{Binding !HasMessages}" />
+                        <ItemsControl ItemsSource="{Binding Messages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:ChatMessageRow">
+                                    <StackPanel Spacing="2" Margin="0,2">
+                                        <TextBlock Classes="muted" FontSize="11" HorizontalAlignment="Center" Margin="0,10,0,6" Text="{Binding Day}"
+                                                   IsVisible="{Binding Day, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        <StackPanel Classes="message" Classes.mine="{Binding IsMine}" Spacing="2">
+                                            <TextBlock Classes="muted" FontSize="11" Margin="4,0" Text="{Binding Sender}" IsVisible="{Binding ShowsSender}" />
+                                            <Border Classes="bubble" Classes.mine="{Binding IsMine}" ToolTip.Tip="{Binding Time}">
+                                                <StackPanel Spacing="6">
+                                                    <Button Classes="wrapper" Padding="0" Background="Transparent" Click="Picture_Click" IsVisible="{Binding HasPicture}" Cursor="Hand"
+                                                            ToolTip.Tip="{l:T 'Open the picture'}">
+                                                        <Border CornerRadius="8" ClipToBounds="True" HorizontalAlignment="Left">
+                                                            <Image Source="{Binding Picture}" Stretch="Uniform" StretchDirection="DownOnly" MaxHeight="220" MaxWidth="226" />
+                                                        </Border>
+                                                    </Button>
+                                                    <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="13.5" IsVisible="{Binding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                </StackPanel>
+                                            </Border>
+                                            <TextBlock Classes="muted" FontSize="10.5" Margin="4,0" Text="{Binding Time}" IsVisible="{Binding ShowsTime}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Panel>
+    </Border>
+</UserControl>

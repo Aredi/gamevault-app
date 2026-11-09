@@ -122,6 +122,9 @@ namespace gamevault.UserControls
                 // The retro covers and screenshots too: nothing else ever empties them
                 if (Directory.Exists(RetroService.MediaDirectory))
                     Directory.Delete(RetroService.MediaDirectory, true);
+                // The chat's pictures: the service sends them again when a conversation shows them
+                if (Directory.Exists(ChatService.PicturesDirectory))
+                    Directory.Delete(ChatService.PicturesDirectory, true);
                 ViewModel.ImageCacheSize = 0;
                 MainWindowViewModel.Instance.AppBarText = Loc.T("Image cache cleared");
             }
@@ -193,7 +196,8 @@ namespace gamevault.UserControls
             if (uiTabControl.SelectedIndex == 3)
             {
                 ViewModel.ImageCacheSize = await CalculateDirectorySize(new DirectoryInfo(LoginManager.Instance.GetUserProfile().ImageCacheDir))
-                    + await CalculateDirectorySize(new DirectoryInfo(RetroService.MediaDirectory));
+                    + await CalculateDirectorySize(new DirectoryInfo(RetroService.MediaDirectory))
+                    + await CalculateDirectorySize(new DirectoryInfo(ChatService.PicturesDirectory));
                 ViewModel.OfflineCacheSize = (File.Exists(LoginManager.Instance.GetUserProfile().OfflineCache) ? new FileInfo(LoginManager.Instance.GetUserProfile().OfflineCache).Length : 0);
             }
         }

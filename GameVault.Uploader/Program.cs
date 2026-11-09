@@ -17,6 +17,8 @@ builder.Services.AddSingleton<ReportStore>();
 builder.Services.AddSingleton<InviteStore>();
 builder.Services.AddSingleton<HypervisorStore>();
 builder.Services.AddSingleton<GameEmulatorStore>();
+builder.Services.AddSingleton<ChatStore>();
+builder.Services.AddSingleton<ChatHub>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
@@ -73,7 +75,10 @@ app.Use(async (context, next) =>
 // The web page (wwwroot): install a game on my PC, publish a game from a browser
 app.UseDefaultFiles();
 app.UseStaticFiles();
+// The chat's live link: a ping each 30 s keeps it open through the proxies
+app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(30) });
 app.MapUploadEndpoints();
+app.MapChatEndpoints();
 app.Logger.LogInformation("GameVault Uploader {Version}: files in {Files}, profiles in {Profiles}, users checked by {Server}", UploaderOptions.Version, options.FilesDirectory, options.ProfilesDirectory, options.GameVaultUrl);
 _ = app.Services.GetRequiredService<ProfileStore>();// says at once whether profiles are kept
 _ = app.Services.GetRequiredService<SaveStore>();
@@ -85,6 +90,7 @@ _ = app.Services.GetRequiredService<ReportStore>();
 _ = app.Services.GetRequiredService<InviteStore>();
 _ = app.Services.GetRequiredService<HypervisorStore>();
 _ = app.Services.GetRequiredService<GameEmulatorStore>();
+_ = app.Services.GetRequiredService<ChatStore>();
 app.Run();
 
 public partial class Program { }

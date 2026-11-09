@@ -206,6 +206,7 @@ namespace GameVault.Uploader.Tests
         private readonly string invites = Path.Combine(Path.GetTempPath(), $"gv-invites-{Guid.NewGuid():N}");
         private readonly string hypervisor = Path.Combine(Path.GetTempPath(), $"gv-hypervisor-{Guid.NewGuid():N}");
         private readonly string emulators = Path.Combine(Path.GetTempPath(), $"gv-emulators-{Guid.NewGuid():N}");
+        private readonly string chat = Path.Combine(Path.GetTempPath(), $"gv-chat-{Guid.NewGuid():N}");
         private readonly FakeZeroTier zeroTier = new();
         private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
@@ -249,6 +250,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("INVITES_DIRECTORY", invites);
                 host.UseSetting("HYPERVISOR_DIRECTORY", hypervisor);
                 host.UseSetting("EMULATORS_DIRECTORY", emulators);
+                host.UseSetting("CHAT_DIRECTORY", chat);
                 host.UseSetting("GAMEVAULT_API_KEY", "admin-key");
                 host.ConfigureServices(services =>
                 {
@@ -276,6 +278,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(invites, true); } catch { }
             try { Directory.Delete(hypervisor, true); } catch { }
             try { Directory.Delete(emulators, true); } catch { }
+            try { Directory.Delete(chat, true); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -779,6 +782,137 @@ namespace GameVault.Uploader.Tests
             {
                 Directory.Delete(root, true);
             }
+        }
+
+        private static readonly byte[] Png = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13 };
+
+        [Fact]
+        public async Task TwoPlayers_Chat_AndOnlyThemReadIt()
+        {
+            var player = Client("user");// id 2
+            var admin = Client("admin");// id 1
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = " salut ! 🎮 " })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "tu joues ce soir ?" })).StatusCode);
+
+            using (JsonDocument list = JsonDocument.Parse(await admin.GetStringAsync("/chat/conversations")))
+            {
+                JsonElement direct = Assert.Single(list.RootElement.EnumerateArray());
+                Assert.Equal(("d-1-2", 2, "tu joues ce soir ?"), (direct.GetProperty("id").GetString(), direct.GetProperty("unread").GetInt32(), direct.GetProperty("last").GetProperty("text").GetString()));
+            }
+            using (JsonDocument mine = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations")))
+                Assert.Equal(0, mine.RootElement[0].GetProperty("unread").GetInt32());// what one writes, one has read
+            using (JsonDocument messages = JsonDocument.Parse(await admin.GetStringAsync("/chat/conversations/d-1-2/messages")))
+            {
+                Assert.Equal(new[] { "salut ! 🎮", "tu joues ce soir ?" }, messages.RootElement.EnumerateArray().Select(m => m.GetProperty("text").GetString()));
+                Assert.Equal("player", messages.RootElement[0].GetProperty("senderName").GetString());
+                // The page before a message: the ones sent before it
+                string second = messages.RootElement[1].GetProperty("id").GetString()!;
+                using JsonDocument before = JsonDocument.Parse(await admin.GetStringAsync($"/chat/conversations/d-1-2/messages?before={second}"));
+                Assert.Equal("salut ! 🎮", Assert.Single(before.RootElement.EnumerateArray()).GetProperty("text").GetString());
+            }
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsync("/chat/conversations/d-1-2/read", null)).StatusCode);
+            using (JsonDocument list = JsonDocument.Parse(await admin.GetStringAsync("/chat/conversations")))
+                Assert.Equal(0, list.RootElement[0].GetProperty("unread").GetInt32());
+
+            // Another player can neither read nor write it; a conversation before its first message is empty
+            var other = Client("p5");
+            Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync("/chat/conversations/d-1-2/messages")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "hey" })).StatusCode);
+            Assert.Equal("[]", await other.GetStringAsync("/chat/conversations"));
+            Assert.Equal("[]", await other.GetStringAsync("/chat/conversations/d-1-5/messages"));
+            // Wrong ids and texts
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/chat/conversations/d-2-1/messages")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/chat/conversations/..%2Fx/messages")).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "  " })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = new string('a', 2001) })).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/chat/conversations")).StatusCode);
+        }
+
+        [Fact]
+        public async Task AGroup_TalksWithPictures_AndWhoLeavesIsOut()
+        {
+            var player = Client("user");
+            var five = Client("p5");
+            HttpResponseMessage made = await player.PostAsJsonAsync("/chat/groups", new { name = " Soirée Mario Kart ", members = new[] { 1, 5, 2, 5 } });
+            Assert.Equal(HttpStatusCode.OK, made.StatusCode);
+            string id;
+            using (JsonDocument group = JsonDocument.Parse(await made.Content.ReadAsStringAsync()))
+            {
+                id = group.RootElement.GetProperty("id").GetString()!;
+                Assert.Equal("Soirée Mario Kart", group.RootElement.GetProperty("name").GetString());
+                Assert.Equal(new[] { 1, 5, 2 }, group.RootElement.GetProperty("members").EnumerateArray().Select(m => m.GetInt32()));
+            }
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/groups", new { name = "Seul", members = new[] { 2 } })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/groups", new { name = "", members = new[] { 1 } })).StatusCode);
+
+            // A picture: only a real one is kept, and only the group sees it
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.OK, (await five.PostAsync($"/chat/conversations/{id}/pictures?text=regardez", png)).StatusCode);
+            using (var page = new ByteArrayContent("<html><script>alert(1)</script>"u8.ToArray()))
+                Assert.Equal(HttpStatusCode.UnsupportedMediaType, (await five.PostAsync($"/chat/conversations/{id}/pictures", page)).StatusCode);
+            string picture;
+            using (JsonDocument messages = JsonDocument.Parse(await player.GetStringAsync($"/chat/conversations/{id}/messages")))
+            {
+                JsonElement sent = Assert.Single(messages.RootElement.EnumerateArray());
+                Assert.Equal("regardez", sent.GetProperty("text").GetString());
+                picture = sent.GetProperty("picture").GetString()!;
+                Assert.EndsWith(".png", picture);
+            }
+            HttpResponseMessage shown = await player.GetAsync($"/chat/conversations/{id}/pictures/{picture}");
+            Assert.Equal("image/png", shown.Content.Headers.ContentType!.MediaType);
+            Assert.Equal(Png, await shown.Content.ReadAsByteArrayAsync());
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("p7").GetAsync($"/chat/conversations/{id}/pictures/{picture}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync($"/chat/conversations/{id}/pictures/..%2F..%2Fconversations.json")).StatusCode);
+
+            // Renamed, a player added; who leaves can no longer write
+            Assert.Equal(HttpStatusCode.OK, (await five.PutAsJsonAsync($"/chat/groups/{id}", new { name = "Mario Kart", add = new[] { 7 } })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Client("p7").GetAsync($"/chat/conversations/{id}/messages")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await five.DeleteAsync($"/chat/groups/{id}/members/me")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await five.PostAsJsonAsync($"/chat/conversations/{id}/messages", new { text = "re" })).StatusCode);
+            Assert.Equal("[]", await five.GetStringAsync("/chat/conversations"));
+            using (JsonDocument list = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations")))
+                Assert.Equal("Mario Kart", list.RootElement[0].GetProperty("name").GetString());
+        }
+
+        [Fact]
+        public async Task TheChat_ForgetsWhatIsOlderThan90Days()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "vieux" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-2-5/messages", new { text = "ancien" })).StatusCode);
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.OK, (await player.PostAsync("/chat/conversations/d-2-5/pictures", png)).StatusCode);
+            var store = factory.Services.GetRequiredService<ChatStore>();
+            store.Backdate("d-1-2", TimeSpan.FromDays(91));
+            store.PruneNow();
+            // The silent conversation goes; the other stays
+            using (JsonDocument list = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations")))
+                Assert.Equal("d-2-5", Assert.Single(list.RootElement.EnumerateArray()).GetProperty("id").GetString());
+            Assert.Equal("[]", await player.GetStringAsync("/chat/conversations/d-1-2/messages"));
+            Assert.False(File.Exists(Path.Combine(chat, "messages", "d-1-2.jsonl")));
+            Assert.Single(Directory.GetFiles(Path.Combine(chat, "pictures", "d-2-5")));
+        }
+
+        [Fact]
+        public async Task AMessage_ReachesTheOtherPlayer_AsItIsSent()
+        {
+            var client = factory.Server.CreateWebSocketClient();
+            client.ConfigureRequest = request => request.Headers.Authorization = "Bearer admin";
+            using var socket = await client.ConnectAsync(new Uri(factory.Server.BaseAddress, "chat/live"), CancellationToken.None);
+            // The service keeps the link just after the handshake
+            var hub = factory.Services.GetRequiredService<ChatHub>();
+            for (int i = 0; i < 100 && !hub.IsOnline(1); i++)
+                await Task.Delay(20);
+            Assert.True(hub.IsOnline(1));
+            Assert.Equal(HttpStatusCode.OK, (await Client("user").PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "ping" })).StatusCode);
+            var buffer = new byte[4096];
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var received = await socket.ReceiveAsync(buffer, timeout.Token);
+            using JsonDocument live = JsonDocument.Parse(buffer.AsMemory(0, received.Count));
+            Assert.Equal(("message", "ping"), (live.RootElement.GetProperty("type").GetString(), live.RootElement.GetProperty("message").GetProperty("text").GetString()));
+            // Not signed in: no live link
+            var anonymous = factory.Server.CreateWebSocketClient();
+            await Assert.ThrowsAnyAsync<Exception>(() => anonymous.ConnectAsync(new Uri(factory.Server.BaseAddress, "chat/live"), CancellationToken.None));
         }
 
         [Fact]

@@ -557,20 +557,7 @@ namespace gamevault.UserControls
         /// <summary>Someone came online or started a game: the titles of the games played are fetched once.</summary>
         internal async Task ActivityChangedAsync()
         {
-            foreach (int gameId in ActivityService.Instance.All.Where(a => a.IsPlaying).Select(a => a.GameId!.Value).Distinct().ToList())
-            {
-                if (Converter.PresenceConverter.GameTitles.ContainsKey(gameId))
-                    continue;
-                Game? known = MainWindowViewModel.Instance.Library?.Model.GameCards.FirstOrDefault(g => g.ID == gameId)
-                    ?? InstallViewModel.Instance.InstalledGames.Select(g => g.Key).FirstOrDefault(g => g?.ID == gameId);
-                try
-                {
-                    known ??= JsonSerializer.Deserialize<Game>(await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{gameId}"));
-                }
-                catch (Exception ex) { Log.Ignored(ex); }
-                if (known != null)
-                    Converter.PresenceConverter.GameTitles[gameId] = known.Metadata?.Title ?? known.Title;
-            }
+            await Converter.PresenceConverter.LoadTitlesAsync();
             ViewModel.ActivityVersion++;
         }
 

@@ -63,6 +63,27 @@ namespace gamevault.ViewModels
             get => newsBadge;
             set { newsBadge = value; OnPropertyChanged(); }
         }
+        private string chatBadge = "";
+        /// <summary>The chat's messages not read yet ("" when none).</summary>
+        public string ChatBadge
+        {
+            get => chatBadge;
+            set { chatBadge = value; OnPropertyChanged(); }
+        }
+        private bool isChatAvailable;
+        /// <summary>The service keeps a chat: its button shows.</summary>
+        public bool IsChatAvailable
+        {
+            get => isChatAvailable;
+            set { isChatAvailable = value; OnPropertyChanged(); }
+        }
+        private bool isChatOpen;
+        /// <summary>The friends and the conversations, on the right of the window.</summary>
+        public bool IsChatOpen
+        {
+            get => isChatOpen;
+            set { isChatOpen = value; OnPropertyChanged(); }
+        }
         private bool m_IsAppBarOpen { get; set; }
         public bool IsAppBarOpen
         {
