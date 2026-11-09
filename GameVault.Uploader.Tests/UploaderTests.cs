@@ -757,6 +757,31 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task ASetsOldVersions_AreTheOnlyOnesItRemoves()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "gv-saves-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var store = new RetroSaveStore(new UploaderOptions { GameVaultUrl = "http://gamevault.test/", FilesDirectory = root, RetroSavesDirectory = root }, Microsoft.Extensions.Logging.Abstractions.NullLogger<RetroSaveStore>.Instance);
+                // A Switch 2 game's history: "switch-2-*.zip" names it too, as the history of the Switch game 2
+                string history = Path.Combine(root, "7", "history");
+                Directory.CreateDirectory(history);
+                File.WriteAllText(Path.Combine(history, "switch-2-1000-1700000000000.zip"), "x");
+                for (int i = 0; i <= RetroSaveStore.KeptVersions + 1; i++)
+                {
+                    Assert.NotNull(await store.SaveAsync(7, "switch-2", new MemoryStream(new byte[] { 1 }), default));
+                    File.SetLastWriteTimeUtc(Path.Combine(root, "7", "switch-2.zip"), new DateTime(2026, 1, 1).AddMinutes(i));
+                }
+                Assert.True(File.Exists(Path.Combine(history, "switch-2-1000-1700000000000.zip")));
+                Assert.Equal(RetroSaveStore.KeptVersions, store.History(7, "switch-2").Count);
+            }
+            finally
+            {
+                Directory.Delete(root, true);
+            }
+        }
+
+        [Fact]
         public void ARetroGamesKey_TakesAPlatformWithADash()
         {
             // The Switch 2 is "switch-2": its plays, favorites and achievements were refused, missing from the activity

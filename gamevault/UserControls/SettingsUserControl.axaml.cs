@@ -119,6 +119,9 @@ namespace gamevault.UserControls
             {
                 Directory.Delete(LoginManager.Instance.GetUserProfile().ImageCacheDir, true);
                 Directory.CreateDirectory(LoginManager.Instance.GetUserProfile().ImageCacheDir);
+                // The retro covers and screenshots too: nothing else ever empties them
+                if (Directory.Exists(RetroService.MediaDirectory))
+                    Directory.Delete(RetroService.MediaDirectory, true);
                 ViewModel.ImageCacheSize = 0;
                 MainWindowViewModel.Instance.AppBarText = Loc.T("Image cache cleared");
             }
@@ -189,7 +192,8 @@ namespace gamevault.UserControls
             }
             if (uiTabControl.SelectedIndex == 3)
             {
-                ViewModel.ImageCacheSize = await CalculateDirectorySize(new DirectoryInfo(LoginManager.Instance.GetUserProfile().ImageCacheDir));
+                ViewModel.ImageCacheSize = await CalculateDirectorySize(new DirectoryInfo(LoginManager.Instance.GetUserProfile().ImageCacheDir))
+                    + await CalculateDirectorySize(new DirectoryInfo(RetroService.MediaDirectory));
                 ViewModel.OfflineCacheSize = (File.Exists(LoginManager.Instance.GetUserProfile().OfflineCache) ? new FileInfo(LoginManager.Instance.GetUserProfile().OfflineCache).Length : 0);
             }
         }

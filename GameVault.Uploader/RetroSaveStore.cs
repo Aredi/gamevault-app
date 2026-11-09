@@ -87,8 +87,9 @@ namespace GameVault.Uploader
                     string history = HistoryOf(userId);
                     Directory.CreateDirectory(history);
                     File.Move(file, Path.Combine(history, $"{set}-{new DateTimeOffset(File.GetLastWriteTimeUtc(file)).ToUnixTimeMilliseconds()}.zip"), overwrite: true);
-                    foreach (string old in Directory.GetFiles(history, $"{set}-*.zip").OrderByDescending(f => f, StringComparer.Ordinal).Skip(KeptVersions))
-                        File.Delete(old);
+                    // Its own versions only: "switch-2-*.zip" also names the Switch 2's sets ("switch-2-2777-...")
+                    foreach (Version old in History(userId, set).Skip(KeptVersions))
+                        File.Delete(Path.Combine(history, old.Name));
                 }
                 File.Move(part, file, overwrite: true);
             }

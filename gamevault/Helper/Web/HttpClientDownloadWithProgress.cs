@@ -348,11 +348,12 @@ namespace gamevault.Helper
         private async Task ProcessContentStream(long currentDownloadSize, Stream contentStream)
         {
             long currentBytesRead = 0;
-            byte[] buffer = new byte[8192];
+            // 1 MB: 8 KB was 12,000 reads and writes a second at 100 MB/s
+            byte[] buffer = new byte[1 << 20];
             bool isMoreToRead = true;
             LastTime = DateTime.Now;
             string fullFilePath = Path.Combine(DestinationFolderPath, FileName);
-            using (var fileStream = new FileStream(fullFilePath, ResumePosition == -1 ? FileMode.Create : FileMode.Open, FileAccess.Write, FileShare.None, 8192, true))
+            using (var fileStream = new FileStream(fullFilePath, ResumePosition == -1 ? FileMode.Create : FileMode.Open, FileAccess.Write, FileShare.None, 1 << 20, true))
             {
                 try
                 {
