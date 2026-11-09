@@ -30,6 +30,7 @@ namespace GameVault.Uploader
         private List<Conversation>? conversations;
         private readonly Dictionary<string, List<Message>> messages = new();
         private DateTime prunedAt;
+        private readonly ChatCipher? cipher;
 
         public ChatStore(UploaderOptions options, ILogger<ChatStore> logger)
         {
@@ -37,7 +38,30 @@ namespace GameVault.Uploader
             directory = options.ChatDirectory;
             Enabled = ProfileStore.IsWritable(directory, out string error);
             if (!Enabled)
+            {
                 logger.LogWarning("The chat is off: {Directory} can not be written ({Error}). Mount a volume there to offer it.", directory, error);
+                return;
+            }
+            // Beside the folder, not in it: a copy of the chat's folder alone can not be read
+            string keyFile = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar))!, Path.GetFileName(Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar)) + ".key");
+            try
+            {
+                cipher = ChatCipher.Load(options.ChatKey, keyFile);
+            }
+            catch (Exception ex) when (ex is FormatException or ArgumentException or IOException or UnauthorizedAccessException)
+            {
+                Enabled = false;
+                logger.LogError(ex, "The chat is off: its key (CHAT_KEY or {KeyFile}) can not be used", keyFile);
+            }
+        }
+
+        private ChatCipher Cipher => cipher ?? throw new InvalidOperationException("The chat is off.");
+
+        /// <summary>A line or a file of the chat as it is on the disk: sealed, or plain when written before the sealing.</summary>
+        private string Opened(string stored)
+        {
+            string text = stored.Trim();
+            return text.StartsWith('{') || text.StartsWith('[') ? text : Cipher.OpenText(text);
         }
 
         public bool Enabled { get; }
@@ -118,10 +142,16 @@ namespace GameVault.Uploader
             try
             {
                 conversations = File.Exists(ConversationsFile)
-                    ? JsonSerializer.Deserialize<List<Conversation>>(File.ReadAllText(ConversationsFile)) ?? new()
+                    ? JsonSerializer.Deserialize<List<Conversation>>(Opened(File.ReadAllText(ConversationsFile))) ?? new()
                     : new();
             }
-            catch (Exception ex)
+            catch (CryptographicException ex)
+            {
+                // Another key: nothing is written over what it sealed (the chat answers an error until the key is back)
+                logger.LogError(ex, "The chat's files were sealed with another key than CHAT_KEY or chat.key");
+                throw new InvalidOperationException("The chat's key does not open its files.", ex);
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
             {
                 // A damaged file must not take the chat down: it is kept aside, the chat starts again
                 logger.LogError(ex, "The chat's conversations could not be read; the file is kept as conversations.json.broken");
@@ -134,7 +164,7 @@ namespace GameVault.Uploader
         private void WriteConversations()
         {
             string part = ConversationsFile + ".part";
-            File.WriteAllText(part, JsonSerializer.Serialize(All()));
+            File.WriteAllText(part, Cipher.SealText(JsonSerializer.Serialize(All())));
             File.Move(part, ConversationsFile, overwrite: true);
         }
 
@@ -150,10 +180,10 @@ namespace GameVault.Uploader
                     // A line cut by a crash is passed: the others are whole
                     try
                     {
-                        if (line.Length > 0 && JsonSerializer.Deserialize<Message>(line) is Message message)
+                        if (line.Length > 0 && JsonSerializer.Deserialize<Message>(Opened(line)) is Message message)
                             list.Add(message);
                     }
-                    catch (JsonException) { }
+                    catch (Exception ex) when (ex is JsonException or FormatException or CryptographicException) { }
                 }
             return messages[id] = list;
         }
@@ -252,8 +282,8 @@ namespace GameVault.Uploader
             }
         }
 
-        /// <param name="pictureType">"png", ...: the picture is written by <paramref name="writePicture"/> under its name.</param>
-        public Message Add(Conversation conversation, int userId, string userName, string? text, string? pictureType = null, Action<string>? writePicture = null)
+        /// <param name="pictureType">"png", ...: the type of <paramref name="picture"/>, kept sealed under the message's name.</param>
+        public Message Add(Conversation conversation, int userId, string userName, string? text, string? pictureType = null, byte[]? picture = null)
         {
             lock (gate)
             {
@@ -269,11 +299,11 @@ namespace GameVault.Uploader
                     Text = text,
                     SentAt = DateTime.UtcNow,
                 };
-                if (pictureType != null && writePicture != null)
+                if (pictureType != null && picture != null)
                 {
                     message.Picture = $"{message.Id}.{pictureType}";
                     Directory.CreateDirectory(PicturesDirectory(conversation.Id));
-                    writePicture(Path.Combine(PicturesDirectory(conversation.Id), message.Picture));
+                    File.WriteAllBytes(Path.Combine(PicturesDirectory(conversation.Id), message.Picture), Cipher.Seal(picture));
                 }
                 // A conversation between two is kept from its first message
                 if (!All().Contains(conversation))
@@ -284,7 +314,7 @@ namespace GameVault.Uploader
                 // Read before the line is added: a first read after it would count the message twice
                 List<Message> list = MessagesOf(conversation.Id);
                 Directory.CreateDirectory(Path.GetDirectoryName(MessagesFile(conversation.Id))!);
-                File.AppendAllText(MessagesFile(conversation.Id), JsonSerializer.Serialize(message) + "\n");
+                File.AppendAllText(MessagesFile(conversation.Id), Cipher.SealText(JsonSerializer.Serialize(message)) + "\n");
                 list.Add(message);
                 WriteConversations();
                 return message;
@@ -302,10 +332,15 @@ namespace GameVault.Uploader
             }
         }
 
-        public string? PictureFile(string id, string name)
+        /// <summary>A picture of the conversation, opened; null when there is none (or it can not be opened).</summary>
+        public byte[]? Picture(string id, string name)
         {
             string file = Path.Combine(PicturesDirectory(id), name);
-            return IsValidPicture(name) && File.Exists(file) ? file : null;
+            if (!IsValidPicture(name) || !File.Exists(file))
+                return null;
+            byte[] stored = File.ReadAllBytes(file);
+            try { return Cipher.Open(stored); }
+            catch (CryptographicException) { return PictureType(stored) != null ? stored : null; }// one written before the sealing
         }
 
         private void Delete(Conversation conversation)
@@ -340,7 +375,7 @@ namespace GameVault.Uploader
                     try { File.Delete(Path.Combine(PicturesDirectory(conversation.Id), message.Picture!)); } catch (IOException) { }
                 list.RemoveAll(m => m.SentAt < limit);
                 string file = MessagesFile(conversation.Id), part = file + ".part";
-                File.WriteAllLines(part, list.Select(m => JsonSerializer.Serialize(m)));
+                File.WriteAllLines(part, list.Select(m => Cipher.SealText(JsonSerializer.Serialize(m))));
                 File.Move(part, file, overwrite: true);
             }
             if (changed)

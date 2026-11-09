@@ -209,13 +209,14 @@ namespace gamevault.UserControls
                 PlayerActivity? activity = ActivityService.Instance.Of(user.ID);
                 entry.Title = user.Username;
                 entry.Unread = direct?.Unread ?? 0;
-                entry.Rank = activity?.IsPlaying == true ? 0 : activity != null ? 1 : 2;
-                string presence = activity?.IsPlaying == true
-                    ? Loc.F("Playing {0}", Converter.PresenceConverter.GameTitles.TryGetValue(activity.GameId!.Value, out string? game) ? game : "…")
-                    : activity != null ? Loc.T("Online") : Loc.T("Offline");
+                // A library game or a retro game (RetroArch, Eden...): playing either way
+                string? playing = Converter.PresenceConverter.PlayingText(user.ID);
+                bool online = activity != null || playing != null;
+                entry.Rank = playing != null ? 0 : online ? 1 : 2;
+                string presence = playing ?? (online ? Loc.T("Online") : Loc.T("Offline"));
                 entry.Subtitle = entry.Unread > 0 && direct?.Last != null ? Preview(direct.Last) : presence;
-                entry.Dot = activity == null ? null : activity.IsPlaying && Application.Current!.TryGetResource("Brush.Accent", null, out object? accent) ? accent as IBrush : Converter.PresenceConverter.Online;
-                entry.Opacity = activity == null && entry.Unread == 0 ? 0.6 : 1;
+                entry.Dot = !online ? null : playing != null && Application.Current!.TryGetResource("Brush.Accent", null, out object? accent) ? accent as IBrush : Converter.PresenceConverter.Online;
+                entry.Opacity = !online && entry.Unread == 0 ? 0.6 : 1;
                 return (entry, active: direct?.ActiveAt ?? DateTime.MinValue);
             })
                 // Who plays, then who is online, then the last ones talked to, then by name

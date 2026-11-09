@@ -20,6 +20,14 @@ namespace gamevault.Converter
         /// <summary>Titles of the games being played, filled by the community page.</summary>
         public static readonly Dictionary<int, string> GameTitles = new();
 
+        /// <summary>"Playing Hades", "Playing The Legend of Zelda (NES)": a library game first, else a retro game; null when none.</summary>
+        public static string? PlayingText(int userId)
+        {
+            if (ActivityService.Instance.Of(userId) is { IsPlaying: true } activity)
+                return Loc.F("Playing {0}", GameTitles.TryGetValue(activity.GameId!.Value, out string? title) ? title : "…");
+            return ActivityService.Instance.RetroOf(userId) is RetroActivity retro ? Loc.F("Playing {0}", retro.Title) : null;
+        }
+
         /// <summary>The titles of the games being played that are not known yet (the community page, the chat).</summary>
         public static async System.Threading.Tasks.Task LoadTitlesAsync()
         {
@@ -47,9 +55,7 @@ namespace gamevault.Converter
             if (values.FirstOrDefault() is not User user)
                 return null;
             PlayerActivity? activity = ActivityService.Instance.Of(user.ID);
-            string? playing = activity?.IsPlaying == true
-                ? Loc.F("Playing {0}", GameTitles.TryGetValue(activity.GameId!.Value, out string? title) ? title : "…")
-                : null;
+            string? playing = PlayingText(user.ID);
             switch (parameter as string)
             {
                 case "playing":
@@ -57,11 +63,11 @@ namespace gamevault.Converter
                 case "isplaying":
                     return playing != null;
                 case "hasdot":
-                    return activity != null;
+                    return activity != null || playing != null;
                 case "dot":
-                    if (activity == null)
+                    if (activity == null && playing == null)
                         return null;
-                    return activity.IsPlaying && Avalonia.Application.Current!.TryGetResource("Brush.Accent", null, out object? accent) ? accent as IBrush : Online;
+                    return playing != null && Avalonia.Application.Current!.TryGetResource("Brush.Accent", null, out object? accent) ? accent as IBrush : Online;
                 default:
                     return playing ?? (activity != null ? Loc.T("Online") : new RoleNameConverter().Convert(user.Role, typeof(string), null, culture));
             }

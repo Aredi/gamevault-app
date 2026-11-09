@@ -21,6 +21,9 @@ namespace GameVault.Uploader
         public sealed record GroupRequest(string? Name, List<int>? Members);
         public sealed record GroupChange(string? Name, List<int>? Add);
         public sealed record TextRequest(string? Text);
+        public sealed record RetroPlaying(string? Platform, int RomId, string? Name, string? PlatformName);
+
+        private static object Shown(RetroPresenceStore.Playing p) => new { userId = p.UserId, platform = p.Platform, romId = p.RomId, name = p.Name, platformName = p.PlatformName };
 
         private static object Shown(ChatStore.Message m) => new { id = m.Id, conversationId = m.ConversationId, senderId = m.SenderId, senderName = m.SenderName, text = m.Text, picture = m.Picture, sentAt = m.SentAt };
 
@@ -58,6 +61,36 @@ namespace GameVault.Uploader
                 }
                 using var socket = await context.WebSockets.AcceptWebSocketAsync();
                 await hub.KeepAsync(player.Id, socket, context.RequestAborted);
+            });
+
+            // The retro game a player plays now (GameVault's activity only knows its own games): said each minute while
+            // it runs, an empty name when it stops; the others hear it on their live link
+            app.MapPut("/activity/retro/me", async (RetroPlaying played, HttpRequest request, AdminCheck users, RetroPresenceStore presence, ChatHub hub, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                string name = (played.Name ?? "").Trim();
+                RetroPresenceStore.Playing? now = null;
+                if (name.Length > 0)
+                {
+                    string key = $"{played.Platform}:{played.RomId}";
+                    if (!RetroPlayerStore.IsValidKey(key))
+                        return Results.Json(new { error = "A retro game needs its platform and its RomM id." }, statusCode: StatusCodes.Status400BadRequest);
+                    string platformName = (played.PlatformName ?? "").Trim();
+                    now = new RetroPresenceStore.Playing(check.Id, played.Platform!, played.RomId, name[..Math.Min(name.Length, 200)], platformName[..Math.Min(platformName.Length, 80)], DateTimeOffset.UtcNow);
+                }
+                if (presence.Set(check.Id, now))
+                    await hub.SendAllAsync(new { type = "retroPlaying", userId = check.Id, playing = now == null ? null : Shown(now) });
+                return Results.NoContent();
+            });
+
+            app.MapGet("/activity/retro", async (HttpRequest request, AdminCheck users, RetroPresenceStore presence, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return Results.Json(presence.Now(DateTimeOffset.UtcNow).Select(Shown));
             });
 
             app.MapGet("/chat/conversations", async (HttpRequest request, AdminCheck users, ChatStore chat, CancellationToken ct) =>
@@ -154,7 +187,7 @@ namespace GameVault.Uploader
                 byte[] data = picture.ToArray();
                 if (ChatStore.PictureType(data) is not string type)
                     return Results.Json(new { error = "Only PNG, JPEG, GIF and WebP pictures can be sent." }, statusCode: StatusCodes.Status415UnsupportedMediaType);
-                ChatStore.Message message = chat.Add(conversation, player.Id, player.User, caption, type, file => File.WriteAllBytes(file, data));
+                ChatStore.Message message = chat.Add(conversation, player.Id, player.User, caption, type, data);
                 await hub.SendAsync(conversation.Members, new { type = "message", message = Shown(message) });
                 return Results.Json(Shown(message));
             });
@@ -164,11 +197,11 @@ namespace GameVault.Uploader
                 var (refused, player) = await PlayerAsync(request, users, chat, ct);
                 if (refused != null)
                     return refused;
-                if (!ChatStore.IsValidId(id) || chat.Of(id, player.Id) is null || chat.PictureFile(id, name) is not string file)
+                if (!ChatStore.IsValidId(id) || chat.Of(id, player.Id) is null || chat.Picture(id, name) is not byte[] picture)
                     return Results.NotFound();
                 // A picture never changes: the client keeps it
                 request.HttpContext.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
-                return Results.File(file, ChatStore.PictureTypes[Path.GetExtension(name).TrimStart('.')]);
+                return Results.File(picture, ChatStore.PictureTypes[Path.GetExtension(name).TrimStart('.')]);
             });
 
             app.MapPut("/chat/conversations/{id}/read", async (string id, HttpRequest request, AdminCheck users, ChatStore chat, CancellationToken ct) =>

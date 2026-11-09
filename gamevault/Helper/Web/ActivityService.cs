@@ -33,6 +33,19 @@ namespace gamevault.Helper
     /// only the administrators see their game, through the SanctuaryVault service (/activity), read each minute.
     /// Servers with SERVER_ONLINE_ACTIVITIES_DISABLED, or a proxy without websockets, simply leave everyone offline.
     /// </summary>
+    /// <summary>A retro game played now (the service says it: GameVault only knows its own games).</summary>
+    public sealed class RetroActivity
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("userId")] public int UserId { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("platform")] public string Platform { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("romId")] public int RomId { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("name")] public string Name { get; set; } = "";
+        [System.Text.Json.Serialization.JsonPropertyName("platformName")] public string PlatformName { get; set; } = "";
+
+        /// <summary>"The Legend of Zelda (NES)".</summary>
+        public string Title => string.IsNullOrEmpty(PlatformName) ? Name : $"{Name} ({PlatformName})";
+    }
+
     internal sealed class ActivityService
     {
         public static ActivityService Instance { get; } = new();
@@ -43,6 +56,84 @@ namespace gamevault.Helper
         private Dictionary<int, PlayerActivity> hidden = new();
         private int? playing;
         private bool started;
+        private Dictionary<int, RetroActivity> retro = new();
+        private RetroGame? myRetro;
+        private System.Threading.CancellationTokenSource? retroBeat;
+
+        /// <summary>The retro game a player plays now, null when none.</summary>
+        public RetroActivity? RetroOf(int userId)
+        {
+            lock (activities)
+                return retro.GetValueOrDefault(userId);
+        }
+
+        /// <summary>The retro game played on this PC (null when it stopped): said now, then each minute while it runs.</summary>
+        public void SetRetroPlaying(RetroGame? game)
+        {
+            myRetro = game;
+            retroBeat?.Cancel();
+            retroBeat = null;
+            _ = SendRetroAsync();
+            if (game == null)
+                return;
+            var beat = retroBeat = new System.Threading.CancellationTokenSource();
+            _ = Task.Run(async () =>
+            {
+                while (!beat.IsCancellationRequested)
+                {
+                    try { await Task.Delay(TimeSpan.FromMinutes(1), beat.Token); } catch (OperationCanceledException) { return; }
+                    await SendRetroAsync();
+                }
+            });
+        }
+
+        private async Task SendRetroAsync()
+        {
+            try
+            {
+                // Hidden (Community page): nothing is said, as for the library's games
+                RetroGame? game = ShareMine ? myRetro : null;
+                object body = game == null ? new { name = "" } : new { platform = game.Platform.Slug, romId = game.Id, name = game.Name, platformName = game.Platform.Name };
+                using var request = new HttpRequestMessage(HttpMethod.Put, $"{Service}/activity/retro/me")
+                {
+                    Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json"),
+                };
+                using var _ = await WebHelper.SendLongAsync(request, System.Threading.CancellationToken.None);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>The retro games played, read each minute (the live link of the chat brings the changes sooner).</summary>
+        private async Task ReadRetroAsync()
+        {
+            while (started)
+            {
+                try
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Get, $"{Service}/activity/retro");
+                    using var response = await WebHelper.SendLongAsync(request, System.Threading.CancellationToken.None);
+                    if (response.IsSuccessStatusCode)
+                        ApplyRetro(System.Text.Json.JsonSerializer.Deserialize<List<RetroActivity>>(await response.Content.ReadAsStringAsync()), replaceAll: true);
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+                await Task.Delay(TimeSpan.FromMinutes(1));
+            }
+        }
+
+        /// <summary>Takes the retro games as the service says them: all of them, or one player's (null: stopped). Also used by the tests.</summary>
+        internal void ApplyRetro(IEnumerable<RetroActivity>? received, bool replaceAll, int? stoppedBy = null)
+        {
+            lock (activities)
+            {
+                if (replaceAll)
+                    retro = new();
+                if (stoppedBy is int stopped)
+                    retro.Remove(stopped);
+                foreach (RetroActivity activity in received ?? Enumerable.Empty<RetroActivity>())
+                    retro[activity.UserId] = activity;
+            }
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => Changed?.Invoke());
+        }
 
         /// <summary>Raised on the UI thread when someone's activity changed.</summary>
         public event Action? Changed;
@@ -84,6 +175,7 @@ namespace gamevault.Helper
             if (started)
                 return;
             started = true;
+            _ = ReadRetroAsync();
             try
             {
                 User? me = LoginManager.Instance.GetCurrentUser();
@@ -171,6 +263,7 @@ namespace gamevault.Helper
         private async Task SendMineAsync()
         {
             _ = SendHiddenAsync();
+            _ = SendRetroAsync();
             if (socket?.Connected != true)
                 return;
             try
@@ -213,6 +306,7 @@ namespace gamevault.Helper
             catch (Exception ex) { Log.Ignored(ex); }
             socket = null;
             ApplyHidden(null);
+            ApplyRetro(null, replaceAll: true);
             Apply(new List<PlayerActivity>(), replaceAll: true);
         }
     }

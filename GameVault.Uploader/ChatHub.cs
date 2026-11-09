@@ -52,6 +52,9 @@ namespace GameVault.Uploader
             }
         }
 
+        /// <summary>To every open client (what a player plays now).</summary>
+        public Task SendAllAsync(object value) => SendAsync(links.Keys.ToList(), value);
+
         /// <summary>To the open clients of these players; a client that does not take it is left (it reads the list again).</summary>
         public async Task SendAsync(IEnumerable<int> userIds, object value)
         {
