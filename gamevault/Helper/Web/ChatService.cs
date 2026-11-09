@@ -170,6 +170,9 @@ namespace gamevault.Helper
             [JsonPropertyName("type")] public string Type { get; set; } = "";
             [JsonPropertyName("message")] public ChatMessage? Message { get; set; }
             [JsonPropertyName("conversation")] public ChatConversation? Conversation { get; set; }
+            [JsonPropertyName("userId")] public int UserId { get; set; }
+            /// <summary>"retroPlaying": the retro game a player started, null when they stopped.</summary>
+            [JsonPropertyName("playing")] public RetroActivity? Playing { get; set; }
         }
 
         /// <summary>What the live link brought (also used by the tests).</summary>
@@ -178,6 +181,11 @@ namespace gamevault.Helper
             LiveEvent? live;
             try { live = JsonSerializer.Deserialize<LiveEvent>(json); }
             catch (JsonException ex) { Log.Ignored(ex); return; }
+            if (live?.Type == "retroPlaying")
+            {
+                ActivityService.Instance.ApplyRetro(live.Playing == null ? null : new[] { live.Playing }, replaceAll: false, stoppedBy: live.UserId);
+                return;
+            }
             Post(() =>
             {
                 if (live?.Message is ChatMessage message)

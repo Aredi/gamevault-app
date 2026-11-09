@@ -279,6 +279,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(hypervisor, true); } catch { }
             try { Directory.Delete(emulators, true); } catch { }
             try { Directory.Delete(chat, true); } catch { }
+            try { File.Delete(chat + ".key"); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -891,6 +892,76 @@ namespace GameVault.Uploader.Tests
             Assert.Equal("[]", await player.GetStringAsync("/chat/conversations/d-1-2/messages"));
             Assert.False(File.Exists(Path.Combine(chat, "messages", "d-1-2.jsonl")));
             Assert.Single(Directory.GetFiles(Path.Combine(chat, "pictures", "d-2-5")));
+        }
+
+        [Fact]
+        public async Task TheChat_IsSealedOnTheDisk_AndOpensWithItsKeyOnly()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "mon code secret : 4242" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/groups", new { name = "Raid du jeudi", members = new[] { 1 } })).StatusCode);
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.OK, (await player.PostAsync("/chat/conversations/d-1-2/pictures", png)).StatusCode);
+
+            // Nothing readable on the disk: the texts, the group's name, the picture
+            string messages = File.ReadAllText(Path.Combine(chat, "messages", "d-1-2.jsonl"));
+            Assert.DoesNotContain("4242", messages);
+            Assert.DoesNotContain("player", messages);
+            Assert.DoesNotContain("Raid", File.ReadAllText(Path.Combine(chat, "conversations.json")));
+            byte[] stored = File.ReadAllBytes(Assert.Single(Directory.GetFiles(Path.Combine(chat, "pictures", "d-1-2"))));
+            Assert.Null(ChatStore.PictureType(stored));
+            // The key is beside the folder, not in it, and only the service reads it
+            Assert.True(File.Exists(chat + ".key"));
+            Assert.Empty(Directory.GetFiles(chat, "*.key", SearchOption.AllDirectories));
+            if (!OperatingSystem.IsWindows())
+                Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(chat + ".key"));
+
+            // The service shows it opened, and opens it again after a restart
+            using (JsonDocument shown = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations/d-1-2/messages")))
+                Assert.Equal("mon code secret : 4242", shown.RootElement[0].GetProperty("text").GetString());
+            var options = new UploaderOptions { GameVaultUrl = "http://gamevault.test/", FilesDirectory = files, ChatDirectory = chat };
+            var restarted = new ChatStore(options, Microsoft.Extensions.Logging.Abstractions.NullLogger<ChatStore>.Instance);
+            Assert.Equal("mon code secret : 4242", restarted.Messages("d-1-2", null, 50)[0].Text);
+            Assert.Contains(restarted.ListFor(2), s => s.Conversation.Name == "Raid du jeudi");
+
+            // Another key opens nothing, and writes nothing over it
+            string before = File.ReadAllText(Path.Combine(chat, "conversations.json"));
+            var other = new ChatStore(new UploaderOptions { GameVaultUrl = "http://gamevault.test/", FilesDirectory = files, ChatDirectory = chat, ChatKey = Convert.ToBase64String(new byte[32]) },
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ChatStore>.Instance);
+            Assert.Throws<InvalidOperationException>(() => other.ListFor(2));
+            Assert.Empty(other.Messages("d-1-2", null, 50));
+            Assert.Equal(before, File.ReadAllText(Path.Combine(chat, "conversations.json")));
+        }
+
+        [Fact]
+        public async Task ARetroGamePlayed_ShowsToTheOthers_UntilItStops()
+        {
+            var player = Client("user");
+            var client = factory.Server.CreateWebSocketClient();
+            client.ConfigureRequest = request => request.Headers.Authorization = "Bearer admin";
+            using var socket = await client.ConnectAsync(new Uri(factory.Server.BaseAddress, "chat/live"), CancellationToken.None);
+            var hub = factory.Services.GetRequiredService<ChatHub>();
+            for (int i = 0; i < 100 && !hub.IsOnline(1); i++)
+                await Task.Delay(20);
+
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/activity/retro/me", new { platform = "switch-2", romId = 2777, name = "Star Fox", platformName = "Nintendo Switch 2" })).StatusCode);
+            using (JsonDocument now = JsonDocument.Parse(await Client("p5").GetStringAsync("/activity/retro")))
+            {
+                JsonElement playing = Assert.Single(now.RootElement.EnumerateArray());
+                Assert.Equal((2, "Star Fox", "Nintendo Switch 2"), (playing.GetProperty("userId").GetInt32(), playing.GetProperty("name").GetString(), playing.GetProperty("platformName").GetString()));
+            }
+            // The others hear it at once
+            var buffer = new byte[4096];
+            using (var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+            {
+                var received = await socket.ReceiveAsync(buffer, timeout.Token);
+                using JsonDocument live = JsonDocument.Parse(buffer.AsMemory(0, received.Count));
+                Assert.Equal(("retroPlaying", 2, "Star Fox"), (live.RootElement.GetProperty("type").GetString(), live.RootElement.GetProperty("userId").GetInt32(), live.RootElement.GetProperty("playing").GetProperty("name").GetString()));
+            }
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PutAsJsonAsync("/activity/retro/me", new { platform = "../x", romId = 1, name = "x" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/activity/retro/me", new { name = "" })).StatusCode);
+            Assert.Equal("[]", await player.GetStringAsync("/activity/retro"));
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/activity/retro")).StatusCode);
         }
 
         [Fact]

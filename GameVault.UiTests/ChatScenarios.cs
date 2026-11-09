@@ -58,6 +58,19 @@ namespace GameVault.UiTests
                 Assert.Equal(("Zoé", 1, "salut, tu viens ?"), (zoe.Title, zoe.Unread, zoe.Subtitle));
                 Assert.NotNull(zoe.Dot);// playing
                 Assert.DoesNotContain(panel.Model.Friends, f => f.User?.ID == 1);// not oneself
+
+                // Malik plays a retro game: GameVault does not know it, the service says it
+                ActivityService.Instance.ApplyRetro(new[] { new RetroActivity { UserId = 3, Platform = "nes", RomId = 40, Name = "The Legend of Zelda", PlatformName = "NES" } }, replaceAll: true);
+                Dispatcher.UIThread.RunJobs();
+                panel.Rebuild();
+                ChatEntry malik = panel.Model.Friends.First(f => f.User?.ID == 3);
+                Assert.Equal((gamevault.Localization.Loc.F("Playing {0}", "The Legend of Zelda (NES)"), 0), (malik.Subtitle, malik.Rank));
+                Assert.NotNull(malik.Dot);
+                Assert.Equal(gamevault.Localization.Loc.F("Playing {0}", "The Legend of Zelda (NES)"), gamevault.Converter.PresenceConverter.PlayingText(3));// the community page too
+                ActivityService.Instance.ApplyRetro(null, replaceAll: false, stoppedBy: 3);
+                Dispatcher.UIThread.RunJobs();
+                panel.Rebuild();
+                Assert.Equal(gamevault.Localization.Loc.T("Offline"), panel.Model.Friends.First(f => f.User?.ID == 3).Subtitle);
                 Shot(session, "1-friends");
 
                 // Read: the badge goes, the service knows it
@@ -129,6 +142,7 @@ namespace GameVault.UiTests
                 MainWindowViewModel.Instance.IsChatOpen = false;
                 SanctuaryService.Current = SanctuaryService.Url;
                 ActivityService.Instance.Apply(Array.Empty<PlayerActivity>(), replaceAll: true);
+                ActivityService.Instance.ApplyRetro(null, replaceAll: true);
                 gamevault.Converter.PresenceConverter.GameTitles.Remove(9790);
                 session.Server.Chat.Clear();
                 session.Server.ChatReadAt.Clear();

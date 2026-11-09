@@ -72,6 +72,8 @@ namespace gamevault.Helper
                     : emulator.ControllerHint is string hint ? $"{Loc.T("Playing: close the game's window to quit")} · {hint}"
                     : Loc.T("Playing: close the game's window to quit");
                 DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
+                // The friends see it in their chat and the community page, as a library game
+                ActivityService.Instance.SetRetroPlaying(game);
                 _ = WhenClosedAsync(process, game, before);
             }
             catch (RetroArchManager.MissingBiosException ex)
@@ -102,6 +104,7 @@ namespace gamevault.Helper
                 game.Failure = new GameFailure(failure, process.ExitCode, (int)ran.TotalSeconds, started);
             }
             DiscordHelper.Instance.RetroStopped();
+            ActivityService.Instance.SetRetroPlaying(null);
             try
             {
                 // What the game wrote outside the files named after it (a memory card) is its saves from now on

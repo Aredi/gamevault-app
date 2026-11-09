@@ -1786,5 +1786,6 @@
   "A picture is 10 MB at most.": "Une image fait 10 Mo au plus.",
   "A group needs a name (60 characters at most) and 1 to 19 other players.": "Un groupe a besoin d'un nom (60 caractères au plus) et de 1 à 19 autres joueurs.",
   "A group's name has 1 to 60 characters.": "Le nom d'un groupe fait de 1 à 60 caractères.",
-  "GameVault did not say who this player is.": "GameVault n'a pas indiqué qui est ce joueur."
+  "GameVault did not say who this player is.": "GameVault n'a pas indiqué qui est ce joueur.",
+  "A retro game needs its platform and its RomM id.": "Un jeu rétro a besoin de sa plateforme et de son identifiant RomM."
 }
