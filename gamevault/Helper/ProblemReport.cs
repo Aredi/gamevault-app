@@ -98,7 +98,7 @@ namespace gamevault.Helper
             foreach (var root in settings.RootDirectories ?? new())
             {
                 var drive = PlatformInfo.GetDriveForPath(root.Uri);
-                string free = drive != null ? GameVault.Core.Storage.StorageCleanup.FormatSize(drive.AvailableFreeSpace) : "?";
+                string free = drive != null ? gamevault.Converter.GameSizeConverter.Text(drive.AvailableFreeSpace) : "?";
                 Line("Root directory", $"{root.Uri} ({free} free{(Directory.Exists(root.Uri) ? "" : ", MISSING")})");
             }
             Line("Auto extract / install", $"{settings.AutoExtract} / {settings.AutoInstallPortable}");

@@ -610,7 +610,7 @@ namespace gamevault.UserControls
             if (selected.Count == 0)
                 return;
             long total = selected.Sum(i => i.Candidate.Size);
-            if (!await DialogService.ConfirmAsync(Loc.F("Delete {0} item(s) and free {1}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", selected.Count, GameVault.Core.Storage.StorageCleanup.FormatSize(total)), Loc.T("Free up disk space")))
+            if (!await DialogService.ConfirmAsync(Loc.Plural(selected.Count, "Delete {0} item and free {1}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", "Delete {0} items and free {1}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", selected.Count, gamevault.Converter.GameSizeConverter.Text(total)), Loc.T("Free up disk space")))
                 return;
             ViewModel.IsStorageCleanupRunning = true;
             var failed = new List<string>();
@@ -630,7 +630,7 @@ namespace gamevault.UserControls
             if (OperatingSystem.IsLinux())
                 ViewModel.RefreshCompatibilityTools();
             MainWindowViewModel.Instance.AppBarText = failed.Count == 0
-                ? Loc.F("Freed {0}", GameVault.Core.Storage.StorageCleanup.FormatSize(total))
+                ? Loc.F("Freed {0}", gamevault.Converter.GameSizeConverter.Text(total))
                 : Loc.F("Could not delete: {0}", string.Join(", ", failed));
             ViewModel.IsStorageCleanupRunning = false;
             AnalyzeStorage_Click(sender, e);
@@ -657,7 +657,7 @@ namespace gamevault.UserControls
                 return;
             int users = InstallViewModel.Instance.InstalledGames
                 .Count(g => GameCompatibility.ForInstallation(g.Value).ToolId == tool.Id);
-            string warning = users > 0 ? Loc.F("\n\n{0} installed game(s) use it and will fall back to the default tool.", users) : "";
+            string warning = users > 0 ? Loc.Plural(users, "\n\n{0} installed game uses it and will fall back to the default tool.", "\n\n{0} installed games use it and will fall back to the default tool.") : "";
             if (CompatibilitySettings.DefaultToolId == tool.Id)
                 warning += "\n\nIt is the default tool, the default goes back to \"Automatic\".";
             if (!await DialogService.ConfirmAsync(Loc.F("Delete {0}?{1}", tool.Name, warning), Loc.T("Delete compatibility tool")))

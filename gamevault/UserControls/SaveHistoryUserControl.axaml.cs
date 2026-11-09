@@ -115,8 +115,8 @@ namespace gamevault.UserControls
             Version = version;
             IsCurrent = isCurrent;
             DateTime local = version.SavedAtUtc.ToLocalTime();
-            Date = local.ToString("f", CultureInfo.CurrentCulture);
-            Details = string.Join(" · ", RelativeDate.Format(local), StorageCleanup.FormatSize(version.Size),
+            Date = local.ToString("d MMMM yyyy HH:mm", CultureInfo.CurrentCulture);// no day of the week
+            Details = string.Join(" · ", RelativeDate.Format(local), gamevault.Converter.GameSizeConverter.Text(version.Size),
                 fromThisComputer ? Loc.T("from this computer") : Loc.T("from another computer"));
         }
 

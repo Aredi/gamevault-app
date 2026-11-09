@@ -211,7 +211,7 @@ namespace gamevault.ViewModels
             var selected = StorageCleanupItems.Where(i => i.IsSelected).ToList();
             StorageCleanupSummary = StorageCleanupItems.Count == 0
                 ? Loc.T("Nothing to clean up.")
-                : Loc.F("{0} of {1} selected: {2} can be freed.", selected.Count, StorageCleanupItems.Count, GameVault.Core.Storage.StorageCleanup.FormatSize(selected.Sum(i => i.Candidate.Size)));
+                : Loc.Plural(selected.Count, "{0} item of {1} selected: {2} can be freed.", "{0} items of {1} selected: {2} can be freed.", selected.Count, StorageCleanupItems.Count, gamevault.Converter.GameSizeConverter.Text(selected.Sum(i => i.Candidate.Size)));
         }
         #endregion
         #region Download queue
@@ -566,7 +566,8 @@ namespace gamevault.ViewModels
         {
             get
             {
-                return Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                // "1.42.3", as the releases are named (the assembly has a fourth part, always 0)
+                return Assembly.GetExecutingAssembly().GetName().Version!.ToString(3);
             }
         }
         /// <summary>The Mac's version plays the retro games only: its PC games are Windows'.</summary>

@@ -108,7 +108,8 @@
                         <TextBlock Classes="eyebrow" Text="{l:T 'Game Settings'}" />
                         <TextBlock Classes="display" Text="{Binding Game.Title}" FontSize="30" TextTrimming="CharacterEllipsis" />
                         <StackPanel Orientation="Horizontal" Spacing="14">
-                            <TextBlock FontSize="13" Text="{Binding Game.ReleaseDate.Year, FallbackValue='?', TargetNullValue='?'}" />
+                            <!-- The metadata's year, as the game's page; the file's year when there is no metadata, nothing when neither -->
+                            <TextBlock FontSize="13" Text="{Binding ReleaseYear}" IsVisible="{Binding ReleaseYear, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                             <TextBlock FontSize="13" Text="{Binding Game.ID, StringFormat={l:T 'ID {0}'}}" />
                             <TextBlock FontSize="13" Text="{Binding Game.Version, StringFormat={l:T 'Version {0}'}, TargetNullValue={l:T 'Version N/A'}}" />
                             <TextBlock FontSize="13" Text="{Binding InstalledGameVersion, StringFormat={l:T 'Installed Version {0}'}, TargetNullValue={l:T 'Installed Version N/A'}}" />
@@ -456,11 +457,11 @@
                                         <StackPanel Margin="5,0,0,0">
                                             <TextBlock Text="{l:T 'Title'}" FontSize="15" FontWeight="Bold" />
                                             <TextBlock FontSize="15" Width="200" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" ToolTip.Tip="{Binding CurrentShownMappedGame.Title}"
-                                                       Text="{Binding CurrentShownMappedGame.Title, TargetNullValue='N/A', FallbackValue='N/A'}" />
+                                                       Text="{Binding CurrentShownMappedGame.Title, TargetNullValue={l:T 'N/A'}, FallbackValue={l:T 'N/A'}}" />
                                             <TextBlock Text="{l:T 'Release Date'}" FontSize="15" FontWeight="Bold" />
-                                            <TextBlock FontSize="15" Text="{Binding CurrentShownMappedGame.ReleaseDate, StringFormat={l:T '{}{0:dd/MM/yyyy}'}, TargetNullValue='N/A', FallbackValue='N/A'}" />
+                                            <TextBlock FontSize="15" Text="{Binding CurrentShownMappedGame.ReleaseDate, StringFormat={l:T '{}{0:dd/MM/yyyy}'}, TargetNullValue={l:T 'N/A'}, FallbackValue={l:T 'N/A'}}" />
                                             <TextBlock Text="{l:T 'Last Cached'}" FontSize="15" FontWeight="Bold" />
-                                            <TextBlock FontSize="15" Text="{Binding CurrentShownMappedGame.UpdatedAt, StringFormat={l:T '{}{0:dd/MM/yyyy}'}, TargetNullValue='N/A', FallbackValue='N/A'}" />
+                                            <TextBlock FontSize="15" Text="{Binding CurrentShownMappedGame.UpdatedAt, StringFormat={l:T '{}{0:dd/MM/yyyy}'}, TargetNullValue={l:T 'N/A'}, FallbackValue={l:T 'N/A'}}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </StackPanel>

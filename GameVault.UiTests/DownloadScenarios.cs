@@ -48,7 +48,7 @@ namespace GameVault.UiTests
                 GameDownloadUserControl.FreeSpace = _ => 100_000;
                 await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
                 var model = (GameDownloadViewModel)Download(game.ID).DataContext!;
-                string expected = gamevault.Localization.Loc.F("Not enough space to extract: {0} needed, {1} free. Free some space, then extract again.", GameVault.Core.Storage.StorageCleanup.FormatSize(1_000_000), GameVault.Core.Storage.StorageCleanup.FormatSize(100_000));
+                string expected = gamevault.Localization.Loc.F("Not enough space to extract: {0} needed, {1} free. Free some space, then extract again.", gamevault.Converter.GameSizeConverter.Text(1_000_000), gamevault.Converter.GameSizeConverter.Text(100_000));
                 await TestSession.WaitUntil(() => model.State == expected, Timeout, "the missing space to be told");
                 Assert.False(Directory.Exists(Path.Combine(session.DownloadFolder(game), "Extract")));
                 Assert.True(File.Exists(file));

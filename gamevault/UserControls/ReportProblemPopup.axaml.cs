@@ -43,7 +43,9 @@ namespace gamevault.UserControls
                 category.PropertyChanged += async (_, _) => await ShowDiagnosticAsync();
             uiTitle.Text = title;
             uiCategories.ItemsSource = categories;
+            // Opened without a game (the menu, the tests): nothing to say it sends
             uiContext.Text = Loc.F("Sent with it: {0}", context);
+            uiContext.IsVisible = context.Length > 0;
             AttachedToVisualTree += async (_, _) => await ShowMineAsync();
         }
 

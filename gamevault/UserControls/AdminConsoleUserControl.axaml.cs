@@ -176,7 +176,7 @@ namespace gamevault.UserControls
             public string? Mac { get; set; }
             public string? Executable { get; set; }
             public int Games { get; init; }
-            public string GamesText => Loc.F("{0} game(s)", Games);
+            public string GamesText => Loc.Plural(Games, "{0} game", "{0} games");
             public bool Saved { get; set; }
 
             public GameEmulators.Emulator ToEmulator() => new() { Id = Id, Name = Name, Console = Slugs[Math.Max(0, ConsoleIndex)], Windows = Windows, Linux = Linux, Mac = Mac, Executable = Executable };

@@ -72,7 +72,7 @@ namespace gamevault.UserControls.SettingsComponents
             RetroArchLayout layout = RetroArchManager.Layout;
             long size = await Task.Run(RetroArchManager.InstalledSize);
             uiRetroArch.Text = layout.IsInstalled
-                ? Loc.F("Version {0} installed · {1}", RetroArchLayout.Version, StorageCleanup.FormatSize(size))
+                ? Loc.F("Version {0} installed · {1}", RetroArchLayout.Version, gamevault.Converter.GameSizeConverter.Text(size))
                 : Loc.T("Not installed");
             uiUninstall.IsEnabled = size > 0;
             var cores = RetroSystems.All.Values.Where(s => StandaloneEmulator.Of(s) is StandaloneEmulator emulator ? emulator.Layout.IsInstalled : File.Exists(layout.CoreFile(s.Core)))

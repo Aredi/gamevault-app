@@ -8,6 +8,20 @@ namespace gamevault.Converter
 {
     internal class GameSizeConverter : IValueConverter
     {
+        private static readonly string[] Suffixes = { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
+
+        /// <summary>The one way a size is written: "35,85 Go", its units in the interface's language.</summary>
+        public static string Text(double bytes, int unit = 1024)
+        {
+            int index = 0;
+            while (bytes >= unit && index < Suffixes.Length - 1)
+            {
+                bytes /= unit;
+                index++;
+            }
+            return $"{Math.Round(bytes, 2).ToString(CultureInfo.CurrentCulture)} {Loc.T(Suffixes[index])}";
+        }
+
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             try
@@ -17,27 +31,8 @@ namespace gamevault.Converter
                     throw new ArgumentException(Loc.T("Invalid input value"));
                 }
 
-                double size = double.Parse(value.ToString());
-
-                // DEFAULTS TO IEC (1024) used for storage capacity etc.
-                int baseValue = 1024;
-                if (parameter != null && parameter is int)
-                {
-                    // Other Standard could be SI (1000) used for download speeds etc.
-                    baseValue = (int)parameter;
-                }
-
-                string[] sizeSuffixes = { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
-
-                int suffixIndex = 0;
-                while (size >= baseValue && suffixIndex < sizeSuffixes.Length - 1)
-                {
-                    size /= baseValue;
-                    suffixIndex++;
-                }
-
-                size = Math.Round(size, 2);
-                return $"{size.ToString(CultureInfo.CurrentCulture)} {gamevault.Localization.Loc.T(sizeSuffixes[suffixIndex])}";
+                // IEC (1024) by default, for storage; SI (1000) as the parameter, for download speeds
+                return Text(double.Parse(value.ToString()!), parameter is int unit ? unit : 1024);
             }
             catch (Exception ex)
             {

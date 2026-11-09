@@ -180,7 +180,7 @@ namespace gamevault.UserControls
             {
                 var saves = RetroCloudSaves.Of(ViewModel.Game);
                 int files = saves.Files().Count;
-                string local = files == 0 ? Loc.T("No save on this PC") : Loc.F("{0} save file(s) on this PC", files);
+                string local = files == 0 ? Loc.T("No save on this PC") : Loc.Plural(files, "{0} save file on this PC", "{0} save files on this PC");
                 string cloud = !SettingsViewModel.Instance.CloudSaves ? Loc.T("cloud saves off (Settings > Data)")
                     : saves.LastSync > 0 ? Loc.F("synced {0}", Converter.RelativeDate.Format(DateTimeOffset.FromUnixTimeMilliseconds(saves.LastSync).UtcDateTime))
                     : Loc.T("not in the cloud yet");
