@@ -172,7 +172,7 @@ namespace gamevault.Helper
         }
         public static async Task<Bitmap> DownloadImageFromUrlAsync(string imageUrl)
         {
-            var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);
+            using var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             var imageData = await response.Content.ReadAsByteArrayAsync();
             using var memoryStream = new MemoryStream(imageData);

@@ -524,16 +524,9 @@ namespace gamevault.UserControls
             }
         }
 
-        private string CalculateTimeLeft(long? totalFileSize, long totalBytesRead, double tspanMilliseconds)
-        {
-            double timeLeftSeconds = (double)((totalFileSize - totalBytesRead) / downloadSpeedCalc.GetCurrentSpeed());
-            TimeSpan t = TimeSpan.FromSeconds(0);
-            if (timeLeftSeconds > 0 && !double.IsInfinity(timeLeftSeconds) && !double.IsNaN(timeLeftSeconds))
-            {
-                t = TimeSpan.FromSeconds(timeLeftSeconds);
-            }
-            return string.Format("{0:00}:{1:00}:{2:00}", ((int)t.TotalHours), t.Minutes, t.Seconds);
-        }
+        /// <summary>A speed near zero once gave seconds no TimeSpan holds: the download failed on it.</summary>
+        private string CalculateTimeLeft(long? totalFileSize, long totalBytesRead, double tspanMilliseconds) =>
+            GameVault.Core.Downloads.TimeLeft.Text((totalFileSize ?? 0) - totalBytesRead, downloadSpeedCalc.GetCurrentSpeed());
 
         private async void DeleteFile_Click(object sender, RoutedEventArgs e)
         {

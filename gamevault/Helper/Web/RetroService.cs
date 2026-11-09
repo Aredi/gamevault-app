@@ -443,9 +443,12 @@ namespace gamevault.Helper
         }
 
         /// <summary>A cover, screenshot or manual of RomM, kept on disk: each is downloaded once.</summary>
+        /// <summary>The retro covers, screenshots and badges kept on disk: part of the image cache (Settings).</summary>
+        public static string MediaDirectory => Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media");
+
         public static async Task<string> MediaFileAsync(string media, string? version = null)
         {
-            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", (version != null ? version + "-" : "") + media.Replace('/', '_'));
+            string file = Path.Combine(MediaDirectory, (version != null ? version + "-" : "") + media.Replace('/', '_'));
             if (!File.Exists(file))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);
@@ -457,7 +460,7 @@ namespace gamevault.Helper
         /// <summary>A RetroAchievements badge, kept on disk: a badge never changes, and pages show it again and again.</summary>
         public static async Task<Bitmap> BadgeImageAsync(string url)
         {
-            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", "badges", Path.GetFileName(new Uri(url).AbsolutePath));
+            string file = Path.Combine(MediaDirectory, "badges", Path.GetFileName(new Uri(url).AbsolutePath));
             if (!File.Exists(file))
             {
                 byte[] png = await HttpClients.Shared.GetByteArrayAsync(url);
