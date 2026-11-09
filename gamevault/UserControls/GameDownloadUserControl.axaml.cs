@@ -45,8 +45,10 @@ namespace gamevault.UserControls
         private string mountedDrive = "";
 
         /// <param name="installPath">The existing installation an update goes to (its folder keeps its name if the title changed).</param>
-        public GameDownloadUserControl(Game game, string rootDirectory, bool download, string? installPath = null)
+        /// <param name="isUpdate">Known before the download starts: an update may fetch only the files that changed.</param>
+        public GameDownloadUserControl(Game game, string rootDirectory, bool download, string? installPath = null, bool isUpdate = false)
         {
+            IsUpdate = isUpdate;
             InitializeComponent();
             ViewModel = new GameDownloadViewModel();
             this.DataContext = ViewModel;
@@ -247,6 +249,14 @@ namespace gamevault.UserControls
         public void StartFromQueue()
         {
             ViewModel.IsQueued = false;
+            if (CanUpdateByPieces)
+            {
+                pausedBySchedule = false;
+                ViewModel.IsDownloadResumed = false;
+                ViewModel.IsDownloadPaused = false;
+                _ = UpdateByPieces();
+                return;
+            }
             if (ViewModel.IsDownloadPaused || pausedBySchedule)
             {
                 pausedBySchedule = false;
@@ -292,6 +302,8 @@ namespace gamevault.UserControls
                 ViewModel.IsQueued = false;
                 pausedBySchedule = false;
             }
+            StopPieces();
+            DeletePieces();
             if (client == null)
             {
                 try
@@ -400,10 +412,18 @@ namespace gamevault.UserControls
                 pausedBySchedule = false;
                 ViewModel.IsDownloadResumed = false;
                 ViewModel.IsDownloadPaused = false;
-                _ = DownloadGame(true);
+                _ = CanUpdateByPieces ? UpdateByPieces() : DownloadGame(true);
             }
             else
             {
+                if (StopPieces())
+                {
+                    ViewModel.IsDownloadPaused = true;
+                    IsDownloadActive = false;
+                    ViewModel.State = "Download Paused";
+                    DownloadQueue.Advance();
+                    return;
+                }
                 if (client == null)
                     return;
 
@@ -416,6 +436,13 @@ namespace gamevault.UserControls
         }
         public void PauseDownload()
         {
+            if (IsDownloadActive && !ViewModel.IsDownloadPaused && StopPieces())
+            {
+                ViewModel.IsDownloadPaused = true;
+                IsDownloadActive = false;
+                ViewModel.State = "Download Paused";
+                return;
+            }
             if (client == null || ViewModel.IsDownloadPaused || !IsDownloadActive)
                 return;
 
@@ -1204,7 +1231,9 @@ namespace gamevault.UserControls
         /// <summary>Downloads the newer build of an installed game and replaces the installed one with it.</summary>
         public bool IsUpdate { get; set; }
 
-        private async Task ApplyUpdate()
+        /// <param name="arrived">Where the new files are; the extracted archive when null.</param>
+        /// <param name="pieces">An update by pieces: <paramref name="arrived"/> only has the files that changed.</param>
+        private async Task ApplyUpdate(string? arrived = null, GameVault.Core.Downloads.DeltaPlan? pieces = null)
         {
             bool portable = ViewModel.Game?.Type == GameType.WINDOWS_PORTABLE || ViewModel.Game?.Type == GameType.LINUX_PORTABLE;
             if (!portable)
@@ -1223,15 +1252,20 @@ namespace gamevault.UserControls
                 }
                 return;
             }
-            string extracted = Path.Combine(m_DownloadPath, "Extract");
+            string extracted = arrived ?? Path.Combine(m_DownloadPath, "Extract");
             string files = Path.Combine(ViewModel.InstallPath, "Files");
             uiProgressRingInstall.IsActive = true;
             uiBtnExtract.IsEnabled = false;
             try
             {
                 var oldFiles = GameVault.Core.Library.InstallManifest.Read(ViewModel.InstallPath);
-                var newFiles = await Task.Run(() => GameVault.Core.Library.InstallManifest.ApplyUpdate(extracted, files, oldFiles));
+                var newFiles = await Task.Run(() => GameVault.Core.Library.InstallManifest.ApplyUpdate(extracted, files, oldFiles, pieces?.Files.Select(file => file.Path).ToList()));
                 GameVault.Core.Library.InstallManifest.Write(ViewModel.InstallPath, newFiles);
+                // The checksums spare the next update by pieces the reading of every file; after a whole archive they are not known
+                if (pieces != null)
+                    await Task.Run(() => GameVault.Core.Downloads.FileSums.Write(ViewModel.InstallPath, files, pieces.Files));
+                else
+                    File.Delete(Path.Combine(ViewModel.InstallPath, GameVault.Core.Downloads.FileSums.FileName));
                 try { Directory.Delete(extracted, true); }
                 catch (Exception ex) { Log.Ignored(ex); }
                 InstalledGameState.Record(ViewModel.InstallPath, ViewModel.Game);

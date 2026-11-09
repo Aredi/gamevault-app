@@ -219,7 +219,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough space available to update '{0}'", game.Title);
                 return;
             }
-            DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, root, true, installed.Value) { IsUpdate = true });
+            DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, root, true, installed.Value, isUpdate: true));
             MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is updated{1}, your saves and settings are kept", game.Title, (string.IsNullOrEmpty(game.Version) ? "" : Loc.F(" to {0}", game.Version)));
         }
         /// <param name="unattended">Asked from elsewhere (remote install): nobody answers questions, the last
