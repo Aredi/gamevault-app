@@ -63,14 +63,14 @@ namespace gamevault.UserControls
                         string text = string.Equals(p.State, "COMPLETED", StringComparison.OrdinalIgnoreCase)
                             ? Loc.F("{0} completed {1}", p.User!.Username, game)
                             : Loc.F("{0} played {1}", p.User!.Username, game);
-                        return new ActivityFeedItem(p.User, p.Game, text, Converter.RelativeDate.Format(p.LastPlayedAt!.Value), p.LastPlayedAt!.Value.ToUniversalTime());
+                        return new ActivityFeedItem(p.User, p.Game, text, Converter.RelativeDate.FormatMoment(p.LastPlayedAt!.Value), p.LastPlayedAt!.Value.ToUniversalTime());
                     })
                     .ToList();
                 // The retro games played lately (kept by the SanctuaryVault service), among them by date
                 try
                 {
                     var retro = (await RetroLibrary.ActivityAsync()).Select(a => new ActivityFeedItem(null, null,
-                        Loc.F("{0} played {1}", a.Username, $"{a.Name} ({a.PlatformName})"), Converter.RelativeDate.Format(a.LastPlayed), a.LastPlayed.ToUniversalTime(),
+                        Loc.F("{0} played {1}", a.Username, $"{a.Name} ({a.PlatformName})"), Converter.RelativeDate.FormatMoment(a.LastPlayed), a.LastPlayed.ToUniversalTime(),
                         RetroLibrary.GameOf(a.RomId, a.Platform, a.PlatformName, a.Name, a.Cover)));
                     Items = Items.Concat(retro).OrderByDescending(i => i.At).Take(30).ToList();
                 }
@@ -86,7 +86,7 @@ namespace gamevault.UserControls
                             string game = $"{last.Name} ({last.PlatformName})";
                             string text = g.Count() == 1 ? Loc.F("{0} earned \"{1}\" in {2}", last.Username, last.Title, game)
                                 : Loc.F("{0} earned {1} achievements in {2}", last.Username, g.Count(), game);
-                            return new ActivityFeedItem(null, null, text, Converter.RelativeDate.Format(last.Date), last.Date.ToUniversalTime(),
+                            return new ActivityFeedItem(null, null, text, Converter.RelativeDate.FormatMoment(last.Date), last.Date.ToUniversalTime(),
                                 RetroLibrary.GameOf(last.RomId, last.Platform, last.PlatformName, last.Name, last.Cover));
                         });
                     Items = Items.Concat(unlocks).OrderByDescending(i => i.At).Take(30).ToList();

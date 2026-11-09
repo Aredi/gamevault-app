@@ -59,7 +59,8 @@ namespace gamevault.ViewModels
 
         /// <summary>"Konami · 2002": under the title.</summary>
         public string Subtitle => string.Join(" · ", new[] { Game.Companies.FirstOrDefault(), Game.ReleaseDate?.Year.ToString(), Game.Platform.Name }.Where(p => !string.IsNullOrEmpty(p)));
-        public string ReleaseText => Game.ReleaseDate?.ToString("D", CultureInfo.CurrentCulture) ?? "—";
+        // As the library's game page: "1 mars 1986", without the day of the week
+        public string ReleaseText => Game.ReleaseDate?.ToString("d MMMM yyyy", CultureInfo.CurrentCulture) ?? "—";
         public string LastPlayedText => RetroLibrary.LastPlayedOf(Game) is DateTime last ? Converter.RelativeDate.Format(last) : "—";
         public string Join(string[] values) => values.Length > 0 ? string.Join(", ", values) : "—";
         public string CompaniesText => Join(Game.Companies);

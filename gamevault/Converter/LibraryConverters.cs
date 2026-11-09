@@ -112,6 +112,21 @@ namespace gamevault.Converter
 
     internal static class RelativeDate
     {
+        /// <summary>
+        /// The recent activity: "just now", "12 min ago", "2 h ago" the same day (what was played this morning is not
+        /// what is played now), then as <see cref="Format"/>.
+        /// </summary>
+        public static string FormatMoment(DateTime value)
+        {
+            DateTime local = value.Kind == DateTimeKind.Utc ? value.ToLocalTime() : value;
+            TimeSpan ago = DateTime.Now - local;
+            if (local.Date != DateTime.Now.Date || ago < TimeSpan.Zero)
+                return Format(value);
+            if (ago.TotalMinutes < 1)
+                return Loc.T("just now");
+            return ago.TotalHours < 1 ? Loc.F("{0} min ago", (int)ago.TotalMinutes) : Loc.F("{0} h ago", (int)ago.TotalHours);
+        }
+
         /// <summary>"today", "yesterday", "3 days ago", ... then the date.</summary>
         public static string Format(DateTime value)
         {

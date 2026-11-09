@@ -77,12 +77,5 @@ namespace GameVault.Core.Tests
             Assert.Equal(new[] { 4 }, StorageCleanup.FindInstallations(new[] { Path.Combine(root, "lib") }).Select(i => i.Id));
         }
 
-        [Fact]
-        public void FormatSize_UsesBinaryUnits()
-        {
-            Assert.Equal("512 B", StorageCleanup.FormatSize(512));
-            Assert.Equal($"{1.5:0.#} KB", StorageCleanup.FormatSize(1536));// shown in the user's culture
-            Assert.Equal("2 GB", StorageCleanup.FormatSize(2L * 1024 * 1024 * 1024));
-        }
     }
 }

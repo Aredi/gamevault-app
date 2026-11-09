@@ -94,8 +94,8 @@ namespace gamevault.UserControls
             DateTime now = DateTime.UtcNow;
             var summary = InstalledGamesUsage.Summarize(games.Select(g => g.Usage).ToList(), now);
             uiSummary.Text = summary.IdleCount > 0
-                ? Loc.F("{0} installed games take {1}. {2} were not played for 3 months: {3} can be freed.", summary.Count, StorageCleanup.FormatSize(summary.Size), summary.IdleCount, StorageCleanup.FormatSize(summary.IdleSize))
-                : Loc.F("{0} installed games take {1}.", summary.Count, StorageCleanup.FormatSize(summary.Size));
+                ? Loc.F("{0} installed games take {1}. {2} were not played for 3 months: {3} can be freed.", summary.Count, gamevault.Converter.GameSizeConverter.Text(summary.Size), summary.IdleCount, gamevault.Converter.GameSizeConverter.Text(summary.IdleSize))
+                : Loc.F("{0} installed games take {1}.", summary.Count, gamevault.Converter.GameSizeConverter.Text(summary.Size));
             var sort = uiSort.SelectedIndex switch { 1 => InstalledGamesSort.LastPlayed, 2 => InstalledGamesSort.Title, _ => InstalledGamesSort.Size };
             var byId = games.ToDictionary(g => g.Usage.Id);
             var shown = InstalledGamesUsage.Sort(games.Select(g => g.Usage), sort, now)
@@ -117,7 +117,7 @@ namespace gamevault.UserControls
             selected.IntersectWith(games.Where(g => g.Retro != null).Select(g => g.Usage.Directory));
             long size = games.Where(g => selected.Contains(g.Usage.Directory)).Sum(g => g.Usage.Size);
             uiDeleteSelected.IsVisible = selected.Count > 0;
-            uiDeleteSelectedText.Text = Loc.F("Delete the {0} selected retro games ({1})", selected.Count, StorageCleanup.FormatSize(size));
+            uiDeleteSelectedText.Text = Loc.F("Delete the {0} selected retro games ({1})", selected.Count, gamevault.Converter.GameSizeConverter.Text(size));
         }
 
         private void Selected_Changed(object? sender, RoutedEventArgs e)
@@ -143,7 +143,7 @@ namespace gamevault.UserControls
         private async void DeleteSelected_Click(object? sender, RoutedEventArgs e)
         {
             var chosen = Chosen;
-            if (chosen.Count > 0 && await DialogService.ConfirmAsync(Loc.F("Delete {0} retro games from this PC ({1})? Their saves are kept.", chosen.Count, StorageCleanup.FormatSize(chosen.Sum(g => g.Usage.Size))), Loc.T("Storage")))
+            if (chosen.Count > 0 && await DialogService.ConfirmAsync(Loc.F("Delete {0} retro games from this PC ({1})? Their saves are kept.", chosen.Count, gamevault.Converter.GameSizeConverter.Text(chosen.Sum(g => g.Usage.Size))), Loc.T("Storage")))
                 await DeleteSelectedAsync();
         }
 
@@ -235,7 +235,7 @@ namespace gamevault.UserControls
         public RetroGame? Retro { get; }
         public bool IsEmulator { get; }
         public string Title => Usage.Title;
-        public string SizeText => StorageCleanup.FormatSize(Usage.Size);
+        public string SizeText => gamevault.Converter.GameSizeConverter.Text(Usage.Size);
         public bool IsIdle { get; }
         public string PlayText { get; }
     }
@@ -264,8 +264,8 @@ namespace gamevault.UserControls
                     rows.Add(new DriveRow
                     {
                         Name = drive.Name,
-                        FreeText = Loc.F("{0} free of {1}", StorageCleanup.FormatSize(free), StorageCleanup.FormatSize(total)),
-                        UsageText = Loc.F("Games: {0} · other files: {1}", StorageCleanup.FormatSize(ours), StorageCleanup.FormatSize(others)),
+                        FreeText = Loc.F("{0} free of {1}", gamevault.Converter.GameSizeConverter.Text(free), gamevault.Converter.GameSizeConverter.Text(total)),
+                        UsageText = Loc.F("Games: {0} · other files: {1}", gamevault.Converter.GameSizeConverter.Text(ours), gamevault.Converter.GameSizeConverter.Text(others)),
                         OursWidth = total > 0 ? Math.Max(2, BarWidth * ours / total) : 0,
                         OthersWidth = total > 0 ? BarWidth * others / total : 0,
                     });

@@ -45,7 +45,7 @@ namespace GameVault.UiTests
                 model.PendingUser.InviteCode = made.Code.ToLowerInvariant();
                 activate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await TestSession.WaitUntil(() => activate.IsEnabled && model.AppBarText != null, TimeSpan.FromSeconds(10), "the activation");
-                Assert.Equal("Ton compte est activé.", model.AppBarText);
+                Assert.Equal("Votre compte est activé.", model.AppBarText);
 
                 // The console: the code is used, by whom; the account says which code it came with; older accounts nothing
                 var users = new[] { new User { ID = 11, Username = "newbie" }, new User { ID = 1, Username = "admin" } };

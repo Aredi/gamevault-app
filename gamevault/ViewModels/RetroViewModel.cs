@@ -193,8 +193,10 @@ namespace gamevault.ViewModels
         public void ApplyFilter()
         {
             IEnumerable<RetroGame> shown = AllGames;
-            if (Search.Trim() is { Length: > 0 } text)
-                shown = shown.Where(g => g.Name.Contains(text, StringComparison.OrdinalIgnoreCase) || g.FileName.Contains(text, StringComparison.OrdinalIgnoreCase));
+            // Accents and case ignored, as the quick search: "pokemon" finds "Pokémon"
+            if (GameVault.Core.Library.QuickMatch.Normalize(Search) is { Length: > 0 } text)
+                shown = shown.Where(g => GameVault.Core.Library.QuickMatch.Normalize(g.Name).Contains(text, StringComparison.Ordinal)
+                    || GameVault.Core.Library.QuickMatch.Normalize(g.FileName).Contains(text, StringComparison.Ordinal));
             if (OnlyInstalled)
                 shown = shown.Where(g => g.Installed);
             if (OnlyFavorites)

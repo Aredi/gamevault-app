@@ -299,7 +299,7 @@ namespace gamevault.UserControls
                 if (lanRoom != null)
                     uiLanRoomText.Text = lanRoom.Members.Count == 1
                         ? Loc.F("{0} plays in LAN in {1}", lanRoom.Members[0].UserName, lanRoom.Name)
-                        : Loc.F("{0} and {1} more play in LAN in {2}", lanRoom.Members[0].UserName, lanRoom.Members.Count - 1, lanRoom.Name);
+                        : Loc.Plural(lanRoom.Members.Count - 1, "{0} and {1} other play in LAN in {2}", "{0} and {1} others play in LAN in {2}", lanRoom.Members[0].UserName, lanRoom.Members.Count - 1, lanRoom.Name);
             }
             // The server has no LAN rooms: nothing shown
             catch (Exception ex) { Log.Ignored(ex); }

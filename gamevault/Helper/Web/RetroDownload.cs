@@ -280,9 +280,7 @@ namespace gamevault.Helper
             });
         }
 
-        /// <summary>A whole number of bytes: the converter reads its value back with the current culture ("8388608.5" is no number in French).</summary>
-        internal static string Size(double bytes, int unit = 1024) =>
-            new Converter.GameSizeConverter().Convert((long)Math.Round(bytes), typeof(string), unit, System.Globalization.CultureInfo.CurrentCulture) as string ?? "";
+        internal static string Size(double bytes, int unit = 1024) => Converter.GameSizeConverter.Text(bytes, unit);
 
         /// <summary>A step of the preparation, from another thread: shown when it comes, unless the preparation ended (its outcome stays).</summary>
         private void Preparing(string text) => Dispatcher.UIThread.Post(() =>

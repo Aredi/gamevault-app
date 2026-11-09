@@ -117,19 +117,6 @@ namespace GameVault.Core.Storage
             return size;
         }
 
-        public static string FormatSize(long bytes)
-        {
-            string[] units = { "B", "KB", "MB", "GB", "TB" };
-            double value = bytes;
-            int unit = 0;
-            while (value >= 1024 && unit < units.Length - 1)
-            {
-                value /= 1024;
-                unit++;
-            }
-            return unit == 0 ? $"{bytes} B" : $"{value:0.#} {units[unit]}";
-        }
-
         private static IEnumerable<string> SubDirectories(string parent)
         {
             try { return Directory.Exists(parent) ? Directory.GetDirectories(parent) : Array.Empty<string>(); }

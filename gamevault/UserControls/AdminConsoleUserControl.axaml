@@ -3,8 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:gamevault.UserControls"
              xmlns:vm="clr-namespace:gamevault.ViewModels"
+             xmlns:conv="clr-namespace:gamevault.Converter"
              x:Class="gamevault.UserControls.AdminConsoleUserControl"
              Focusable="True">
+    <UserControl.Resources>
+        <conv:RoleNameConverter x:Key="roleNameConv" />
+    </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="Border.card">
             <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
@@ -153,7 +157,14 @@
                                             </Button>
                                             <ComboBox Grid.Column="1" Width="150" VerticalAlignment="Center"
                                                       ItemsSource="{Binding $parent[UserControl].DataContext.PermissionRoleEnumTypes}"
-                                                      SelectedItem="{Binding Role}" SelectionChanged="PermissionRole_SelectionChanged" />
+                                                      SelectedItem="{Binding Role}" SelectionChanged="PermissionRole_SelectionChanged">
+                                                <!-- The role's name in the user's language, as on the profile -->
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Converter={StaticResource roleNameConv}}" />
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
                                             <ToggleSwitch Grid.Column="2" IsChecked="{Binding Activated}" VerticalAlignment="Center" MinWidth="0" Click="Activated_Toggled" />
                                             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" HorizontalAlignment="Right">
                                                 <Button Classes="round small" Click="EditUser_Clicked" ToolTip.Tip="{l:T 'Edit user'}">

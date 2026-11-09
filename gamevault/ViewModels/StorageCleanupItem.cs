@@ -15,7 +15,7 @@ namespace gamevault.ViewModels
 
         private readonly Action selectionChanged;
         public CleanupCandidate Candidate { get; }
-        public string SizeText => StorageCleanup.FormatSize(Candidate.Size);
+        public string SizeText => gamevault.Converter.GameSizeConverter.Text(Candidate.Size);
         public string KindText => Candidate.Kind switch
         {
             CleanupKind.InstalledGameArchive => Loc.T("archive of an installed game"),

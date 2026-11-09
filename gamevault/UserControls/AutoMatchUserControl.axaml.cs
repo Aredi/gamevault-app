@@ -225,7 +225,7 @@ namespace gamevault.UserControls
         private void UpdateSelection()
         {
             int count = items.Count(i => i.IsChecked && !i.IsDone);
-            uiSelection.Text = Loc.F("{0} checked", count);
+            uiSelection.Text = Loc.Plural(count, "{0} game checked", "{0} games checked");
             uiApply.IsEnabled = count > 0 && !uiLoading.IsVisible;
         }
 

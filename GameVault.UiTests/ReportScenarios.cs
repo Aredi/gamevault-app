@@ -87,7 +87,7 @@ namespace GameVault.UiTests
                 var popup = ReportProblemPopup.For(game);
                 var status = popup.FindControl<TextBlock>("uiStatus")!;
                 await popup.SendAsync();
-                Assert.Equal("Choisis le type de problème.", status.Text);
+                Assert.Equal("Choisissez le type de problème.", status.Text);
                 popup.Categories.Single(c => c.Code == "other").IsChecked = true;
                 await popup.SendAsync();
                 Assert.Equal("Décris le problème.", status.Text);

@@ -80,7 +80,7 @@ namespace gamevault.UserControls
                     }
                     name.KeyDown += (_, e) => { if (e.Key == Key.Enter) { Rename(); Fill(); } };
                     name.LostFocus += (_, _) => Rename();
-                    var count = new TextBlock { Text = Loc.F("{0} game(s)", collection.GameIds.Count), VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Opacity = 0.7 };
+                    var count = new TextBlock { Text = Loc.Plural(collection.GameIds.Count, "{0} game", "{0} games"), VerticalAlignment = VerticalAlignment.Center, FontSize = 12, Opacity = 0.7 };
                     var delete = new IconButton { Text = Loc.T("Delete"), Kind = ButtonKind.Danger, Height = 28, Width = 70, FontSize = 12 };
                     delete.Click += async (_, _) =>
                     {

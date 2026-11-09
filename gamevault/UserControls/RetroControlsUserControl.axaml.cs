@@ -124,7 +124,7 @@ namespace gamevault.UserControls
             }).ToList();
             uiRows.ItemsSource = rows;
             uiDefaults.IsEnabled = keyboard ? keys?.Count > 0 : pad?.Count > 0;
-            uiSummary.Text = changed > 0 ? Loc.F("{0} button(s) changed for this console", changed) : Loc.T("RetroArch's default buttons");
+            uiSummary.Text = changed > 0 ? Loc.Plural(changed, "{0} button changed for this console", "{0} buttons changed for this console") : Loc.T("RetroArch's default buttons");
 
             uiDiagram.Kind = PadDiagram.KindOf(slug, Device);
             var current = buttons.FirstOrDefault(b => b.Bind == listening);

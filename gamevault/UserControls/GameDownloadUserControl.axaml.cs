@@ -38,7 +38,6 @@ namespace gamevault.UserControls
 
         private SevenZipHelper sevenZipHelper { get; set; }
 
-        private GameSizeConverter gameSizeConverter { get; set; }
         private InputTimer downloadRetryTimer { get; set; }
         private bool isGameTypeForced = false;
         private bool downloadedAgainAfterDamage;
@@ -60,7 +59,6 @@ namespace gamevault.UserControls
             m_DownloadPath = Path.Combine(rootDirectory, "GameVault", "Downloads", folderName);
             ViewModel.InstallPath = installPath ?? Path.Combine(rootDirectory, "GameVault", "Installations", folderName);
             sevenZipHelper = new SevenZipHelper();
-            gameSizeConverter = new GameSizeConverter();
             InitRetryTimer();
             if (download)
             {
@@ -510,19 +508,7 @@ namespace gamevault.UserControls
             extractionCancelled = true;
             sevenZipHelper.Cancel();
         }
-        private string FormatBytesHumanReadable(double size, double tspan = 1, int baseVal = 1024)
-        {
-            try
-            {
-                double value = size / tspan;
-                return (string)gameSizeConverter.Convert(value.ToString(), null, baseVal, null);
-            }
-            catch (Exception ex)
-            {
-                GameVault.Core.Log.Ignored(ex);
-                return "ERR";
-            }
-        }
+        private static string FormatBytesHumanReadable(double size, double tspan = 1, int baseVal = 1024) => GameSizeConverter.Text(size / tspan, baseVal);
 
         /// <summary>A speed near zero once gave seconds no TimeSpan holds: the download failed on it.</summary>
         private string CalculateTimeLeft(long? totalFileSize, long totalBytesRead, double tspanMilliseconds) =>
@@ -785,7 +771,7 @@ namespace gamevault.UserControls
             long needed = sevenZipHelper.ExtractedSize - (Directory.Exists(extractDirectory) ? StorageCleanup.DirectorySize(extractDirectory) : 0);
             if (FreeSpace(m_DownloadPath) is long free && free < needed)
             {
-                ViewModel.State = Loc.F("Not enough space to extract: {0} needed, {1} free. Free some space, then extract again.", StorageCleanup.FormatSize(needed), StorageCleanup.FormatSize(free));
+                ViewModel.State = Loc.F("Not enough space to extract: {0} needed, {1} free. Free some space, then extract again.", gamevault.Converter.GameSizeConverter.Text(needed), gamevault.Converter.GameSizeConverter.Text(free));
                 Log.Info($"{ViewModel.Game?.Title}: {ViewModel.State}");
                 ViewModel.ExtractionUIVisibility = false;
                 if (!App.Instance.IsWindowActiveAndControlInFocus(MainControl.Downloads))

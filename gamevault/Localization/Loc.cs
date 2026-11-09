@@ -47,6 +47,13 @@ namespace gamevault.Localization
             english == null ? "" : texts.TryGetValue(english, out string? translated) && !string.IsNullOrEmpty(translated) ? translated : english;
 
         /// <summary>The translation of a format text ("'{0}' is installed") filled with <paramref name="values"/>.</summary>
+        /// <summary>
+        /// The singular or the plural English text, translated: French puts 0 in the singular ("0 jeu"), English in the
+        /// plural ("0 games"). Instead of "game(s)", "jeu(x)".
+        /// </summary>
+        public static string Plural(int count, string singular, string plural, params object?[] values) =>
+            F(count == 1 || count == 0 && Language == "fr" ? singular : plural, values.Length == 0 ? new object?[] { count } : values);
+
         public static string F(string englishFormat, params object?[] values)
         {
             try { return string.Format(CultureInfo.CurrentCulture, T(englishFormat), values); }

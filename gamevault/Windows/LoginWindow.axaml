@@ -240,7 +240,7 @@
                                     <TextBlock Text="{l:T 'Birth Date'}" FontSize="13" FontWeight="SemiBold" />
                                     <TextBlock Classes="mandatory" Text="{l:T '(Mandatory)'}" IsVisible="{Binding SignUpServerInfo.IsBirthDateMandatory}" />
                                 </StackPanel>
-                                <CalendarDatePicker SelectedDate="{Binding SignupUser.BirthDate}" HorizontalAlignment="Stretch" KeyDown="UserRegistrationTextBox_KeyDown" />
+                                <CalendarDatePicker SelectedDate="{Binding SignupUser.BirthDate}" Watermark="{l:T 'dd/mm/yyyy'}" HorizontalAlignment="Stretch" KeyDown="UserRegistrationTextBox_KeyDown" />
                             </StackPanel>
                         </Grid>
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,5">

@@ -41,8 +41,9 @@ namespace gamevault.Helper
             public Dictionary<string, Color> Colors { get; } = new Dictionary<string, Color>();
             public Dictionary<string, string> Strings { get; } = new Dictionary<string, string>();
 
-            public string DisplayName => Strings.GetValueOrDefault("Theme.DisplayName", "Unnamed Theme");
-            public string Description => Strings.GetValueOrDefault("Theme.Description", "");
+            // In the user's language when it is a theme of SanctuaryVault (an own theme keeps its words)
+            public string DisplayName => Loc.T(Strings.GetValueOrDefault("Theme.DisplayName", "Unnamed Theme"));
+            public string Description => Loc.T(Strings.GetValueOrDefault("Theme.Description", ""));
             public string Author => Strings.GetValueOrDefault("Theme.Author", "");
 
             public Color Get(string key, Color fallback) => Colors.TryGetValue(key, out Color c) ? c : fallback;

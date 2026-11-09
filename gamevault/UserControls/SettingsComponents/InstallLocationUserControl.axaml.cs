@@ -66,7 +66,7 @@ namespace gamevault.UserControls
 
         internal IReadOnlyList<InstallLocationRow> Rows => uiLocations.ItemsSource as IReadOnlyList<InstallLocationRow> ?? Array.Empty<InstallLocationRow>();
 
-        private static string Size(long bytes) => new GameSizeConverter().Convert(bytes, typeof(string), null, CultureInfo.CurrentCulture) as string ?? "";
+        private static string Size(long bytes) => GameSizeConverter.Text(bytes);
 
         private void Load()
         {

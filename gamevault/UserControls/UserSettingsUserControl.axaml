@@ -6,6 +6,7 @@
              x:Class="gamevault.UserControls.UserSettingsUserControl"
              Focusable="True">
     <UserControl.Resources>
+        <conv:RoleNameConverter x:Key="roleNameConv" />
         <conv:UTCtoLocalTimeConverter x:Key="utcToLocalTimeConv" />
     </UserControl.Resources>
     <UserControl.Styles>
@@ -89,7 +90,7 @@
                     <TextBlock.Text>
                         <MultiBinding StringFormat="{}{0} ({1})">
                             <Binding Path="OriginUser.Username" />
-                            <Binding Path="OriginUser.Role" FallbackValue="?" />
+                            <Binding Path="OriginUser.Role" Converter="{StaticResource roleNameConv}" FallbackValue="?" />
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
