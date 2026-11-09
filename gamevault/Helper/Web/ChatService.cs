@@ -25,6 +25,49 @@ namespace gamevault.Helper
         [JsonPropertyName("text")] public string? Text { get; set; }
         [JsonPropertyName("picture")] public string? Picture { get; set; }
         [JsonPropertyName("sentAt")] public DateTime SentAt { get; set; }
+        [JsonPropertyName("replyTo")] public ChatReply? ReplyTo { get; set; }
+        [JsonPropertyName("game")] public ChatGame? Game { get; set; }
+        [JsonPropertyName("editedAt")] public DateTime? EditedAt { get; set; }
+        /// <summary>Taken back by its sender: no text, no picture, no game.</summary>
+        [JsonPropertyName("deleted")] public bool Deleted { get; set; }
+        /// <summary>Emoji → the players who put it.</summary>
+        [JsonPropertyName("reactions")] public Dictionary<string, List<int>>? Reactions { get; set; }
+    }
+
+    /// <summary>The message answered, a few words of it.</summary>
+    public sealed class ChatReply
+    {
+        [JsonPropertyName("id")] public string Id { get; set; } = "";
+        [JsonPropertyName("senderName")] public string SenderName { get; set; } = "";
+        [JsonPropertyName("text")] public string? Text { get; set; }
+    }
+
+    /// <summary>A game in a message: shared, or an invitation to play it.</summary>
+    public sealed class ChatGame
+    {
+        /// <summary>"pc" (the library) or "retro".</summary>
+        [JsonPropertyName("kind")] public string Kind { get; set; } = "pc";
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("platform")] public string? Platform { get; set; }
+        [JsonPropertyName("platformName")] public string? PlatformName { get; set; }
+        [JsonPropertyName("title")] public string Title { get; set; } = "";
+        [JsonPropertyName("cover")] public string? Cover { get; set; }
+        [JsonPropertyName("coverVersion")] public string? CoverVersion { get; set; }
+        [JsonPropertyName("invite")] public bool Invite { get; set; }
+
+        [JsonIgnore] public bool IsRetro => Kind == "retro";
+
+        public static ChatGame Of(Models.Game game, bool invite) => new()
+        {
+            Kind = "pc", Id = game.ID, Invite = invite,
+            Title = game.Metadata?.Title is { Length: > 0 } title && ViewModels.SettingsViewModel.Instance.ShowMappedTitle ? title : game.Title,
+        };
+
+        internal static ChatGame Of(RetroGame game, bool invite) => new()
+        {
+            Kind = "retro", Id = game.Id, Platform = game.Platform.Slug, PlatformName = game.Platform.Name, Title = game.Name,
+            Cover = game.Cover, CoverVersion = game.CoverVersion, Invite = invite,
+        };
     }
 
     public sealed class ChatConversation
@@ -37,8 +80,11 @@ namespace gamevault.Helper
         [JsonPropertyName("activeAt")] public DateTime ActiveAt { get; set; }
         [JsonPropertyName("unread")] public int Unread { get; set; }
         [JsonPropertyName("last")] public ChatMessage? Last { get; set; }
+        /// <summary>When each member last read it ("Seen"); none for the announcements.</summary>
+        [JsonPropertyName("readAt")] public Dictionary<int, DateTime>? ReadAt { get; set; }
 
         [JsonIgnore] public bool IsGroup => Kind == "group";
+        [JsonIgnore] public bool IsNews => Id == ChatService.NewsId;
     }
 
     /// <summary>
@@ -49,6 +95,10 @@ namespace gamevault.Helper
     internal sealed class ChatService
     {
         public static ChatService Instance { get; } = new();
+        /// <summary>The administrators' announcements: every player reads them.</summary>
+        public const string NewsId = "news";
+        private static readonly TimeSpan TypingEvery = TimeSpan.FromSeconds(3);
+        private readonly Dictionary<string, DateTime> typingSaid = new();
 
         private static readonly TimeSpan PollTime = TimeSpan.FromSeconds(15);
         private List<ChatConversation> conversations = new();
@@ -64,6 +114,12 @@ namespace gamevault.Helper
         public event Action<ChatMessage>? MessageReceived;
         /// <summary>On the UI thread: the list changed (a group, the unread counts, the availability).</summary>
         public event Action? Changed;
+        /// <summary>On the UI thread: a message was changed, taken back, or got an emoji.</summary>
+        public event Action<ChatMessage>? MessageChanged;
+        /// <summary>On the UI thread: someone writes in a conversation (conversation, player, their name).</summary>
+        public event Action<string, int, string>? Typing;
+        /// <summary>On the UI thread: someone read a conversation ("Seen").</summary>
+        public event Action<string>? Read;
 
         private static string Service => SanctuaryService.Current.TrimEnd('/');
         public static int Me => LoginManager.Instance.GetCurrentUser()?.ID ?? 0;
@@ -173,6 +229,11 @@ namespace gamevault.Helper
             [JsonPropertyName("userId")] public int UserId { get; set; }
             /// <summary>"retroPlaying": the retro game a player started, null when they stopped.</summary>
             [JsonPropertyName("playing")] public RetroActivity? Playing { get; set; }
+            /// <summary>"presence": a player's status.</summary>
+            [JsonPropertyName("status")] public PlayerStatus? Status { get; set; }
+            [JsonPropertyName("conversationId")] public string? ConversationId { get; set; }
+            [JsonPropertyName("userName")] public string? UserName { get; set; }
+            [JsonPropertyName("readAt")] public DateTime ReadAt { get; set; }
         }
 
         /// <summary>What the live link brought (also used by the tests).</summary>
@@ -186,9 +247,33 @@ namespace gamevault.Helper
                 ActivityService.Instance.ApplyRetro(live.Playing == null ? null : new[] { live.Playing }, replaceAll: false, stoppedBy: live.UserId);
                 return;
             }
+            if (live?.Type == "presence")
+            {
+                if (live.Status != null)
+                    ActivityService.Instance.ApplyStatuses(new[] { live.Status }, replaceAll: false);
+                return;
+            }
             Post(() =>
             {
-                if (live?.Message is ChatMessage message)
+                if (live?.Type == "changed" && live.Message is ChatMessage changedMessage)
+                    Changed_(changedMessage);
+                else if (live?.Type == "typing" && live.ConversationId != null && live.UserId != Me)
+                    Typing?.Invoke(live.ConversationId, live.UserId, live.UserName ?? "");
+                else if (live?.Type == "read" && live.ConversationId != null)
+                {
+                    if (Of(live.ConversationId) is ChatConversation read)
+                    {
+                        (read.ReadAt ??= new())[live.UserId] = live.ReadAt;
+                        // Read on another PC of the player's: not unread here either
+                        if (live.UserId == Me && read.Unread > 0)
+                        {
+                            read.Unread = 0;
+                            Changed?.Invoke();
+                        }
+                    }
+                    Read?.Invoke(live.ConversationId);
+                }
+                else if (live?.Message is ChatMessage message)
                     Received(message);
                 else if (live?.Conversation is ChatConversation changed)
                 {
@@ -204,13 +289,24 @@ namespace gamevault.Helper
             });
         }
 
+        /// <summary>A message changed: as the conversation's last one too.</summary>
+        private void Changed_(ChatMessage message)
+        {
+            if (Of(message.ConversationId) is ChatConversation conversation && conversation.Last?.Id == message.Id)
+            {
+                conversation.Last = message;
+                Changed?.Invoke();
+            }
+            MessageChanged?.Invoke(message);
+        }
+
         private void Received(ChatMessage message)
         {
             ChatConversation? conversation = Of(message.ConversationId);
             if (conversation == null)
             {
                 // The first message of someone: the conversation comes with it
-                conversation = new ChatConversation { Id = message.ConversationId, Kind = message.ConversationId.StartsWith("g-") ? "group" : "direct" };
+                conversation = new ChatConversation { Id = message.ConversationId, Kind = message.ConversationId.StartsWith("g-") ? "group" : message.ConversationId == NewsId ? "news" : "direct" };
                 if (ChatServiceIds.DirectMembers(message.ConversationId) is (int a, int b))
                     conversation.Members = new() { a, b };
                 conversations.Insert(0, conversation);
@@ -240,6 +336,8 @@ namespace gamevault.Helper
                     return;
                 }
                 var fresh = JsonSerializer.Deserialize<List<ChatConversation>>(await response.Content.ReadAsStringAsync()) ?? new();
+                // The statuses with the list: away, do not disturb, since when they play
+                _ = ActivityService.Instance.ReadStatusesAsync();
                 Post(() =>
                 {
                     var previous = conversations.ToDictionary(c => c.Id, c => c.Last?.Id);
@@ -262,16 +360,25 @@ namespace gamevault.Helper
         public async Task<List<ChatMessage>> MessagesAsync(string conversationId, string? before = null) =>
             await RetroService.GetAsync<List<ChatMessage>>($"/chat/conversations/{conversationId}/messages{(before != null ? $"?before={before}" : "")}");
 
-        public async Task<ChatMessage> SendTextAsync(string conversationId, string text)
+        /// <param name="replyTo">The message answered.</param>
+        /// <param name="game">A game shared, or an invitation to play it (the text may be empty then).</param>
+        public async Task<ChatMessage> SendTextAsync(string conversationId, string text, string? replyTo = null, ChatGame? game = null)
         {
-            using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Post, $"/chat/conversations/{conversationId}/messages", RetroService.Json(new { text }));
+            typingSaid.Remove(conversationId);
+            using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Post, $"/chat/conversations/{conversationId}/messages", RetroService.Json(new { text, replyTo, game }));
             return await Sent(response);
         }
 
-        public async Task<ChatMessage> SendPictureAsync(string conversationId, byte[] picture, string? text)
+        public async Task<ChatMessage> SendPictureAsync(string conversationId, byte[] picture, string? text, string? replyTo = null)
         {
+            typingSaid.Remove(conversationId);
             using var content = new ByteArrayContent(picture);
-            string query = string.IsNullOrWhiteSpace(text) ? "" : $"?text={Uri.EscapeDataString(text.Trim())}";
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(text))
+                parts.Add($"text={Uri.EscapeDataString(text.Trim())}");
+            if (replyTo != null)
+                parts.Add($"replyTo={replyTo}");
+            string query = parts.Count == 0 ? "" : "?" + string.Join("&", parts);
             using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Post, $"/chat/conversations/{conversationId}/pictures{query}", content);
             return await Sent(response);
         }
@@ -285,6 +392,54 @@ namespace gamevault.Helper
             // Shown at once, before the live link brings it back
             Post(() => Received(message));
             return message;
+        }
+
+        public async Task<ChatMessage> EditAsync(ChatMessage message, string text)
+        {
+            using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Put, $"/chat/conversations/{message.ConversationId}/messages/{message.Id}", RetroService.Json(new { text }));
+            return await ChangedOn(response);
+        }
+
+        public async Task<ChatMessage> DeleteAsync(ChatMessage message)
+        {
+            using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Delete, $"/chat/conversations/{message.ConversationId}/messages/{message.Id}");
+            return await ChangedOn(response);
+        }
+
+        /// <summary>Puts the emoji, or takes it away when the player had put it.</summary>
+        public async Task<ChatMessage> ReactAsync(ChatMessage message, string emoji)
+        {
+            using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Put, $"/chat/conversations/{message.ConversationId}/messages/{message.Id}/reactions", RetroService.Json(new { emoji }));
+            return await ChangedOn(response);
+        }
+
+        private async Task<ChatMessage> ChangedOn(HttpResponseMessage response)
+        {
+            string body = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException(ServerError(body) ?? response.ReasonPhrase, null, response.StatusCode);
+            ChatMessage message = JsonSerializer.Deserialize<ChatMessage>(body)!;
+            Post(() => Changed_(message));
+            return message;
+        }
+
+        /// <summary>The player writes: the others see it a few seconds (said every 3 s at most).</summary>
+        public async Task TypingAsync(string conversationId)
+        {
+            if (conversationId == NewsId || !IsLive || typingSaid.TryGetValue(conversationId, out DateTime said) && DateTime.UtcNow - said < TypingEvery)
+                return;
+            typingSaid[conversationId] = DateTime.UtcNow;
+            try { using var _ = await RetroService.SendAsync(HttpMethod.Post, $"/chat/conversations/{conversationId}/typing"); }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>An administrator's client: a new game of the library in the announcements (the service tells it once).</summary>
+        public async Task AnnounceAsync(ChatGame game)
+        {
+            if (!IsAvailable || LoginManager.Instance.GetCurrentUser()?.Role != Models.PERMISSION_ROLE.ADMIN)
+                return;
+            try { using var _ = await RetroService.SendAsync(HttpMethod.Post, "/chat/news/games", RetroService.Json(game)); }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         private static string? ServerError(string body)

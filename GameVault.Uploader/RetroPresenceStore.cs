@@ -10,7 +10,8 @@ namespace GameVault.Uploader
     {
         public static readonly TimeSpan Fresh = HiddenPlayStore.Fresh;
 
-        public sealed record Playing(int UserId, string Platform, int RomId, string Name, string PlatformName, DateTimeOffset At);
+        /// <param name="Since">When the game started: kept while the same game is said again.</param>
+        public sealed record Playing(int UserId, string Platform, int RomId, string Name, string PlatformName, DateTimeOffset At, DateTimeOffset Since);
 
         private readonly ConcurrentDictionary<int, Playing> playing = new();
 
@@ -19,8 +20,9 @@ namespace GameVault.Uploader
         {
             if (now == null)
                 return playing.TryRemove(userId, out _);
-            bool changed = !playing.TryGetValue(userId, out Playing? before) || before.Platform != now.Platform || before.RomId != now.RomId;
-            playing[userId] = now;
+            bool changed = !playing.TryGetValue(userId, out Playing? before) || before.Platform != now.Platform || before.RomId != now.RomId
+                || now.At - before.At >= Fresh;// gone silent: a new game since then
+            playing[userId] = changed ? now : now with { Since = before!.Since };
             return changed;
         }
 

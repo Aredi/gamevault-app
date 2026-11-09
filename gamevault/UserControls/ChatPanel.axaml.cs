@@ -7,6 +7,8 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using GameVault.Core.Library;
 using GameVault.Core;
 using gamevault.Helper;
 using gamevault.Localization;
@@ -30,6 +32,10 @@ namespace gamevault.UserControls
         public string ConversationId { get; init; } = "";
         public User? User { get; init; }
         public bool IsGroup { get; init; }
+        /// <summary>The administrators' announcements.</summary>
+        public bool IsNews { get; init; }
+        /// <summary>A group's icon, or the announcements'.</summary>
+        public bool HasIcon => IsGroup || IsNews;
 
         private string title = "";
         public string Title { get => title; set { title = value; OnPropertyChanged(); } }
@@ -50,6 +56,27 @@ namespace gamevault.UserControls
         public int Rank { get; set; }
     }
 
+    /// <summary>An emoji under a message, and how many put it.</summary>
+    internal sealed class ChatReactionChip
+    {
+        public string Emoji { get; init; } = "";
+        public int Count { get; init; }
+        /// <summary>The player put it: a click takes it away.</summary>
+        public bool IsMine { get; init; }
+        public string Who { get; init; } = "";
+        public string Text => $"{Emoji} {Count}";
+    }
+
+    /// <summary>A game to share or to invite to, as the picker lists it.</summary>
+    internal sealed class ChatGamePick
+    {
+        public string Title { get; init; } = "";
+        public string Subtitle { get; init; } = "";
+        public Game? Pc { get; init; }
+        public RetroGame? Retro { get; init; }
+        public ChatGame Shared(bool invite) => Pc != null ? ChatGame.Of(Pc, invite) : ChatGame.Of(Retro!, invite);
+    }
+
     /// <summary>A message as the conversation shows it.</summary>
     internal sealed class ChatMessageRow : ViewModelBase
     {
@@ -58,9 +85,29 @@ namespace gamevault.UserControls
         public ChatMessage Message { get; }
         public bool IsMine => Message.SenderId == ChatService.Me;
         public string Sender => Message.SenderName;
-        public string? Text => Message.Text;
+        public bool IsDeleted => Message.Deleted;
+        public string? Text => Message.Deleted ? Loc.T("Message deleted") : Message.Text;
         public bool HasPicture => Message.Picture != null;
         public string Time => Message.SentAt.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture);
+
+        public bool HasReply => Message.ReplyTo != null && !Message.Deleted;
+        public string ReplySender => Message.ReplyTo?.SenderName ?? "";
+        public string ReplyText => Message.ReplyTo?.Text ?? Loc.T("Message deleted");
+
+        public ChatGame? Game => Message.Deleted ? null : Message.Game;
+        public bool HasGame => Game != null;
+        /// <summary>"Zoé invites you to play", "Invitation sent", or the platform for a game shared.</summary>
+        public string? GameHeader => Game is not { Invite: true } ? null : IsMine ? Loc.T("🎮 Invitation sent") : Loc.F("🎮 {0} invites you to play", Sender);
+        private string? gameSubtitle;
+        public string? GameSubtitle { get => gameSubtitle; set { gameSubtitle = value; OnPropertyChanged(); } }
+        private Game? pcGame;
+        /// <summary>The library's game, read from the server (its cover).</summary>
+        public Game? PcGame { get => pcGame; set { pcGame = value; OnPropertyChanged(); } }
+        private Bitmap? retroCover;
+        public Bitmap? RetroCover { get => retroCover; set { retroCover = value; OnPropertyChanged(); } }
+
+        public List<ChatReactionChip> Reactions { get; init; } = new();
+        public bool HasReactions => Reactions.Count > 0;
 
         private string? day;
         /// <summary>"Today", "Yesterday", "9 November": above the first message of a day.</summary>
@@ -70,7 +117,13 @@ namespace gamevault.UserControls
         public bool ShowsSender { get => showsSender; set { showsSender = value; OnPropertyChanged(); } }
         private bool showsTime;
         /// <summary>Under the last of a row of messages.</summary>
-        public bool ShowsTime { get => showsTime; set { showsTime = value; OnPropertyChanged(); } }
+        public bool ShowsTime { get => showsTime; set { showsTime = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowsFooter)); } }
+        private string? seen;
+        /// <summary>"Seen", "Seen by Zoé, Malik": under the player's last message.</summary>
+        public string? Seen { get => seen; set { seen = value; OnPropertyChanged(); OnPropertyChanged(nameof(Footer)); OnPropertyChanged(nameof(ShowsFooter)); } }
+        public bool ShowsFooter => ShowsTime || Seen != null;
+        /// <summary>"21:04 · edited · Seen".</summary>
+        public string Footer => string.Join(" · ", new[] { Time, Message.EditedAt != null && !Message.Deleted ? Loc.T("edited") : null, Seen }.Where(p => p != null));
         private Bitmap? picture;
         public Bitmap? Picture { get => picture; set { picture = value; OnPropertyChanged(); } }
         public string? PictureFile { get; set; }
@@ -91,8 +144,9 @@ namespace gamevault.UserControls
         private string? statusText;
         public string? StatusText { get => statusText; set { statusText = value; OnPropertyChanged(); } }
         private ChatEntry? open;
-        public ChatEntry? Open { get => open; set { open = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsConversationOpen)); } }
+        public ChatEntry? Open { get => open; set { open = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsConversationOpen)); OnPropertyChanged(nameof(EmptyText)); } }
         public bool IsConversationOpen => Open != null;
+        public string EmptyText => Open?.IsNews == true ? Loc.T("No announcement yet.") : Loc.T("No message yet. Say hello!");
         private bool isMakingGroup;
         public bool IsMakingGroup { get => isMakingGroup; set { isMakingGroup = value; OnPropertyChanged(); } }
         private bool isAddingPlayers;
@@ -101,6 +155,48 @@ namespace gamevault.UserControls
         public bool HasOlder { get => hasOlder; set { hasOlder = value; OnPropertyChanged(); } }
         private bool isSending;
         public bool IsSending { get => isSending; set { isSending = value; OnPropertyChanged(); } }
+        private string? typingText;
+        /// <summary>"Zoé is writing…" in the open conversation.</summary>
+        public string? TypingText { get => typingText; set { typingText = value; OnPropertyChanged(); } }
+        private ChatMessageRow? replyingTo;
+        public ChatMessageRow? ReplyingTo { get => replyingTo; set { replyingTo = value; OnPropertyChanged(); OnPropertyChanged(nameof(DraftNote)); OnPropertyChanged(nameof(HasDraftNote)); } }
+        private ChatMessageRow? editing;
+        /// <summary>The player's message written again: the next Enter saves it.</summary>
+        public ChatMessageRow? Editing { get => editing; set { editing = value; OnPropertyChanged(); OnPropertyChanged(nameof(DraftNote)); OnPropertyChanged(nameof(HasDraftNote)); } }
+        /// <summary>Above the text box: "Answer to Zoé: …", "Editing the message".</summary>
+        public string? DraftNote => Editing != null ? Loc.T("Editing the message") : ReplyingTo is ChatMessageRow row ? Loc.F("Answer to {0}: {1}", row.Sender, Preview(row.Message)) : null;
+        public bool HasDraftNote => DraftNote != null;
+        private bool canWrite = true;
+        /// <summary>The announcements: only the administrators write.</summary>
+        public bool CanWrite { get => canWrite; set { canWrite = value; OnPropertyChanged(); } }
+
+        public ObservableCollection<ChatGamePick> GamePicks { get; } = new();
+        private bool isPickingGame;
+        public bool IsPickingGame { get => isPickingGame; set { isPickingGame = value; OnPropertyChanged(); } }
+        private bool pickInvites;
+        /// <summary>The game picked is an invitation to play it, else shared.</summary>
+        public bool PickInvites { get => pickInvites; set { pickInvites = value; OnPropertyChanged(); OnPropertyChanged(nameof(PickTitle)); } }
+        public string PickTitle => PickInvites ? Loc.T("Invite to play") : Loc.T("Share a game");
+
+        private string myName = "";
+        public string MyName { get => myName; set { myName = value; OnPropertyChanged(); } }
+        private User? me;
+        public User? Me { get => me; set { me = value; OnPropertyChanged(); } }
+        private string myStatus = "";
+        public string MyStatus { get => myStatus; set { myStatus = value; OnPropertyChanged(); } }
+        private IBrush? myDot;
+        public IBrush? MyDot { get => myDot; set { myDot = value; OnPropertyChanged(); } }
+
+        private ChatEntry? news;
+        /// <summary>The announcements, when there are some (or the player is an administrator).</summary>
+        public ChatEntry? News { get => news; set { news = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasNews)); } }
+        public bool HasNews => News != null;
+
+        internal static string Preview(ChatMessage message) =>
+            message.Deleted ? Loc.T("Message deleted")
+            : message.Game is ChatGame game && string.IsNullOrEmpty(message.Text) ? (game.Invite ? Loc.F("🎮 Invitation: {0}", game.Title) : $"🎮 {game.Title}")
+            : string.IsNullOrEmpty(message.Text) ? Loc.T("📷 Picture") : message.Text!.ReplaceLineEndings(" ");
+
         private Bitmap? draftPicture;
         /// <summary>A picture pasted, dropped or chosen: sent with the next message.</summary>
         public Bitmap? DraftPicture { get => draftPicture; set { draftPicture = value; OnPropertyChanged(); } }
@@ -127,9 +223,21 @@ namespace gamevault.UserControls
             "✅", "❌", "⏳", "⚡", "🤯", "😱", "🫡", "😏", "🙃", "😬", "👋", "GG",
         };
 
+        /// <summary>The quick reactions of a message's menu.</summary>
+        internal static readonly string[] Reactions = { "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "GG" };
+        private static readonly TimeSpan TypingShown = TimeSpan.FromSeconds(5);
+
         private readonly ChatPanelModel model = new();
         private readonly Dictionary<int, User> users = new();
         private DateTime usersLoadedAt;
+        /// <summary>Who writes where, until when (the live link says it every 3 s while they write).</summary>
+        private readonly Dictionary<(string Conversation, int User), (string Name, DateTime Until)> typing = new();
+        private readonly DispatcherTimer typingTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+        /// <summary>Each minute: "for 25 min" goes on.</summary>
+        private readonly DispatcherTimer minuteTimer = new() { Interval = TimeSpan.FromMinutes(1) };
+        private readonly DispatcherTimer gameSearchDelay = new() { Interval = TimeSpan.FromMilliseconds(300) };
+        private int gameSearchGeneration;
+        private static readonly Dictionary<int, Game> pcGames = new();
 
         internal ChatPanelModel Model => model;
 
@@ -144,6 +252,40 @@ namespace gamevault.UserControls
             uiConversation.AddHandler(DragDrop.DropEvent, Drop);
             ChatService.Instance.Changed += Rebuild;
             ChatService.Instance.MessageReceived += Received;
+            ChatService.Instance.MessageChanged += MessageChanged;
+            ChatService.Instance.Typing += Typing;
+            ChatService.Instance.Read += id =>
+            {
+                if (model.Open?.ConversationId == id)
+                    Arrange();
+            };
+            typingTimer.Tick += (_, _) => ShowTyping();
+            minuteTimer.Tick += (_, _) => Rebuild();
+            minuteTimer.Start();
+            gameSearchDelay.Tick += async (_, _) =>
+            {
+                gameSearchDelay.Stop();
+                await SearchGamesAsync(uiGameSearch.Text ?? "");
+            };
+            uiGameSearch.TextChanged += (_, _) =>
+            {
+                gameSearchDelay.Stop();
+                gameSearchDelay.Start();
+            };
+            uiDraft.TextChanged += (_, _) =>
+            {
+                if (model.Open is ChatEntry open && model.Editing == null && !string.IsNullOrWhiteSpace(uiDraft.Text))
+                    _ = ChatService.Instance.TypingAsync(open.ConversationId);
+            };
+            // The inputs in the window: "Away" where the system does not say how long nobody touched the PC
+            AttachedToVisualTree += (_, _) =>
+            {
+                if (TopLevel.GetTopLevel(this) is TopLevel top)
+                {
+                    top.AddHandler(PointerMovedEvent, (_, _) => gamevault.Helper.Platform.IdleTime.InputHere(), RoutingStrategies.Tunnel, handledEventsToo: true);
+                    top.AddHandler(KeyDownEvent, (_, _) => gamevault.Helper.Platform.IdleTime.InputHere(), RoutingStrategies.Tunnel, handledEventsToo: true);
+                }
+            };
             ActivityService.Instance.Changed += async () =>
             {
                 await Converter.PresenceConverter.LoadTitlesAsync();
@@ -190,6 +332,30 @@ namespace gamevault.UserControls
             var conversations = ChatService.Instance.Conversations;
             model.StatusText = ChatService.Instance.IsAvailable || users.Count == 0 ? model.StatusText : null;
 
+            // The announcements: when there are some, or for an administrator (who writes the first one)
+            bool admin = LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN;
+            ChatConversation? news = ChatService.Instance.Of(ChatService.NewsId);
+            if (news == null && !admin)
+                model.News = null;
+            else
+            {
+                model.News ??= new ChatEntry { ConversationId = ChatService.NewsId, IsNews = true, Title = Loc.T("Announcements") };
+                model.News.Unread = news?.Unread ?? 0;
+                model.News.Subtitle = news?.Last is ChatMessage lastNews ? Preview(lastNews) : Loc.T("The server's news");
+            }
+            if (LoginManager.Instance.GetCurrentUser() is User current)
+            {
+                model.Me = current;
+                model.MyName = current.Username;
+                (model.MyStatus, model.MyDot) = ActivityService.ChosenState switch
+                {
+                    "away" => (Loc.T("Away"), Converter.PresenceConverter.Away),
+                    "busy" => (Loc.T("Do not disturb"), Converter.PresenceConverter.Busy),
+                    "invisible" => (Loc.T("Invisible"), (IBrush?)null),
+                    _ => (Loc.T("Online"), Converter.PresenceConverter.Online),
+                };
+            }
+
             var groups = conversations.Where(c => c.IsGroup).ToList();
             Sync(model.Groups, groups.Select(c => c.Id).ToList(), id => new ChatEntry { ConversationId = id, IsGroup = true });
             foreach (ChatEntry entry in model.Groups)
@@ -197,8 +363,8 @@ namespace gamevault.UserControls
                 ChatConversation group = groups.First(c => c.Id == entry.ConversationId);
                 entry.Title = group.Name ?? Loc.T("Group");
                 entry.Unread = group.Unread;
-                entry.Subtitle = group.Unread > 0 && group.Last != null ? Preview(group.Last)
-                    : string.Join(", ", group.Members.Where(m => m != me).Select(NameOf));
+                entry.Subtitle = TypingIn(group.Id) ?? (group.Unread > 0 && group.Last != null ? Preview(group.Last)
+                    : string.Join(", ", group.Members.Where(m => m != me).Select(NameOf)));
             }
 
             var friends = users.Values.Where(u => u.ID != me).ToList();
@@ -206,16 +372,14 @@ namespace gamevault.UserControls
             {
                 ChatEntry entry = model.Friends.FirstOrDefault(f => f.User?.ID == user.ID) ?? new ChatEntry { ConversationId = ChatService.DirectId(user.ID), User = user };
                 ChatConversation? direct = ChatService.Instance.Of(entry.ConversationId);
-                PlayerActivity? activity = ActivityService.Instance.Of(user.ID);
                 entry.Title = user.Username;
                 entry.Unread = direct?.Unread ?? 0;
-                // A library game or a retro game (RetroArch, Eden...): playing either way
-                string? playing = Converter.PresenceConverter.PlayingText(user.ID);
-                bool online = activity != null || playing != null;
-                entry.Rank = playing != null ? 0 : online ? 1 : 2;
-                string presence = playing ?? (online ? Loc.T("Online") : Loc.T("Offline"));
-                entry.Subtitle = entry.Unread > 0 && direct?.Last != null ? Preview(direct.Last) : presence;
-                entry.Dot = !online ? null : playing != null && Application.Current!.TryGetResource("Brush.Accent", null, out object? accent) ? accent as IBrush : Converter.PresenceConverter.Online;
+                // A library game or a retro game (RetroArch, Eden...), and for how long; else away, do not disturb...
+                var (presence, dot, rank) = Converter.PresenceConverter.Describe(user.ID);
+                bool online = dot != null;
+                entry.Rank = rank;
+                entry.Subtitle = TypingIn(entry.ConversationId, user.ID) ?? (entry.Unread > 0 && direct?.Last != null ? Preview(direct.Last) : presence);
+                entry.Dot = dot;
                 entry.Opacity = !online && entry.Unread == 0 ? 0.6 : 1;
                 return (entry, active: direct?.ActiveAt ?? DateTime.MinValue);
             })
@@ -228,16 +392,18 @@ namespace gamevault.UserControls
                 foreach (ChatEntry row in rows)
                     model.Friends.Add(row);
             }
-            int online = rows.Count(r => r.Rank < 2);
+            int online = rows.Count(r => r.Rank < 3);
             model.FriendsHeader = Loc.Plural(online, "FRIENDS · {0} ONLINE", "FRIENDS · {0} ONLINE");
             if (model.Open is ChatEntry open)
             {
-                if (open.IsGroup && model.Groups.All(g => g.ConversationId != open.ConversationId))
+                if (open.IsNews)
+                    open.Subtitle = Loc.T("The server's news");
+                else if (open.IsGroup && model.Groups.All(g => g.ConversationId != open.ConversationId))
                     model.Open = null;// left on another PC
                 else if (open.IsGroup)
                     open.Subtitle = string.Join(", ", (ChatService.Instance.Of(open.ConversationId)?.Members ?? new()).Where(m => m != me).Select(NameOf));
-                else if (model.Friends.FirstOrDefault(f => f.ConversationId == open.ConversationId) is ChatEntry friend)
-                    open.Subtitle = friend.Unread > 0 ? open.Subtitle : friend.Subtitle;
+                else if (model.Friends.FirstOrDefault(f => f.ConversationId == open.ConversationId) is ChatEntry friend && friend.User != null)
+                    open.Subtitle = Converter.PresenceConverter.Describe(friend.User.ID).Text;
             }
             model.Changed();
         }
@@ -257,10 +423,15 @@ namespace gamevault.UserControls
             }
         }
 
-        private static string Preview(ChatMessage message) =>
-            string.IsNullOrEmpty(message.Text) ? Loc.T("📷 Picture") : message.Text!.ReplaceLineEndings(" ");
+        private static string Preview(ChatMessage message) => ChatPanelModel.Preview(message);
 
         #region Conversation
+        private async void News_Click(object? sender, RoutedEventArgs e)
+        {
+            if (model.News is ChatEntry news)
+                await OpenAsync(news);
+        }
+
         private async void Entry_Click(object? sender, RoutedEventArgs e)
         {
             if ((sender as Control)?.DataContext is ChatEntry entry)
@@ -270,8 +441,11 @@ namespace gamevault.UserControls
         /// <summary>A conversation: its last messages, read.</summary>
         internal async Task OpenAsync(ChatEntry entry)
         {
-            model.IsMakingGroup = model.IsAddingPlayers = false;
-            model.Open = new ChatEntry { ConversationId = entry.ConversationId, User = entry.User, IsGroup = entry.IsGroup, Title = entry.Title, Subtitle = entry.Unread > 0 ? "" : entry.Subtitle };
+            model.IsMakingGroup = model.IsAddingPlayers = model.IsPickingGame = false;
+            model.ReplyingTo = model.Editing = null;
+            model.TypingText = null;
+            model.Open = new ChatEntry { ConversationId = entry.ConversationId, User = entry.User, IsGroup = entry.IsGroup, IsNews = entry.IsNews, Title = entry.Title, Subtitle = entry.Unread > 0 ? "" : entry.Subtitle };
+            model.CanWrite = !entry.IsNews || LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN;
             model.Messages.Clear();
             model.HasOlder = false;
             DropDraftPicture();
@@ -314,18 +488,61 @@ namespace gamevault.UserControls
         private void Back_Click(object? sender, RoutedEventArgs e)
         {
             model.Open = null;
-            model.IsAddingPlayers = false;
+            model.IsAddingPlayers = model.IsPickingGame = false;
+            model.ReplyingTo = model.Editing = null;
             Rebuild();
         }
 
         private void Close_Click(object? sender, RoutedEventArgs e) => MainWindowViewModel.Instance.IsChatOpen = false;
 
-        private ChatMessageRow Row(ChatMessage message)
+        private ChatMessageRow Row(ChatMessage message, ChatMessageRow? before = null)
         {
-            var row = new ChatMessageRow(message);
-            if (message.Picture != null)
+            int me = ChatService.Me;
+            var row = new ChatMessageRow(message)
+            {
+                Reactions = (message.Reactions ?? new()).Where(r => r.Value.Count > 0).Select(r => new ChatReactionChip
+                {
+                    Emoji = r.Key, Count = r.Value.Count, IsMine = r.Value.Contains(me),
+                    Who = string.Join(", ", r.Value.Select(id => id == me ? Loc.T("You") : NameOf(id))),
+                }).ToList(),
+            };
+            // The same picture or game as before the change: kept, not loaded again
+            if (before != null && before.Message.Picture == message.Picture)
+                (row.Picture, row.PictureFile) = (before.Picture, before.PictureFile);
+            else if (message.Picture != null)
                 _ = LoadPictureAsync(row);
+            if (before != null && before.Game?.Kind == row.Game?.Kind && before.Game?.Id == row.Game?.Id)
+                (row.PcGame, row.RetroCover, row.GameSubtitle) = (before.PcGame, before.RetroCover, before.GameSubtitle);
+            else if (row.Game != null)
+                _ = LoadGameAsync(row);
             return row;
+        }
+
+        /// <summary>A game's card: its cover and what it is (its size, its platform).</summary>
+        private static async Task LoadGameAsync(ChatMessageRow row)
+        {
+            ChatGame game = row.Game!;
+            try
+            {
+                if (game.IsRetro)
+                {
+                    row.GameSubtitle = game.PlatformName ?? game.Platform;
+                    if (game.Cover != null)
+                        row.RetroCover = await RetroService.MediaImageAsync(game.Cover, 160, game.CoverVersion);
+                    return;
+                }
+                Game? known = pcGames.GetValueOrDefault(game.Id)
+                    ?? InstallViewModel.Instance.InstalledGames.Select(g => g.Key).FirstOrDefault(g => g?.ID == game.Id)
+                    ?? MainWindowViewModel.Instance.Library?.Model.GameCards.FirstOrDefault(g => g.ID == game.Id);
+                known ??= JsonSerializer.Deserialize<Game>(await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games/{game.Id}"));
+                if (known == null)
+                    return;
+                pcGames[game.Id] = known;
+                row.PcGame = known;
+                bool installed = InstallViewModel.Instance.InstalledGames.Any(g => g.Key?.ID == game.Id);
+                row.GameSubtitle = string.Join(" · ", new[] { long.TryParse(known.Size, out long size) && size > 0 ? Converter.GameSizeConverter.Text(size) : null, installed ? Loc.T("Installed") : null }.Where(p => p != null));
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         private void Show(ChatMessage message)
@@ -333,6 +550,23 @@ namespace gamevault.UserControls
             if (model.Messages.Any(m => m.Message.Id == message.Id))
                 return;
             model.Messages.Add(Row(message));
+        }
+
+        /// <summary>A message changed (written again, taken back, an emoji): its row again, in its place.</summary>
+        private void MessageChanged(ChatMessage message)
+        {
+            if (model.Open?.ConversationId != message.ConversationId)
+                return;
+            int at = model.Messages.ToList().FindIndex(m => m.Message.Id == message.Id);
+            if (at < 0)
+                return;
+            ChatMessageRow before = model.Messages[at];
+            model.Messages[at] = Row(message, before);
+            if (model.Editing == before)
+                CancelDraftNote();
+            if (model.ReplyingTo == before)
+                model.ReplyingTo = message.Deleted ? null : model.Messages[at];
+            Arrange();
         }
 
         private async Task LoadPictureAsync(ChatMessageRow row)
@@ -360,7 +594,16 @@ namespace gamevault.UserControls
                 bool sameRun = previous != null && !newDay && previous.Message.SenderId == row.Message.SenderId && row.Message.SentAt - previous.Message.SentAt < TimeSpan.FromMinutes(5);
                 row.ShowsSender = group && !row.IsMine && !sameRun;
                 row.ShowsTime = next == null || next.Message.SenderId != row.Message.SenderId || next.Message.SentAt - row.Message.SentAt >= TimeSpan.FromMinutes(5)
-                    || next.Message.SentAt.ToLocalTime().Date != day;
+                    || next.Message.SentAt.ToLocalTime().Date != day || row.Message.EditedAt != null;
+                row.Seen = null;
+            }
+            // "Seen" under the player's last message: who read the conversation since
+            if (model.Open is ChatEntry { IsNews: false } open && ChatService.Instance.Of(open.ConversationId)?.ReadAt is Dictionary<int, DateTime> readAt
+                && model.Messages.LastOrDefault(m => m.IsMine && !m.IsDeleted) is ChatMessageRow last)
+            {
+                var readers = readAt.Where(r => r.Key != ChatService.Me && r.Value >= last.Message.SentAt).Select(r => r.Key).ToList();
+                if (readers.Count > 0)
+                    last.Seen = !group ? Loc.T("Seen") : Loc.F("Seen by {0}", string.Join(", ", readers.Select(NameOf)));
             }
             model.Changed();
         }
@@ -385,11 +628,41 @@ namespace gamevault.UserControls
             }
             if (message.SenderId == ChatService.Me)
                 return;
-            bool seen = shown && TopLevel.GetTopLevel(this) is Window { IsActive: true };
+            // What they wrote is sent: they no longer write
+            if (typing.Remove((message.ConversationId, message.SenderId)))
+                ShowTyping();
+            bool windowActive = TopLevel.GetTopLevel(this) is Window { IsActive: true, IsVisible: true } window && window.WindowState != WindowState.Minimized;
+            bool seen = shown && windowActive;
             if (seen)
                 await ChatService.Instance.MarkReadAsync(message.ConversationId);
             else
                 MainWindowViewModel.Instance.AppBarText = $"{message.SenderName} : {Preview(message)}";
+            if (!windowActive && !message.Deleted && WantsNotifications())
+            {
+                ChatConversation? conversation = ChatService.Instance.Of(message.ConversationId);
+                string title = message.Game is { Invite: true } invite ? Loc.F("{0} invites you to play {1}", message.SenderName, invite.Title)
+                    : conversation?.IsNews == true ? Loc.T("Announcements")
+                    : conversation?.IsGroup == true ? $"{message.SenderName} · {conversation.Name}"
+                    : message.SenderName;
+                ToastMessageHelper.ShowAsIs(title, Preview(message));
+            }
+        }
+
+        /// <summary>
+        /// The desktop's notification for a message: unless the player turned them off, chose "Do not disturb", or plays
+        /// on this PC (a game in full screen is not interrupted).
+        /// </summary>
+        internal static bool WantsNotifications() =>
+            NotificationsOn && ActivityService.ChosenState != "busy" && !ActivityService.Instance.IsPlayingHere;
+
+        internal static bool NotificationsOn
+        {
+            get
+            {
+                try { return Preferences.Get(AppConfigKey.ChatNotifications, LoginManager.Instance.GetUserProfile().UserConfigFile) != "0"; }
+                catch (Exception ex) { Log.Ignored(ex); return true; }
+            }
+            set => Preferences.Set(AppConfigKey.ChatNotifications, value ? "1" : "0", LoginManager.Instance.GetUserProfile().UserConfigFile);
         }
         #endregion
 
@@ -400,6 +673,11 @@ namespace gamevault.UserControls
             {
                 e.Handled = true;
                 await SendAsync();
+            }
+            else if (e.Key == Key.Escape && model.HasDraftNote)
+            {
+                e.Handled = true;
+                CancelDraftNote();
             }
             else if (e.Key == Key.V && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
             {
@@ -425,12 +703,15 @@ namespace gamevault.UserControls
             model.IsSending = true;
             try
             {
-                if (picture != null)
-                    await ChatService.Instance.SendPictureAsync(open.ConversationId, picture, text);
+                if (model.Editing is ChatMessageRow edited)
+                    await ChatService.Instance.EditAsync(edited.Message, text);
+                else if (picture != null)
+                    await ChatService.Instance.SendPictureAsync(open.ConversationId, picture, text, model.ReplyingTo?.Message.Id);
                 else
-                    await ChatService.Instance.SendTextAsync(open.ConversationId, text);
+                    await ChatService.Instance.SendTextAsync(open.ConversationId, text, model.ReplyingTo?.Message.Id);
                 uiDraft.Text = "";
                 DropDraftPicture();
+                model.ReplyingTo = model.Editing = null;
             }
             catch (Exception ex)
             {
@@ -535,6 +816,260 @@ namespace gamevault.UserControls
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
+
+        private void CancelDraft_Click(object? sender, RoutedEventArgs e) => CancelDraftNote();
+
+        private void CancelDraftNote()
+        {
+            if (model.Editing != null)
+                uiDraft.Text = "";
+            model.ReplyingTo = model.Editing = null;
+            uiDraft.Focus();
+        }
+        #endregion
+
+        #region A message's menu: react, answer, copy, change, take back
+        private void Bubble_ContextRequested(object? sender, ContextRequestedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ChatMessageRow row || row.IsDeleted)
+                return;
+            e.Handled = true;
+            var menu = new MenuFlyout();
+            // The quick emojis in a row, as the phones do
+            var emojis = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 2 };
+            foreach (string emoji in Reactions)
+            {
+                var button = new Button { Content = emoji, Classes = { "emoji" }, Width = 34, Height = 34, FontSize = 17 };
+                button.Click += async (_, _) => { menu.Hide(); await ReactAsync(row, emoji); };
+                emojis.Children.Add(button);
+            }
+            menu.Items.Add(new MenuItem { Header = emojis, StaysOpenOnClick = true });
+            menu.Items.Add(new Separator());
+            void Add(string header, Func<Task> action)
+            {
+                var item = new MenuItem { Header = Loc.T(header) };
+                item.Click += async (_, _) => await action();
+                menu.Items.Add(item);
+            }
+            if (model.CanWrite)
+                Add("Answer", () => { Answer(row); return Task.CompletedTask; });
+            if (!string.IsNullOrEmpty(row.Message.Text))
+                Add("Copy the text", async () => { if (TopLevel.GetTopLevel(this)?.Clipboard is IClipboard clipboard) await clipboard.SetTextAsync(row.Message.Text); });
+            if (row.IsMine && !string.IsNullOrEmpty(row.Message.Text))
+                Add("Edit", () => { Edit(row); return Task.CompletedTask; });
+            bool admin = LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN;
+            if (row.IsMine || (admin && row.Message.ConversationId == ChatService.NewsId))
+                Add("Delete", () => DeleteAsync(row));
+            menu.ShowAt((Control)sender!, showAtPointer: true);
+        }
+
+        internal void Answer(ChatMessageRow row)
+        {
+            if (model.Editing != null)
+                uiDraft.Text = "";
+            model.Editing = null;
+            model.ReplyingTo = row;
+            uiDraft.Focus();
+        }
+
+        internal void Edit(ChatMessageRow row)
+        {
+            model.ReplyingTo = null;
+            model.Editing = row;
+            DropDraftPicture();
+            uiDraft.Text = row.Message.Text;
+            uiDraft.CaretIndex = uiDraft.Text?.Length ?? 0;
+            uiDraft.Focus();
+        }
+
+        internal async Task DeleteAsync(ChatMessageRow row, bool confirm = true)
+        {
+            if (confirm && !await DialogService.ConfirmAsync(Loc.T("Delete this message? The others will no longer see it."), Loc.T("Delete")))
+                return;
+            try { await ChatService.Instance.DeleteAsync(row.Message); }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        internal async Task ReactAsync(ChatMessageRow row, string emoji)
+        {
+            try { await ChatService.Instance.ReactAsync(row.Message, emoji); }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        private async void Reaction_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is ChatReactionChip chip && (sender as Control)?.FindAncestorOfType<ItemsControl>()?.DataContext is ChatMessageRow row)
+                await ReactAsync(row, chip.Emoji);
+        }
+        #endregion
+
+        #region Who writes
+        private void Typing(string conversationId, int userId, string name)
+        {
+            typing[(conversationId, userId)] = (name.Length > 0 ? name : NameOf(userId), DateTime.UtcNow + TypingShown);
+            ShowTyping();
+        }
+
+        /// <summary>"Zoé is writing…" in the conversation and the list, gone a few seconds after the last word typed.</summary>
+        private void ShowTyping()
+        {
+            foreach (var gone in typing.Where(t => t.Value.Until <= DateTime.UtcNow).Select(t => t.Key).ToList())
+                typing.Remove(gone);
+            if (typing.Count > 0)
+                typingTimer.Start();
+            else
+                typingTimer.Stop();
+            var here = model.Open == null ? new List<string>() : typing.Where(t => t.Key.Conversation == model.Open.ConversationId).Select(t => t.Value.Name).ToList();
+            model.TypingText = here.Count switch
+            {
+                0 => null,
+                1 => Loc.F("{0} is writing…", here[0]),
+                _ => Loc.F("{0} are writing…", string.Join(", ", here)),
+            };
+            Rebuild();
+        }
+
+        private string? TypingIn(string conversationId, int? userId = null) =>
+            typing.Any(t => t.Key.Conversation == conversationId && (userId == null || t.Key.User == userId) && t.Value.Until > DateTime.UtcNow) ? Loc.T("Writing…") : null;
+        #endregion
+
+        #region Games: shared, invitations
+        private void ShareGame_Click(object? sender, RoutedEventArgs e) => OpenGamePicker(invite: false);
+
+        private void InviteGame_Click(object? sender, RoutedEventArgs e) => OpenGamePicker(invite: true);
+
+        /// <summary>The game played on this PC now, to invite to it in one click.</summary>
+        internal static ChatGame? PlayingHere()
+        {
+            if (ActivityService.Instance.PlayingHereRetro is RetroGame retro)
+                return ChatGame.Of(retro, invite: true);
+            if (ActivityService.Instance.PlayingHereId is int id && InstallViewModel.Instance.InstalledGames.Select(g => g.Key).FirstOrDefault(g => g?.ID == id) is Game game)
+                return ChatGame.Of(game, invite: true);
+            return null;
+        }
+
+        private void GameMenu_Opening(object? sender, EventArgs e)
+        {
+            ChatGame? now = PlayingHere();
+            uiInviteNow.IsVisible = now != null;
+            uiInviteNow.Header = now == null ? null : Loc.F("Invite to play {0}", now.Title);
+        }
+
+        private async void InviteNow_Click(object? sender, RoutedEventArgs e)
+        {
+            if (PlayingHere() is ChatGame now)
+                await SendGameAsync(now);
+        }
+
+        internal void OpenGamePicker(bool invite)
+        {
+            model.PickInvites = invite;
+            model.IsPickingGame = true;
+            uiGameSearch.Text = "";
+            _ = SearchGamesAsync("");
+            Dispatcher.UIThread.Post(() => uiGameSearch.Focus());
+        }
+
+        private void CloseGamePicker_Click(object? sender, RoutedEventArgs e) => model.IsPickingGame = false;
+
+        /// <summary>The library's games (the server searches them) and the retro ones (those the Retro page listed, those installed).</summary>
+        internal async Task SearchGamesAsync(string text)
+        {
+            int generation = ++gameSearchGeneration;
+            text = text.Trim();
+            var picks = new List<ChatGamePick>();
+            if (PlayingHere() is ChatGame now)
+                picks.Add(new ChatGamePick { Title = now.Title, Subtitle = Loc.T("You are playing it"), Pc = now.IsRetro ? null : pcGames.GetValueOrDefault(now.Id) ?? InstallViewModel.Instance.InstalledGames.Select(g => g.Key).FirstOrDefault(g => g?.ID == now.Id), Retro = now.IsRetro ? ActivityService.Instance.PlayingHereRetro : null });
+            IEnumerable<Game> pc = InstallViewModel.Instance.InstalledGames.Select(g => g.Key).Where(g => g != null)!;
+            List<RetroGame> retro;
+            try { retro = RetroLibrary.InstalledGames().Concat(MainWindowViewModel.Instance.Retro.KnownGames).DistinctBy(RetroLibrary.Key).ToList(); }
+            catch (Exception ex) { Log.Ignored(ex); retro = new(); }
+            string wanted = QuickMatch.Normalize(text);
+            if (text.Length >= 2)
+            {
+                try
+                {
+                    string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?search={Uri.EscapeDataString(text)}&limit=15");
+                    pc = JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>();
+                }
+                catch (Exception ex)
+                {
+                    Log.Ignored(ex);
+                    pc = pc.Where(g => QuickMatch.Normalize(g.Title).Contains(wanted));
+                }
+                retro = retro.Where(g => QuickMatch.Normalize(g.Name).Contains(wanted)).ToList();
+            }
+            if (generation != gameSearchGeneration)
+                return;
+            picks.AddRange(pc.Take(15).Select(g => new ChatGamePick { Title = ChatGame.Of(g, false).Title, Subtitle = Loc.T("PC"), Pc = g }));
+            picks.AddRange(retro.Take(15).Select(g => new ChatGamePick { Title = g.Name, Subtitle = g.Platform.Name, Retro = g }));
+            model.GamePicks.Clear();
+            foreach (ChatGamePick pick in picks.DistinctBy(p => p.Pc != null ? $"pc:{p.Pc.ID}" : $"retro:{p.Retro!.Platform.Slug}:{p.Retro.Id}"))
+                model.GamePicks.Add(pick);
+        }
+
+        private async void GamePick_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is ChatGamePick pick)
+                await PickAsync(pick);
+        }
+
+        internal async Task PickAsync(ChatGamePick pick)
+        {
+            model.IsPickingGame = false;
+            await SendGameAsync(pick.Shared(model.PickInvites));
+        }
+
+        /// <summary>A game in the conversation: with the words written, if any.</summary>
+        internal async Task SendGameAsync(ChatGame game)
+        {
+            if (model.Open is not ChatEntry open)
+                return;
+            string text = model.Editing == null ? (uiDraft.Text ?? "").Trim() : "";
+            try
+            {
+                await ChatService.Instance.SendTextAsync(open.ConversationId, text, model.ReplyingTo?.Message.Id, game);
+                if (model.Editing == null)
+                    uiDraft.Text = "";
+                model.ReplyingTo = null;
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = Loc.F("The message could not be sent: {0}", WebExceptionHelper.TryGetServerMessage(ex)); }
+        }
+
+        private async void OpenSharedGame_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is ChatMessageRow row)
+                await OpenGameAsync(row);
+        }
+
+        /// <summary>The game's page: to play it, or to install it.</summary>
+        internal static async Task OpenGameAsync(ChatMessageRow row)
+        {
+            if (row.Game is not ChatGame game)
+                return;
+            if (game.IsRetro)
+                await MainWindowViewModel.Instance.Retro.ShowGameAsync(game.Platform ?? "", game.Id);
+            else
+                MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(row.PcGame ?? new Game { ID = game.Id }));
+        }
+        #endregion
+
+        #region The player's status
+        private void Status_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as MenuItem)?.Tag is string state)
+                SetStatus(state);
+        }
+
+        internal void SetStatus(string state)
+        {
+            ActivityService.ChosenState = state;
+            Rebuild();
+        }
+
+        private void StatusMenu_Opening(object? sender, EventArgs e) => uiNotifications.IsChecked = NotificationsOn;
+
+        private void Notifications_Click(object? sender, RoutedEventArgs e) => NotificationsOn = uiNotifications.IsChecked == true;
         #endregion
 
         #region Groups

@@ -49,6 +49,33 @@
         <Style Selector="StackPanel.message.mine">
             <Setter Property="HorizontalAlignment" Value="Right" />
         </Style>
+        <Style Selector="Button.reaction">
+            <Setter Property="Padding" Value="7,1" />
+            <Setter Property="MinHeight" Value="22" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.reaction.mine">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+        </Style>
+        <!-- The message answered, at the top of the bubble -->
+        <Style Selector="Border.quote">
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
+            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Background" Value="#18000000" />
+        </Style>
+        <Style Selector="Border.bubble.mine Border.quote">
+            <Setter Property="BorderBrush" Value="White" />
+        </Style>
+        <Style Selector="SelectableTextBlock.deleted">
+            <Setter Property="FontStyle" Value="Italic" />
+            <Setter Property="Opacity" Value="0.7" />
+        </Style>
         <Style Selector="Button.emoji">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Width" Value="38" />
@@ -75,6 +102,39 @@
                 </Grid>
                 <TextBlock DockPanel.Dock="Top" Classes="muted" FontSize="12" Margin="16,0,16,6" TextWrapping="Wrap"
                            Text="{Binding StatusText}" IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                <!-- The player: their status, the notifications -->
+                <Button DockPanel.Dock="Top" x:Name="uiMe" Classes="entry" Margin="6,0,6,4" ToolTip.Tip="{l:T 'Your status'}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Panel>
+                            <Border Width="32" Height="32" CornerRadius="16" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding Me}" />
+                            </Border>
+                            <Ellipse Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Stroke="{DynamicResource Brush.Background2}" StrokeThickness="2"
+                                     Fill="{Binding MyDot}" IsVisible="{Binding MyDot, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </Panel>
+                        <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="{Binding MyName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Classes="muted" FontSize="11.5" Text="{Binding MyStatus}" />
+                        </StackPanel>
+                        <Path Grid.Column="2" Data="{StaticResource IconChevronDown}" Width="10" Height="10" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" VerticalAlignment="Center" />
+                    </Grid>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft" Opening="StatusMenu_Opening">
+                            <MenuItem Header="{l:T 'Online'}" Tag="online" Click="Status_Click" />
+                            <MenuItem Header="{l:T 'Away'}" Tag="away" Click="Status_Click" />
+                            <MenuItem Header="{l:T 'Do not disturb'}" Tag="busy" Click="Status_Click" ToolTip.Tip="{l:T 'No notification; the others see it'}" />
+                            <MenuItem Header="{l:T 'Invisible'}" Tag="invisible" Click="Status_Click" ToolTip.Tip="{l:T 'You show as offline, without your game'}" />
+                            <Separator />
+                            <MenuItem StaysOpenOnClick="True">
+                                <MenuItem.Header>
+                                    <CheckBox x:Name="uiNotifications" Content="{l:T 'Desktop notifications'}" Click="Notifications_Click"
+                                              ToolTip.Tip="{l:T 'When SanctuaryVault is in the background. None while you play on this PC.'}" />
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
 
                 <!-- A new group: its name, its players -->
                 <Border DockPanel.Dock="Top" x:Name="uiNewGroup" IsVisible="{Binding IsMakingGroup}" Margin="10,4,10,6" Padding="12" CornerRadius="12"
@@ -104,6 +164,20 @@
 
                 <ScrollViewer>
                     <StackPanel Margin="6,0,6,12">
+                        <Button Classes="entry" Click="News_Click" IsVisible="{Binding HasNews}" Margin="0,4,0,0">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Border Width="36" Height="36" CornerRadius="12" Background="{DynamicResource Brush.Accent}">
+                                    <Path Data="{StaticResource IconNavNews}" Width="16" Height="16" Stretch="Uniform" Fill="White" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center" Spacing="1">
+                                    <TextBlock Text="{Binding News.Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes="muted" FontSize="11.5" Text="{Binding News.Subtitle}" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Classes="unread" IsVisible="{Binding News.HasUnread}">
+                                    <TextBlock Text="{Binding News.Unread}" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                            </Grid>
+                        </Button>
                         <TextBlock Classes="section" Text="{l:T 'GROUPS'}" IsVisible="{Binding HasGroups}" />
                         <ItemsControl ItemsSource="{Binding Groups}">
                             <ItemsControl.ItemTemplate>
@@ -115,7 +189,7 @@
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center" Spacing="1">
                                                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Subtitle}" />
                                             </StackPanel>
                                             <Border Grid.Column="2" Classes="unread" IsVisible="{Binding HasUnread}">
                                                 <TextBlock Text="{Binding Unread}" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -141,7 +215,7 @@
                                             </Panel>
                                             <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center" Spacing="1">
                                                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="muted" FontSize="11.5" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Subtitle}" />
                                             </StackPanel>
                                             <Border Grid.Column="2" Classes="unread" IsVisible="{Binding HasUnread}">
                                                 <TextBlock Text="{Binding Unread}" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -163,8 +237,9 @@
                     </Button>
                     <Border Grid.Column="1" Width="34" Height="34" CornerRadius="17" ClipToBounds="True" Margin="6,0,0,0" Background="{DynamicResource Brush.Surface3}">
                         <Panel>
-                            <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding Open.User}" IsVisible="{Binding !Open.IsGroup}" />
+                            <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding Open.User}" IsVisible="{Binding !Open.HasIcon}" />
                             <Path Data="{StaticResource IconNavCommunity}" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" IsVisible="{Binding Open.IsGroup}" />
+                            <Path Data="{StaticResource IconNavNews}" Width="15" Height="15" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" IsVisible="{Binding Open.IsNews}" />
                         </Panel>
                     </Border>
                     <StackPanel Grid.Column="2" Margin="10,0,4,0" VerticalAlignment="Center" Spacing="1">
@@ -205,8 +280,50 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Writing: a picture waiting to be sent, the text, the emojis -->
-                <StackPanel DockPanel.Dock="Bottom" Margin="10,6,10,12" Spacing="6">
+                <!-- The announcements, for the players: read only -->
+                <TextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="12" Margin="16,8,16,14" TextAlignment="Center" TextWrapping="Wrap"
+                           Text="{l:T 'Only the administrators write here.'}" IsVisible="{Binding !CanWrite}" />
+
+                <!-- Writing: who writes, the message answered, a game to pick, a picture waiting to be sent, the text, the emojis -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="10,2,10,12" Spacing="6" IsVisible="{Binding CanWrite}">
+                    <TextBlock Classes="muted" FontSize="11.5" FontStyle="Italic" Margin="4,0" Text="{Binding TypingText}"
+                               IsVisible="{Binding TypingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <Border IsVisible="{Binding IsPickingGame}" Padding="10" CornerRadius="12" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1">
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="{Binding PickTitle}" FontWeight="Bold" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Classes="round small" Width="24" Height="24" Click="CloseGamePicker_Click" ToolTip.Tip="{l:T 'Close'}">
+                                    <Path Data="{StaticResource IconClose}" Width="8" Height="8" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+                                </Button>
+                            </Grid>
+                            <TextBox x:Name="uiGameSearch" Watermark="{l:T 'Search a game'}" />
+                            <ItemsControl ItemsSource="{Binding GamePicks}" MaxHeight="230">
+                                <ItemsControl.Template>
+                                    <ControlTemplate>
+                                        <ScrollViewer><ItemsPresenter /></ScrollViewer>
+                                    </ControlTemplate>
+                                </ItemsControl.Template>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:ChatGamePick">
+                                        <Button Classes="entry" Padding="8,5" Click="GamePick_Click">
+                                            <StackPanel Spacing="1">
+                                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Classes="muted" FontSize="11" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <Border IsVisible="{Binding HasDraftNote}" Padding="10,5,4,5" CornerRadius="10" Background="{DynamicResource Brush.Surface}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="muted" FontSize="12" Text="{Binding DraftNote}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Classes="round small" Width="22" Height="22" Click="CancelDraft_Click" ToolTip.Tip="{l:T 'Cancel (Escape)'}">
+                                <Path Data="{StaticResource IconClose}" Width="8" Height="8" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+                            </Button>
+                        </Grid>
+                    </Border>
                     <Grid IsVisible="{Binding DraftPicture, Converter={x:Static ObjectConverters.IsNotNull}}" ColumnDefinitions="Auto,*">
                         <Border CornerRadius="8" ClipToBounds="True" MaxHeight="90" MaxWidth="160" HorizontalAlignment="Left">
                             <Image Source="{Binding DraftPicture}" Stretch="Uniform" />
@@ -217,7 +334,7 @@
                         </Button>
                     </Grid>
                     <Border CornerRadius="14" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" Padding="4">
-                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
                             <Button x:Name="uiEmojiButton" Classes="round small" Width="32" Height="32" Background="Transparent" ToolTip.Tip="{l:T 'Emojis'}">
                                 <Path Data="{StaticResource IconEmoji}" Width="17" Height="17" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" />
                                 <Button.Flyout>
@@ -239,9 +356,19 @@
                                     ToolTip.Tip="{l:T 'Send a picture (or paste it with Ctrl+V, or drop it here)'}">
                                 <Path Data="{StaticResource IconAddPicture}" Width="16" Height="16" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" />
                             </Button>
-                            <TextBox x:Name="uiDraft" Grid.Column="2" Watermark="{l:T 'Write a message'}" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="120"
+                            <Button Grid.Column="2" Classes="round small" Width="32" Height="32" Background="Transparent" ToolTip.Tip="{l:T 'Share a game, invite to play'}">
+                                <Path Data="{StaticResource IconNavRetro}" Width="17" Height="17" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground2}" />
+                                <Button.Flyout>
+                                    <MenuFlyout Placement="TopEdgeAlignedLeft" Opening="GameMenu_Opening">
+                                        <MenuItem x:Name="uiInviteNow" Click="InviteNow_Click" />
+                                        <MenuItem Header="{l:T 'Invite to play…'}" Click="InviteGame_Click" />
+                                        <MenuItem Header="{l:T 'Share a game…'}" Click="ShareGame_Click" />
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                            <TextBox x:Name="uiDraft" Grid.Column="3" Watermark="{l:T 'Write a message'}" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="120"
                                      MaxLength="2000" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center" />
-                            <Button Grid.Column="3" Classes="action small" Width="34" Height="32" Padding="0" Click="Send_Click" ToolTip.Tip="{l:T 'Send (Enter)'}" IsEnabled="{Binding !IsSending}">
+                            <Button Grid.Column="4" Classes="action small" Width="34" Height="32" Padding="0" Click="Send_Click" ToolTip.Tip="{l:T 'Send (Enter)'}" IsEnabled="{Binding !IsSending}">
                                 <Path Data="{StaticResource IconSend}" Width="14" Height="14" Stretch="Uniform" Fill="White" />
                             </Button>
                         </Grid>
@@ -252,7 +379,7 @@
                     <StackPanel Margin="12,4,12,8" Spacing="4">
                         <Button Classes="ghost small" HorizontalAlignment="Center" Content="{l:T 'Older messages'}" IsVisible="{Binding HasOlder}" Click="Older_Click" />
                         <TextBlock Classes="muted" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="10,30"
-                                   Text="{l:T 'No message yet. Say hello!'}" IsVisible="{Binding !HasMessages}" />
+                                   Text="{Binding EmptyText}" IsVisible="{Binding !HasMessages}" />
                         <ItemsControl ItemsSource="{Binding Messages}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="local:ChatMessageRow">
@@ -261,18 +388,52 @@
                                                    IsVisible="{Binding Day, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                         <StackPanel Classes="message" Classes.mine="{Binding IsMine}" Spacing="2">
                                             <TextBlock Classes="muted" FontSize="11" Margin="4,0" Text="{Binding Sender}" IsVisible="{Binding ShowsSender}" />
-                                            <Border Classes="bubble" Classes.mine="{Binding IsMine}" ToolTip.Tip="{Binding Time}">
+                                            <Border Classes="bubble" Classes.mine="{Binding IsMine}" ToolTip.Tip="{Binding Time}" ContextRequested="Bubble_ContextRequested">
                                                 <StackPanel Spacing="6">
+                                                    <Border Classes="quote" IsVisible="{Binding HasReply}">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding ReplySender}" FontSize="11" FontWeight="Bold" />
+                                                            <TextBlock Text="{Binding ReplyText}" FontSize="11.5" TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" Opacity="0.85" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <!-- A game: shared, or an invitation -->
+                                                    <StackPanel Spacing="6" IsVisible="{Binding HasGame}">
+                                                        <TextBlock Text="{Binding GameHeader}" FontWeight="Bold" FontSize="12.5" IsVisible="{Binding GameHeader, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                        <Grid ColumnDefinitions="Auto,*">
+                                                            <Border Width="54" Height="72" CornerRadius="6" ClipToBounds="True" Background="#30000000">
+                                                                <Panel>
+                                                                    <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding PcGame}" IsVisible="{Binding PcGame, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                                    <Image Source="{Binding RetroCover}" Stretch="UniformToFill" IsVisible="{Binding RetroCover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                                </Panel>
+                                                            </Border>
+                                                            <StackPanel Grid.Column="1" Margin="9,0,0,0" Spacing="3" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Game.Title}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding GameSubtitle}" FontSize="11" Opacity="0.8" IsVisible="{Binding GameSubtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                <Button Classes="ghost small" Padding="8,3" Margin="0,2,0,0" HorizontalAlignment="Left" Content="{l:T 'Open the game'}" Click="OpenSharedGame_Click" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </StackPanel>
                                                     <Button Classes="wrapper" Padding="0" Background="Transparent" Click="Picture_Click" IsVisible="{Binding HasPicture}" Cursor="Hand"
                                                             ToolTip.Tip="{l:T 'Open the picture'}">
                                                         <Border CornerRadius="8" ClipToBounds="True" HorizontalAlignment="Left">
                                                             <Image Source="{Binding Picture}" Stretch="Uniform" StretchDirection="DownOnly" MaxHeight="220" MaxWidth="226" />
                                                         </Border>
                                                     </Button>
-                                                    <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="13.5" IsVisible="{Binding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="13.5" Classes.deleted="{Binding IsDeleted}"
+                                                                         IsVisible="{Binding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                                 </StackPanel>
                                             </Border>
-                                            <TextBlock Classes="muted" FontSize="10.5" Margin="4,0" Text="{Binding Time}" IsVisible="{Binding ShowsTime}" />
+                                            <ItemsControl ItemsSource="{Binding Reactions}" IsVisible="{Binding HasReactions}" Margin="2,1,2,0">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="local:ChatReactionChip">
+                                                        <Button Classes="reaction" Classes.mine="{Binding IsMine}" Margin="0,0,4,2" Content="{Binding Text}" ToolTip.Tip="{Binding Who}" Click="Reaction_Click" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Classes="muted" FontSize="10.5" Margin="4,0" Text="{Binding Footer}" IsVisible="{Binding ShowsFooter}" />
                                         </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>

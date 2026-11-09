@@ -135,6 +135,9 @@ namespace gamevault.Models
         PublishTargetDirectory,
         PublishUploaderUrl,
         ShareActivity,
+        //The chat: the status chosen (online, away, busy, invisible), desktop notifications on or off
+        ChatStatus,
+        ChatNotifications,
         //LAN rooms' shared screen: this PC's Sunshine login (encrypted)
         SunshineUser,
         SunshinePassword,

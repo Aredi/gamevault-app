@@ -53,6 +53,9 @@ namespace gamevault.Helper
                 string names = string.Join(", ", added.Take(5).Select(g => g.Title));
                 if (added.Count > 5)
                     names += ", ...";
+                // An administrator's client tells them in the chat's announcements too (the service keeps each one once)
+                foreach (Game game in added)
+                    await ChatService.Instance.AnnounceAsync(ChatGame.Of(game, invite: false));
                 ToastMessageHelper.CreateToastMessage(title, names);
                 MainWindowViewModel.Instance.AppBarText = Loc.F("{0}: {1}", title, names);
                 Log.Info($"{title}: {names}");
