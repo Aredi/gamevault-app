@@ -62,12 +62,15 @@ namespace GameVault.Core.Library
         /// Files of the old version that are not in the new one are deleted (only when the old file list is known).
         /// Returns the file list of the new version.
         /// </summary>
-        public static List<string> ApplyUpdate(string newFiles, string installedFiles, IReadOnlyCollection<string>? oldVersionFiles)
+        /// <param name="allNewVersionFiles">Every file of the new version when <paramref name="newFiles"/> only has
+        /// the ones that changed (an update by pieces); the others are already installed and stay.</param>
+        public static List<string> ApplyUpdate(string newFiles, string installedFiles, IReadOnlyCollection<string>? oldVersionFiles, IReadOnlyCollection<string>? allNewVersionFiles = null)
         {
-            List<string> newVersionFiles = List(newFiles);
+            List<string> arrived = List(newFiles);
+            List<string> newVersionFiles = allNewVersionFiles?.OrderBy(path => path, StringComparer.Ordinal).ToList() ?? arrived;
             var keep = new HashSet<string>(newVersionFiles, StringComparer.Ordinal);
             Directory.CreateDirectory(installedFiles);
-            foreach (string relative in newVersionFiles)
+            foreach (string relative in arrived)
             {
                 string target = Path.Combine(installedFiles, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);

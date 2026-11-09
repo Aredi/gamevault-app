@@ -1832,5 +1832,9 @@
   "Copy the text": "Copier le texte",
   "Edit": "Modifier",
   "You are playing it": "Vous y jouez en ce moment",
-  "No announcement yet.": "Aucune annonce pour l'instant."
+  "No announcement yet.": "Aucune annonce pour l'instant.",
+  "Comparing with the installed files...": "Comparaison avec les fichiers installés...",
+  "Downloading the changed files...": "Téléchargement des fichiers modifiés...",
+  "'{0}' is up to date: {1} downloaded instead of {2}": "'{0}' est à jour : {1} téléchargés au lieu de {2}",
+  "Not enough space to update: {0} needed, {1} free.": "Pas assez d'espace pour la mise à jour : {0} nécessaires, {1} libres."
 }
