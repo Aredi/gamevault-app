@@ -5,6 +5,7 @@ using gamevault.Localization;
 using gamevault.ViewModels;
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace gamevault.Helper
@@ -50,8 +51,13 @@ namespace gamevault.Helper
             try
             {
                 // The emulator an administrator gave it, else its console's (offered its newer release)
-                if (game.Platform.System.IsSwitch)
+                if (game.Platform.System.IsSwitch || GameEmulators.OfConsole(game.Platform.Slug).Any())
                     await GameEmulators.LoadAsync();
+                if (GameEmulators.RecompOf(game) is RecompProgram recomp)
+                {
+                    await PlayRecompAsync(game, recomp, rom);
+                    return;
+                }
                 if (StandaloneEmulator.Of(game) == StandaloneEmulator.Eden)
                     await StandaloneEmulator.Eden.OfferUpdateAsync();
                 else if (StandaloneEmulator.Of(game) == StandaloneEmulator.Eglantine)
@@ -88,6 +94,50 @@ namespace gamevault.Helper
                 game.Status = "";
                 game.Busy = false;
             }
+        }
+
+        /// <summary>
+        /// The game's recomp instead of an emulator: installed, then started with the game's files, or with their
+        /// path copied when it asks for them in its window.
+        /// </summary>
+        internal static async Task PlayRecompAsync(RetroGame game, RecompProgram recomp, string rom)
+        {
+            await recomp.EnsureReadyAsync(text => game.Status = text);
+            string folder = RetroService.InstalledFolder(game) ?? System.IO.Path.GetDirectoryName(rom)!;
+            Process process = recomp.Start(rom, folder);
+            if (recomp.Layout.AsksForTheGame)
+            {
+                string path = GameFilesOf(rom, folder);
+                ClipboardHelper.SetText(path);
+                game.Status = Loc.F("Playing with {0}. The game's files are in {1}: this path is copied, paste it when {0} asks for the game.", recomp.Name, path);
+            }
+            else
+                game.Status = Loc.F("Playing with {0}: close its windows to quit", recomp.Name);
+            DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
+            ActivityService.Instance.SetRetroPlaying(game);
+            _ = WhenRecompClosedAsync(process, recomp, game);
+        }
+
+        /// <summary>What a recomp is shown: the game's one file (a cartridge), else the folder of its files (a dump).</summary>
+        internal static string GameFilesOf(string rom, string folder) =>
+            System.IO.Directory.EnumerateFiles(folder, "*", System.IO.SearchOption.AllDirectories).Take(2).Count() == 1 ? rom : folder;
+
+        /// <summary>Its time counted as any game's; its saves are its own, in its folder.</summary>
+        private static async Task WhenRecompClosedAsync(Process process, RecompProgram recomp, RetroGame game)
+        {
+            DateTime started = DateTime.UtcNow;
+            try { await recomp.WhenClosedAsync(process); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            DiscordHelper.Instance.RetroStopped();
+            ActivityService.Instance.SetRetroPlaying(null);
+            await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
+            if (RommAccount.IsLinked)
+            {
+                try { await RommAccount.PlayedAsync(game.Id); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+            game.Status = "";
+            game.Busy = false;
         }
 
         /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then its time counted and its saves sent; told when it died at its start.</summary>

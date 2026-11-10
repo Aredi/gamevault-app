@@ -36,7 +36,7 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `REPORTS_DIRECTORY` | `/data/reports` | The problems the players report on games, with their diagnostics until they are resolved (admin console) |
 | `INVITES_DIRECTORY` | `/data/invites` | The invitation codes new accounts need (admin console) |
 | `HYPERVISOR_DIRECTORY` | `/data/hypervisor` | The games using a hypervisor and the text shown to who downloads them (admin console) |
-| `EMULATORS_DIRECTORY` | `/data/emulators` | The emulators an administrator gives some retro games instead of their console's (admin console, retro game page) |
+| `EMULATORS_DIRECTORY` | `/data/emulators` | The emulators and recomps (programs that read a game's files) an administrator gives some retro games instead of their console's emulator (admin console, retro game page) |
 | `GAMEVAULT_API_KEY` | - | An administrator's API key of the GameVault server: activates the accounts that give an invitation code. The server needs `AUTH_API_KEY_ENABLED=true`, and `SERVER_ACCOUNT_ACTIVATION_DISABLED=false` so that new accounts wait for one |
 
 ## LAN rooms

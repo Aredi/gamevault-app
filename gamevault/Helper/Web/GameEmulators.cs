@@ -31,6 +31,11 @@ namespace gamevault.Helper
             [JsonPropertyName("mac")] public string? Mac { get; set; }
             /// <summary>Its program in a Windows or Mac build ("lichii.exe"); null: named as the console emulator's.</summary>
             [JsonPropertyName("executable")] public string? Executable { get; set; }
+            /// <summary>"recomp": a program of its own that reads the game's files (see <see cref="RecompProgram"/>); else a fork of the console's emulator.</summary>
+            [JsonPropertyName("kind")] public string? Kind { get; set; }
+            /// <summary>A recomp's start arguments; "{rom}" is the game's file and "{folder}" its folder.</summary>
+            [JsonPropertyName("arguments")] public string? Arguments { get; set; }
+            [JsonIgnore] public bool IsRecomp => Kind == "recomp";
         }
 
         public sealed class Catalog
@@ -43,6 +48,7 @@ namespace gamevault.Helper
         private static Catalog? current;
         /// <summary>One by emulator and link: its installation is not done twice at once.</summary>
         private static readonly ConcurrentDictionary<string, CustomSwitchEmulator> managers = new();
+        private static readonly ConcurrentDictionary<string, RecompProgram> recomps = new();
 
         private static string Service => SanctuaryService.Current.TrimEnd('/');
 
@@ -78,7 +84,7 @@ namespace gamevault.Helper
         /// <summary>The game's own emulator when it has a build for this system; else null (its console's plays it).</summary>
         public static StandaloneEmulator? For(RetroGame game)
         {
-            if (IdOf(game) is not string id || current!.Emulators.FirstOrDefault(e => e.Id == id && e.Console == game.Platform.Slug) is not Emulator emulator)
+            if (IdOf(game) is not string id || current!.Emulators.FirstOrDefault(e => e.Id == id && e.Console == game.Platform.Slug && !e.IsRecomp) is not Emulator emulator)
                 return null;
             if (StandaloneEmulator.Of(game.Platform.System) is not SwitchEmulator console)
                 return null;
@@ -86,8 +92,20 @@ namespace gamevault.Helper
             return manager.Layout.IsAvailable ? manager : null;
         }
 
+        /// <summary>The game's recomp when it has a build for this system; else null (its emulator plays it).</summary>
+        public static RecompProgram? RecompOf(RetroGame game)
+        {
+            if (IdOf(game) is not string id || current!.Emulators.FirstOrDefault(e => e.Id == id && e.Console == game.Platform.Slug && e.IsRecomp) is not Emulator emulator)
+                return null;
+            var recomp = recomps.GetOrAdd($"{emulator.Id}\n{emulator.Name}\n{emulator.Windows}\n{emulator.Linux}\n{emulator.Mac}\n{emulator.Executable}\n{emulator.Arguments}", _ => new RecompProgram(emulator));
+            return recomp.Layout.IsAvailable ? recomp : null;
+        }
+
+        /// <summary>"Eglantine Star Fox": what plays the game on this PC.</summary>
+        public static string PlayerOf(RetroGame game) => RecompOf(game)?.Name ?? StandaloneEmulator.Of(game)?.Name ?? "RetroArch";
+
         public static Task SetAsync(Emulator emulator) => SendAsync(HttpMethod.Put, $"retro/emulators/{Uri.EscapeDataString(emulator.Id)}",
-            new { name = emulator.Name, console = emulator.Console, windows = emulator.Windows, linux = emulator.Linux, mac = emulator.Mac, executable = emulator.Executable });
+            new { name = emulator.Name, console = emulator.Console, windows = emulator.Windows, linux = emulator.Linux, mac = emulator.Mac, executable = emulator.Executable, kind = emulator.Kind, arguments = emulator.Arguments });
 
         public static Task DeleteAsync(string id) => SendAsync(HttpMethod.Delete, $"retro/emulators/{Uri.EscapeDataString(id)}", null);
 

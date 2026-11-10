@@ -248,7 +248,13 @@ namespace gamevault.UserControls
         {
             try
             {
-                if (StandaloneEmulator.Of(ViewModel.Game) is StandaloneEmulator emulator)
+                if (GameEmulators.RecompOf(ViewModel.Game) is RecompProgram recomp)
+                {
+                    // Its own window: its settings are there
+                    await recomp.EnsureReadyAsync(text => ViewModel.Game.Status = text);
+                    recomp.Start(null, null).Dispose();
+                }
+                else if (StandaloneEmulator.Of(ViewModel.Game) is StandaloneEmulator emulator)
                     await emulator.OpenAsync(text => ViewModel.Game.Status = text);
                 else
                     await RetroArchManager.OpenMenuAsync(text => ViewModel.Game.Status = text);
@@ -264,14 +270,15 @@ namespace gamevault.UserControls
         private async Task LoadEmulatorAsync()
         {
             RetroGame game = ViewModel.Game;
-            if (!game.Platform.System.IsSwitch || await GameEmulators.LoadAsync() is not GameEmulators.Catalog)
+            // A fork is a Switch emulator's; a recomp is given to a game of any console
+            if (await GameEmulators.LoadAsync() is not GameEmulators.Catalog || (!game.Platform.System.IsSwitch && !GameEmulators.OfConsole(game.Platform.Slug).Any()))
                 return;
             ViewModel.EmulatorChanged();
             if (LoginManager.Instance.GetCurrentUser()?.Role != PERMISSION_ROLE.ADMIN)
                 return;
             emulatorChoices = GameEmulators.OfConsole(game.Platform.Slug).Cast<GameEmulators.Emulator?>().Prepend(null).ToList();
             showingEmulator = true;
-            uiEmulatorChoice.ItemsSource = emulatorChoices.Select(e => e == null ? Loc.F("{0} (console)", StandaloneEmulator.Of(game.Platform.System)!.Name) : $"{e.Name} ({GameEmulators.SystemsOf(e)})").ToList();
+            uiEmulatorChoice.ItemsSource = emulatorChoices.Select(e => e == null ? Loc.F("{0} (console)", StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch") : $"{e.Name} ({GameEmulators.SystemsOf(e)})").ToList();
             uiEmulatorChoice.SelectedIndex = Math.Max(0, emulatorChoices.FindIndex(e => e?.Id == GameEmulators.IdOf(game)));
             showingEmulator = false;
             uiEmulatorAdmin.IsVisible = emulatorChoices.Count > 1 || GameEmulators.IdOf(game) != null;
@@ -282,10 +289,10 @@ namespace gamevault.UserControls
         private void ShowEmulatorNote()
         {
             RetroGame game = ViewModel.Game;
-            bool elsewhere = GameEmulators.IdOf(game) != null && GameEmulators.For(game) == null;
+            bool elsewhere = GameEmulators.IdOf(game) != null && GameEmulators.For(game) == null && GameEmulators.RecompOf(game) == null;
             uiEmulatorNote.IsVisible = elsewhere;
             if (elsewhere)
-                uiEmulatorNote.Text = Loc.F("No build for this system: {0} plays it on this PC", StandaloneEmulator.Of(game.Platform.System)!.Name);
+                uiEmulatorNote.Text = Loc.F("No build for this system: {0} plays it on this PC", StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch");
         }
 
         private async void EmulatorChoice_SelectionChanged(object? sender, SelectionChangedEventArgs e)

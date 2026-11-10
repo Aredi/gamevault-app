@@ -143,7 +143,7 @@ namespace gamevault.ViewModels
             _ => Loc.T("In English"),
         };
         /// <summary>The settings of the game's emulator.</summary>
-        public string MenuText => Loc.F("Controls and picture: {0} settings", StandaloneEmulator.Of(Game)?.Name ?? "RetroArch");
+        public string MenuText => Loc.F("Controls and picture: {0} settings", GameEmulators.PlayerOf(Game));
         public string PlayersText => string.IsNullOrEmpty(Game.Players) || Game.Players == "null" ? "—" : Game.Players;
 
         private Bitmap? selectedScreenshot;
