@@ -283,12 +283,12 @@
                             <Button Grid.Column="1" Classes="action small" Click="AddEmulator_Click" Content="{l:T 'Add an emulator'}" />
                         </Grid>
                         <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
-                                   Text="{l:T 'A fork of Eden or Eglantine that plays some games better: its builds by system (https links to their zip or AppImage), then chosen on the page of each game. A system without a build plays with the console emulator. It shares its saves, settings and controller.'}" />
+                                   Text="{l:T 'A fork of Eden or Eglantine that plays some games better: its builds by system (https links to their zip or AppImage), then chosen on the page of each game. A system without a build plays with the console emulator. It shares its saves, settings and controller. A recomp is a program made for one game that reads its files: it is installed and started the same way, and keeps its own saves.'}" />
                         <ItemsControl x:Name="uiEmulators">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,0,0,10">
-                                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
+                                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
                                             <TextBlock Classes="muted" FontSize="12.5" Text="{l:T 'Name'}" VerticalAlignment="Center" />
                                             <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                                 <TextBox Text="{Binding Name}" MaxLength="80" Watermark="Eglantine Star Fox" />
@@ -302,7 +302,11 @@
                                             <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Mac}" MaxLength="1000" Watermark="https://.../Eglantine-macOS-arm64.zip" />
                                             <TextBlock Grid.Row="4" Classes="muted" FontSize="12.5" Text="{l:T 'Program'}" VerticalAlignment="Center" />
                                             <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Executable}" MaxLength="200" Watermark="{l:T 'lichii.exe (empty: named as the console emulator)'}" />
-                                            <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                            <TextBlock Grid.Row="5" Classes="muted" FontSize="12.5" Text="Recomp" VerticalAlignment="Center" />
+                                            <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding IsRecomp}" Content="{l:T 'A program of its own that reads the game files, not an emulator (any console; its program is required)'}" />
+                                            <TextBlock Grid.Row="6" Classes="muted" FontSize="12.5" Text="{l:T 'Arguments'}" VerticalAlignment="Center" />
+                                            <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding Arguments}" MaxLength="300" Watermark="{l:T 'Recomp only: --rom {rom} (empty: the path of the game is copied, to paste in its window)'}" />
+                                            <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                                                 <TextBlock Classes="muted" FontSize="12.5" Text="{Binding GamesText}" VerticalAlignment="Center" />
                                                 <Button Classes="ghost small" Click="DeleteEmulator_Click" Content="{l:T 'Delete'}" />
                                                 <Button Classes="action small" Click="SaveEmulator_Click" Content="{l:T 'Save'}" />

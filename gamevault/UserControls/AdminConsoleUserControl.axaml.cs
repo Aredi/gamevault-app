@@ -166,7 +166,8 @@ namespace gamevault.UserControls
         /// <summary>An emulator given to some games, as the card edits it.</summary>
         internal sealed class EmulatorRow
         {
-            public static readonly string[] Slugs = { "switch-2", "switch" };
+            /// <summary>The Switch ones first (a fork is one of theirs); a recomp is given to a game of any console.</summary>
+            public static readonly string[] Slugs = new[] { "switch-2", "switch" }.Concat(GameVault.Core.Retro.RetroSystems.All.Keys.Where(s => s is not ("switch-2" or "switch")).OrderBy(s => GameVault.Core.Retro.RetroSystems.All[s].Name)).ToArray();
             public string Id { get; init; } = Guid.NewGuid().ToString("N")[..12];
             public string Name { get; set; } = "";
             public string[] Consoles { get; } = Slugs.Select(s => GameVault.Core.Retro.RetroSystems.All[s].Name).ToArray();
@@ -175,11 +176,14 @@ namespace gamevault.UserControls
             public string? Linux { get; set; }
             public string? Mac { get; set; }
             public string? Executable { get; set; }
+            /// <summary>A program of its own that reads the game's files, not a fork of the console's emulator.</summary>
+            public bool IsRecomp { get; set; }
+            public string? Arguments { get; set; }
             public int Games { get; init; }
             public string GamesText => Loc.Plural(Games, "{0} game", "{0} games");
             public bool Saved { get; set; }
 
-            public GameEmulators.Emulator ToEmulator() => new() { Id = Id, Name = Name, Console = Slugs[Math.Max(0, ConsoleIndex)], Windows = Windows, Linux = Linux, Mac = Mac, Executable = Executable };
+            public GameEmulators.Emulator ToEmulator() => new() { Id = Id, Name = Name, Console = Slugs[Math.Max(0, ConsoleIndex)], Windows = Windows, Linux = Linux, Mac = Mac, Executable = Executable, Kind = IsRecomp ? "recomp" : null, Arguments = IsRecomp ? Arguments : null };
         }
 
         private readonly System.Collections.ObjectModel.ObservableCollection<EmulatorRow> emulators = new();
@@ -192,7 +196,7 @@ namespace gamevault.UserControls
             foreach (GameEmulators.Emulator e in catalog?.Emulators ?? new())
                 emulators.Add(new EmulatorRow
                 {
-                    Id = e.Id, Name = e.Name, ConsoleIndex = Math.Max(0, Array.IndexOf(EmulatorRow.Slugs, e.Console)), Windows = e.Windows, Linux = e.Linux, Mac = e.Mac, Executable = e.Executable,
+                    Id = e.Id, Name = e.Name, ConsoleIndex = Math.Max(0, Array.IndexOf(EmulatorRow.Slugs, e.Console)), Windows = e.Windows, Linux = e.Linux, Mac = e.Mac, Executable = e.Executable, IsRecomp = e.IsRecomp, Arguments = e.Arguments,
                     Games = catalog!.Games.Count(g => g.Value == e.Id), Saved = true,
                 });
             uiEmulators.ItemsSource = emulators;

@@ -1712,7 +1712,6 @@
   "A newer release of Eglantine ({0}) is available: each one starts more Switch 2 games. The saves and settings are kept. Update it now?": "Une version plus récente d'Eglantine ({0}) est disponible : chacune lance plus de jeux Switch 2. Les sauvegardes et les réglages sont conservés. La mettre à jour maintenant ?",
   "None needed: the Switch 2 games are decrypted dumps (NUP, NSP or folder)": "Aucun : les jeux Switch 2 sont des dumps déchiffrés (NUP, NSP ou dossier)",
   "{0} (console)": "{0} (console)",
-  "A fork of Eden or Eglantine that plays some games better: its builds by system (https links to their zip or AppImage), then chosen on the page of each game. A system without a build plays with the console emulator. It shares its saves, settings and controller.": "Un fork d'Eden ou d'Eglantine qui joue mieux certains jeux : ses builds par système (liens https vers leur zip ou AppImage), puis choisi sur la page de chaque jeu. Un système sans build joue avec l'émulateur de la console. Il partage ses sauvegardes, ses réglages et sa manette.",
   "Add an emulator": "Ajouter un émulateur",
   "Delete the emulator '{0}'? Its games are played by their console emulator again.": "Supprimer l'émulateur « {0} » ? Ses jeux reprennent l'émulateur de leur console.",
   "EMULATOR (ADMINISTRATOR)": "ÉMULATEUR (ADMINISTRATEUR)",
@@ -1892,5 +1891,14 @@
   "What the players did since Monday counts for the new challenge. It ends on Sunday at midnight (UTC).": "Ce que les joueurs ont fait depuis lundi compte pour le nouveau défi. Il se termine dimanche à minuit (UTC).",
   "Set this challenge": "Lancer ce défi",
   "Choose the game of the challenge.": "Choisissez le jeu du défi.",
-  "The challenge of the week and its ranking": "Le défi de la semaine et son classement"
+  "The challenge of the week and its ranking": "Le défi de la semaine et son classement",
+  "A fork of Eden or Eglantine that plays some games better: its builds by system (https links to their zip or AppImage), then chosen on the page of each game. A system without a build plays with the console emulator. It shares its saves, settings and controller. A recomp is a program made for one game that reads its files: it is installed and started the same way, and keeps its own saves.": "Un fork d'Eden ou d'Eglantine qui joue mieux certains jeux : ses builds par système (liens https vers leur zip ou AppImage), puis choisi sur la page de chaque jeu. Un système sans build joue avec l'émulateur de la console. Il partage ses sauvegardes, ses réglages et sa manette. Un recomp est un programme fait pour un seul jeu, qui lit ses fichiers : il s'installe et se lance de la même façon, et garde ses propres sauvegardes.",
+  "A program of its own that reads the game files, not an emulator (any console; its program is required)": "Un programme à part qui lit les fichiers du jeu, pas un émulateur (toutes les consoles ; son programme est obligatoire)",
+  "Arguments": "Arguments",
+  "Recomp only: --rom {rom} (empty: the path of the game is copied, to paste in its window)": "Recomp seulement : --rom {rom} (vide : le chemin du jeu est copié, à coller dans sa fenêtre)",
+  "Installing {0}: downloading {1:0}%": "Installation de {0} : téléchargement {1:0} %",
+  "Installing {0}: unpacking {1}%": "Installation de {0} : décompression {1} %",
+  "The build of {0} has no program '{1}': an administrator names it in the admin console.": "Le fichier de {0} ne contient pas le programme « {1} » : un administrateur le nomme dans la console d'administration.",
+  "Playing with {0}. The game's files are in {1}: this path is copied, paste it when {0} asks for the game.": "En jeu avec {0}. Les fichiers du jeu sont dans {1} : ce chemin est copié, collez-le quand {0} demande le jeu.",
+  "Playing with {0}: close its windows to quit": "En jeu avec {0} : fermez ses fenêtres pour quitter"
 }

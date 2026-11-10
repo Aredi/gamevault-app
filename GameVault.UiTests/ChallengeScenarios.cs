@@ -126,8 +126,7 @@ namespace GameVault.UiTests
                 Assert.Empty(session.Server.ChallengesSet);
 
                 // The Retro page lists the games again from this server (other scenarios left it on theirs)
-                MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
-                await MainWindowViewModel.Instance.Retro.EnsureLoadedAsync();
+                await MainWindowViewModel.Instance.Retro.LoadPlatformsAsync();
                 await popup.LoadRetroGamesAsync();
                 await popup.SearchAsync("zelda");
                 var found = Assert.IsAssignableFrom<IEnumerable<ChallengeGameChoice>>(popup.uiResults.ItemsSource).ToList();
