@@ -29,6 +29,7 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `ROMM_PUBLIC_URL` | - | RomM as the players reach it: a player can link their own RomM account in the client, then their retro saves go to RomM (otherwise to this service) |
 | `RETRO_SAVES_DIRECTORY` | `/data/retro-saves` | The players' saves of the retro games (one zip per player, and the last 10 versions), so they follow them from PC to PC |
 | `RETRO_PLAYERS_DIRECTORY` | `/data/retro-players` | The players' time on the retro games and their favorites (profiles, recent activity) |
+| `CHALLENGES_DIRECTORY` | `/data/challenges` | The challenge of each week and what the players did for it (the client's **Challenges** page) |
 | `ZEROTIER_CONTROLLER_URL` | - | The API of a [ZeroTier](https://github.com/zerotier/ZeroTierOne) 1.14.2 network controller (e.g. `http://zerotier-controller:9993`): the client's **LAN rooms** are off without it |
 | `ZEROTIER_API_SECRET` | - | The controller's API token (`ZEROTIER_API_SECRET` of its container, or its `authtoken.secret`) |
 | `ROOMS_DIRECTORY` | `/data/rooms` | The LAN rooms and the games playable in LAN |

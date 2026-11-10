@@ -66,6 +66,30 @@ namespace GameVault.Uploader
             return games;
         }
 
+        /// <summary>The games of the library a player has time on; null when the server did not say.</summary>
+        public async Task<List<int>?> PlayedGamesAsync(string authorization, int userId, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"api/progresses?filter.user.id=$eq:{userId}&limit=-1");
+            request.Headers.TryAddWithoutValidation("Authorization", authorization);
+            Forwarded answer = await SendAsync(request, cancellationToken);
+            if (answer.Status != 200)
+                return null;
+            try
+            {
+                using JsonDocument json = JsonDocument.Parse(answer.Body);
+                return json.RootElement.GetProperty("data").EnumerateArray()
+                    .Where(progress => progress.TryGetProperty("minutes_played", out JsonElement minutes) && minutes.ValueKind == JsonValueKind.Number && minutes.GetInt32() > 0
+                        && progress.TryGetProperty("game", out JsonElement game) && game.ValueKind == JsonValueKind.Object)
+                    .Select(progress => progress.GetProperty("game").GetProperty("id").GetInt32())
+                    .ToList();
+            }
+            catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+            {
+                logger.LogWarning(ex, "The games played by the player {User} could not be read", userId);
+                return null;
+            }
+        }
+
         /// <summary>One game of the server, null when there is none (the game asked from the GameVault web page).</summary>
         public async Task<GameSummary?> GetGameAsync(string authorization, int id, CancellationToken cancellationToken)
         {
