@@ -33,6 +33,13 @@ namespace GameVault.UiTests
             public bool Deleted { get; set; }
             public Dictionary<string, List<int>>? Reactions { get; set; }
         }
+        /// <summary>What /challenges answers; null: the service keeps no challenges (503).</summary>
+        public object? ChallengeState { get; set; }
+        /// <summary>The minutes of library games said for the challenge, and the challenges an administrator chose.</summary>
+        public ConcurrentQueue<string> ChallengePlaysSent { get; } = new();
+        public ConcurrentQueue<string> ChallengesSet { get; } = new();
+        /// <summary>The next minute said completes the challenge.</summary>
+        public bool ChallengeDoneNext { get; set; }
         /// <summary>When the others read each conversation ("Seen").</summary>
         public ConcurrentDictionary<string, Dictionary<int, DateTime>> ChatOthersReadAt { get; } = new();
         /// <summary>The conversations the player said they were writing in.</summary>
@@ -843,6 +850,27 @@ namespace GameVault.UiTests
                 {
                     ChatReadAt[match.Groups[1].Value] = DateTime.UtcNow;
                     response.StatusCode = 204;
+                }
+                else if (path.StartsWith("/challenges") && ChallengeState == null)
+                {
+                    response.StatusCode = 503;
+                    await Json(response, new { error = "Challenges are not kept by this server." });
+                }
+                else if (path == "/challenges" && request.HttpMethod == "GET")
+                    await Json(response, ChallengeState);
+                else if (path == "/challenges/week" && request.HttpMethod == "PUT")
+                {
+                    ChallengesSet.Enqueue(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    response.StatusCode = 204;
+                }
+                else if (path == "/challenges/me/plays" && request.HttpMethod == "POST")
+                {
+                    ChallengePlaysSent.Enqueue(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    if (ChallengeDoneNext)
+                        await Json(response, new { challengeDone = true });
+                    else
+                        response.StatusCode = 204;
+                    ChallengeDoneNext = false;
                 }
                 else if (path == "/rooms" && request.HttpMethod == "GET")
                     await Json(response, Rooms.Values.Where(r => r.Public || r.Members.Any(m => m.UserId == 1)).Select(RoomJson).ToArray());

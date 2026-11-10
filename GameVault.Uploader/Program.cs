@@ -19,6 +19,7 @@ builder.Services.AddSingleton<HypervisorStore>();
 builder.Services.AddSingleton<GameEmulatorStore>();
 builder.Services.AddSingleton<ChatStore>();
 builder.Services.AddSingleton<ChatHub>();
+builder.Services.AddSingleton<ChallengeStore>();
 builder.Services.AddSingleton<RetroPresenceStore>();
 builder.Services.AddSingleton<PlayerStatusStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
@@ -81,6 +82,7 @@ app.UseStaticFiles();
 app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(30) });
 app.MapUploadEndpoints();
 app.MapChatEndpoints();
+app.MapChallengeEndpoints();
 app.Logger.LogInformation("GameVault Uploader {Version}: files in {Files}, profiles in {Profiles}, users checked by {Server}", UploaderOptions.Version, options.FilesDirectory, options.ProfilesDirectory, options.GameVaultUrl);
 _ = app.Services.GetRequiredService<ProfileStore>();// says at once whether profiles are kept
 _ = app.Services.GetRequiredService<SaveStore>();
@@ -93,6 +95,7 @@ _ = app.Services.GetRequiredService<InviteStore>();
 _ = app.Services.GetRequiredService<HypervisorStore>();
 _ = app.Services.GetRequiredService<GameEmulatorStore>();
 _ = app.Services.GetRequiredService<ChatStore>();
+_ = app.Services.GetRequiredService<ChallengeStore>();
 app.Run();
 
 public partial class Program { }

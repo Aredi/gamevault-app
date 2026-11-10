@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.ChallengesUserControl"
+             Focusable="True">
+    <!-- The challenge of the week, who completed it, and the weeks before: a page of its own, under Community -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="40,24,40,40" MaxWidth="920" Spacing="22">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="pageTitle" Text="{l:T 'Challenges'}" VerticalAlignment="Center" />
+                <Button x:Name="uiChoose" Grid.Column="1" Classes="ghost" IsVisible="False" Click="Choose_Click" Content="{l:T 'Choose the challenge'}" />
+            </Grid>
+            <TextBlock x:Name="uiStatus" IsVisible="False" Classes="muted" FontSize="14" TextWrapping="Wrap" />
+            <local:ProgressRing x:Name="uiLoading" IsActive="False" IsVisible="False" Width="32" Height="32" HorizontalAlignment="Left" Margin="10,20" />
+
+            <StackPanel x:Name="uiContent" IsVisible="False" Spacing="26">
+                <!-- This week -->
+                <Border CornerRadius="16" Padding="22" Background="{DynamicResource Brush.Surface}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Button x:Name="uiGame" Classes="wrapper" IsVisible="False" Padding="0" Margin="0,0,20,0" Cursor="Hand" VerticalAlignment="Top" Click="Game_Click" ToolTip.Tip="{l:T 'Open the game'}">
+                            <Border Width="96" Height="128" CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                <Panel>
+                                    <local:CacheImage x:Name="uiPcCover" ImageCacheType="GameCover" Stretch="UniformToFill" IsVisible="False" />
+                                    <Image x:Name="uiRetroCover" Stretch="UniformToFill" IsVisible="False" />
+                                </Panel>
+                            </Border>
+                        </Button>
+                        <StackPanel Grid.Column="1" Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="eyebrow" Text="{l:T 'Challenge of the week'}" />
+                                <TextBlock x:Name="uiLeft" Grid.Column="1" Classes="muted" FontSize="12.5" />
+                            </Grid>
+                            <TextBlock x:Name="uiText" FontSize="24" FontWeight="Bold" TextWrapping="Wrap" />
+                            <TextBlock x:Name="uiHint" Classes="muted" FontSize="13" TextWrapping="Wrap" />
+                            <ProgressBar x:Name="uiMine" Minimum="0" Maximum="1" Height="8" Margin="0,8,0,0" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock x:Name="uiMineText" FontSize="13.5" FontWeight="SemiBold" />
+                                <TextBlock x:Name="uiSetBy" Grid.Column="1" Classes="muted" FontSize="12" />
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Who started it: the ones who completed it first -->
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'Ranking of the week'}" />
+                    <ItemsControl x:Name="uiBoard">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:ChallengeRow">
+                                <Button Classes="wrapper" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,7" Cursor="Hand" Click="Player_Click">
+                                    <Grid ColumnDefinitions="34,Auto,*,Auto">
+                                        <TextBlock Text="{Binding Place}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Opacity="{Binding PlaceOpacity}" />
+                                        <Border Grid.Column="1" Width="38" Height="38" CornerRadius="19" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                            <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding User}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="2" Margin="14,0,18,0" Spacing="5" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" />
+                                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Fraction}" Height="4" IsVisible="{Binding HasBar}" />
+                                            <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="12" IsVisible="{Binding !HasBar}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Value}" FontSize="13.5" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                            <TextBlock Text="{Binding Done}" Classes="muted" FontSize="12" HorizontalAlignment="Right" IsVisible="{Binding Done, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="uiBoardEmpty" IsVisible="False" Classes="muted" FontSize="13" Text="{l:T 'Nobody started it yet: be the first.'}" />
+                </StackPanel>
+
+                <!-- Since the challenges exist -->
+                <StackPanel x:Name="uiAllTimeSection" Spacing="8" IsVisible="False">
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'Challenges completed'}" />
+                    <ItemsControl x:Name="uiAllTime" />
+                </StackPanel>
+
+                <StackPanel x:Name="uiPastSection" Spacing="8" IsVisible="False">
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'Past weeks'}" />
+                    <ItemsControl x:Name="uiPast">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:ChallengePastRow">
+                                <Border Padding="12,9" Margin="0,0,0,6" CornerRadius="10" Background="{DynamicResource Brush.Surface}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="{Binding Text}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding Week}" Classes="muted" FontSize="12" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding Result}" FontSize="12.5" Margin="16,0,0,0" VerticalAlignment="Center" TextAlignment="Right" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

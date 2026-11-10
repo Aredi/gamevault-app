@@ -43,7 +43,7 @@ namespace GameVault.Uploader
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, InviteStore invites, GameEmulatorStore emulators, ChatStore chat, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled, invites = invites.Enabled, emulators = emulators.Enabled, chat = chat.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, InviteStore invites, GameEmulatorStore emulators, ChatStore chat, ChallengeStore challenges, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled, invites = invites.Enabled, emulators = emulators.Enabled, chat = chat.Enabled, challenges = challenges.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -123,7 +123,7 @@ namespace GameVault.Uploader
                     var player = players.Get(userId);
                     return Results.Json(new { plays = player.Plays, achievements = player.Achievements });
                 }));
-            app.MapPut("/retro/players/me/achievements/{platform}/{romId:int}", (string platform, int romId, RetroPlayerStore.GameAchievements game, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+            app.MapPut("/retro/players/me/achievements/{platform}/{romId:int}", (string platform, int romId, RetroPlayerStore.GameAchievements game, HttpRequest request, AdminCheck users, RetroPlayerStore players, ChallengeStore challenges, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, check =>
                 {
                     string key = $"{platform}:{romId}";
@@ -137,7 +137,7 @@ namespace GameVault.Uploader
                         .Select(u => new RetroPlayerStore.Unlock { Title = u.Title.Trim()[..Math.Min(u.Title.Trim().Length, 200)], Badge = RetroPlayerStore.IsBadge(u.Badge) ? u.Badge : null, Date = u.Date })
                         .ToList();
                     players.SetAchievements(check.Id, check.User, key, game);
-                    return Results.NoContent();
+                    return ChallengeEndpoints.Told(challenges.Enabled && challenges.SetUnlocks(check.Id, check.User, key, game.Unlocks.Select(u => u.Date)));
                 }));
             app.MapGet("/retro/activity/achievements", (HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, _ => Results.Json(players.RecentUnlocks(30).Select(a => new
@@ -148,8 +148,13 @@ namespace GameVault.Uploader
             // The series of games (IGDB's, as RomM groups them): Zelda, Pokémon...
             app.MapGet("/retro/series", (HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.SeriesAsync(ct))));
-            app.MapPost("/retro/players/me/plays", (RetroPlayerStore.Play played, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
-                AsRetroPlayerAsync(request, users, players, ct, check =>
+            app.MapPost("/retro/players/me/plays", async (RetroPlayerStore.Play played, HttpRequest request, AdminCheck users, RetroPlayerStore players, ChallengeStore challenges, GameVaultProxy gameVault, CancellationToken ct) =>
+            {
+                var who = await users.CheckUserAsync(request, ct);
+                if (who.Allowed && players.Enabled)
+                    // Before the play is kept: the game may be one the player discovers
+                    await ChallengeEndpoints.SeedAsync(who.Id, request, challenges, gameVault, players, ct);
+                return await AsRetroPlayerAsync(request, users, players, ct, check =>
                 {
                     played.Key = $"{played.Platform}:{played.RomId}";
                     if (!RetroPlayerStore.IsValidKey(played.Key) || played.Minutes is < 1 or > 1440 || string.IsNullOrWhiteSpace(played.Name))
@@ -158,8 +163,9 @@ namespace GameVault.Uploader
                     played.PlatformName = (played.PlatformName ?? "")[..Math.Min((played.PlatformName ?? "").Length, 80)];
                     played.Cover = RommProxy.IsMedia(played.Cover) ? played.Cover : null;
                     players.AddPlay(check.Id, check.User, played);
-                    return Results.NoContent();
-                }));
+                    return ChallengeEndpoints.Told(challenges.Enabled && challenges.AddPlay(check.Id, check.User, played.Key, played.Minutes));
+                });
+            });
             app.MapPut("/retro/players/me/favorites", (string[] favorites, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, check =>
                 {

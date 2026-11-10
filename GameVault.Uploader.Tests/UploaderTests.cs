@@ -48,6 +48,17 @@ namespace GameVault.Uploader.Tests
                     Activated.Add(int.Parse(path["/api/users/".Length..]));
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { }) });
             }
+            // The player 2 played the game 5 before; the game 6 was only opened
+            if (path.EndsWith("/api/progresses"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new
+                    {
+                        data = request.RequestUri.Query.Contains("eq:2", StringComparison.Ordinal) || request.RequestUri.Query.Contains("eq%3A2", StringComparison.Ordinal)
+                            ? new object[] { new { minutes_played = 30, game = new { id = 5 } }, new { minutes_played = 0, game = new { id = 6 } } }
+                            : Array.Empty<object>(),
+                    }),
+                });
             if (path.EndsWith("/api/games/6"))
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 6, title = "Prey" }) });
             if (path.EndsWith("/api/games") && request.Headers.Authorization?.Parameter == "admin")
@@ -193,7 +204,7 @@ namespace GameVault.Uploader.Tests
         }
     }
 
-    public sealed class UploaderTests : IDisposable
+    public sealed partial class UploaderTests : IDisposable
     {
         private readonly string files = Path.Combine(Path.GetTempPath(), $"gv-uploader-{Guid.NewGuid():N}");
         private readonly string profiles = Path.Combine(Path.GetTempPath(), $"gv-profiles-{Guid.NewGuid():N}");
@@ -207,6 +218,7 @@ namespace GameVault.Uploader.Tests
         private readonly string hypervisor = Path.Combine(Path.GetTempPath(), $"gv-hypervisor-{Guid.NewGuid():N}");
         private readonly string emulators = Path.Combine(Path.GetTempPath(), $"gv-emulators-{Guid.NewGuid():N}");
         private readonly string chat = Path.Combine(Path.GetTempPath(), $"gv-chat-{Guid.NewGuid():N}");
+        private readonly string challenges = Path.Combine(Path.GetTempPath(), $"gv-challenges-{Guid.NewGuid():N}");
         private readonly FakeZeroTier zeroTier = new();
         private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
@@ -251,6 +263,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("HYPERVISOR_DIRECTORY", hypervisor);
                 host.UseSetting("EMULATORS_DIRECTORY", emulators);
                 host.UseSetting("CHAT_DIRECTORY", chat);
+                host.UseSetting("CHALLENGES_DIRECTORY", challenges);
                 host.UseSetting("GAMEVAULT_API_KEY", "admin-key");
                 host.ConfigureServices(services =>
                 {
@@ -279,6 +292,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(hypervisor, true); } catch { }
             try { Directory.Delete(emulators, true); } catch { }
             try { Directory.Delete(chat, true); } catch { }
+            try { Directory.Delete(challenges, true); } catch { }
             try { File.Delete(chat + ".key"); } catch { }
         }
 

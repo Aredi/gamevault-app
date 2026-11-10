@@ -89,6 +89,8 @@ namespace gamevault.Helper
                     }
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
+                // The challenge of the week first: it must hear of a game before the server has time on it
+                await ChallengesService.PlayedAsync(gamesToCountUp);
                 // Each minute is counted once: on the server, or offline when sending it failed
                 var notSent = new List<int>();
                 foreach (int gameid in gamesToCountUp)

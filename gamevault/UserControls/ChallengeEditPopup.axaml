@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.ChallengeEditPopup"
+             Width="560" Focusable="True">
+    <!-- An administrator chooses the challenge of the week -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="28,22,28,26" Spacing="14">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="sectionTitle" FontSize="22" Text="{l:T 'Challenge of the week'}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+
+            <StackPanel Spacing="6">
+                <TextBlock FontSize="13" Text="{l:T 'What counts'}" />
+                <ComboBox x:Name="uiKind" HorizontalAlignment="Stretch" DisplayMemberBinding="{Binding Label}" SelectionChanged="Kind_SelectionChanged" />
+            </StackPanel>
+
+            <StackPanel Spacing="6">
+                <TextBlock x:Name="uiGoalLabel" FontSize="13" />
+                <NumericUpDown x:Name="uiGoal" Width="170" HorizontalAlignment="Left" TextAlignment="Center" ValueChanged="Goal_ValueChanged" />
+            </StackPanel>
+
+            <!-- The game of the challenge: needed for the time on a game, possible for the achievements -->
+            <StackPanel x:Name="uiGameSection" Spacing="6" IsVisible="False">
+                <TextBlock x:Name="uiGameLabel" FontSize="13" />
+                <Grid x:Name="uiChosen" ColumnDefinitions="*,Auto" IsVisible="False">
+                    <TextBlock x:Name="uiChosenText" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <Button Grid.Column="1" Classes="ghost small" Click="Unchoose_Click" Content="{l:T 'Change'}" />
+                </Grid>
+                <StackPanel x:Name="uiPicker" Spacing="6">
+                    <TextBox x:Name="uiSearch" Watermark="{l:T 'Search a game'}" TextChanged="Search_TextChanged" />
+                    <ScrollViewer MaxHeight="190" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="uiResults">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:ChallengeGameChoice">
+                                    <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Margin="0,0,0,5" Click="Result_Click">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Classes="muted" FontSize="12" Margin="10,0,0,0" Text="{Binding Subtitle}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </StackPanel>
+
+            <Border CornerRadius="12" Padding="14" Background="{DynamicResource Brush.Surface}">
+                <StackPanel Spacing="4">
+                    <TextBlock x:Name="uiPreview" FontSize="16" FontWeight="Bold" TextWrapping="Wrap" />
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{l:T 'What the players did since Monday counts for the new challenge. It ends on Sunday at midnight (UTC).'}" />
+                </StackPanel>
+            </Border>
+
+            <TextBlock x:Name="uiStatus" TextWrapping="Wrap" FontSize="13" IsVisible="False" />
+            <Button x:Name="uiSave" Classes="action" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="Save_Click" Content="{l:T 'Set this challenge'}" />
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -178,6 +178,7 @@ namespace gamevault.Helper
                     using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Post, "/retro/players/me/plays", RetroService.Json(part));
                     if (!response.IsSuccessStatusCode)
                         return false;
+                    await ChallengesService.ToldAsync(response);
                 }
                 return true;
             }
@@ -231,6 +232,7 @@ namespace gamevault.Helper
             try
             {
                 using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Put, $"/retro/players/me/achievements/{game.Platform.Slug}/{game.Id}", RetroService.Json(shared));
+                await ChallengesService.ToldAsync(response);
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
