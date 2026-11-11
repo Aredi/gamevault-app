@@ -6,6 +6,17 @@
              Focusable="True" Background="#05070B">
     <!-- The living-room mode: the whole screen, played with a gamepad from the couch. The selected game's picture behind,
          its covers in a strip or a grid, a game's screen with its actions, and a menu. Laid out 1080 high, scaled to the screen. -->
+    <!-- What the customization changes: set again by the code when a setting changes -->
+    <UserControl.Resources>
+        <CornerRadius x:Key="Couch.Radius">14</CornerRadius>
+        <CornerRadius x:Key="Couch.Radius.Outer">17</CornerRadius>
+        <CornerRadius x:Key="Couch.Radius.Glass">22</CornerRadius>
+        <x:Double x:Key="Couch.Slot.Width">208</x:Double>
+        <x:Double x:Key="Couch.Slot.Height">284</x:Double>
+        <x:Double x:Key="Couch.Card.Width">184</x:Double>
+        <x:Double x:Key="Couch.Card.Height">252</x:Double>
+        <x:Double x:Key="Couch.Strip.Height">312</x:Double>
+    </UserControl.Resources>
     <UserControl.Styles>
         <Style Selector="TextBlock">
             <Setter Property="Foreground" Value="#F4F6FA" />
@@ -44,7 +55,7 @@
         </Style>
         <Style Selector="Border.couchLine">
             <Setter Property="Padding" Value="22,15" />
-            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="CornerRadius" Value="{DynamicResource Couch.Radius}" />
             <Setter Property="Background" Value="#14FFFFFF" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="2" />
@@ -65,7 +76,7 @@
         <!-- A game's actions: pills on its picture; the chosen one lit with the accent, a white edge and a glow -->
         <Style Selector="Border.couchAction">
             <Setter Property="Padding" Value="26,14" />
-            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="CornerRadius" Value="{DynamicResource Couch.Radius}" />
             <Setter Property="Background" Value="#26000000" />
             <Setter Property="BorderBrush" Value="#2EFFFFFF" />
             <Setter Property="BorderThickness" Value="1.5" />
@@ -116,7 +127,20 @@
             <Setter Property="Background" Value="#B80B1018" />
             <Setter Property="BorderBrush" Value="#26FFFFFF" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="CornerRadius" Value="{DynamicResource Couch.Radius.Glass}" />
+        </Style>
+        <Style Selector="Border.couchGlow">
+            <Setter Property="BoxShadow" Value="0 0 30 3 #66FFFFFF" />
+        </Style>
+        <!-- No glow: only the white edge of what is chosen -->
+        <Style Selector=".noGlow Border.couchGlow">
+            <Setter Property="BoxShadow" Value="none" />
+        </Style>
+        <Style Selector=".noGlow Border.couchAction.selected">
+            <Setter Property="BoxShadow" Value="none" />
+        </Style>
+        <Style Selector=".noGlow Border.couchLine.selected">
+            <Setter Property="BoxShadow" Value="none" />
         </Style>
     </UserControl.Styles>
 
@@ -136,6 +160,15 @@
             </Panel.Transitions>
             <local:CacheImage x:Name="uiBackPc" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" IsVisible="False" />
             <Image x:Name="uiBackRetro" Stretch="UniformToFill" IsVisible="False" />
+        </Panel>
+        <!-- A background made here (the customization's "visual packs"), instead of the game's picture -->
+        <Panel x:Name="uiPack" IsVisible="False" RenderTransformOrigin="50%,40%">
+            <Panel.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform ScaleX="1.02" ScaleY="1.02" />
+                    <TranslateTransform />
+                </TransformGroup>
+            </Panel.RenderTransform>
         </Panel>
         <!-- A game's screenshots, one fading in over the other (never through black) -->
         <Panel x:Name="uiShots" RenderTransformOrigin="50%,40%">
@@ -160,8 +193,8 @@
                 </Image.Transitions>
             </Image>
         </Panel>
-        <!-- Dark where the texts are: the left and the bottom -->
-        <Border>
+        <!-- Dark where the texts are: the left and the bottom (lighter or stronger in the customization) -->
+        <Border x:Name="uiShadeLeft">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
                     <GradientStop Offset="0" Color="#D905070B" />
@@ -170,7 +203,7 @@
                 </LinearGradientBrush>
             </Border.Background>
         </Border>
-        <Border>
+        <Border x:Name="uiShadeBottom">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
                     <GradientStop Offset="0" Color="#8005070B" />
@@ -181,6 +214,7 @@
             </Border.Background>
         </Border>
         <!-- Darker under a game's screen and the grid, which cover the picture -->
+        <Border x:Name="uiShadeStrong" Background="#5205070B" IsVisible="False" />
         <Border x:Name="uiDim" Background="#9905070B" IsVisible="False" />
         <!-- Under a game's screen: dark on the left where its texts are, its picture seen on the right -->
         <Border x:Name="uiDetailShade" IsVisible="False">
@@ -203,7 +237,7 @@
                             <local:CacheImage x:Name="uiAvatar" ImageCacheType="UserAvatar" Stretch="UniformToFill" />
                         </Border>
                         <StackPanel VerticalAlignment="Center" Spacing="1">
-                            <TextBlock Text="SanctuaryVault" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="21" />
+                            <TextBlock Text="SanctuaryVault" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="21" />
                             <TextBlock x:Name="uiPlayer" FontSize="16" Opacity="0.7" />
                         </StackPanel>
                     </StackPanel>
@@ -251,13 +285,29 @@
                                     <DropShadowEffect BlurRadius="28" OffsetX="0" OffsetY="4" Color="#B0000000" />
                                 </Image.Effect>
                             </Image>
-                            <TextBlock x:Name="uiTitle" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="68" TextWrapping="Wrap" MaxLines="2"
+                            <TextBlock x:Name="uiTitle" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="68" TextWrapping="Wrap" MaxLines="2"
                                        TextTrimming="CharacterEllipsis" LineHeight="76">
                                 <TextBlock.Effect>
                                     <DropShadowEffect BlurRadius="22" OffsetX="0" OffsetY="2" Color="#CC000000" />
                                 </TextBlock.Effect>
                             </TextBlock>
                             <TextBlock x:Name="uiMeta" FontSize="22" Opacity="0.8" />
+                            <!-- The numbers on a line, when the customization puts them there -->
+                            <ItemsControl x:Name="uiStatsLine" IsVisible="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel ItemSpacing="26" LineSpacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:CouchStat">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding Label}" FontSize="19" Opacity="0.62" />
+                                            <TextBlock Text="{Binding Value}" FontSize="19" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                         <!-- Docked to the screen's right edge -->
                         <Border Grid.Column="1" x:Name="uiStatsCard" Classes="couchGlass" Padding="26,18,40,18" Margin="0,0,-72,6" CornerRadius="20,0,0,20" BorderThickness="1,1,0,1"
@@ -279,7 +329,7 @@
                     <!-- The search: what is typed, and the keyboard the gamepad types it with; the games found are the strip under it -->
                     <local:CouchKeyboard x:Name="uiKeyboard" Margin="0,0,0,26" HorizontalAlignment="Center" VerticalAlignment="Bottom" IsVisible="False" />
 
-                    <ScrollViewer Grid.Row="1" x:Name="uiStrip" Height="312" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                    <ScrollViewer Grid.Row="1" x:Name="uiStrip" Height="{DynamicResource Couch.Strip.Height}" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                         <ScrollViewer.Transitions>
                             <Transitions>
                                 <VectorTransition Property="Offset" Duration="0:0:0.16" Easing="CubicEaseOut" />
@@ -292,9 +342,9 @@
                             <ItemsRepeater.ItemTemplate>
                                 <DataTemplate x:DataType="local:CouchItem">
                                     <!-- A place larger than the cover: the selected one grows in it -->
-                                    <Panel Width="208" Height="284">
-                                    <Panel Classes="couchCard" Classes.selected="{Binding IsSelected}" Width="184" Height="252">
-                                        <Border CornerRadius="14" ClipToBounds="True" Background="#1FFFFFFF" BoxShadow="0 12 26 0 #8C000000">
+                                    <Panel Width="{DynamicResource Couch.Slot.Width}" Height="{DynamicResource Couch.Slot.Height}">
+                                    <Panel Classes="couchCard" Classes.selected="{Binding IsSelected}" Width="{DynamicResource Couch.Card.Width}" Height="{DynamicResource Couch.Card.Height}">
+                                        <Border CornerRadius="{DynamicResource Couch.Radius}" ClipToBounds="True" Background="#1FFFFFFF" BoxShadow="0 12 26 0 #8C000000">
                                             <Panel>
                                                 <!-- A tile of the home: what it is, and what it tells -->
                                                 <Border IsVisible="{Binding IsTile}" Background="{DynamicResource Brush.Accent}" Opacity="0.7" />
@@ -323,7 +373,7 @@
                                                 </Border>
                                             </Panel>
                                         </Border>
-                                        <Border CornerRadius="17" Margin="-4" BorderThickness="3" BorderBrush="#F4F6FA" IsVisible="{Binding IsSelected}" BoxShadow="0 0 30 3 #66FFFFFF" />
+                                        <Border Classes="couchGlow" CornerRadius="{DynamicResource Couch.Radius.Outer}" Margin="-4" BorderThickness="3" BorderBrush="#F4F6FA" IsVisible="{Binding IsSelected}" />
                                     </Panel>
                                     </Panel>
                                 </DataTemplate>
@@ -377,14 +427,15 @@
                             </ItemsRepeater>
                         </ScrollViewer>
                     </Border>
-                    <TextBlock x:Name="uiGridTitle" Grid.RowSpan="2" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="40" Margin="96,34,96,0"
+                    <TextBlock x:Name="uiGridTitle" Grid.RowSpan="2" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="40" Margin="96,34,96,0"
                                HorizontalAlignment="Center" VerticalAlignment="Top" TextTrimming="CharacterEllipsis" MaxLines="1" IsVisible="False" />
                 </Grid>
 
                 <!-- A game's screen, as on a console: straight on its picture, its logo (else its name), its numbers, what can be done,
                      what it is about; its trailer at the top right -->
                 <Grid Grid.Row="1" x:Name="uiDetails" ColumnDefinitions="680,*" Margin="96,6,72,20" IsVisible="False">
-                    <StackPanel x:Name="uiDetailPanel" Spacing="16" VerticalAlignment="Center" Margin="0,0,0,40">
+                    <Border x:Name="uiDetailCard" VerticalAlignment="Center" Margin="0,0,0,40">
+                    <StackPanel x:Name="uiDetailPanel" Spacing="16">
                         <StackPanel.RenderTransform>
                             <TranslateTransform />
                         </StackPanel.RenderTransform>
@@ -394,7 +445,7 @@
                                 <DropShadowEffect BlurRadius="24" OffsetX="0" OffsetY="4" Color="#B0000000" />
                             </Image.Effect>
                         </Image>
-                        <TextBlock x:Name="uiDetailTitle" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="64" LineHeight="70" TextWrapping="Wrap" MaxLines="2"
+                        <TextBlock x:Name="uiDetailTitle" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="64" LineHeight="70" TextWrapping="Wrap" MaxLines="2"
                                    TextTrimming="CharacterEllipsis">
                             <TextBlock.Effect>
                                 <DropShadowEffect BlurRadius="20" OffsetX="0" OffsetY="2" Color="#CC000000" />
@@ -436,6 +487,7 @@
                             <TextBlock x:Name="uiDescription" FontSize="19" LineHeight="29" TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis" Opacity="0.88" />
                         </Border>
                     </StackPanel>
+                    </Border>
                     <!-- The game's trailer after a moment on its screen (a web player: nothing is drawn over it, it stops under a menu) -->
                     <Border Grid.Column="1" x:Name="uiTrailerBox" Classes="couchGlass" Margin="36,40,0,0" Padding="10" Width="880" Height="515"
                             HorizontalAlignment="Right" VerticalAlignment="Top" IsVisible="False">
@@ -469,7 +521,7 @@
                             <TranslateTransform />
                         </Border.RenderTransform>
                         <StackPanel Spacing="18">
-                            <TextBlock x:Name="uiMenuTitle" Text="{l:T 'Living-room mode'}" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="30" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="uiMenuTitle" Text="{l:T 'Living-room mode'}" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="30" HorizontalAlignment="Center" />
                             <!-- Long lists (a game's achievements) scroll with the selection -->
                             <ScrollViewer x:Name="uiMenuScroll" MaxHeight="760" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
                                 <ItemsControl x:Name="uiMenuLines">
@@ -484,7 +536,7 @@
                                                 <Grid ColumnDefinitions="Auto,*" Opacity="{Binding Opacity}">
                                                     <Image Source="{Binding Picture}" Width="56" Height="56" Margin="0,0,16,0" IsVisible="{Binding HasDetail}" VerticalAlignment="Center" />
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                                        <TextBlock Classes="couchLineText" Classes.left="{Binding HasDetail}" Text="{Binding Text}" FontSize="21" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                        <TextBlock Classes="couchLineText" Classes.left="{Binding AlignLeft}" Text="{Binding Text}" FontSize="21" FontWeight="SemiBold" TextWrapping="Wrap" />
                                                         <TextBlock Text="{Binding Detail}" FontSize="16" Opacity="0.75" TextWrapping="Wrap" IsVisible="{Binding HasDetail}" />
                                                     </StackPanel>
                                                 </Grid>
@@ -493,6 +545,8 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
+                            <!-- What the chosen setting does -->
+                            <TextBlock x:Name="uiMenuHelp" FontSize="16" Opacity="0.75" TextWrapping="Wrap" IsVisible="False" />
                             <TextBlock x:Name="uiPadState" FontSize="15" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                         </StackPanel>
                     </Border>
@@ -515,7 +569,7 @@
                         <Border x:Name="uiCurtainAvatarFrame" Width="110" Height="110" CornerRadius="55" ClipToBounds="True" Background="#22FFFFFF" HorizontalAlignment="Left" IsVisible="False">
                             <local:CacheImage x:Name="uiCurtainAvatar" ImageCacheType="UserAvatar" Stretch="UniformToFill" />
                         </Border>
-                        <TextBlock x:Name="uiCurtainTitle" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="72" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="uiCurtainTitle" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="72" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
                         <TextBlock x:Name="uiCurtainText" FontSize="24" Opacity="0.8" />
                     </StackPanel>
                     <TextBlock x:Name="uiCurtainClock" FontSize="44" FontWeight="SemiBold" Margin="0,60,96,0" HorizontalAlignment="Right" VerticalAlignment="Top" />

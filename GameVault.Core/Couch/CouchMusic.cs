@@ -11,7 +11,7 @@ namespace GameVault.Core.Couch
         public const double ChordSeconds = 8;
 
         // F maj7, A min9, C maj7, G 6/9: open, a little dreamy, never resolving hard
-        private static readonly double[][] Chords =
+        private static readonly double[][] Calm =
         {
             new[] { 174.61, 220.00, 261.63, 329.63 },
             new[] { 110.00, 164.81, 196.00, 246.94, 261.63 },
@@ -20,13 +20,27 @@ namespace GameVault.Core.Couch
         };
 
         // A major pentatonic, two octaves up: the bells never clash with the chords
-        private static readonly double[] Bells = { 659.26, 739.99, 880.00, 987.77, 1108.73, 1318.51 };
+        private static readonly double[] CalmBells = { 659.26, 739.99, 880.00, 987.77, 1108.73, 1318.51 };
 
-        public static double Seconds => Chords.Length * ChordSeconds;
+        // The night: A min9, F maj7, D min9, E min7, lower and darker; A minor pentatonic bells, an octave lower
+        private static readonly double[][] Night =
+        {
+            new[] { 110.00, 164.81, 196.00, 246.94, 261.63 },
+            new[] { 87.31, 130.81, 164.81, 220.00 },
+            new[] { 73.42, 110.00, 130.81, 174.61, 164.81 },
+            new[] { 82.41, 123.47, 146.83, 196.00 },
+        };
+        private static readonly double[] NightBells = { 440.00, 523.25, 587.33, 659.26, 783.99 };
+
+        public static double Seconds => Calm.Length * ChordSeconds;
 
         /// <summary>The loop, 16 bits, one channel, at <see cref="Rate"/>.</summary>
-        public static short[] Samples()
+        /// <param name="theme">"calm" (the usual one) or "night" (lower, darker).</param>
+        public static short[] Samples(string theme = "calm")
         {
+            bool night = theme == "night";
+            double[][] Chords = night ? Night : Calm;
+            double[] Bells = night ? NightBells : CalmBells;
             int length = (int)(Seconds * Rate);
             var buffer = new double[length];
             int chordLength = (int)(ChordSeconds * Rate);
@@ -54,7 +68,7 @@ namespace GameVault.Core.Couch
                 }
             }
             // The bells: at fixed moments, so the loop is the same each time
-            var random = new Random(20261111);
+            var random = new Random(night ? 20261112 : 20261111);
             for (double at = 1.3; at < Seconds; at += 1.7 + random.NextDouble() * 2.4)
             {
                 double note = Bells[random.Next(Bells.Length)];
@@ -73,7 +87,7 @@ namespace GameVault.Core.Couch
             double low = 0;
             for (int pass = 0; pass < 2; pass++)
                 for (int i = 0; i < length; i++)
-                    buffer[i] = low += 0.35 * (buffer[i] - low);
+                    buffer[i] = low += (night ? 0.22 : 0.35) * (buffer[i] - low);
             int delay = (int)(0.42 * Rate);
             var echoed = (double[])buffer.Clone();
             for (int pass = 0; pass < 2; pass++)

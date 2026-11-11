@@ -14,7 +14,7 @@ namespace gamevault.UserControls
         /// <summary>A screen or a menu comes in: from a little aside, faded in (none in the light mode).</summary>
         private void Enter(Control control, double fromX, double fromY)
         {
-            if (Settings.Performance || control.RenderTransform is not TranslateTransform)
+            if (Settings.Performance || !Settings.Animations || control.RenderTransform is not TranslateTransform)
                 return;
             var animation = new Animation
             {
@@ -35,9 +35,10 @@ namespace gamevault.UserControls
         /// </summary>
         private void KeepDrift(bool active)
         {
-            bool drift = active && !Settings.Performance && playing == null;
+            bool drift = active && !Settings.Performance && Settings.Drift && playing == null;
             uiBack.Classes.Set("drift", drift);
             uiShots.Classes.Set("drift", drift);
+            uiPack.Classes.Set("drift", drift);
         }
     }
 }

@@ -39,6 +39,77 @@ namespace GameVault.Core.Couch
         /// <summary>The quiet music behind the menus.</summary>
         public bool Music { get; set; } = true;
 
+        // --- The customization, as Aniki ReMake's: each one has its few values, the first the usual one ---
+
+        /// <summary>The values each customization takes, the usual one first. A value read that is not among them is the usual one.</summary>
+        public static readonly IReadOnlyDictionary<string, string[]> Choices = new Dictionary<string, string[]>
+        {
+            [nameof(Layout)] = new[] { "signature", "panel", "showcase" },
+            [nameof(Background)] = new[] { "game", "aurora", "night", "synthwave", "accent", "none" },
+            [nameof(Font)] = new[] { "sora", "figtree", "system" },
+            [nameof(Corners)] = new[] { "round", "square", "soft" },
+            [nameof(InfoStyle)] = new[] { "panel", "compact" },
+            [nameof(Shade)] = new[] { "normal", "light", "strong" },
+            [nameof(CoverShape)] = new[] { "portrait", "square" },
+            [nameof(CoverSize)] = new[] { "normal", "small", "large" },
+            [nameof(SoundPack)] = new[] { "soft", "retro", "crystal" },
+            [nameof(MusicTheme)] = new[] { "calm", "night" },
+            [nameof(StartTab)] = new[] { "home", "library", "installed" },
+        };
+
+        /// <summary>A game's screen: on its picture at the left, in a panel, or centered at the bottom.</summary>
+        public string Layout { get; set; } = "signature";
+        /// <summary>Behind the lists: the selected game's picture, a still background made here, or nothing.</summary>
+        public string Background { get; set; } = "game";
+        /// <summary>A game's screen shows its own picture, whatever is behind the lists.</summary>
+        public bool DetailsBackground { get; set; } = true;
+        public string Font { get; set; } = "sora";
+        public string Corners { get; set; } = "round";
+        /// <summary>The selected game's numbers: docked at the screen's edge, or on a line under its name.</summary>
+        public string InfoStyle { get; set; } = "panel";
+        /// <summary>How dark the screen is under the texts.</summary>
+        public string Shade { get; set; } = "normal";
+        public string CoverShape { get; set; } = "portrait";
+        public string CoverSize { get; set; } = "normal";
+        /// <summary>The chosen cover glows.</summary>
+        public bool Glow { get; set; } = true;
+        /// <summary>The picture behind drifts slowly.</summary>
+        public bool Drift { get; set; } = true;
+        /// <summary>A game's screenshots come one after the other behind its screen.</summary>
+        public bool Shots { get; set; } = true;
+        /// <summary>A game's screen and the menus come in with a short move.</summary>
+        public bool Animations { get; set; } = true;
+        /// <summary>What the buttons do, at the bottom of the screen.</summary>
+        public bool Hints { get; set; } = true;
+        public bool Clock { get; set; } = true;
+        public string SoundPack { get; set; } = "soft";
+        /// <summary>The sounds' loudness, in percent (25 to 100).</summary>
+        public int SoundVolume { get; set; } = 100;
+        public string MusicTheme { get; set; } = "calm";
+        /// <summary>The music's loudness, in percent (25 to 100).</summary>
+        public int MusicVolume { get; set; } = 75;
+        /// <summary>The greeting when the mode opens with the client.</summary>
+        public bool Welcome { get; set; } = true;
+        /// <summary>The tab shown when the mode opens.</summary>
+        public string StartTab { get; set; } = "home";
+
+        /// <summary>A customization's value, by its name (the menus go through them).</summary>
+        public string Get(string name) => (string)typeof(CouchSettings).GetProperty(name)!.GetValue(this)!;
+
+        public void Set(string name, string value) => typeof(CouchSettings).GetProperty(name)!.SetValue(this, value);
+
+        /// <summary>Every customization among its values, the volumes among theirs.</summary>
+        public void Check()
+        {
+            foreach (var (name, values) in Choices)
+                if (Array.IndexOf(values, Get(name)) < 0)
+                    Set(name, values[0]);
+            SoundVolume = Volumes.Contains(SoundVolume) ? SoundVolume : 100;
+            MusicVolume = Volumes.Contains(MusicVolume) ? MusicVolume : 75;
+        }
+
+        public static readonly int[] Volumes = { 25, 50, 75, 100 };
+
         public string Sort { get; set; } = ByName;
         public bool InstalledOnly { get; set; }
         public bool NeverPlayed { get; set; }
@@ -67,6 +138,7 @@ namespace GameVault.Core.Couch
                         read.Sort = ByName;
                     read.Apps ??= new();
                     read.ScreenSaverMinutes = Math.Clamp(read.ScreenSaverMinutes, 0, 60);
+                    read.Check();
                     return read;
                 }
             }

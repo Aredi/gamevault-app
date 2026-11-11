@@ -205,7 +205,7 @@ namespace GameVault.Core.Tests
                 Assert.Equal(samples.Length * 2, BitConverter.ToInt32(wave, 40));
             }
             // A sound by event, and the moves the shortest (they come many at a time)
-            var all = Enum.GetValues<CouchSound>().Select(CouchSounds.Samples).ToList();
+            var all = Enum.GetValues<CouchSound>().Select(sound => CouchSounds.Samples(sound)).ToList();
             for (int i = 0; i < all.Count; i++)
                 for (int j = i + 1; j < all.Count; j++)
                     Assert.NotEqual(all[i], all[j]);

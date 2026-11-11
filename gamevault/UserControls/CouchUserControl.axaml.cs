@@ -69,6 +69,10 @@ namespace gamevault.UserControls
         public string Text { get; init; } = "";
         /// <summary>A second line under the text (an achievement's description); none for most lines.</summary>
         public string? Detail { get; init; }
+        /// <summary>What it does, shown under the menu while it is chosen (the settings).</summary>
+        public string? Help { get; init; }
+        /// <summary>Read from the left: the lines with a second line, and the settings.</summary>
+        public bool AlignLeft => HasDetail || Help != null;
         public bool HasDetail => !string.IsNullOrEmpty(Detail);
         /// <summary>A picture before the text (an achievement's badge), once loaded.</summary>
         private Avalonia.Media.Imaging.Bitmap? picture;
@@ -82,7 +86,9 @@ namespace gamevault.UserControls
     public partial class CouchUserControl : UserControl
     {
         // The place of a cover (larger than it: the selected one grows) and what is around the strip and the grid
-        private const double CardWidth = 208, CardHeight = 284, StripGap = 0, GridColumnGap = 2, GridRowGap = 2, Side = 84, GridTop = 8, GridBottom = 44;
+        // The place of a cover, as the customization sizes it
+        private double CardWidth = 208, CardHeight = 284;
+        private const double StripGap = 0, GridColumnGap = 2, GridRowGap = 2, Side = 84, GridTop = 8, GridBottom = 44;
 
         internal CouchNavigator Navigator { get; } = new();
         internal List<CouchTab> Tabs { get; private set; } = new();
@@ -119,7 +125,7 @@ namespace gamevault.UserControls
             PadUsed = kind;
             if (ButtonStyle != before)
             {
-                if (Navigator.Screen == CouchScreen.Menu && menu == CouchMenu.Settings)
+                if (Navigator.Screen == CouchScreen.Menu && menu == CouchMenu.Custom)
                     BuildMenu();
                 ShowScreen(false);
             }
@@ -204,7 +210,7 @@ namespace gamevault.UserControls
             IsVisible = true;
             Shown = true;
             idle.Restart();
-            if (welcome)
+            if (welcome && Settings.Welcome)
                 ShowWelcome();
             Focus();
             Fit();
@@ -214,10 +220,23 @@ namespace gamevault.UserControls
             try { gamepad ??= new CouchGamepad(); }
             catch (Exception ex) { Log.Ignored(ex); }
             audio ??= new CouchAudio();
+            ApplyLook();
             repeater.Reset(gamepad?.Read() ?? CouchButtons.None);
             ListenToGames(true);
             timer.Start();
             await LoadAsync();
+            OpenStartTab();
+        }
+
+        /// <summary>The tab the customization opens the mode on (the home, the library, the installed games).</summary>
+        internal void OpenStartTab()
+        {
+            string name = Settings.StartTab switch { "library" => Loc.T("Library"), "installed" => Loc.T("Installed games"), _ => Loc.T("Home") };
+            int tab = Tabs.FindIndex(t => t.Name == name);
+            if (tab < 0 || Navigator.Screen != CouchScreen.Home)
+                return;
+            Navigator.SelectTab(tab);
+            ShowTab();
         }
 
         internal void Close()
@@ -867,7 +886,9 @@ namespace gamevault.UserControls
             uiMeta.Text = item == null ? "" : MetaOf(item);
             Stats = item == null ? Array.Empty<CouchStat>() : StatsOf(item);
             uiStats.ItemsSource = Stats;
-            uiStatsCard.IsVisible = Stats.Count > 0 && Settings.ShowStats;
+            uiStatsCard.IsVisible = Stats.Count > 0 && Settings.ShowStats && Settings.InfoStyle == "panel";
+            uiStatsLine.ItemsSource = Stats;
+            uiStatsLine.IsVisible = Stats.Count > 0 && Settings.ShowStats && Settings.InfoStyle == "compact";
             uiLogo.IsVisible = false;
             uiTitle.IsVisible = true;
             int generation = ++backGeneration;
@@ -974,11 +995,12 @@ namespace gamevault.UserControls
             uiKeyboard.Show(Query.Length > 0 ? Query : Loc.T("Search a game"), placeholder: Query.Length == 0);
             uiDim.IsVisible = !detailsBehind && (grid || Searching);
             uiDetailShade.IsVisible = detailsBehind;
-            // Coming in: a game's screen from the left, a menu from below
+            ShowBackground(detailsBehind);
+            // Coming in: a game's screen from the left (from below when centered), a menu from below
             if (detailsBehind && shownScreen == CouchScreen.Home && screen == CouchScreen.Details)
-                Enter(uiDetailPanel, -48, 0);
+                Enter(uiDetailPanel, Settings.Layout == "showcase" ? 0 : -48, Settings.Layout == "showcase" ? 36 : 0);
             if (screen == CouchScreen.Menu && shownScreen != CouchScreen.Menu)
-                Enter(uiMenuBox, 0, 28);
+                Enter(uiMenuBox, menu is CouchMenu.Settings or CouchMenu.Custom ? -40 : 0, menu is CouchMenu.Settings or CouchMenu.Custom ? 0 : 28);
             if (!detailsBehind && shotShown)
                 HideShots();
             // Back from a menu to the same game: its screen is as it was
@@ -989,6 +1011,7 @@ namespace gamevault.UserControls
                 Actions[i].IsSelected = i == Navigator.Action;
             for (int i = 0; i < MenuLines.Count; i++)
                 MenuLines[i].IsSelected = i == Navigator.MenuLine;
+            uiMenuHelp.Text = Navigator.MenuLine < MenuLines.Count ? MenuLines[Navigator.MenuLine].Help ?? "" : "";
             if (screen == CouchScreen.Menu)
                 Dispatcher.UIThread.Post(() => (uiMenuLines.ContainerFromIndex(Navigator.MenuLine) as Control)?.BringIntoView(), DispatcherPriority.Background);
             uiPadState.Text = gamepad is { CanRead: true } ? "" : Loc.T("No gamepad can be read on this PC: the arrows, Enter and Escape do the same.");
@@ -1214,7 +1237,7 @@ namespace gamevault.UserControls
             {
                 ShowStatus(current);
                 // A screenshot after 3 seconds, then one every 6; nothing while a game is played over the window
-                if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null && !Settings.Performance && playing == null
+                if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null && !Settings.Performance && Settings.Shots && playing == null
                     && TopLevel.GetTopLevel(this) is Window { IsActive: true })
                     _ = NextShotAsync(current);
             }

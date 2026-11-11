@@ -94,41 +94,57 @@ namespace GameVault.Core.Couch
                 buffer[i] += wet[i] * mix;
         }
 
-        private static (double Seconds, double Peak, Action<double[]> Draw, double Room) Recipe(CouchSound sound) => sound switch
+        private static (double Seconds, double Peak, Action<double[]> Draw, double Room) Recipe(CouchSound sound, Timbre t) => sound switch
         {
-            CouchSound.Move => (0.07, 0.12, b => { Note(b, 0, 1568, 1, 0.012, Mallet); Sweep(b, 0, 0.012, 0.5, 6000, 3000, 1); }, 0.12),
-            CouchSound.Tab => (0.16, 0.13, b => { Sweep(b, 0, 0.13, 1, 700, 5200, 2); Note(b, 0.02, 988, 0.35, 0.03, Mallet); }, 0.2),
-            CouchSound.Accept => (0.3, 0.17, b => { Note(b, 0, 1046.5, 1, 0.05, Mallet); Note(b, 0.05, 1568, 0.9, 0.07, Mallet); }, 0.3),
-            CouchSound.Back => (0.26, 0.14, b => { Note(b, 0, 1318.5, 0.9, 0.045, Mallet); Note(b, 0.045, 880, 1, 0.06, Mallet); }, 0.25),
+            CouchSound.Move => (0.07, 0.12, b => { Note(b, 0, 1568*t.Pitch, 1, (0.012) * t.Decay, t.Main); Sweep(b, 0, 0.012, (0.5) * t.Sweep, 6000, 3000, 1); }, 0.12),
+            CouchSound.Tab => (0.16, 0.13, b => { Sweep(b, 0, 0.13, (1) * t.Sweep, 700, 5200, 2); Note(b, 0.02, 988*t.Pitch, 0.35, (0.03) * t.Decay, t.Main); }, 0.2),
+            CouchSound.Accept => (0.3, 0.17, b => { Note(b, 0, 1046.5*t.Pitch, 1, (0.05) * t.Decay, t.Main); Note(b, 0.05, 1568*t.Pitch, 0.9, (0.07) * t.Decay, t.Main); }, 0.3),
+            CouchSound.Back => (0.26, 0.14, b => { Note(b, 0, 1318.5*t.Pitch, 0.9, (0.045) * t.Decay, t.Main); Note(b, 0.045, 880*t.Pitch, 1, (0.06) * t.Decay, t.Main); }, 0.25),
             CouchSound.Open => (0.42, 0.17, b =>
             {
-                Sweep(b, 0, 0.16, 0.7, 600, 4500, 3);
-                Note(b, 0.06, 880, 0.7, 0.09, Bell);
-                Note(b, 0.06, 1108.7, 0.5, 0.09, Bell);
-                Note(b, 0.06, 1318.5, 0.5, 0.11, Bell);
+                Sweep(b, 0, 0.16, (0.7) * t.Sweep, 600, 4500, 3);
+                Note(b, 0.06, 880*t.Pitch, 0.7, (0.09) * t.Decay, t.Bright);
+                Note(b, 0.06, 1108.7*t.Pitch, 0.5, (0.09) * t.Decay, t.Bright);
+                Note(b, 0.06, 1318.5*t.Pitch, 0.5, (0.11) * t.Decay, t.Bright);
             }, 0.35),
-            CouchSound.Close => (0.22, 0.12, b => { Sweep(b, 0, 0.16, 0.9, 4200, 600, 4); Note(b, 0.03, 659.3, 0.5, 0.05, Mallet); }, 0.25),
-            CouchSound.Panel => (0.26, 0.14, b => { Sweep(b, 0, 0.18, 0.8, 400, 3000, 5); Note(b, 0.02, 392, 0.8, 0.07, Mallet, glideTo: 523.3); }, 0.3),
-            CouchSound.PanelClose => (0.22, 0.12, b => { Sweep(b, 0, 0.15, 0.8, 3000, 400, 6); Note(b, 0.02, 523.3, 0.7, 0.05, Mallet, glideTo: 392); }, 0.25),
+            CouchSound.Close => (0.22, 0.12, b => { Sweep(b, 0, 0.16, (0.9) * t.Sweep, 4200, 600, 4); Note(b, 0.03, 659.3*t.Pitch, 0.5, (0.05) * t.Decay, t.Main); }, 0.25),
+            CouchSound.Panel => (0.26, 0.14, b => { Sweep(b, 0, 0.18, (0.8) * t.Sweep, 400, 3000, 5); Note(b, 0.02, 392*t.Pitch, 0.8, (0.07) * t.Decay, t.Main, glideTo: 523.3 * t.Pitch); }, 0.3),
+            CouchSound.PanelClose => (0.22, 0.12, b => { Sweep(b, 0, 0.15, (0.8) * t.Sweep, 3000, 400, 6); Note(b, 0.02, 523.3*t.Pitch, 0.7, (0.05) * t.Decay, t.Main, glideTo: 392 * t.Pitch); }, 0.25),
             CouchSound.Launch => (0.95, 0.18, b =>
             {
                 // Up a major chord, then all of it ringing: the game starts
                 double[] notes = { 523.3, 659.3, 784, 1046.5, 1568 };
                 for (int i = 0; i < notes.Length; i++)
-                    Note(b, i * 0.065, notes[i], i == notes.Length - 1 ? 0.6 : 0.8, 0.18 + i * 0.03, Bell);
-                Sweep(b, 0.2, 0.5, 0.25, 2000, 9000, 7);
+                    Note(b, i * 0.065, notes[i]*t.Pitch, i == notes.Length - 1 ? 0.6 : 0.8, (0.18 + i * 0.03) * t.Decay, t.Bright);
+                Sweep(b, 0.2, 0.5, (0.25) * t.Sweep, 2000, 9000, 7);
             }, 0.45),
-            _ => (0.12, 0.09, b => { Note(b, 0, 220, 1, 0.025, Mallet); Note(b, 0.035, 196, 0.8, 0.03, Mallet); }, 0.1),
+            _ => (0.12, 0.09, b => { Note(b, 0, 220*t.Pitch, 1, (0.025) * t.Decay, t.Main); Note(b, 0.035, 196*t.Pitch, 0.8, (0.03) * t.Decay, t.Main); }, 0.1),
+        };
+
+        /// <summary>How a pack of sounds plays the same recipes: its instrument, its room, its pitch.</summary>
+        private sealed record Timbre((double Ratio, double Amp, double Decay)[] Main, (double Ratio, double Amp, double Decay)[] Bright, double Room, double Decay, double Sweep, double Pitch);
+
+        // An old console's square wave: its odd partials, held a little longer, no room
+        private static readonly (double Ratio, double Amp, double Decay)[] Square = { (1, 1, 1), (3, 0.33, 1), (5, 0.2, 1), (7, 0.14, 1), (9, 0.11, 1) };
+
+        private static Timbre TimbreOf(string pack) => pack switch
+        {
+            "retro" => new Timbre(Square, Square, 0, 1.6, 0.35, 0.5),
+            "crystal" => new Timbre(Bell, Bell, 1.8, 1.4, 0.6, 1),
+            _ => new Timbre(Mallet, Bell, 1, 1, 1, 1),
         };
 
         /// <summary>The samples of a sound.</summary>
-        public static short[] Samples(CouchSound sound)
+        /// <param name="pack">"soft" (mallets), "retro" (square waves of an old console) or "crystal" (bells).</param>
+        /// <param name="volume">Its loudness in percent of the usual one.</param>
+        public static short[] Samples(CouchSound sound, string pack = "soft", int volume = 100)
         {
-            var (seconds, peak, draw, room) = Recipe(sound);
+            Timbre timbre = TimbreOf(pack);
+            var (seconds, peak, draw, room) = Recipe(sound, timbre);
             var buffer = new double[(int)(seconds * Rate)];
             draw(buffer);
-            Room(buffer, room);
-            return Finish(buffer, peak);
+            Room(buffer, Math.Min(0.6, room * timbre.Room));
+            return Finish(buffer, peak * Math.Clamp(volume, 0, 100) / 100.0);
         }
 
         /// <summary>To 16 bits at the loudness asked, with the last milliseconds faded out: no click at either end.</summary>
@@ -147,7 +163,7 @@ namespace GameVault.Core.Couch
         }
 
         /// <summary>A sound as a WAV file, as Windows plays it from memory.</summary>
-        public static byte[] Wave(CouchSound sound) => Wave(Samples(sound), Rate);
+        public static byte[] Wave(CouchSound sound, string pack = "soft", int volume = 100) => Wave(Samples(sound, pack, volume), Rate);
 
         /// <summary>Samples of one channel as a WAV file.</summary>
         public static byte[] Wave(short[] samples, int rate)

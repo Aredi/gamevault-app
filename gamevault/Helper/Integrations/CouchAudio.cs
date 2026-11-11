@@ -3,6 +3,7 @@ using GameVault.Core.Couch;
 using gamevault.Helper.Platform;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
@@ -47,8 +48,62 @@ namespace gamevault.Helper
         private OpenDevice? openDevice;
         private bool tried, failed;
 
-        // The music: made once (a few hundred milliseconds of work) away from the screen's thread
-        private static readonly Lazy<Task<short[]>> music = new(() => Task.Run(CouchMusic.Samples));
+        // The music of each theme: made once (a few hundred milliseconds of work) away from the screen's thread
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Lazy<Task<short[]>>> musics = new();
+        private string pack = "soft", theme = "calm";
+        private int volume = 100, musicVolume = 75;
+        private Lazy<Task<short[]>> music => musics.GetOrAdd(theme, t => new Lazy<Task<short[]>>(() => Task.Run(() => CouchMusic.Samples(t))));
+
+        /// <summary>
+        /// The pack of sounds, their loudness, the music's theme and loudness (percent). A change makes the sounds again
+        /// at their next use, and the music again at its next play.
+        /// </summary>
+        public void Configure(string soundPack, int soundVolume, string musicTheme, int musicLoudness)
+        {
+            if (soundPack != pack || soundVolume != volume)
+            {
+                pack = soundPack;
+                volume = soundVolume;
+                ForgetSounds();
+            }
+            if (musicTheme != theme || musicLoudness != musicVolume)
+            {
+                bool wasPlaying = musicPlaying;
+                CloseMusic();
+                theme = musicTheme;
+                musicVolume = musicLoudness;
+                if (wasPlaying)
+                    Music(true);
+            }
+        }
+
+        private void ForgetSounds()
+        {
+            samples.Clear();
+            if (OperatingSystem.IsWindows() && waves.Count > 0)
+            {
+                // Stopped before its memory is given back
+                PlaySound(IntPtr.Zero, IntPtr.Zero, 0);
+                foreach (GCHandle wave in waves.Values)
+                    wave.Free();
+                waves.Clear();
+            }
+        }
+
+        private void CloseMusic()
+        {
+            try
+            {
+                if (OperatingSystem.IsWindows() && musicOpen)
+                    mciSendString("close couchmusic", IntPtr.Zero, 0, IntPtr.Zero);
+                if (musicDevice != 0)
+                    close!(musicDevice);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            musicDevice = 0;
+            musicOpen = musicPlaying = false;
+            scaled = null;
+        }
         private uint musicDevice;
         private bool musicOpen, musicPlaying, musicFailed;
 
@@ -68,7 +123,7 @@ namespace gamevault.Helper
                 if (OperatingSystem.IsWindows())
                 {
                     if (!waves.TryGetValue(sound, out GCHandle wave))
-                        waves[sound] = wave = GCHandle.Alloc(CouchSounds.Wave(sound), GCHandleType.Pinned);
+                        waves[sound] = wave = GCHandle.Alloc(CouchSounds.Wave(sound, pack, volume), GCHandleType.Pinned);
                     PlaySound(wave.AddrOfPinnedObject(), IntPtr.Zero, Async | NoDefault | Memory);
                     return;
                 }
@@ -80,7 +135,7 @@ namespace gamevault.Helper
                 if (device == 0)
                     return;
                 if (!samples.TryGetValue(sound, out short[]? data))
-                    samples[sound] = data = CouchSounds.Samples(sound);
+                    samples[sound] = data = CouchSounds.Samples(sound, pack, volume);
                 // A held direction: the sound of the game passed is cut by the next one's
                 clear!(device);
                 queue!(device, data, (uint)(data.Length * 2));
@@ -144,7 +199,7 @@ namespace gamevault.Helper
         {
             if (!musicOpen)
             {
-                string file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sanctuaryvault-couch-music-1.wav");
+                string file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"sanctuaryvault-couch-music-2-{theme}.wav");
                 if (!System.IO.File.Exists(file))
                 {
                     System.IO.File.WriteAllBytes(file + ".part", CouchSounds.Wave(music.Value.Result, CouchMusic.Rate));
@@ -155,13 +210,18 @@ namespace gamevault.Helper
                     musicFailed = true;
                     return;
                 }
-                mciSendString("setaudio couchmusic volume to 420", IntPtr.Zero, 0, IntPtr.Zero);
+                // 560 of 1000 at 100 %: under the sounds
+                mciSendString($"setaudio couchmusic volume to {560 * musicVolume / 100}", IntPtr.Zero, 0, IntPtr.Zero);
                 musicOpen = true;
             }
             if (play == musicPlaying)
                 return;
             mciSendString(play ? "play couchmusic repeat" : "pause couchmusic", IntPtr.Zero, 0, IntPtr.Zero);
         }
+
+        private short[]? scaled;
+
+        private static short[] Scale(short[] loop, int percent) => percent >= 100 ? loop : loop.Select(sample => (short)(sample * percent / 100)).ToArray();
 
         private void MusicSdl(bool play)
         {
@@ -183,9 +243,11 @@ namespace gamevault.Helper
             if (play)
             {
                 // Always a few seconds ahead: the whole loop again before the queue runs dry
-                short[] loop = music.Value.Result;
                 if (queued!(musicDevice) < CouchMusic.Rate * 2 * 4)
+                {
+                    short[] loop = scaled ??= Scale(music.Value.Result, musicVolume);
                     queue!(musicDevice, loop, (uint)(loop.Length * 2));
+                }
             }
             if (play != musicPlaying)
                 pauseDevice!(musicDevice, play ? 0 : 1);

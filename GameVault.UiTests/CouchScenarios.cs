@@ -182,13 +182,25 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Accept);
+                // The settings: their pages, as Aniki's categories; the start is the seventh, docked at the left with its help
                 Assert.Equal(CouchMenu.Settings, couch.Menu);
+                Assert.Equal(Avalonia.Layout.HorizontalAlignment.Left, couch.uiMenuBox.HorizontalAlignment);
+                for (int page = 0; page < 6; page++)
+                    couch.Handle(CouchCommand.Down);
+                Assert.Equal(Loc.T("What the mode shows when it opens, and its screensaver."), couch.uiMenuHelp.Text);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal((CouchMenu.Custom, "start"), (couch.Menu, couch.SettingsPage));
                 couch.Handle(CouchCommand.Accept);
                 Assert.True(CouchUserControl.StartsHere);
                 Assert.Equal(Loc.T("At start: the living-room mode"), couch.MenuLines[0].Text);
                 Assert.True(couch.MenuLines[0].IsSelected);
+                // B: back to the pages, on the one it was, then to the menu
+                couch.Handle(CouchCommand.Back);
+                Assert.Equal(CouchMenu.Settings, couch.Menu);
+                Assert.True(couch.MenuLines[6].IsSelected);
                 couch.Handle(CouchCommand.Back);
                 Assert.Equal(CouchMenu.Main, couch.Menu);
+                Assert.Equal(Avalonia.Layout.HorizontalAlignment.Center, couch.uiMenuBox.HorizontalAlignment);
                 Assert.True(couch.uiMenu.IsVisible);
                 bool left = false;
                 couch.LeaveRequested += () => left = true;
@@ -529,7 +541,7 @@ namespace GameVault.UiTests
 
                 // The sounds are turned off in the menu
                 CouchUserControl.SoundsOn = true;
-                couch.ShowMenu(CouchMenu.Settings);
+                couch.ShowSettingsPage("sounds");
                 CouchLine line = couch.MenuLines.Single(l => l.Text == Loc.T("Sounds: on"));
                 await line.Run();
                 Assert.False(CouchUserControl.SoundsOn);
@@ -638,7 +650,7 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.Back);
 
                 // The settings: the buttons named as the player's gamepad, the color, the numbers
-                couch.ShowMenu(CouchMenu.Settings);
+                couch.ShowSettingsPage("interface");
                 // By default, the gamepad in the player's hands: a PlayStation one names its buttons at once
                 Assert.Contains(couch.MenuLines, l => l.Text == Loc.F("Buttons shown: {0}", Loc.F("as the gamepad used ({0})", "Xbox")));
                 couch.UsePad(CouchSettings.PlayStation);
@@ -657,8 +669,10 @@ namespace GameVault.UiTests
                 Assert.Contains(couch.Hints, h => h.Label == "✕");
                 Assert.Contains(couch.MenuLines, l => l.Text == Loc.F("Buttons shown: {0}", "PlayStation"));
                 couch.Settings.DynamicColors = false;
+                couch.ShowSettingsPage("look");
                 await couch.MenuLines.Single(l => l.Text == Loc.F("Color: {0}", Loc.T("the theme's"))).Run();
                 Assert.Equal(Avalonia.Media.Color.Parse("#7C6BFF"), couch.AccentShown);
+                couch.Handle(CouchCommand.Back);
                 couch.Handle(CouchCommand.Back);
                 couch.Handle(CouchCommand.Back);
                 couch.Navigator.Select(library, 0);
@@ -667,8 +681,8 @@ namespace GameVault.UiTests
                 Assert.Contains(couch.Hints, h => h.Label == "L1 R1");
                 Assert.Contains(couch.Hints, h => h.Label == "L3" && h.Value == Loc.T("Filters"));
                 Assert.True(couch.uiStatsCard.IsVisible);
-                couch.ShowMenu(CouchMenu.Settings);
-                await couch.MenuLines.Single(l => l.Text == Loc.F("Numbers of the selected game: {0}", Loc.T("Yes"))).Run();
+                couch.ShowSettingsPage("library");
+                await couch.MenuLines.Single(l => l.Text == Loc.F("{0}: {1}", Loc.T("Numbers of the selected game"), Loc.T("Yes"))).Run();
                 Assert.False(couch.uiStatsCard.IsVisible);
                 // The statistics, from the menu
                 couch.ShowMenu(CouchMenu.Stats);
@@ -1181,6 +1195,92 @@ namespace GameVault.UiTests
             Assert.Equal(CouchSound.Panel, Of(CouchCommand.Menu, CouchEffect.ScreenChanged, CouchScreen.Details, CouchScreen.Menu));
             Assert.Equal(CouchSound.PanelClose, Of(CouchCommand.Back, CouchEffect.ScreenChanged, CouchScreen.Menu, CouchScreen.Details));
             Assert.Equal(CouchSound.Accept, Of(CouchCommand.Accept, CouchEffect.Action, CouchScreen.Details, CouchScreen.Details));
+        }
+
+        [AvaloniaFact]
+        public async Task TheCustomization_ChangesTheScreenAtOnce_BehindItsMenu()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            string file = Path.Combine(Path.GetTempPath(), "gv-couch-look-" + Guid.NewGuid().ToString("N") + ".json");
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+                while (couch.Tabs[couch.Navigator.Tab].Name != Loc.T("Library"))
+                    couch.Handle(CouchCommand.NextTab);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Equal(8, couch.Navigator.Columns);
+
+                // The library: larger covers, fewer by row in the grid; no glow; the numbers under the name
+                couch.ShowSettingsPage("library");
+                Assert.All(couch.MenuLines.Take(couch.MenuLines.Count - 1), l => Assert.False(string.IsNullOrEmpty(l.Help)));
+                CouchLine Line(string label) => couch.MenuLines.Single(l => l.Text.StartsWith(Loc.F("{0}: {1}", Loc.T(label), "")));
+                await Line("Cover size").Run();
+                await Line("Cover size").Run();
+                Assert.Equal("large", couch.Settings.CoverSize);
+                Assert.Equal(212d, couch.Resources["Couch.Card.Width"]);
+                Dispatcher.UIThread.RunJobs();
+                Assert.True(couch.Navigator.Columns < 8);
+                await Line("Glow of the chosen cover").Run();
+                Assert.Contains("noGlow", couch.Classes);
+                await Line("Where the numbers are").Run();
+                Assert.True(couch.uiStatsLine.IsVisible && !couch.uiStatsCard.IsVisible);
+                Capture(window, "custom-menu");
+
+                // The backgrounds: a synthwave horizon behind the lists, the game's own picture in its screen
+                couch.ShowSettingsPage("backgrounds");
+                await Line("Behind the lists").Run();
+                await Line("Behind the lists").Run();
+                await Line("Behind the lists").Run();
+                Assert.Equal("synthwave", couch.Settings.Background);
+                couch.Handle(CouchCommand.Back);
+                couch.Handle(CouchCommand.Back);
+                couch.Handle(CouchCommand.Back);
+                Assert.True(couch.uiPack.IsVisible && !couch.uiBack.IsVisible);
+                Capture(window, "custom-synthwave");
+
+                // A game's screen centered at the bottom, the system's font, no help of the buttons
+                couch.ShowSettingsPage("look");
+                await Line("Game screen").Run();
+                await Line("Game screen").Run();
+                await Line("Font").Run();
+                await Line("Font").Run();
+                Assert.Equal(("showcase", "system"), (couch.Settings.Layout, couch.Settings.Font));
+                Assert.Equal(Avalonia.Media.FontFamily.Parse("$Default"), couch.Resources["Couch.Font"]);
+                couch.ShowSettingsPage("interface");
+                await Line("Help of the buttons").Run();
+                Assert.False(couch.uiHints.IsVisible);
+                couch.Handle(CouchCommand.Back);
+                couch.Handle(CouchCommand.Back);
+                couch.Handle(CouchCommand.Back);
+                couch.Handle(CouchCommand.Accept);
+                Assert.True(couch.uiBack.IsVisible && !couch.uiPack.IsVisible);
+                Assert.Equal((Avalonia.Layout.HorizontalAlignment.Center, Avalonia.Layout.VerticalAlignment.Bottom), (couch.uiDetailCard.HorizontalAlignment, couch.uiDetailCard.VerticalAlignment));
+                Capture(window, "custom-showcase");
+
+                // In a panel: the card is glass
+                couch.Settings.Layout = "panel";
+                couch.ApplyLook();
+                Assert.Contains("couchGlass", couch.uiDetailCard.Classes);
+                Capture(window, "custom-panel");
+
+                // Kept as chosen
+                couch.Settings.Save(file);
+                CouchSettings read = CouchSettings.Load(file);
+                Assert.Equal(("large", "synthwave", "panel", false, "compact"), (read.CoverSize, read.Background, read.Layout, read.Glow, read.InfoStyle));
+            }
+            finally
+            {
+                File.Delete(file);
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
         }
     }
 }

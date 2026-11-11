@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace gamevault.UserControls
 {
     /// <summary>The menus of the living-room mode.</summary>
-    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements }
+    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom }
 
     /// <summary>
     /// The menu shown over a game (Start + Back, Windows): a small window always in front, moved through with the
@@ -112,7 +112,11 @@ namespace gamevault.UserControls
                 }
                 return settings;
             }
-            set => settings = value;
+            set
+            {
+                settings = value;
+                ApplyLook();
+            }
         }
 
         internal void SaveSettings()
@@ -270,6 +274,7 @@ namespace gamevault.UserControls
             CouchMenu.Settings => Loc.T("Settings"),
             CouchMenu.Stats => Loc.T("Statistics"),
             CouchMenu.Achievements => Loc.T("Achievements"),
+            CouchMenu.Custom => PageName,
             _ => Loc.T("Living-room mode"),
         };
 
@@ -309,10 +314,18 @@ namespace gamevault.UserControls
                 return true;
             }
             // The settings and the statistics are opened from the menu: back to it
-            if (inMenu && command == CouchCommand.Back && menu is CouchMenu.Settings or CouchMenu.Stats)
+            if (inMenu && command == CouchCommand.Back && menu is CouchMenu.Settings or CouchMenu.Stats or CouchMenu.Custom)
             {
                 Play(CouchSound.Back);
-                ShowMenu(CouchMenu.Main);
+                // A page of the settings goes back to their pages, on the one it was
+                if (menu == CouchMenu.Custom)
+                {
+                    ShowMenu(CouchMenu.Settings);
+                    Navigator.SelectLine(Array.FindIndex(Pages, p => p.Page == SettingsPage));
+                    ShowScreen(false);
+                }
+                else
+                    ShowMenu(CouchMenu.Main);
                 return true;
             }
             if (Navigator.Screen == CouchScreen.Home && command == CouchCommand.Accept && Current?.Tile is CouchTile tile)
@@ -330,7 +343,8 @@ namespace gamevault.UserControls
             {
                 CouchMenu.Quick => QuickLines(),
                 CouchMenu.Filter => FilterLines(),
-                CouchMenu.Settings => SettingsLines(),
+                CouchMenu.Settings => SettingsPagesLines(),
+                CouchMenu.Custom => CustomLines(),
                 CouchMenu.Stats => StatsLines(),
                 CouchMenu.Achievements => AchievementLines(),
                 _ => MainLines(),
@@ -338,7 +352,7 @@ namespace gamevault.UserControls
             Navigator.MenuCount = MenuLines.Count;
             uiMenuLines.ItemsSource = MenuLines;
             // A list of achievements needs the width of their descriptions
-            uiMenuBox.Width = menu == CouchMenu.Achievements ? 900 : 560;
+            PlaceMenu();
             uiMenuScroll.Offset = default;
         }
 
@@ -414,36 +428,6 @@ namespace gamevault.UserControls
                 Setting(Loc.T("Show everything"), () => (Settings.Sort, Settings.InstalledOnly, Settings.NeverPlayed, Settings.Genre) = (CouchSettings.ByName, false, false, null), games: true),
                 Line(Loc.T("Close"), CloseMenu),
             };
-        }
-
-        private List<CouchLine> SettingsLines()
-        {
-            static string Named(string style) => style switch { CouchSettings.PlayStation => "PlayStation", CouchSettings.Switch => "Switch", _ => "Xbox" };
-            // Automatic: the gamepad in the player's hands, named
-            string buttons = Settings.Buttons == CouchSettings.Auto ? Loc.F("as the gamepad used ({0})", Named(ButtonStyle)) : Named(Settings.Buttons);
-            string saver = Settings.ScreenSaverMinutes == 0 ? Loc.T("never") : Loc.F("after {0} min", Settings.ScreenSaverMinutes);
-            var lines = new List<CouchLine>
-            {
-                Line(StartsHere ? Loc.T("At start: the living-room mode") : Loc.T("At start: the desktop"), () => { StartsHere = !StartsHere; BuildMenu(); ShowScreen(false); }),
-                Line(SoundsOn ? Loc.T("Sounds: on") : Loc.T("Sounds: off"), () => { SoundsOn = !SoundsOn; BuildMenu(); ShowScreen(false); }),
-                Setting(Loc.F("Buttons shown: {0}", buttons), () => Settings.Buttons = CouchSettings.Next(new[] { CouchSettings.Auto, CouchSettings.Xbox, CouchSettings.PlayStation, CouchSettings.Switch }, Settings.Buttons)),
-                Setting(Loc.F("Color of the selected game: {0}", YesNo(Settings.DynamicColors)), () => { Settings.DynamicColors = !Settings.DynamicColors; ShowAccent(shownBack); }),
-                Setting(Loc.F("Color: {0}", Settings.Accent.Length > 0 ? Settings.Accent : Loc.T("the theme's")), () => { Settings.Accent = CouchSettings.Next(CouchSettings.Accents, Settings.Accent); ShowAccent(shownBack); }),
-                Setting(Loc.F("Numbers of the selected game: {0}", YesNo(Settings.ShowStats)), () => Settings.ShowStats = !Settings.ShowStats),
-                Setting(Loc.F("Logo of the game instead of its name: {0}", YesNo(Settings.Logos)), () => Settings.Logos = !Settings.Logos),
-                Setting(Loc.F("Light mode for a small PC: {0}", YesNo(Settings.Performance)), () => { Settings.Performance = !Settings.Performance; ShowAccent(shownBack); }),
-                Setting(Loc.F("Screensaver: {0}", saver), () => Settings.ScreenSaverMinutes = CouchSettings.Next(new[] { 5, 10, 20, 0 }, Settings.ScreenSaverMinutes)),
-                Setting(Loc.F("Picture of a game that starts: {0}", YesNo(Settings.Splash)), () => Settings.Splash = !Settings.Splash),
-                Setting(Loc.F("Trailer in a game's screen: {0}", YesNo(Settings.Trailers)), () => { Settings.Trailers = !Settings.Trailers; StopTrailer(); }),
-                Setting(Loc.F("Music in the menus: {0}", YesNo(Settings.Music)), () => Settings.Music = !Settings.Music),
-            };
-            if (OperatingSystem.IsWindows())
-                lines.Add(Setting(Loc.F("Menu over a game (Start + Back): {0}", YesNo(Settings.Overlay)), () => Settings.Overlay = !Settings.Overlay));
-            lines.Add(new CouchLine { Text = Loc.T("Add an application to the home..."), Run = AddAppAsync });
-            foreach (CouchApp app in Settings.Apps.Take(4))
-                lines.Add(Setting(Loc.F("Remove '{0}' from the home", app.Name), () => Settings.Apps.Remove(app), games: true));
-            lines.Add(Line(Loc.T("Back"), () => ShowMenu(CouchMenu.Main)));
-            return lines;
         }
 
         /// <summary>A program chosen on the disk (with the mouse or the keyboard, once) becomes a tile of the home.</summary>
