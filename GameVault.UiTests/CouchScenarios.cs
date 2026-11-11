@@ -234,6 +234,108 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheSearch_IsTypedOnTheScreen_AndTheClientsQuestions_AreAnsweredWithTheGamepad()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            games[4].Metadata!.Trailers = new[] { "https://www.youtube.com/watch?v=gmA6MrX81z4" };
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Show(games, Retro());
+                int tabs = couch.Tabs.Count;
+                couch.Handle(CouchCommand.View);
+
+                // Y: the keyboard, over the strip even when the grid was shown
+                couch.Handle(CouchCommand.Search);
+                Assert.True(couch.Searching && couch.uiKeyboard.IsVisible && couch.uiStrip.IsVisible && !couch.uiGrid.IsVisible);
+                Assert.Equal(39, couch.Keys.Count);
+                Assert.True(couch.Keys[0].IsSelected);
+                Assert.Contains(couch.Hints, h => h.Label == "X" && h.Value == Loc.T("Erase"));
+                // Down to K, typed with A: the games found are a tab of their own, shown at once
+                couch.Handle(CouchCommand.Left);
+                couch.Handle(CouchCommand.Down);
+                Assert.True(couch.Keys[10].IsSelected);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("K", couch.Query);
+                Assert.Equal(tabs + 1, couch.Tabs.Count);
+                Assert.Equal(Loc.F("Search: {0}", "K"), couch.Tabs[^1].Name);
+                Assert.True(couch.Tabs[^1].IsSelected);
+                Assert.Contains(couch.Tabs[^1].Items, i => i.Title == "Paper Kingdoms");
+                Assert.DoesNotContain(couch.Tabs[^1].Items, i => i.Title == "Zelda");
+                // X erases: nothing searched, the library again
+                couch.Handle(CouchCommand.View);
+                Assert.Equal("", couch.Query);
+                Assert.Equal(tabs, couch.Tabs.Count);
+                Assert.Equal(Loc.T("Library"), couch.Tabs[couch.Navigator.Tab].Name);
+                // The real keyboard types too; Y is the space
+                Assert.True(couch.HandleKey(Key.Z));
+                couch.Handle(CouchCommand.Search);
+                Assert.Equal("Z ", couch.Query);
+                Assert.True(couch.HandleKey(Key.Back));
+                couch.Type("E");
+                couch.Type("P");
+                Assert.Equal("ZEP", couch.Query);
+                Assert.Equal("Zephyr Run", couch.Current!.Title);
+                Capture(window, "5-search");
+                // B closes the keyboard, the games found stay: the grid is back, the game opens
+                couch.Handle(CouchCommand.Back);
+                Assert.True(!couch.Searching && !couch.uiKeyboard.IsVisible && couch.uiGrid.IsVisible);
+                Assert.Equal("Zephyr Run", couch.Current!.Title);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("Zephyr Run", couch.uiDetailTitle.Text);
+                // Y does nothing on a game's screen
+                couch.Handle(CouchCommand.Search);
+                Assert.False(couch.Searching);
+                couch.Handle(CouchCommand.Back);
+
+                // A game with a trailer has it among its actions
+                couch.Handle(CouchCommand.PreviousTab);
+                couch.Handle(CouchCommand.PreviousTab);
+                Assert.Equal(Loc.T("Library"), couch.Tabs[couch.Navigator.Tab].Name);
+                couch.Navigator.Select(couch.Navigator.Tab, 4);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("Lumen Trail", couch.uiDetailTitle.Text);
+                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Watch the trailer"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
+
+                // A question of the client: left and right choose the answer, A gives it, B says no; nothing moves under it
+                Task<bool> asked = DialogService.ConfirmAsync("Delete it?");
+                Assert.NotNull(DialogService.Current);
+                Assert.Equal(new[] { Loc.T("No"), Loc.T("Yes") }, DialogService.Current!.Texts);
+                Assert.Equal(Loc.T("Yes"), DialogService.Current.Focused);
+                couch.Handle(CouchCommand.Down);
+                Assert.True(couch.Actions[0].IsSelected);
+                couch.Handle(CouchCommand.Left);
+                Assert.Equal(Loc.T("No"), DialogService.Current.Focused);
+                couch.Handle(CouchCommand.Left);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Accept);
+                Assert.True(await asked);
+                Assert.Null(DialogService.Current);
+                asked = DialogService.ConfirmAsync("Delete it?");
+                couch.Handle(CouchCommand.Back);
+                Assert.False(await asked);
+                // A question with one answer: B gives it
+                Task told = DialogService.ShowInfoAsync("Done.");
+                couch.Handle(CouchCommand.Back);
+                await told;
+                Assert.Null(DialogService.Current);
+                Assert.True(couch.uiDetails.IsVisible);
+            }
+            finally
+            {
+                while (DialogService.Current is { } left)
+                    left.Cancel();
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheWindow_GoesToTheLivingRoomModeAndBack_WithItsKey()
         {
             var session = await TestSession.GetAsync();

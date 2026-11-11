@@ -167,7 +167,7 @@ namespace gamevault.UserControls
             _ => new List<string>(),
         };
 
-        private static async Task<Bitmap?> LoadAsync(object? game, string source)
+        internal static async Task<Bitmap?> LoadAsync(object? game, string source)
         {
             try
             {

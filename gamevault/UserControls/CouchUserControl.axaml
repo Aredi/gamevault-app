@@ -132,7 +132,13 @@
                             <TextBlock Text="RB" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                     </StackPanel>
-                    <TextBlock Grid.Column="2" x:Name="uiClock" FontSize="30" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">
+                        <!-- The chat's messages not read yet -->
+                        <Border x:Name="uiUnreadPill" Background="{DynamicResource Brush.Accent}" CornerRadius="16" Padding="14,5" VerticalAlignment="Center" IsVisible="False">
+                            <TextBlock x:Name="uiUnread" FontSize="16" FontWeight="Bold" />
+                        </Border>
+                        <TextBlock x:Name="uiClock" FontSize="30" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
                 </Grid>
 
                 <!-- The games: the selected one's name and numbers over its picture, then the strip of covers -->
@@ -158,6 +164,29 @@
                         </Border>
                     </Grid>
                     <TextBlock x:Name="uiEmpty" Grid.RowSpan="2" FontSize="26" Opacity="0.7" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+
+                    <!-- The search: what is typed, and the keyboard the gamepad types it with; the games found are the strip under it -->
+                    <Border x:Name="uiKeyboard" Classes="couchGlass" Padding="28,22" Margin="0,0,0,26" HorizontalAlignment="Center" VerticalAlignment="Bottom" IsVisible="False">
+                        <StackPanel Spacing="16">
+                            <Border Background="#1FFFFFFF" CornerRadius="12" Padding="18,10" MinHeight="56">
+                                <TextBlock x:Name="uiQuery" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </Border>
+                            <ItemsControl x:Name="uiKeys">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="10" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:CouchLine">
+                                        <Border Classes="couchLine" Classes.selected="{Binding IsSelected}" Width="62" Height="58" Padding="0" Margin="4">
+                                            <TextBlock Text="{Binding Text}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
 
                     <ScrollViewer Grid.Row="1" x:Name="uiStrip" Height="312" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                         <ScrollViewer.Transitions>

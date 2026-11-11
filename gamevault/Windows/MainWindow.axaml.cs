@@ -61,7 +61,7 @@ namespace gamevault.Windows
                     e.Handled = true;
                 }
                 // Nothing under it gets the keyboard; a popup over it keeps its own keys
-                else if (uiCouch.IsVisible && MainWindowViewModel.Instance.Popup == null && DialogLayer.Children.Count == 0 && e.KeyModifiers == KeyModifiers.None)
+                else if (uiCouch.IsVisible && MainWindowViewModel.Instance.Popup == null && (DialogLayer.Children.Count == 0 || DialogService.Current != null) && e.KeyModifiers == KeyModifiers.None)
                 {
                     uiCouch.HandleKey(e.Key);
                     e.Handled = true;

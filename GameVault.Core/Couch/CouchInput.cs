@@ -16,6 +16,8 @@ namespace GameVault.Core.Couch
         PreviousLetter, NextLetter,
         /// <summary>Start: the menu.</summary>
         Menu,
+        /// <summary>Y: the search, with its keyboard on the screen.</summary>
+        Search,
     }
 
     /// <summary>The buttons held on the gamepads at one moment.</summary>
@@ -42,7 +44,7 @@ namespace GameVault.Core.Couch
             (CouchButtons.Up, CouchCommand.Up, true), (CouchButtons.Down, CouchCommand.Down, true),
             (CouchButtons.Left, CouchCommand.Left, true), (CouchButtons.Right, CouchCommand.Right, true),
             (CouchButtons.A, CouchCommand.Accept, false), (CouchButtons.B, CouchCommand.Back, false),
-            (CouchButtons.X, CouchCommand.View, false),
+            (CouchButtons.X, CouchCommand.View, false), (CouchButtons.Y, CouchCommand.Search, false),
             (CouchButtons.LeftShoulder, CouchCommand.PreviousTab, false), (CouchButtons.RightShoulder, CouchCommand.NextTab, false),
             (CouchButtons.LeftTrigger, CouchCommand.PreviousLetter, true), (CouchButtons.RightTrigger, CouchCommand.NextLetter, true),
             (CouchButtons.Start, CouchCommand.Menu, false),

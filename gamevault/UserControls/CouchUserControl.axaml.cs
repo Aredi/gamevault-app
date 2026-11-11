@@ -80,6 +80,17 @@ namespace gamevault.UserControls
         private bool padListened = true;
         private int ticks;
         private CouchItem? shownBack;
+        /// <summary>Every game once, for the search.</summary>
+        private List<CouchItem> all = new();
+        private List<CouchTab> baseTabs = new();
+        internal bool Searching { get; private set; }
+        internal string Query { get; private set; } = "";
+        internal List<CouchLine> Keys { get; private set; } = new();
+        private int key;
+        private const int KeyColumns = 10;
+        private const string Erase = "⌫", Space = "␣", Done = "OK";
+        private int detailGeneration, shot = -1, refreshes;
+        private bool shotShown;
         private int backGeneration;
         private bool loading;
 
@@ -194,16 +205,103 @@ namespace gamevault.UserControls
             foreach (var platform in retro.GroupBy(i => i.Retro!.Platform.Name).OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
                 tabs.Add(new CouchTab { Name = platform.Key, Items = platform.ToList() });
 
+            all = pc.Concat(retro).ToList();
+            baseTabs = tabs;
             // The same tab and the same game after the games were read again
             string? tabName = Navigator.Tab < Tabs.Count ? Tabs[Navigator.Tab].Name : null;
-            string? key = Current?.Key;
-            Tabs = tabs;
-            Navigator.SetTabs(tabs.Select(t => (IReadOnlyList<string>)t.Items.Select(i => i.Title).ToList()).ToList());
-            int tab = tabName == null ? 0 : Math.Max(0, tabs.FindIndex(t => t.Name == tabName));
-            Navigator.Select(tab, key == null ? 0 : Math.Max(0, tabs[tab].Items.FindIndex(i => i.Key == key)));
-            uiTabs.ItemsSource = Tabs;
+            string? selectedKey = Current?.Key;
+            SetTabs();
+            int tab = tabName == null ? 0 : Math.Max(0, Tabs.FindIndex(t => t.Name == tabName));
+            Navigator.Select(tab, selectedKey == null ? 0 : Math.Max(0, Tabs[tab].Items.FindIndex(i => i.Key == selectedKey)));
             ShowClock();
             BuildMenu();
+            ShowTab();
+            ShowScreen();
+        }
+
+        /// <summary>The tabs of the games, and last the games found by the search when something is searched.</summary>
+        private void SetTabs()
+        {
+            var tabs = new List<CouchTab>(baseTabs);
+            if (Query.Length > 0)
+            {
+                var found = all
+                    .Select(item => (Item: item, Score: GameVault.Core.Library.QuickMatch.Score(Query, item.Title)))
+                    .Where(match => match.Score > 0)
+                    .OrderByDescending(match => match.Score).ThenBy(match => match.Item.Title, StringComparer.CurrentCultureIgnoreCase)
+                    .Select(match => match.Item).ToList();
+                tabs.Add(new CouchTab { Name = Loc.F("Search: {0}", Query), Items = found });
+            }
+            Tabs = tabs;
+            Navigator.SetTabs(tabs.Select(t => (IReadOnlyList<string>)t.Items.Select(i => i.Title).ToList()).ToList());
+            uiTabs.ItemsSource = Tabs;
+        }
+
+        // --- The search: a keyboard on the screen, the games found under it as it is typed ---
+
+        private void OpenSearch()
+        {
+            if (Keys.Count == 0)
+            {
+                Keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".Select(c => new CouchLine { Text = c.ToString() })
+                    .Concat(new[] { new CouchLine { Text = Space }, new CouchLine { Text = Erase }, new CouchLine { Text = Done } }).ToList();
+                uiKeys.ItemsSource = Keys;
+            }
+            Searching = true;
+            ShowKey(0);
+            if (Query.Length > 0)
+                Navigator.Select(Tabs.Count - 1, 0);
+            ShowTab();
+            ShowScreen();
+        }
+
+        private void CloseSearch()
+        {
+            Searching = false;
+            ShowScreen();
+        }
+
+        private void ShowKey(int to)
+        {
+            key = Math.Clamp(to, 0, Keys.Count - 1);
+            for (int i = 0; i < Keys.Count; i++)
+                Keys[i].IsSelected = i == key;
+        }
+
+        private void InSearch(CouchCommand command)
+        {
+            switch (command)
+            {
+                case CouchCommand.Left when key % KeyColumns > 0: ShowKey(key - 1); break;
+                case CouchCommand.Right when key % KeyColumns < KeyColumns - 1: ShowKey(key + 1); break;
+                case CouchCommand.Up when key >= KeyColumns: ShowKey(key - KeyColumns); break;
+                case CouchCommand.Down when key / KeyColumns < (Keys.Count - 1) / KeyColumns: ShowKey(key + KeyColumns); break;
+                case CouchCommand.Accept: Type(Keys[key].Text); break;
+                case CouchCommand.View: Type(Erase); break;
+                case CouchCommand.Search: Type(Space); break;
+                case CouchCommand.Back or CouchCommand.Menu: CloseSearch(); break;
+            }
+        }
+
+        /// <summary>A key of the keyboard on the screen, or of the real one.</summary>
+        internal void Type(string text)
+        {
+            if (text == Done)
+            {
+                CloseSearch();
+                return;
+            }
+            string query = text == Erase ? (Query.Length > 0 ? Query[..^1] : "") : text == Space ? (Query.Length > 0 && !Query.EndsWith(' ') ? Query + " " : Query) : Query + text;
+            if (query == Query || query.Length > 30)
+                return;
+            // The tab shown before the search is shown again when nothing is searched any more
+            bool onSearch = Query.Length > 0 && Navigator.Tab == Tabs.Count - 1;
+            Query = query;
+            SetTabs();
+            if (Query.Length > 0)
+                Navigator.Select(Tabs.Count - 1, 0);
+            else if (onSearch)
+                Navigator.Select(Math.Max(0, Tabs.FindIndex(t => t.Name == Loc.T("Library"))), 0);
             ShowTab();
             ShowScreen();
         }
@@ -235,6 +333,24 @@ namespace gamevault.UserControls
         /// <summary>The keyboard does what the gamepad does.</summary>
         internal bool HandleKey(Key key)
         {
+            if (Searching && MainWindowViewModel.Instance.Popup == null && DialogService.Current == null)
+            {
+                string? typed = key switch
+                {
+                    >= Key.A and <= Key.Z => ((char)('A' + (key - Key.A))).ToString(),
+                    >= Key.D0 and <= Key.D9 => ((char)('0' + (key - Key.D0))).ToString(),
+                    >= Key.NumPad0 and <= Key.NumPad9 => ((char)('0' + (key - Key.NumPad0))).ToString(),
+                    Key.Space => Space,
+                    Key.Back => Erase,
+                    Key.Enter => Done,
+                    _ => null,
+                };
+                if (typed != null)
+                {
+                    Type(typed);
+                    return true;
+                }
+            }
             CouchCommand? command = key switch
             {
                 Key.Left => CouchCommand.Left, Key.Right => CouchCommand.Right, Key.Up => CouchCommand.Up, Key.Down => CouchCommand.Down,
@@ -244,6 +360,7 @@ namespace gamevault.UserControls
                 Key.PageUp => CouchCommand.PreviousTab, Key.PageDown => CouchCommand.NextTab,
                 Key.Home => CouchCommand.PreviousLetter, Key.End => CouchCommand.NextLetter,
                 Key.F10 => CouchCommand.Menu,
+                Key.F3 => CouchCommand.Search,
                 _ => null,
             };
             if (command == null)
@@ -254,11 +371,34 @@ namespace gamevault.UserControls
 
         internal void Handle(CouchCommand command)
         {
-            // A window of the client over the games (a notice, a question): B closes it, nothing else goes through
+            // A question of the client (delete? where to install?): its answers, from left to right
+            if (DialogService.Current is { } dialog)
+            {
+                switch (command)
+                {
+                    case CouchCommand.Left: dialog.Move(-1); break;
+                    case CouchCommand.Right: dialog.Move(1); break;
+                    case CouchCommand.Accept: dialog.Accept(); break;
+                    case CouchCommand.Back: dialog.Cancel(); break;
+                }
+                return;
+            }
+            // A window of the client over the games (a notice, a trailer): B closes it, nothing else goes through
             if (MainWindowViewModel.Instance.Popup != null)
             {
                 if (command == CouchCommand.Back)
                     MainWindowViewModel.Instance.ClosePopup();
+                return;
+            }
+            if (Searching)
+            {
+                InSearch(command);
+                return;
+            }
+            if (command == CouchCommand.Search)
+            {
+                if (Navigator.Screen == CouchScreen.Home)
+                    OpenSearch();
                 return;
             }
             int tab = Navigator.Tab;
@@ -377,7 +517,7 @@ namespace gamevault.UserControls
         /// <summary>The selected game's name and numbers; its picture a moment later (a held direction passes many games).</summary>
         private void ShowHero(CouchItem? item)
         {
-            uiHero.IsVisible = item != null && !Navigator.IsGrid;
+            uiHero.IsVisible = item != null && !Navigator.IsGrid && !Searching;
             uiTitle.Text = uiGridTitle.Text = item?.Title ?? "";
             uiEyebrow.Text = item == null ? "" : (item.Retro?.Platform.Name ?? Loc.T("Library")).ToUpper(CultureInfo.CurrentCulture);
             uiMeta.Text = item == null ? "" : MetaOf(item);
@@ -464,10 +604,20 @@ namespace gamevault.UserControls
             uiHome.IsVisible = !details;
             uiDetails.IsVisible = details;
             uiMenu.IsVisible = screen == CouchScreen.Menu;
-            uiStrip.IsVisible = !Navigator.IsGrid;
-            uiGrid.IsVisible = uiGridTitle.IsVisible = Navigator.IsGrid;
-            uiHero.IsVisible = item != null && !Navigator.IsGrid;
-            uiDim.IsVisible = details || Navigator.IsGrid;
+            // The keyboard takes the place of the selected game's name, over the strip of the games found
+            bool grid = Navigator.IsGrid && !Searching;
+            uiStrip.IsVisible = !grid;
+            uiGrid.IsVisible = uiGridTitle.IsVisible = grid;
+            uiHero.IsVisible = item != null && !grid && !Searching;
+            uiKeyboard.IsVisible = Searching && !details;
+            uiQuery.Text = Query.Length > 0 ? Query : Loc.T("Search a game");
+            uiQuery.Opacity = Query.Length > 0 ? 1 : 0.5;
+            uiDim.IsVisible = details || grid || Searching;
+            if (!details && shotShown)
+            {
+                shotShown = false;
+                ShowBack(item);
+            }
             if (details && rebuild)
                 ShowDetails(item!);
             for (int i = 0; i < Actions.Count; i++)
@@ -476,13 +626,13 @@ namespace gamevault.UserControls
                 MenuLines[i].IsSelected = i == Navigator.MenuLine;
             uiPadState.Text = gamepad is { CanRead: true } ? "" : Loc.T("No gamepad can be read on this PC: the arrows, Enter and Escape do the same.");
 
-            Hints = screen switch
+            Hints = Searching ? new[] { new CouchStat("A", Loc.T("Type")), new CouchStat("X", Loc.T("Erase")), new CouchStat("Y", Loc.T("Space")), new CouchStat("B", Loc.T("Close")) } : screen switch
             {
                 CouchScreen.Menu => new[] { new CouchStat("A", Loc.T("Choose")), new CouchStat("B", Loc.T("Back")) },
                 CouchScreen.Details => new[] { new CouchStat("A", Loc.T("Choose")), new CouchStat("B", Loc.T("Back")), new CouchStat("LB RB", Loc.T("Other games")), new CouchStat("START", Loc.T("Menu")) },
                 _ => new[]
                 {
-                    new CouchStat("A", Loc.T("Open")), new CouchStat("X", Navigator.IsGrid ? Loc.T("Strip") : Loc.T("Grid")),
+                    new CouchStat("A", Loc.T("Open")), new CouchStat("X", Navigator.IsGrid ? Loc.T("Strip") : Loc.T("Grid")), new CouchStat("Y", Loc.T("Search")),
                     new CouchStat("LB RB", Loc.T("Tabs")), new CouchStat("LT RT", Loc.T("Letters")), new CouchStat("START", Loc.T("Menu")),
                 },
             };
@@ -506,6 +656,54 @@ namespace gamevault.UserControls
             uiDescriptionCard.IsVisible = !string.IsNullOrWhiteSpace(description);
             BuildActions(item);
             ShowStatus(item);
+            shot = -1;
+            refreshes = 0;
+            int generation = ++detailGeneration;
+            if (item.Retro is RetroGame retro && RommAccount.IsLinked)
+                _ = ShowAchievementsAsync(item, retro, generation);
+        }
+
+        /// <summary>A retro game's achievements earned, among its numbers, once RomM answered.</summary>
+        private async Task ShowAchievementsAsync(CouchItem item, RetroGame retro, int generation)
+        {
+            try
+            {
+                JsonElement rom = await RommAccount.RomAsync(retro.Id);
+                JsonElement me = default;
+                try { me = await RommAccount.MeAsync(); }
+                catch (Exception ex) { Log.Ignored(ex); }
+                var achievements = GameVault.Core.Retro.RommProgress.AchievementsOf(rom, me);
+                if (achievements.Count == 0 || generation != detailGeneration)
+                    return;
+                uiDetailStats.ItemsSource = StatsOf(item).Append(new CouchStat(Loc.T("Achievements"), Loc.F("{0} of {1}", achievements.Count(a => a.Earned), achievements.Count))).ToList();
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>The game's screenshots behind its screen, one after the other.</summary>
+        private async Task NextShotAsync(CouchItem item)
+        {
+            object game = (object?)item.Retro ?? item.Pc!;
+            List<string> sources = CoverSlideshow.Sources(game);
+            if (sources.Count == 0)
+                return;
+            int generation = detailGeneration;
+            shot = (shot + 1) % sources.Count;
+            Avalonia.Media.Imaging.Bitmap? image = await CoverSlideshow.LoadAsync(game, sources[shot]);
+            if (image == null || generation != detailGeneration || Navigator.Screen != CouchScreen.Details)
+                return;
+            shotShown = true;
+            shownBack = null;
+            uiBack.Opacity = 0;
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (generation != detailGeneration || !shotShown)
+                    return;
+                uiBackPc.IsVisible = false;
+                uiBackRetro.IsVisible = true;
+                uiBackRetro.Source = image;
+                uiBack.Opacity = 1;
+            }, TimeSpan.FromMilliseconds(300));
         }
 
         /// <summary>What can be done with the game from the couch; the rest is on its page.</summary>
@@ -521,6 +719,8 @@ namespace gamevault.UserControls
                     lines.Add(new CouchLine { Text = Loc.T("Install and play"), Run = () => RetroPlay.InstallAsync(retro, playWhenDone: true) });
                     lines.Add(new CouchLine { Text = Loc.T("Install"), Run = () => RetroPlay.InstallAsync(retro) });
                 }
+                if (retro.HasVideo)
+                    lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => { MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(new[] { $"https://www.youtube.com/watch?v={Uri.EscapeDataString(retro.Video!)}" }, retro.Name)); return Task.CompletedTask; } });
                 lines.Add(new CouchLine { Text = Loc.T("Open its page"), Run = () => { LeaveRequested?.Invoke(); return MainWindowViewModel.Instance.Retro.ShowGameAsync(retro.Platform.Slug, retro.Id); } });
             }
             else
@@ -533,6 +733,8 @@ namespace gamevault.UserControls
                     lines.Add(new CouchLine { Text = Loc.T("Install and play"), Run = () => MainWindowViewModel.Instance.Downloads.InstallAndPlay(game) });
                     lines.Add(new CouchLine { Text = Loc.T("Install"), Run = async () => { await MainWindowViewModel.Instance.Downloads.TryStartDownload(game); } });
                 }
+                if (game.Metadata is GameMetadata metadata && TrailerPopup.HasVideos(metadata))
+                    lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => { MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(metadata, item.Title)); return Task.CompletedTask; } });
                 lines.Add(new CouchLine { Text = Loc.T("Open its page"), Run = () => { LeaveRequested?.Invoke(); MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(game)); return Task.CompletedTask; } });
             }
             Actions = lines;
@@ -573,6 +775,9 @@ namespace gamevault.UserControls
         private void ShowStatus(CouchItem item)
         {
             string status = item.Retro?.Status ?? "";
+            // A library game's download, as the Downloads page tells it
+            if (item.Pc != null && DownloadsViewModel.Instance.DownloadedGames.FirstOrDefault(d => d.GetGameId() == item.Pc.ID) is { } download && !item.Installed)
+                status = download.IsDownloading() ? Loc.F("Downloading: {0}%", download.GetDownloadProgress()) : download.StateText;
             uiDetailStatus.Text = status;
             uiDetailStatus.IsVisible = status.Length > 0;
         }
@@ -598,7 +803,16 @@ namespace gamevault.UserControls
                 }
             }
             if (Navigator.Screen == CouchScreen.Details && Current is CouchItem current)
+            {
                 ShowStatus(current);
+                // A screenshot after 3 seconds, then one every 6
+                if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null)
+                    _ = NextShotAsync(current);
+            }
+            DialogService.Current?.Mark();
+            int unread = MainWindowViewModel.Instance.IsChatAvailable ? ChatService.Instance.TotalUnread : 0;
+            uiUnreadPill.IsVisible = unread > 0;
+            uiUnread.Text = Loc.Plural(unread, "{0} message", "{0} messages");
         }
     }
 }

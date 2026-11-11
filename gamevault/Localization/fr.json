@@ -1952,5 +1952,11 @@
   "At start: the living-room mode": "Au démarrage : mode salon",
   "At start: the desktop": "Au démarrage : mode bureau",
   "Back to the desktop": "Revenir au mode bureau",
-  "Quit SanctuaryVault": "Quitter SanctuaryVault"
+  "Quit SanctuaryVault": "Quitter SanctuaryVault",
+  "Search: {0}": "Recherche : {0}",
+  "Type": "Écrire",
+  "Erase": "Effacer",
+  "Downloading: {0}%": "Téléchargement : {0} %",
+  "{0} message": "{0} message",
+  "{0} messages": "{0} messages"
 }

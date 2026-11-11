@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -50,6 +51,61 @@ namespace gamevault.Helper
     /// </summary>
     public static class DialogService
     {
+        /// <summary>A question shown in the window, as the living-room mode answers it with a gamepad: its buttons from left to right.</summary>
+        internal sealed class OpenDialog
+        {
+            private readonly List<(IconButton Button, MessageDialogResult Result)> buttons;
+            private readonly Action<MessageDialogResult> close;
+            private int focused;
+            private bool marked;
+
+            internal OpenDialog(List<(IconButton, MessageDialogResult)> buttons, Action<MessageDialogResult> close)
+            {
+                this.buttons = buttons;
+                this.close = close;
+                // The main action, on the right
+                focused = buttons.Count - 1;
+            }
+
+            internal IReadOnlyList<string> Texts => buttons.Select(b => b.Button.Text ?? "").ToList();
+            internal string Focused => buttons[focused].Button.Text ?? "";
+
+            /// <summary>The button A would press is framed.</summary>
+            internal void Mark()
+            {
+                if (marked)
+                    return;
+                marked = true;
+                Frame();
+            }
+
+            private void Frame()
+            {
+                for (int i = 0; i < buttons.Count; i++)
+                {
+                    IconButton button = buttons[i].Button;
+                    button.BorderBrush = i == focused ? Brushes.White : Brush("Brush.Line");
+                    button.BorderThickness = new Thickness(i == focused ? 3 : button.Kind == ButtonKind.Primary ? 0 : 1);
+                }
+            }
+
+            internal void Move(int by)
+            {
+                focused = Math.Clamp(focused + by, 0, buttons.Count - 1);
+                marked = true;
+                Frame();
+            }
+
+            internal void Accept() => close(buttons[focused].Result);
+
+            /// <summary>B: "No" when the question has one, else its only answer.</summary>
+            internal void Cancel() => close(buttons.Any(b => b.Result == MessageDialogResult.Negative) ? MessageDialogResult.Negative : buttons[^1].Result);
+        }
+
+        private static readonly List<OpenDialog> open = new();
+        /// <summary>The question in front, null when none is asked.</summary>
+        internal static OpenDialog? Current => open.Count > 0 ? open[^1] : null;
+
         public static Task<MessageDialogResult> ShowMessageAsync(this Window? window, string title, string message,
             MessageDialogStyle style = MessageDialogStyle.Affirmative, MetroDialogSettings? settings = null)
         {
@@ -162,10 +218,15 @@ namespace gamevault.Helper
             Panel? layer = window?.IsVisible == true ? window.FindControl<Panel>("DialogLayer") : null;
             Window? standalone = null;
 
+            OpenDialog? tracked = null;
+            var answers = new List<(IconButton, MessageDialogResult)>();
+
             void Close(MessageDialogResult result)
             {
                 if (tcs.Task.IsCompleted)
                     return;
+                if (tracked != null)
+                    open.Remove(tracked);
                 if (layer != null)
                 {
                     layer.Children.Remove(overlay);
@@ -189,6 +250,7 @@ namespace gamevault.Helper
                 button.Click += (_, _) => Close(result);
                 // The main action last, on the right, as in the popups
                 buttons.Children.Insert(0, button);
+                answers.Insert(0, (button, result));
             }
 
             AddButton(settings.AffirmativeButtonText, MessageDialogResult.Affirmative, true);
@@ -209,6 +271,9 @@ namespace gamevault.Helper
 
             if (layer != null)
             {
+                // No text to type: a gamepad can answer it
+                if (inputBox == null)
+                    open.Add(tracked = new OpenDialog(answers, Close));
                 layer.Children.Add(overlay);
                 layer.IsHitTestVisible = true;
                 Dispatcher.UIThread.Post(() => (inputBox as Control ?? buttons.Children.FirstOrDefault())?.Focus());
