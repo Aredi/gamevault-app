@@ -13,6 +13,23 @@ namespace gamevault.Helper
     /// <summary>Install and Play of a retro game: the same from the Retro page, a game's page or the Downloads page.</summary>
     internal static class RetroPlay
     {
+        /// <summary>A game's emulator (or recomp) was started, then closed: on the UI thread.</summary>
+        internal static event Action<RetroGame>? Started, Closed;
+
+        /// <summary>Told to whoever listens (the living-room mode); the tests tell it as a real game would.</summary>
+        internal static void Raise(bool started, RetroGame game) => Raise(started ? Started : Closed, game);
+
+        private static void Raise(Action<RetroGame>? handler, RetroGame game)
+        {
+            if (handler == null)
+                return;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                try { handler(game); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            });
+        }
+
         /// <summary>Into the Downloads page and its queue, as the library's games.</summary>
         /// <param name="playWhenDone">"Install &amp; Play": the game starts once it is ready.</param>
         public static async Task InstallAsync(RetroGame game, bool playWhenDone = false)
@@ -80,6 +97,7 @@ namespace gamevault.Helper
                 DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
                 // The friends see it in their chat and the community page, as a library game
                 ActivityService.Instance.SetRetroPlaying(game);
+                Raise(Started, game);
                 _ = WhenClosedAsync(process, game, before);
             }
             catch (RetroArchManager.MissingBiosException ex)
@@ -115,6 +133,7 @@ namespace gamevault.Helper
                 game.Status = Loc.F("Playing with {0}: close its windows to quit", recomp.Name);
             DiscordHelper.Instance.RetroStarted(game, RetroSystems.PublicCoverUrl(await RommAccount.UrlAsync(), game.Cover));
             ActivityService.Instance.SetRetroPlaying(game);
+            Raise(Started, game);
             _ = WhenRecompClosedAsync(process, recomp, game);
         }
 
@@ -128,6 +147,7 @@ namespace gamevault.Helper
             DateTime started = DateTime.UtcNow;
             try { await recomp.WhenClosedAsync(process); }
             catch (Exception ex) { Log.Ignored(ex); }
+            Raise(Closed, game);
             DiscordHelper.Instance.RetroStopped();
             ActivityService.Instance.SetRetroPlaying(null);
             await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
@@ -145,6 +165,7 @@ namespace gamevault.Helper
         {
             DateTime started = DateTime.UtcNow;
             await process.WaitForExitAsync();
+            Raise(Closed, game);
             TimeSpan ran = DateTime.UtcNow - started;
             string? failure = FailureOf(process.ExitCode, ran, StandaloneEmulator.Of(game)?.Name ?? "RetroArch");
             if (failure != null)

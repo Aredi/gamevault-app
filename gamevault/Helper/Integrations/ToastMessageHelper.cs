@@ -57,6 +57,9 @@ namespace gamevault.Helper
         /// <summary>Texts shown as they are (a player's message is not a text to translate).</summary>
         public static void ShowAsIs(string title, string message, string imageUri = "")
         {
+            // On the TV, a notification of the system covers the mode or the game started from it
+            if (gamevault.UserControls.CouchUserControl.Shown)
+                return;
             _ = Task.Run(async () =>
             {
                 try

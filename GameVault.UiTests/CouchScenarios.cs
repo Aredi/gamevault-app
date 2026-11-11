@@ -960,5 +960,67 @@ namespace GameVault.UiTests
                     session.Server.RemoveGame(game.ID);
             }
         }
+
+        [AvaloniaFact]
+        public async Task AGameStartedFromTheMode_KeepsItsPictureStill_AndGivesTheModeBackWhenClosed()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            List<RetroGame> retro = Retro();
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                window.Activate();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, retro);
+                couch.ListenToGames(true);
+                while (couch.Tabs[couch.Navigator.Tab].Name != "NES")
+                    couch.Handle(CouchCommand.NextTab);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("Zelda", couch.Current!.Title);
+
+                // "Install and play": the emulator starts once the game is there; its picture stays, nothing plays under it
+                retro[0].Status = "Playing: Select+Start to quit";
+                RetroPlay.Raise(true, retro[0]);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Same(couch.Current, couch.Playing);
+                Assert.Equal((CouchUserControl.Curtain.Splash, "Zelda"), (couch.CurtainShown, couch.CurtainTitle));
+                Assert.False(couch.TrailerShown);
+                // Another game closed: nothing changes
+                RetroPlay.Raise(false, retro[1]);
+                Dispatcher.UIThread.RunJobs();
+                Assert.NotNull(couch.Playing);
+
+                // Closed: the mode is back on the game's screen
+                RetroPlay.Raise(false, retro[0]);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Null(couch.Playing);
+                Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
+                Assert.True(couch.uiDetails.IsVisible);
+
+                // A button pressed on the picture: the player is back, the game is no longer waited for
+                couch.GameStarted(couch.Current!);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Null(couch.Playing);
+                Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
+
+                // Not listened to anymore once the mode is left
+                couch.ListenToGames(false);
+                RetroPlay.Raise(true, retro[0]);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Null(couch.Playing);
+            }
+            finally
+            {
+                couch.ListenToGames(false);
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
     }
 }

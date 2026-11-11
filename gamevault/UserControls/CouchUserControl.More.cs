@@ -561,7 +561,7 @@ namespace gamevault.UserControls
         /// </summary>
         private bool TrailerMayPlay => IsVisible && trailerVideo != null && trailerGeneration == detailGeneration
             && Navigator.Screen == CouchScreen.Details && MainWindowViewModel.Instance.Popup == null && DialogService.Current == null
-            && curtain == Curtain.None && Editing == null && TopLevel.GetTopLevel(this) is Window { IsActive: true };
+            && curtain == Curtain.None && Editing == null && playing == null && TopLevel.GetTopLevel(this) is Window { IsActive: true };
 
         /// <summary>Twice a second: started after two seconds on the screen, stopped when something comes over it.</summary>
         internal void KeepTrailer()

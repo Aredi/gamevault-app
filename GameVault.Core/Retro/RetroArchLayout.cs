@@ -172,6 +172,8 @@ namespace GameVault.Core.Retro
                 // The menu theme kept in the package (the others are not unpacked)
                 ("menu_driver", "ozone"),
                 ("video_fullscreen", "true"),
+                // Borderless over the whole screen: no change of the screen's mode (black flashes) when it starts and quits
+                ("video_windowed_fullscreen", "true"),
                 // RetroPad combinations: 4 is Select+Start, 2 is L3+R3
                 ("input_quit_gamepad_combo", "4"),
                 ("input_menu_toggle_gamepad_combo", "2"),

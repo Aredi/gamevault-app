@@ -124,7 +124,7 @@ namespace gamevault.UserControls
             }
         }
         private bool padListened = true;
-        private int ticks;
+        private readonly Stopwatch refreshClock = Stopwatch.StartNew();
         private CouchItem? shownBack;
         /// <summary>Every game once, for the search.</summary>
         private List<CouchItem> all = new();
@@ -135,6 +135,15 @@ namespace gamevault.UserControls
         private const string Erase = CouchKeyboard.Erase, Space = CouchKeyboard.Space, Done = CouchKeyboard.Done;
         private int detailGeneration, shot = -1, refreshes;
         private bool shotShown;
+        private Image? topShot;
+
+        /// <summary>The game's picture comes back from under its screenshots.</summary>
+        private void HideShots()
+        {
+            shotShown = false;
+            uiShotA.Opacity = uiShotB.Opacity = 0;
+            topShot = null;
+        }
         private int backGeneration;
         private bool loading;
 
@@ -151,10 +160,14 @@ namespace gamevault.UserControls
             DoubleTapped += Pointed;
         }
 
+        /// <summary>The mode is open (read from any thread): the system's notifications stay quiet, the mode tells its own.</summary>
+        internal static volatile bool Shown;
+
         /// <summary>The living-room mode is shown: its games are read again, the gamepads listened to.</summary>
         internal async Task OpenAsync(bool welcome = false)
         {
             IsVisible = true;
+            Shown = true;
             idle.Restart();
             if (welcome)
                 ShowWelcome();
@@ -167,6 +180,7 @@ namespace gamevault.UserControls
             catch (Exception ex) { Log.Ignored(ex); }
             audio ??= new CouchAudio();
             repeater.Reset(gamepad?.Read() ?? CouchButtons.None);
+            ListenToGames(true);
             timer.Start();
             await LoadAsync();
         }
@@ -174,6 +188,9 @@ namespace gamevault.UserControls
         internal void Close()
         {
             timer.Stop();
+            ListenToGames(false);
+            playing = null;
+            Shown = false;
             gamepad?.Dispose();
             gamepad = null;
             audio?.Dispose();
@@ -429,12 +446,19 @@ namespace gamevault.UserControls
 
         private void Tick()
         {
-            if (++ticks % 30 == 0)
+            if (refreshClock.Elapsed >= TimeSpan.FromMilliseconds(500))
+            {
+                refreshClock.Restart();
                 Refresh();
-            if (gamepad == null)
-                return;
+            }
             // A game is played, or another window is in front: its gamepad is not ours
             bool listen = TopLevel.GetTopLevel(this) is Window { IsActive: true } && IsVisible;
+            // Read 60 times a second for the menus; 10 times behind a game (only Start + Back is looked for there)
+            TimeSpan rate = listen || overlay != null ? TimeSpan.FromMilliseconds(16) : TimeSpan.FromMilliseconds(100);
+            if (timer.Interval != rate)
+                timer.Interval = rate;
+            if (gamepad == null)
+                return;
             CouchButtons held = gamepad.Read();
             TickMore(held, listen);
             if (overlay != null)
@@ -496,6 +520,8 @@ namespace gamevault.UserControls
             if (uiCurtain.IsVisible)
             {
                 HideCurtain();
+                // Pressed here: the player is back, whatever the game does
+                GameClosed(bringBack: false);
                 return;
             }
             if (overlay != null)
@@ -907,10 +933,7 @@ namespace gamevault.UserControls
             uiKeyboard.Show(Query.Length > 0 ? Query : Loc.T("Search a game"), placeholder: Query.Length == 0);
             uiDim.IsVisible = detailsBehind || grid || Searching;
             if (!detailsBehind && shotShown)
-            {
-                shotShown = false;
-                ShowBack(item);
-            }
+                HideShots();
             // Back from a menu to the same game: its screen is as it was
             if (details && rebuild && !(shownScreen == CouchScreen.Menu && ReferenceEquals(item, detailsItem)))
                 ShowDetails(item!);
@@ -946,6 +969,9 @@ namespace gamevault.UserControls
 
         private void ShowDetails(CouchItem item)
         {
+            // Another game: its own picture, not the last one's screenshots
+            if (!ReferenceEquals(item, detailsItem) && shotShown)
+                HideShots();
             detailsItem = item;
             ShownAchievements = Array.Empty<GameVault.Core.Retro.RommProgress.Achievement>();
             uiDetailCoverPc.IsVisible = item.Pc != null;
@@ -1009,17 +1035,19 @@ namespace gamevault.UserControls
             if (image == null || generation != detailGeneration || Navigator.Screen != CouchScreen.Details)
                 return;
             shotShown = true;
-            shownBack = null;
-            uiBack.Opacity = 0;
+            // The new one over the one shown, faded in; the one under is hidden once covered
+            Image over = ReferenceEquals(topShot, uiShotA) ? uiShotB : uiShotA, under = topShot;
+            over.ZIndex = 1;
+            if (under != null)
+                under.ZIndex = 0;
+            over.Source = image;
+            over.Opacity = 1;
+            topShot = over;
             DispatcherTimer.RunOnce(() =>
             {
-                if (generation != detailGeneration || !shotShown)
-                    return;
-                uiBackPc.IsVisible = false;
-                uiBackRetro.IsVisible = true;
-                uiBackRetro.Source = image;
-                uiBack.Opacity = 1;
-            }, TimeSpan.FromMilliseconds(300));
+                if (ReferenceEquals(topShot, over) && under != null)
+                    under.Opacity = 0;
+            }, TimeSpan.FromMilliseconds(650));
         }
 
         /// <summary>What can be done with the game from the couch; the rest is on its page.</summary>
@@ -1044,7 +1072,7 @@ namespace gamevault.UserControls
             {
                 Game game = item.Pc!;
                 if (item.Installed)
-                    lines.Add(new CouchLine { Text = Loc.T("Play"), Run = () => { ShowSplash(item); return InstallUserControl.PlayGame(game.ID); } });
+                    lines.Add(new CouchLine { Text = Loc.T("Play"), Run = () => { GameStarted(item); return InstallUserControl.PlayGame(game.ID); } });
                 else
                 {
                     lines.Add(new CouchLine { Text = Loc.T("Install and play"), Run = () => MainWindowViewModel.Instance.Downloads.InstallAndPlay(game) });
@@ -1120,10 +1148,12 @@ namespace gamevault.UserControls
             if (Navigator.Screen == CouchScreen.Details && Current is CouchItem current)
             {
                 ShowStatus(current);
-                // A screenshot after 3 seconds, then one every 6
-                if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null && !Settings.Performance)
+                // A screenshot after 3 seconds, then one every 6; nothing while a game is played over the window
+                if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null && !Settings.Performance && playing == null
+                    && TopLevel.GetTopLevel(this) is Window { IsActive: true })
                     _ = NextShotAsync(current);
             }
+            WatchGame();
             KeepTrailer();
             DialogService.Current?.Mark();
             if (Editing is { IsEffectivelyVisible: false })

@@ -80,6 +80,23 @@
             <local:CacheImage x:Name="uiBackPc" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" IsVisible="False" />
             <Image x:Name="uiBackRetro" Stretch="UniformToFill" IsVisible="False" />
         </Panel>
+        <!-- A game's screenshots, one fading in over the other (never through black) -->
+        <Panel x:Name="uiShots">
+            <Image x:Name="uiShotA" Stretch="UniformToFill" Opacity="0">
+                <Image.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.6" />
+                    </Transitions>
+                </Image.Transitions>
+            </Image>
+            <Image x:Name="uiShotB" Stretch="UniformToFill" Opacity="0">
+                <Image.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.6" />
+                    </Transitions>
+                </Image.Transitions>
+            </Image>
+        </Panel>
         <!-- Dark where the texts are: the left and the bottom -->
         <Border>
             <Border.Background>
