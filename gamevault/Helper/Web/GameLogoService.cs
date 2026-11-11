@@ -18,18 +18,34 @@ namespace gamevault.Helper
     /// </summary>
     internal static class GameLogoService
     {
-        private static readonly ConcurrentDictionary<string, Task<Bitmap?>> asked = new();
+        // The logo's file by game (null: none): the pictures themselves go through the images kept within a budget
+        private static readonly ConcurrentDictionary<string, Task<string?>> asked = new();
+        /// <summary>Decoded this wide at most: shown 820 wide at most.</summary>
+        internal const int DecodeWidth = 1000;
 
         private static string Folder => Path.Combine(PlatformInfo.LocalDataDirectory, "cache", "logos");
 
         /// <summary>The tests start from nothing.</summary>
         internal static void Forget() => asked.Clear();
 
-        public static Task<Bitmap?> OfAsync(Game game) => asked.GetOrAdd($"pc-{game.ID}", key => ReadAsync(key, $"/logos/pc/{game.ID}"));
+        public static Task<Bitmap?> OfAsync(Game game) => DecodeAsync(asked.GetOrAdd($"pc-{game.ID}", key => ReadAsync(key, $"/logos/pc/{game.ID}")));
 
-        public static Task<Bitmap?> OfAsync(RetroGame game) => asked.GetOrAdd($"retro-{game.Id}", key => ReadAsync(key, $"/retro/games/{game.Id}/logo"));
+        public static Task<Bitmap?> OfAsync(RetroGame game) => DecodeAsync(asked.GetOrAdd($"retro-{game.Id}", key => ReadAsync(key, $"/retro/games/{game.Id}/logo")));
 
-        private static async Task<Bitmap?> ReadAsync(string key, string path)
+        private static async Task<Bitmap?> DecodeAsync(Task<string?> asking)
+        {
+            if (await asking is not string file)
+                return null;
+            try { return DecodedImages.TryGet(file, DecodeWidth) ?? await Task.Run(() => DecodedImages.Load(file, DecodeWidth)); }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return null;
+            }
+        }
+
+        /// <summary>The logo's file on this PC, fetched once from the service; null when it has none.</summary>
+        private static async Task<string?> ReadAsync(string key, string path)
         {
             try
             {
@@ -47,12 +63,7 @@ namespace gamevault.Helper
                     await File.WriteAllBytesAsync(file + ".part", bytes);
                     File.Move(file + ".part", file, true);
                 }
-                return await Task.Run(() =>
-                {
-                    using FileStream stream = File.OpenRead(file);
-                    // Shown about 200 high: twice that is enough on a large screen
-                    return Bitmap.DecodeToHeight(stream, 400);
-                });
+                return file;
             }
             catch (Exception ex)
             {

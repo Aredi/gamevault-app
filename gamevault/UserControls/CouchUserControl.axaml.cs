@@ -525,7 +525,9 @@ namespace gamevault.UserControls
             // A game is played, or another window is in front: its gamepad is not ours
             bool listen = TopLevel.GetTopLevel(this) is Window { IsActive: true } && IsVisible;
             // Read 60 times a second for the menus; 10 times behind a game (only Start + Back is looked for there)
-            TimeSpan rate = listen || overlay != null ? TimeSpan.FromMilliseconds(16) : TimeSpan.FromMilliseconds(100);
+            // No way to read a gamepad here (the keyboard only): twice a second, for the clock and the refresh
+            TimeSpan rate = gamepad is not { CanRead: true } ? TimeSpan.FromMilliseconds(500)
+                : listen || overlay != null ? TimeSpan.FromMilliseconds(16) : TimeSpan.FromMilliseconds(100);
             if (timer.Interval != rate)
                 timer.Interval = rate;
             if (gamepad == null)
@@ -958,13 +960,19 @@ namespace gamevault.UserControls
         }
 
         /// <summary>A retro game's first screenshot, larger than its cover, once it is read.</summary>
+        /// <summary>
+        /// A retro game's first screenshot, larger than its cover, once it is read. Only that one, through the images kept
+        /// within a budget: all of a game's screenshots kept on it, for every game passed, filled the memory.
+        /// </summary>
         private async Task ShowRetroBackAsync(CouchItem item, RetroGame retro)
         {
             try
             {
-                await retro.LoadScreenshotsAsync();
-                if (ReferenceEquals(item, shownBack))
-                    uiBackRetro.Source = retro.Banner;
+                if (retro.ScreenshotImages != null || retro.Screenshots.FirstOrDefault() is not string first)
+                    return;
+                Avalonia.Media.Imaging.Bitmap? shot = await CoverSlideshow.LoadAsync(retro, first);
+                if (shot != null && ReferenceEquals(item, shownBack))
+                    uiBackRetro.Source = shot;
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
@@ -1025,6 +1033,8 @@ namespace gamevault.UserControls
             uiKeyboard.Show(Query.Length > 0 ? Query : Loc.T("Search a game"), placeholder: Query.Length == 0);
             uiDim.IsVisible = !detailsBehind && (grid || Searching);
             uiDetailShade.IsVisible = detailsBehind;
+            if (!detailsBehind)
+                DropTrailer();
             ShowBackground(detailsBehind);
             // Coming in: a game's screen from the left (from below when centered), a menu from below
             if (detailsBehind && shownScreen == CouchScreen.Home && screen == CouchScreen.Details)

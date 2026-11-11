@@ -23,6 +23,7 @@ namespace gamevault.UserControls
         internal string SettingsPage { get; private set; } = "look";
 
         private string shownPack = "";
+        private readonly Dictionary<Control, IEffect?> shadows = new();
 
         // --- Applying it ---
 
@@ -65,6 +66,13 @@ namespace gamevault.UserControls
             }
 
             Classes.Set("noGlow", !s.Glow);
+            // The blurred shadows of the titles are drawn again with everything under them: none in the light mode
+            foreach (Control shadowed in new Control[] { uiTitle, uiLogo, uiDetailTitle, uiDetailLogo, uiLoginTime })
+            {
+                if (!shadows.ContainsKey(shadowed))
+                    shadows[shadowed] = shadowed.Effect;
+                shadowed.Effect = s.Performance ? null : shadows[shadowed];
+            }
             uiShadeLeft.Opacity = uiShadeBottom.Opacity = s.Shade == "light" ? 0.55 : 1;
             uiShadeStrong.IsVisible = s.Shade == "strong";
             uiHints.IsVisible = s.Hints;
@@ -136,7 +144,7 @@ namespace gamevault.UserControls
             if (pack + "|" + Settings.BackgroundFolder == shownPack)
                 return;
             shownPack = pack + "|" + Settings.BackgroundFolder;
-            uiPack.Children.Clear();
+            FreePictures(uiPack);
             Control? drawn = pack switch
             {
                 "aurora" => Aurora(),
@@ -148,6 +156,15 @@ namespace gamevault.UserControls
             };
             if (drawn != null)
                 uiPack.Children.Add(drawn);
+        }
+
+        /// <summary>The children of a background gone, the player's picture among them freed (it is not kept anywhere else).</summary>
+        private static void FreePictures(Panel panel)
+        {
+            var pictures = panel.Children.OfType<Image>().Select(i => i.Source).OfType<Avalonia.Media.Imaging.Bitmap>().ToList();
+            panel.Children.Clear();
+            foreach (var picture in pictures)
+                picture.Dispose();
         }
 
         private static Border Glow(string color, double x, double y, double radius, double opacity) => new()

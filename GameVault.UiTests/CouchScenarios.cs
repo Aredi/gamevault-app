@@ -980,6 +980,10 @@ namespace GameVault.UiTests
                 Assert.False(couch.TrailerShown);
                 couch.Settings.Trailers = false;
                 Assert.Null(couch.TrailerOf(couch.Tabs[couch.Navigator.Tab].Items[0]));
+                // Back to the list: the web player itself goes (its processes keep their memory while it exists)
+                Assert.True(couch.HasTrailerPlayer);
+                couch.Handle(CouchCommand.Back);
+                Assert.False(couch.HasTrailerPlayer);
             }
             finally
             {
@@ -1474,6 +1478,67 @@ namespace GameVault.UiTests
                 window.Close();
                 foreach (Game game in games)
                     session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task GoingThroughTheGames_KeepsTheMemoryAndTheScreenQuiet()
+        {
+            var session = await TestSession.GetAsync();
+            var nes = new RetroPlatform { Slug = "nes", Name = "NES" };
+            // Retro games with screenshots: only the first one of the game shown is read, nothing is kept on the games
+            var retro = Enumerable.Range(0, 8).Select(i => new RetroGame
+            {
+                Id = 7000 + i, Name = $"Game {i}", FileName = $"Game {i}.nes", Platform = nes,
+                Screenshots = new[] { $"roms/{7000 + i}/shot1.png", $"roms/{7000 + i}/shot2.png", $"roms/{7000 + i}/shot3.png" },
+            }).ToList();
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            var driftFor = CouchUserControl.DriftFor;
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(new List<Game>(), retro);
+                while (couch.Tabs[couch.Navigator.Tab].Name != "NES")
+                    couch.Handle(CouchCommand.NextTab);
+                for (int i = 0; i < retro.Count; i++)
+                {
+                    await Task.Delay(420);
+                    Dispatcher.UIThread.RunJobs();
+                    couch.Handle(CouchCommand.Right);
+                }
+                await Task.Delay(500);
+                Assert.All(retro, game => Assert.Null(game.ScreenshotImages));
+
+                // The picture drifts a while after the last button, then stays still: the screen is not drawn again for nothing
+                couch.KeepDrift(active: true);
+                Assert.Contains("drift", couch.uiBack.Classes);
+                CouchUserControl.DriftFor = TimeSpan.Zero;
+                couch.KeepDrift(active: true);
+                Assert.DoesNotContain("drift", couch.uiBack.Classes);
+                CouchUserControl.DriftFor = driftFor;
+                couch.Handle(CouchCommand.Left);
+                couch.KeepDrift(active: true);
+                Assert.Contains("drift", couch.uiBack.Classes);
+
+                // The light mode: no blurred shadow under the titles
+                Assert.NotNull(couch.uiTitle.Effect);
+                couch.Settings.Performance = true;
+                couch.ApplyLook();
+                Assert.Null(couch.uiTitle.Effect);
+                Assert.Null(couch.uiDetailTitle.Effect);
+                couch.KeepDrift(active: true);
+                Assert.DoesNotContain("drift", couch.uiBack.Classes);
+                couch.Settings.Performance = false;
+                couch.ApplyLook();
+                Assert.NotNull(couch.uiTitle.Effect);
+            }
+            finally
+            {
+                CouchUserControl.DriftFor = driftFor;
+                window.Close();
             }
         }
     }

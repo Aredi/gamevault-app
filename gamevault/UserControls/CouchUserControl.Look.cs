@@ -29,13 +29,18 @@ namespace gamevault.UserControls
             _ = animation.RunAsync(control);
         }
 
+        /// <summary>How long the picture drifts after the last button.</summary>
+        internal static TimeSpan DriftFor { get; set; } = TimeSpan.FromSeconds(30);
+
         /// <summary>
         /// Twice a second: the picture behind drifts slowly while the mode is looked at; still behind a game and in the
         /// light mode (a moving picture is drawn again at each frame).
         /// </summary>
-        private void KeepDrift(bool active)
+        internal void KeepDrift(bool active)
         {
-            bool drift = active && !Settings.Performance && Settings.Drift && playing == null;
+            // Only a while after the last button: a picture that moves forever has the whole screen drawn again 60 times a
+            // second for hours on a TV nobody touches. Still, it settles back slowly.
+            bool drift = active && !Settings.Performance && Settings.Drift && playing == null && idle.Elapsed < DriftFor;
             uiBack.Classes.Set("drift", drift);
             uiShots.Classes.Set("drift", drift);
             uiPack.Classes.Set("drift", drift);

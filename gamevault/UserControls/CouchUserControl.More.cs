@@ -584,6 +584,21 @@ namespace gamevault.UserControls
             finally { trailerStarting = false; }
         }
 
+        /// <summary>
+        /// The game's screen left: the web player itself goes (it keeps its own processes and their memory while it
+        /// exists); the next trailer makes another.
+        /// </summary>
+        private void DropTrailer()
+        {
+            if (trailer == null)
+                return;
+            StopTrailer();
+            uiTrailerHost.Child = null;
+            trailer = null;
+        }
+
+        internal bool HasTrailerPlayer => trailer != null;
+
         private void StopTrailer()
         {
             if (!uiTrailerBox.IsVisible)

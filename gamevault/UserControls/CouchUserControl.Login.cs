@@ -94,8 +94,12 @@ namespace gamevault.UserControls
                     Bitmap? avatar = null;
                     try
                     {
+                        // Shown 160 wide: not the whole picture
                         if (!string.IsNullOrEmpty(other.UserCacheAvatar) && File.Exists(other.UserCacheAvatar))
-                            avatar = new Bitmap(other.UserCacheAvatar);
+                        {
+                            using FileStream stream = File.OpenRead(other.UserCacheAvatar);
+                            avatar = Bitmap.DecodeToWidth(stream, 200);
+                        }
                     }
                     catch (Exception ex) { Log.Ignored(ex); }
                     profiles.Add(new LoginProfile { RootDir = other.RootDir, Name = other.Name ?? "", Server = HostOf(other.ServerUrl), Avatar = avatar });
@@ -133,7 +137,7 @@ namespace gamevault.UserControls
                 uiLoginPc.Data = art.Pc;
             uiLoginRetro.IsVisible = art?.Retro != null;
             uiLoginRetro.Source = art?.Retro?.Banner;
-            uiLoginPack.Children.Clear();
+            FreePictures(uiLoginPack);
             // No game played yet: the aurora
             Control? scene = art != null ? null : background switch
             {
