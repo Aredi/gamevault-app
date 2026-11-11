@@ -432,6 +432,7 @@ namespace gamevault.UserControls
                 Setting(Loc.F("Light mode for a small PC: {0}", YesNo(Settings.Performance)), () => { Settings.Performance = !Settings.Performance; ShowAccent(shownBack); }),
                 Setting(Loc.F("Screensaver: {0}", saver), () => Settings.ScreenSaverMinutes = CouchSettings.Next(new[] { 5, 10, 20, 0 }, Settings.ScreenSaverMinutes)),
                 Setting(Loc.F("Picture of a game that starts: {0}", YesNo(Settings.Splash)), () => Settings.Splash = !Settings.Splash),
+                Setting(Loc.F("Trailer in a game's screen: {0}", YesNo(Settings.Trailers)), () => { Settings.Trailers = !Settings.Trailers; StopTrailer(); }),
             };
             if (OperatingSystem.IsWindows())
                 lines.Add(Setting(Loc.F("Menu over a game (Start + Back): {0}", YesNo(Settings.Overlay)), () => Settings.Overlay = !Settings.Overlay));
@@ -519,6 +520,103 @@ namespace gamevault.UserControls
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
             });
+        }
+
+        // --- The trailer in a game's screen ---
+
+        private MediaSlider? trailer;
+        /// <summary>The video of the game whose screen is shown, its address once YouTube gave it.</summary>
+        private string? trailerVideo;
+        private Tuple<string, string>? trailerUrl;
+        private int trailerGeneration = -1;
+        private readonly Stopwatch trailerWait = new();
+
+        /// <summary>The trailer is playing in the game's screen.</summary>
+        internal bool TrailerShown => uiTrailerBox.IsVisible;
+
+        /// <summary>The first trailer of a game (else its first gameplay video); none when the setting is off.</summary>
+        internal string? TrailerOf(CouchItem item)
+        {
+            if (!Settings.Trailers || Settings.Performance)
+                return null;
+            if (item.Retro is RetroGame retro)
+                return retro.HasVideo ? $"https://www.youtube.com/watch?v={Uri.EscapeDataString(retro.Video!)}" : null;
+            GameMetadata? metadata = item.Pc?.Metadata;
+            return metadata?.Trailers?.FirstOrDefault() ?? metadata?.Gameplays?.FirstOrDefault();
+        }
+
+        /// <summary>A game's screen is shown: its trailer starts if the player stays on it a moment.</summary>
+        private void QueueTrailer(CouchItem item)
+        {
+            StopTrailer();
+            trailerVideo = TrailerOf(item);
+            trailerUrl = null;
+            trailerGeneration = detailGeneration;
+            trailerWait.Restart();
+        }
+
+        /// <summary>
+        /// The web player is drawn over everything of the window: it plays only on a game's screen with nothing over it
+        /// (a menu, a question, the keyboard, the screensaver), and stops as soon as something comes.
+        /// </summary>
+        private bool TrailerMayPlay => IsVisible && trailerVideo != null && trailerGeneration == detailGeneration
+            && Navigator.Screen == CouchScreen.Details && MainWindowViewModel.Instance.Popup == null && DialogService.Current == null
+            && curtain == Curtain.None && Editing == null && TopLevel.GetTopLevel(this) is Window { IsActive: true };
+
+        /// <summary>Twice a second: started after two seconds on the screen, stopped when something comes over it.</summary>
+        internal void KeepTrailer()
+        {
+            if (!TrailerMayPlay)
+            {
+                if (TrailerShown)
+                    StopTrailer();
+                return;
+            }
+            if (!TrailerShown && trailerWait.Elapsed >= TimeSpan.FromSeconds(2))
+                _ = StartTrailerAsync(trailerGeneration);
+        }
+
+        private bool trailerStarting;
+
+        private async Task StartTrailerAsync(int generation)
+        {
+            if (trailerStarting)
+                return;
+            trailerStarting = true;
+            try
+            {
+                trailerUrl ??= await TrailerPopup.PlayableUrl(trailerVideo!);
+                if (trailerUrl == null)
+                {
+                    // Not playable: not asked again for this game
+                    trailerVideo = null;
+                    return;
+                }
+                if (generation != detailGeneration || !TrailerMayPlay)
+                    return;
+                if (trailer == null)
+                {
+                    trailer = new MediaSlider { ShowFullscreenButton = false };
+                    uiTrailerHost.Child = trailer;
+                }
+                uiTrailerBox.IsVisible = true;
+                uiDescription.MaxLines = 5;
+                await trailer.InitVideoPlayer();
+                trailer.SetMediaList(new List<Tuple<string, string>> { trailerUrl });
+                await trailer.LoadFirstElement();
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            finally { trailerStarting = false; }
+        }
+
+        private void StopTrailer()
+        {
+            if (!uiTrailerBox.IsVisible)
+                return;
+            try { trailer?.UnloadMediaSlider(); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            uiTrailerBox.IsVisible = false;
+            uiDescription.MaxLines = 9;
         }
 
         // --- The logo of the selected game ---

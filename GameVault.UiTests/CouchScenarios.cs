@@ -908,5 +908,57 @@ namespace GameVault.UiTests
                     session.Server.RemoveGame(game.ID);
             }
         }
+
+        [AvaloniaFact]
+        public async Task AGamesTrailer_PlaysInItsScreenAfterAMoment_AndStopsUnderTheMenu()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            games[0].Metadata!.Trailers = new[] { "https://videos.invalid/astral.mp4" };
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                window.Activate();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+                while (couch.Tabs[couch.Navigator.Tab].Name != Loc.T("Library"))
+                    couch.Handle(CouchCommand.NextTab);
+                Assert.Equal("Astral Drift", couch.Current!.Title);
+                Assert.Equal("https://videos.invalid/astral.mp4", couch.TrailerOf(couch.Current));
+                Assert.Null(couch.TrailerOf(couch.Tabs[couch.Navigator.Tab].Items[1]));
+
+                // Not at once: a player passing through the games starts nothing
+                couch.Handle(CouchCommand.Accept);
+                couch.KeepTrailer();
+                Assert.False(couch.TrailerShown);
+                await Task.Delay(2100);
+                couch.KeepTrailer();
+                await TestSession.WaitUntil(() => couch.TrailerShown, TimeSpan.FromSeconds(5), "the trailer");
+
+                // The menu over it: stopped; back to the game: played again
+                couch.Handle(CouchCommand.Menu);
+                couch.KeepTrailer();
+                Assert.False(couch.TrailerShown);
+                couch.Handle(CouchCommand.Back);
+                await Task.Delay(100);
+                couch.KeepTrailer();
+                await TestSession.WaitUntil(() => couch.TrailerShown, TimeSpan.FromSeconds(5), "the trailer again");
+
+                // The next game has none; the setting turns them off
+                couch.Handle(CouchCommand.NextTab);
+                Assert.False(couch.TrailerShown);
+                couch.Settings.Trailers = false;
+                Assert.Null(couch.TrailerOf(couch.Tabs[couch.Navigator.Tab].Items[0]));
+            }
+            finally
+            {
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
     }
 }

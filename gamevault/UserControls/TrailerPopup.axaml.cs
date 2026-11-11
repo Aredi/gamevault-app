@@ -82,7 +82,7 @@ namespace gamevault.UserControls
         }
 
         /// <summary>YouTube links become the addresses of their video and audio streams; other links stay as they are.</summary>
-        private static async Task<Tuple<string, string>?> PlayableUrl(string input)
+        internal static async Task<Tuple<string, string>?> PlayableUrl(string input)
         {
             try
             {

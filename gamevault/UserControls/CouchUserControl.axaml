@@ -316,6 +316,11 @@
                             </ItemsControl>
                         </StackPanel>
                     </Border>
+                    <!-- The game's trailer after a moment on its screen (a web player: nothing is drawn over it, it stops under a menu) -->
+                    <Border Grid.Column="1" x:Name="uiTrailerBox" Classes="couchGlass" Margin="36,0,0,0" Padding="10" Width="880" Height="515"
+                            HorizontalAlignment="Right" VerticalAlignment="Top" IsVisible="False">
+                        <Border x:Name="uiTrailerHost" CornerRadius="14" ClipToBounds="True" Background="Black" />
+                    </Border>
                     <Border Grid.Column="1" x:Name="uiDescriptionCard" Classes="couchGlass" Margin="36,0,0,0" Padding="30,24" MaxWidth="880" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                         <TextBlock x:Name="uiDescription" FontSize="19" LineHeight="29" TextWrapping="Wrap" MaxLines="9" TextTrimming="CharacterEllipsis" Opacity="0.92" />
                     </Border>

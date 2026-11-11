@@ -179,6 +179,7 @@ namespace gamevault.UserControls
             audio?.Dispose();
             audio = null;
             StopEditing();
+            StopTrailer();
             CloseOverlay();
             HideCurtain();
             ApplyMouse(CouchButtons.None, default);
@@ -566,6 +567,9 @@ namespace gamevault.UserControls
                 case CouchEffect.Action:
                     List<CouchLine> lines = Navigator.Screen == CouchScreen.Menu ? MenuLines : Actions;
                     int line = Navigator.Screen == CouchScreen.Menu ? Navigator.MenuLine : Navigator.Action;
+                    // A game that starts, a page opened: the trailer stops, and waits again
+                    StopTrailer();
+                    trailerWait.Restart();
                     if (line < lines.Count)
                         _ = RunAsync(lines[line]);
                     break;
@@ -965,6 +969,7 @@ namespace gamevault.UserControls
                 _ = ShowAchievementsAsync(item, retro, generation);
             if (item.Pc != null)
                 _ = ShowFriendsAsync(item, generation);
+            QueueTrailer(item);
         }
 
         /// <summary>A retro game's achievements earned, among its numbers, once RomM answered.</summary>
@@ -1119,6 +1124,7 @@ namespace gamevault.UserControls
                 if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null && !Settings.Performance)
                     _ = NextShotAsync(current);
             }
+            KeepTrailer();
             DialogService.Current?.Mark();
             if (Editing is { IsEffectivelyVisible: false })
                 StopEditing();
