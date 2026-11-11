@@ -43,8 +43,61 @@ namespace gamevault.Windows
                 MainWindowViewModel.Instance.ClosePopup();
                 e.Handled = true;
             };
+            InitCouch();
             InitBootTasks();
         }
+
+        private WindowState beforeCouch;
+
+        /// <summary>The living-room mode: F11 or its button; its keys are the gamepad's while it is shown.</summary>
+        private void InitCouch()
+        {
+            uiCouch.LeaveRequested += LeaveCouch;
+            AddHandler(KeyDownEvent, (_, e) =>
+            {
+                if (e.Key == Key.F11 && e.KeyModifiers == KeyModifiers.None)
+                {
+                    if (uiCouch.IsVisible) LeaveCouch(); else EnterCouch();
+                    e.Handled = true;
+                }
+                // Nothing under it gets the keyboard; a popup over it keeps its own keys
+                else if (uiCouch.IsVisible && MainWindowViewModel.Instance.Popup == null && DialogLayer.Children.Count == 0 && e.KeyModifiers == KeyModifiers.None)
+                {
+                    uiCouch.HandleKey(e.Key);
+                    e.Handled = true;
+                }
+            }, RoutingStrategies.Tunnel);
+            Opened += (_, _) =>
+            {
+                if (UserControls.CouchUserControl.StartsHere)
+                    EnterCouch();
+            };
+        }
+
+        internal bool IsCouchShown => uiCouch.IsVisible;
+
+        internal void EnterCouch()
+        {
+            if (uiCouch.IsVisible)
+                return;
+            beforeCouch = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState;
+            MainWindowViewModel.Instance.ClosePopup();
+            uiQuickSearch.Close();
+            uiDesktop.IsVisible = false;
+            WindowState = WindowState.FullScreen;
+            _ = uiCouch.OpenAsync();
+        }
+
+        internal void LeaveCouch()
+        {
+            if (!uiCouch.IsVisible)
+                return;
+            uiCouch.Close();
+            uiDesktop.IsVisible = true;
+            WindowState = beforeCouch;
+        }
+
+        private void Couch_Click(object? sender, RoutedEventArgs e) => EnterCouch();
 
         private void InitBootTasks()
         {

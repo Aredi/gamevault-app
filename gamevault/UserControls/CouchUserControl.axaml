@@ -1,0 +1,311 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.CouchUserControl"
+             Focusable="True" Background="#05070B">
+    <!-- The living-room mode: the whole screen, played with a gamepad from the couch. The selected game's picture behind,
+         its covers in a strip or a grid, a game's screen with its actions, and a menu. Laid out 1080 high, scaled to the screen. -->
+    <UserControl.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="#F4F6FA" />
+        </Style>
+        <Style Selector="Panel.couchCard">
+            <Setter Property="Opacity" Value="0.62" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Panel.couchCard.selected">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="scale(1.08)" />
+        </Style>
+        <Style Selector="Border.couchTab">
+            <Setter Property="Padding" Value="18,8" />
+            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="Border.couchTab.selected">
+            <Setter Property="Background" Value="#33FFFFFF" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="Border.couchLine">
+            <Setter Property="Padding" Value="22,15" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Background" Value="#14FFFFFF" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Border.couchLine.selected">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="BorderBrush" Value="#66FFFFFF" />
+        </Style>
+        <Style Selector="Border.couchKey">
+            <Setter Property="MinWidth" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="Padding" Value="9,0" />
+            <Setter Property="BorderBrush" Value="#CCFFFFFF" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Border.couchGlass">
+            <Setter Property="Background" Value="#B80B1018" />
+            <Setter Property="BorderBrush" Value="#26FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="22" />
+        </Style>
+    </UserControl.Styles>
+
+    <Panel>
+        <!-- The selected game's picture, the whole screen -->
+        <Panel x:Name="uiBack" Opacity="0">
+            <Panel.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.28" />
+                </Transitions>
+            </Panel.Transitions>
+            <local:CacheImage x:Name="uiBackPc" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" IsVisible="False" />
+            <Image x:Name="uiBackRetro" Stretch="UniformToFill" IsVisible="False" />
+        </Panel>
+        <!-- Dark where the texts are: the left and the bottom -->
+        <Border>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Offset="0" Color="#D905070B" />
+                    <GradientStop Offset="0.45" Color="#6605070B" />
+                    <GradientStop Offset="1" Color="#2605070B" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+        <Border>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#8005070B" />
+                    <GradientStop Offset="0.22" Color="#0005070B" />
+                    <GradientStop Offset="0.55" Color="#3305070B" />
+                    <GradientStop Offset="1" Color="#F205070B" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+        <!-- Darker under a game's screen and the grid, which cover the picture -->
+        <Border x:Name="uiDim" Background="#9905070B" IsVisible="False" />
+
+        <LayoutTransformControl x:Name="uiScale" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid x:Name="uiStage" Height="1080" RowDefinitions="Auto,*,Auto">
+                <!-- The top: the player, the tabs, the time -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="72,40,72,0" Height="64">
+                    <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <Border Width="52" Height="52" CornerRadius="26" ClipToBounds="True" Background="#22FFFFFF">
+                            <local:CacheImage x:Name="uiAvatar" ImageCacheType="UserAvatar" Stretch="UniformToFill" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="SanctuaryVault" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="21" />
+                            <TextBlock x:Name="uiPlayer" FontSize="16" Opacity="0.7" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+                        <Border Classes="couchKey" VerticalAlignment="Center">
+                            <TextBlock Text="LB" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ScrollViewer x:Name="uiTabsScroll" MaxWidth="1100" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="uiTabs">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:CouchTab">
+                                        <Border Classes="couchTab" Classes.selected="{Binding IsSelected}">
+                                            <TextBlock Text="{Binding Name}" FontSize="20" FontWeight="SemiBold" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <Border Classes="couchKey" VerticalAlignment="Center">
+                            <TextBlock Text="RB" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" x:Name="uiClock" FontSize="30" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- The games: the selected one's name and numbers over its picture, then the strip of covers -->
+                <Grid Grid.Row="1" x:Name="uiHome" RowDefinitions="*,Auto">
+                    <Grid x:Name="uiHero" ColumnDefinitions="*,Auto" Margin="96,0,72,34" VerticalAlignment="Bottom">
+                        <StackPanel Spacing="12" MaxWidth="1000" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                            <TextBlock x:Name="uiEyebrow" FontSize="18" FontWeight="Bold" LetterSpacing="3" Foreground="{DynamicResource Brush.Accent}" />
+                            <TextBlock x:Name="uiTitle" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="68" TextWrapping="Wrap" MaxLines="2"
+                                       TextTrimming="CharacterEllipsis" LineHeight="76" />
+                            <TextBlock x:Name="uiMeta" FontSize="22" Opacity="0.8" />
+                        </StackPanel>
+                        <Border Grid.Column="1" x:Name="uiStatsCard" Classes="couchGlass" Padding="24,18" VerticalAlignment="Bottom">
+                            <ItemsControl x:Name="uiStats">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:CouchStat">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="26" Margin="0,5">
+                                            <TextBlock Text="{Binding Label}" FontSize="17" Opacity="0.62" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                    </Grid>
+                    <TextBlock x:Name="uiEmpty" Grid.RowSpan="2" FontSize="26" Opacity="0.7" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+
+                    <ScrollViewer Grid.Row="1" x:Name="uiStrip" Height="312" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ScrollViewer.Transitions>
+                            <Transitions>
+                                <VectorTransition Property="Offset" Duration="0:0:0.16" Easing="CubicEaseOut" />
+                            </Transitions>
+                        </ScrollViewer.Transitions>
+                        <ItemsRepeater x:Name="uiStripItems" Margin="84,8,84,20" ClipToBounds="False">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Orientation="Horizontal" Spacing="0" />
+                            </ItemsRepeater.Layout>
+                            <ItemsRepeater.ItemTemplate>
+                                <DataTemplate x:DataType="local:CouchItem">
+                                    <!-- A place larger than the cover: the selected one grows in it -->
+                                    <Panel Width="208" Height="284">
+                                    <Panel Classes="couchCard" Classes.selected="{Binding IsSelected}" Width="184" Height="252">
+                                        <Border CornerRadius="14" ClipToBounds="True" Background="#1FFFFFFF">
+                                            <Panel>
+                                                <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12" Opacity="0.8" />
+                                                <local:CacheImage ImageCacheType="GameCover" Data="{Binding Pc}" Stretch="UniformToFill" IsVisible="{Binding IsPc}" />
+                                                <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding IsRetro}" />
+                                                <Border Width="34" Height="34" CornerRadius="17" Background="#CC05070B" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"
+                                                        IsVisible="{Binding !Installed}">
+                                                    <Path Data="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" Stroke="#F4F6FA" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"
+                                                          Width="17" Height="17" Stretch="Uniform" />
+                                                </Border>
+                                            </Panel>
+                                        </Border>
+                                        <Border CornerRadius="17" Margin="-4" BorderThickness="3" BorderBrush="#F4F6FA" IsVisible="{Binding IsSelected}" />
+                                    </Panel>
+                                    </Panel>
+                                </DataTemplate>
+                            </ItemsRepeater.ItemTemplate>
+                        </ItemsRepeater>
+                    </ScrollViewer>
+
+                    <!-- The same games in rows -->
+                    <ScrollViewer Grid.RowSpan="2" x:Name="uiGrid" Margin="0,112,0,0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden" IsVisible="False">
+                        <ScrollViewer.Transitions>
+                            <Transitions>
+                                <VectorTransition Property="Offset" Duration="0:0:0.16" Easing="CubicEaseOut" />
+                            </Transitions>
+                        </ScrollViewer.Transitions>
+                        <ItemsRepeater x:Name="uiGridItems" Margin="84,8,84,44" HorizontalAlignment="Center" ClipToBounds="False">
+                            <ItemsRepeater.Layout>
+                                <UniformGridLayout MinItemWidth="208" MinItemHeight="284" MinColumnSpacing="2" MinRowSpacing="2" />
+                            </ItemsRepeater.Layout>
+                        </ItemsRepeater>
+                    </ScrollViewer>
+                    <TextBlock x:Name="uiGridTitle" Grid.RowSpan="2" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="40" Margin="96,34,96,0"
+                               HorizontalAlignment="Center" VerticalAlignment="Top" TextTrimming="CharacterEllipsis" MaxLines="1" IsVisible="False" />
+                </Grid>
+
+                <!-- A game's screen: its cover, what can be done with it, its numbers; its description beside -->
+                <Grid Grid.Row="1" x:Name="uiDetails" ColumnDefinitions="Auto,*" Margin="72,28,72,20" IsVisible="False">
+                    <Border Classes="couchGlass" Width="470" Padding="30,28">
+                        <StackPanel Spacing="18">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="20">
+                                <Border Width="150" Height="206" CornerRadius="12" ClipToBounds="True" Background="#1FFFFFFF">
+                                    <Panel>
+                                        <local:CacheImage x:Name="uiDetailCoverPc" ImageCacheType="GameCover" Stretch="UniformToFill" IsVisible="False" />
+                                        <Image x:Name="uiDetailCoverRetro" Stretch="UniformToFill" IsVisible="False" />
+                                    </Panel>
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock x:Name="uiDetailEyebrow" FontSize="15" FontWeight="Bold" LetterSpacing="2" Foreground="{DynamicResource Brush.Accent}" />
+                                    <TextBlock x:Name="uiDetailTitle" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="28" TextWrapping="Wrap" MaxLines="4"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="uiDetailSub" FontSize="17" Opacity="0.7" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                            <ItemsControl x:Name="uiActions">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="10" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:CouchLine">
+                                        <Border Classes="couchLine" Classes.selected="{Binding IsSelected}">
+                                            <TextBlock Text="{Binding Text}" FontSize="21" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Name="uiDetailStatus" FontSize="16" TextWrapping="Wrap" MaxLines="4" Foreground="{DynamicResource Brush.Accent}" IsVisible="False" />
+                            <Border Height="1" Background="#26FFFFFF" />
+                            <ItemsControl x:Name="uiDetailStats">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:CouchStat">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="26" Margin="0,5">
+                                            <TextBlock Text="{Binding Label}" FontSize="17" Opacity="0.62" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" x:Name="uiDescriptionCard" Classes="couchGlass" Margin="36,0,0,0" Padding="30,24" MaxWidth="880" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                        <TextBlock x:Name="uiDescription" FontSize="19" LineHeight="29" TextWrapping="Wrap" MaxLines="9" TextTrimming="CharacterEllipsis" Opacity="0.92" />
+                    </Border>
+                </Grid>
+
+                <!-- What the buttons do here -->
+                <ItemsControl Grid.Row="2" x:Name="uiHints" Margin="72,0,72,30" HorizontalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="34" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:CouchStat">
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Border Classes="couchKey">
+                                    <TextBlock Text="{Binding Label}" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="{Binding Value}" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- The menu, over everything -->
+                <Border Grid.RowSpan="3" x:Name="uiMenu" Background="#CC05070B" IsVisible="False">
+                    <Border Classes="couchGlass" Width="560" Padding="34,30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <StackPanel Spacing="18">
+                            <TextBlock Text="{l:T 'Living-room mode'}" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="30" HorizontalAlignment="Center" />
+                            <ItemsControl x:Name="uiMenuLines">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="10" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="local:CouchLine">
+                                        <Border Classes="couchLine" Classes.selected="{Binding IsSelected}">
+                                            <TextBlock Text="{Binding Text}" FontSize="21" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock x:Name="uiPadState" FontSize="15" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </Border>
+            </Grid>
+        </LayoutTransformControl>
+    </Panel>
+</UserControl>

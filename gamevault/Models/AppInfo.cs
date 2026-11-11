@@ -148,6 +148,8 @@ namespace gamevault.Models
         LibraryShowcase,
         //Navigation bar folded to its icons ("1", profileconfig)
         SidebarFolded,
+        //The client opens in the living-room mode ("1", profileconfig)
+        CouchAtStart,
         //Server news: when they were last opened (the newer ones are counted on the badge)
         NewsLastSeen
     }

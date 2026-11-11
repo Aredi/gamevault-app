@@ -169,7 +169,7 @@
     </Window.Styles>
 
     <Panel>
-        <Grid ColumnDefinitions="Auto,*,Auto">
+        <Grid x:Name="uiDesktop" ColumnDefinitions="Auto,*,Auto">
             <!-- Navigation bar -->
             <Border x:Name="uiSidebar" Grid.Column="0" Background="{DynamicResource Brush.Background2}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0" ClipToBounds="True">
                 <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
@@ -315,6 +315,13 @@
                                 <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'News'}" Margin="13,0,0,0" />
                             </Grid>
                         </Button>
+                        <!-- The whole screen, played with a gamepad from the couch (F11) -->
+                        <Button Classes="navItem" x:Name="uiCouchButton" Click="Couch_Click" ToolTip.Tip="{l:T 'Living-room mode: the whole screen, with a gamepad (F11)'}">
+                            <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                <Path Data="M3 5h18v12H3zM8 21h8M12 17v4" Stroke="{Binding $parent[ContentControl].Foreground}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                                <TextBlock Classes="wide" Text="{l:T 'Living-room mode'}" />
+                            </StackPanel>
+                        </Button>
                         <Button Classes="navItem" x:Name="uiBugReportShortcut" Click="ProblemReport_Click" ToolTip.Tip="{l:T 'Report a problem'}">
                             <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
                                 <Path Data="{StaticResource IconNavBug}" />
@@ -366,6 +373,9 @@
                 <uc:ChatPanel x:Name="uiChat" />
             </Panel>
         </Grid>
+
+        <!-- The living-room mode covers the desktop; the popups and the messages stay over it -->
+        <uc:CouchUserControl x:Name="uiCouch" IsVisible="False" />
 
         <!-- Popups (game settings, user settings, news, ...): shown at their real size, only scaled down when the window is too small -->
         <Panel x:Name="uiPopupLayer" ZIndex="1" Background="#A6000000"
