@@ -148,3 +148,31 @@ namespace GameVault.Core.Tests
         }
     }
 }
+
+namespace GameVault.Core.Tests
+{
+    public class CouchSoundTests
+    {
+        [Fact]
+        public void EachSound_IsShortAndQuiet_AndStartsAndEndsWithoutAClick()
+        {
+            foreach (CouchSound sound in Enum.GetValues<CouchSound>())
+            {
+                short[] samples = CouchSounds.Samples(sound);
+                Assert.InRange(samples.Length, CouchSounds.Rate / 50, CouchSounds.Rate / 5);
+                Assert.InRange(samples.Max(s => Math.Abs((int)s)), short.MaxValue / 20, short.MaxValue / 4);
+                Assert.InRange(Math.Abs((int)samples[0]), 0, 200);
+                Assert.InRange(Math.Abs((int)samples[^1]), 0, 200);
+
+                byte[] wave = CouchSounds.Wave(sound);
+                Assert.Equal("RIFF", System.Text.Encoding.ASCII.GetString(wave, 0, 4));
+                Assert.Equal("WAVEfmt ", System.Text.Encoding.ASCII.GetString(wave, 8, 8));
+                Assert.Equal(wave.Length - 8, BitConverter.ToInt32(wave, 4));
+                Assert.Equal(CouchSounds.Header + samples.Length * 2, wave.Length);
+                Assert.Equal(samples.Length * 2, BitConverter.ToInt32(wave, 40));
+            }
+            // Not the same sound for everything
+            Assert.NotEqual(CouchSounds.Samples(CouchSound.Accept), CouchSounds.Samples(CouchSound.Back));
+        }
+    }
+}

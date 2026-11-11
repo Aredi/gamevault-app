@@ -377,6 +377,9 @@
         <!-- The living-room mode covers the desktop; the popups and the messages stay over it -->
         <uc:CouchUserControl x:Name="uiCouch" IsVisible="False" />
 
+        <!-- The living-room mode's keyboard for the text boxes of the popups and the questions: over them -->
+        <uc:CouchKeyboard x:Name="uiCouchKeys" ZIndex="20" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,36" />
+
         <!-- Popups (game settings, user settings, news, ...): shown at their real size, only scaled down when the window is too small -->
         <Panel x:Name="uiPopupLayer" ZIndex="1" Background="#A6000000"
                IsVisible="{Binding Popup, Converter={x:Static ObjectConverters.IsNotNull}}">

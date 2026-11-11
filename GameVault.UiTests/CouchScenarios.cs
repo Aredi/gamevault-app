@@ -168,7 +168,7 @@ namespace GameVault.UiTests
                 // The menu: the start in this mode is kept, the desktop is asked back
                 couch.Handle(CouchCommand.Menu);
                 Assert.True(couch.uiMenu.IsVisible);
-                Assert.Equal(5, couch.MenuLines.Count);
+                Assert.Equal(6, couch.MenuLines.Count);
                 Capture(window, "4-menu");
                 CouchUserControl.StartsHere = false;
                 couch.Handle(CouchCommand.Down);
@@ -179,6 +179,7 @@ namespace GameVault.UiTests
                 Assert.True(couch.MenuLines[2].IsSelected);
                 bool left = false;
                 couch.LeaveRequested += () => left = true;
+                couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Accept);
                 Assert.True(left);
@@ -332,6 +333,155 @@ namespace GameVault.UiTests
                 window.Close();
                 foreach (Game game in games)
                     session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task TheClientsWindows_AreMovedThroughWithTheGamepad_AndTheirTextsTypedOnTheScreen()
+        {
+            var session = await TestSession.GetAsync();
+            var window = session.Window;
+            WindowState before = window.WindowState;
+            bool sounds = CouchUserControl.SoundsOn;
+            try
+            {
+                window.EnterCouch();
+                var couch = window.FindControl<CouchUserControl>("uiCouch")!;
+                var keyboard = window.FindControl<CouchKeyboard>("uiCouchKeys")!;
+                Assert.Same(keyboard, couch.TextKeyboard);
+
+                // A window of the client: a name, a box to check, a choice, a slider and two buttons
+                var name = new TextBox { Width = 300 };
+                var check = new CheckBox { Content = "Cloud saves" };
+                var choice = new ComboBox { ItemsSource = new[] { "Low", "Medium", "High" }, SelectedIndex = 0, Width = 300 };
+                var slider = new Slider { Minimum = 0, Maximum = 10, SmallChange = 1, Value = 5, Width = 300 };
+                int cancelled = 0, saved = 0;
+                var cancel = new Button { Content = "Cancel" };
+                var save = new Button { Content = "Save" };
+                cancel.Click += (_, _) => cancelled++;
+                save.Click += (_, _) => saved++;
+                var popup = new StackPanel
+                {
+                    Width = 420, Spacing = 14, Margin = new Thickness(30),
+                    Children = { name, check, choice, slider, new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 10, Children = { cancel, save } } },
+                };
+                MainWindowViewModel.Instance.OpenPopup(popup);
+                void Settle()
+                {
+                    Dispatcher.UIThread.RunJobs();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    Dispatcher.UIThread.RunJobs();
+                }
+                Settle();
+                Assert.Equal(new Control[] { name, check, choice, slider, cancel, save }, CouchFocus.Candidates(popup));
+
+                // The cross reaches the first control, A opens the keyboard over the window
+                couch.Played.Clear();
+                couch.Handle(CouchCommand.Down);
+                Assert.Same(name, CouchFocus.Focused(popup));
+                couch.Handle(CouchCommand.Accept);
+                Assert.Same(name, couch.Editing);
+                Assert.True(keyboard.IsVisible);
+                Assert.Equal(44, keyboard.Keys.Count);
+                // "a", then the capitals with the shift key, a space with Y, erased with X
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("a", name.Text);
+                int shift = keyboard.Keys.FindIndex(k => k.Text == CouchKeyboard.Shift);
+                for (int row = 0; row < 4; row++)
+                    couch.Handle(CouchCommand.Down);
+                Assert.Equal(shift, keyboard.Selected);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("A", keyboard.Keys[0].Text);
+                for (int row = 0; row < 4; row++)
+                    couch.Handle(CouchCommand.Up);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Accept);
+                couch.Handle(CouchCommand.Search);
+                Assert.Equal("aB ", name.Text);
+                couch.Handle(CouchCommand.View);
+                Assert.Equal("aB", name.Text);
+                Assert.Equal("aB", keyboard.Shown);
+                // B closes the keyboard, not the window
+                couch.Handle(CouchCommand.Back);
+                Assert.Null(couch.Editing);
+                Assert.False(keyboard.IsVisible);
+                Assert.Same(popup, MainWindowViewModel.Instance.Popup);
+
+                // Down from control to control: the box is checked, the choice and the slider change with left and right
+                couch.Handle(CouchCommand.Down);
+                Assert.Same(check, CouchFocus.Focused(popup));
+                couch.Handle(CouchCommand.Accept);
+                Assert.True(check.IsChecked);
+                couch.Handle(CouchCommand.Down);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Left);
+                Assert.Equal(1, choice.SelectedIndex);
+                couch.Handle(CouchCommand.Down);
+                couch.Handle(CouchCommand.Right);
+                Assert.Equal(6, slider.Value);
+                // The buttons side by side
+                couch.Handle(CouchCommand.Down);
+                Assert.Same(cancel, CouchFocus.Focused(popup));
+                couch.Handle(CouchCommand.Right);
+                Assert.Same(save, CouchFocus.Focused(popup));
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal((0, 1), (cancelled, saved));
+                couch.Handle(CouchCommand.Up);
+                Assert.Same(slider, CouchFocus.Focused(popup));
+                // Each of them had its sound
+                Assert.Contains(CouchSound.Move, couch.Played);
+                Assert.Contains(CouchSound.Accept, couch.Played);
+                couch.Handle(CouchCommand.Back);
+                Assert.Null(MainWindowViewModel.Instance.Popup);
+                Assert.Equal(CouchSound.Back, couch.Played[^1]);
+
+                // A question with a text to type: the same keyboard, then its answer
+                Task<string?> asked = window.ShowInputAsync("Collection", "Its name");
+                Settle();
+                TextBox input = Assert.IsType<TextBox>(DialogService.Current!.Input);
+                couch.Handle(CouchCommand.Up);
+                Assert.Same(input, CouchFocus.Focused(DialogService.Current.Scope));
+                couch.Handle(CouchCommand.Accept);
+                Assert.Same(input, couch.Editing);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("c", input.Text);
+                // OK, the keyboard's last key
+                keyboard.Handle(CouchCommand.Down);
+                keyboard.Handle(CouchCommand.Down);
+                keyboard.Handle(CouchCommand.Down);
+                keyboard.Handle(CouchCommand.Down);
+                keyboard.Handle(CouchCommand.Right);
+                Assert.Equal(CouchKeyboard.Done, keyboard.Keys[keyboard.Selected].Text);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Null(couch.Editing);
+                couch.Handle(CouchCommand.Down);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Right);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("c", await asked);
+                Assert.Null(DialogService.Current);
+
+                // The sounds are turned off in the menu
+                CouchUserControl.SoundsOn = true;
+                couch.Handle(CouchCommand.Menu);
+                CouchLine line = couch.MenuLines.Single(l => l.Text == Loc.T("Sounds: on"));
+                await line.Run();
+                Assert.False(CouchUserControl.SoundsOn);
+                Assert.Contains(couch.MenuLines, l => l.Text == Loc.T("Sounds: off"));
+                couch.Handle(CouchCommand.Back);
+            }
+            finally
+            {
+                while (DialogService.Current is { } left)
+                    left.Cancel();
+                MainWindowViewModel.Instance.ClosePopup();
+                CouchUserControl.SoundsOn = sounds;
+                window.LeaveCouch();
+                window.WindowState = before;
             }
         }
 

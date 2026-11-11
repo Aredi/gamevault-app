@@ -1958,5 +1958,7 @@
   "Erase": "Effacer",
   "Downloading: {0}%": "Téléchargement : {0} %",
   "{0} message": "{0} message",
-  "{0} messages": "{0} messages"
+  "{0} messages": "{0} messages",
+  "Sounds: on": "Sons : activés",
+  "Sounds: off": "Sons : coupés"
 }

@@ -59,10 +59,16 @@ namespace gamevault.Helper
             private int focused;
             private bool marked;
 
-            internal OpenDialog(List<(IconButton, MessageDialogResult)> buttons, Action<MessageDialogResult> close)
+            /// <summary>The question on the screen, and its text box when it asks for a text.</summary>
+            internal Control Scope { get; }
+            internal TextBox? Input { get; }
+
+            internal OpenDialog(List<(IconButton, MessageDialogResult)> buttons, Action<MessageDialogResult> close, Control scope, TextBox? input)
             {
                 this.buttons = buttons;
                 this.close = close;
+                Scope = scope;
+                Input = input;
                 // The main action, on the right
                 focused = buttons.Count - 1;
             }
@@ -73,7 +79,8 @@ namespace gamevault.Helper
             /// <summary>The button A would press is framed.</summary>
             internal void Mark()
             {
-                if (marked)
+                // A text to type: the keyboard's focus shows where the gamepad is
+                if (marked || Input != null)
                     return;
                 marked = true;
                 Frame();
@@ -271,9 +278,7 @@ namespace gamevault.Helper
 
             if (layer != null)
             {
-                // No text to type: a gamepad can answer it
-                if (inputBox == null)
-                    open.Add(tracked = new OpenDialog(answers, Close));
+                open.Add(tracked = new OpenDialog(answers, Close, overlay, inputBox));
                 layer.Children.Add(overlay);
                 layer.IsHitTestVisible = true;
                 Dispatcher.UIThread.Post(() => (inputBox as Control ?? buttons.Children.FirstOrDefault())?.Focus());

@@ -53,15 +53,18 @@ namespace gamevault.Windows
         private void InitCouch()
         {
             uiCouch.LeaveRequested += LeaveCouch;
+            uiCouch.TextKeyboard = uiCouchKeys;
             AddHandler(KeyDownEvent, (_, e) =>
             {
+                if (CouchFocus.Activating)
+                    return;
                 if (e.Key == Key.F11 && e.KeyModifiers == KeyModifiers.None)
                 {
                     if (uiCouch.IsVisible) LeaveCouch(); else EnterCouch();
                     e.Handled = true;
                 }
-                // Nothing under it gets the keyboard; a popup over it keeps its own keys
-                else if (uiCouch.IsVisible && MainWindowViewModel.Instance.Popup == null && (DialogLayer.Children.Count == 0 || DialogService.Current != null) && e.KeyModifiers == KeyModifiers.None)
+                // Nothing under it gets the keyboard; a popup over it and a question with a text to type keep their own keys
+                else if (uiCouch.IsVisible && MainWindowViewModel.Instance.Popup == null && (DialogLayer.Children.Count == 0 || DialogService.Current is { Input: null }) && e.KeyModifiers == KeyModifiers.None)
                 {
                     uiCouch.HandleKey(e.Key);
                     e.Handled = true;

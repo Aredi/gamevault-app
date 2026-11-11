@@ -1,0 +1,45 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.CouchKeyboard">
+    <!-- The keyboard of the living-room mode: what is typed, and the keys a gamepad types it with -->
+    <UserControl.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="#F4F6FA" />
+        </Style>
+        <Style Selector="Border.key">
+            <Setter Property="Width" Value="62" />
+            <Setter Property="Height" Value="58" />
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Background" Value="#14FFFFFF" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Border.key.selected">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="BorderBrush" Value="#66FFFFFF" />
+        </Style>
+    </UserControl.Styles>
+    <Border Background="#F00B1018" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="22" Padding="28,22">
+        <StackPanel Spacing="16">
+            <Border Background="#1FFFFFFF" CornerRadius="12" Padding="18,10" MinHeight="56">
+                <TextBlock x:Name="uiText" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="640" />
+            </Border>
+            <ItemsControl x:Name="uiKeys">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="10" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:CouchKey">
+                        <Border Classes="key" Classes.selected="{Binding IsSelected}">
+                            <TextBlock Text="{Binding Text}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Border>
+</UserControl>

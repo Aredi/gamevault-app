@@ -166,27 +166,7 @@
                     <TextBlock x:Name="uiEmpty" Grid.RowSpan="2" FontSize="26" Opacity="0.7" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
 
                     <!-- The search: what is typed, and the keyboard the gamepad types it with; the games found are the strip under it -->
-                    <Border x:Name="uiKeyboard" Classes="couchGlass" Padding="28,22" Margin="0,0,0,26" HorizontalAlignment="Center" VerticalAlignment="Bottom" IsVisible="False">
-                        <StackPanel Spacing="16">
-                            <Border Background="#1FFFFFFF" CornerRadius="12" Padding="18,10" MinHeight="56">
-                                <TextBlock x:Name="uiQuery" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            </Border>
-                            <ItemsControl x:Name="uiKeys">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <UniformGrid Columns="10" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="local:CouchLine">
-                                        <Border Classes="couchLine" Classes.selected="{Binding IsSelected}" Width="62" Height="58" Padding="0" Margin="4">
-                                            <TextBlock Text="{Binding Text}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
+                    <local:CouchKeyboard x:Name="uiKeyboard" Margin="0,0,0,26" HorizontalAlignment="Center" VerticalAlignment="Bottom" IsVisible="False" />
 
                     <ScrollViewer Grid.Row="1" x:Name="uiStrip" Height="312" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                         <ScrollViewer.Transitions>

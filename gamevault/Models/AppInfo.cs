@@ -150,6 +150,8 @@ namespace gamevault.Models
         SidebarFolded,
         //The client opens in the living-room mode ("1", profileconfig)
         CouchAtStart,
+        //The living-room mode's sounds ("0": off, profileconfig)
+        CouchSounds,
         //Server news: when they were last opened (the newer ones are counted on the badge)
         NewsLastSeen
     }

@@ -77,6 +77,32 @@ namespace gamevault.UserControls
         private readonly CouchRepeater repeater = new();
         private readonly Stopwatch clock = Stopwatch.StartNew();
         private CouchGamepad? gamepad;
+        private CouchAudio? audio;
+        /// <summary>The sounds played (the tests count them).</summary>
+        internal List<CouchSound> Played { get; } = new();
+
+        /// <summary>A short sound for what the gamepad just did, unless they are turned off in the menu.</summary>
+        private void Play(CouchSound sound)
+        {
+            if (Played.Count < 1000)
+                Played.Add(sound);
+            if (SoundsOn)
+                audio?.Play(sound);
+        }
+
+        internal static bool SoundsOn
+        {
+            get
+            {
+                try { return Preferences.Get(AppConfigKey.CouchSounds, ProfileManager.ProfileConfigFile) != "0"; }
+                catch (Exception ex) { Log.Ignored(ex); return true; }
+            }
+            set
+            {
+                try { Preferences.Set(AppConfigKey.CouchSounds, value ? "1" : "0", ProfileManager.ProfileConfigFile); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+        }
         private bool padListened = true;
         private int ticks;
         private CouchItem? shownBack;
@@ -85,10 +111,8 @@ namespace gamevault.UserControls
         private List<CouchTab> baseTabs = new();
         internal bool Searching { get; private set; }
         internal string Query { get; private set; } = "";
-        internal List<CouchLine> Keys { get; private set; } = new();
-        private int key;
-        private const int KeyColumns = 10;
-        private const string Erase = "⌫", Space = "␣", Done = "OK";
+        internal List<CouchKey> Keys => uiKeyboard.Keys;
+        private const string Erase = CouchKeyboard.Erase, Space = CouchKeyboard.Space, Done = CouchKeyboard.Done;
         private int detailGeneration, shot = -1, refreshes;
         private bool shotShown;
         private int backGeneration;
@@ -100,6 +124,7 @@ namespace gamevault.UserControls
             uiGridItems.ItemTemplate = uiStripItems.ItemTemplate;
             timer.Tick += (_, _) => Tick();
             SizeChanged += (_, _) => Fit();
+            uiKeyboard.Typed += Type;
             Tapped += Pointed;
             // The second click of two fast ones is a double tap, not a tap: it opens what the first one selected
             DoubleTapped += Pointed;
@@ -116,6 +141,7 @@ namespace gamevault.UserControls
             ShowClock();
             try { gamepad ??= new CouchGamepad(); }
             catch (Exception ex) { Log.Ignored(ex); }
+            audio ??= new CouchAudio();
             repeater.Reset(gamepad?.Read() ?? CouchButtons.None);
             timer.Start();
             await LoadAsync();
@@ -126,6 +152,9 @@ namespace gamevault.UserControls
             timer.Stop();
             gamepad?.Dispose();
             gamepad = null;
+            audio?.Dispose();
+            audio = null;
+            StopEditing();
             IsVisible = false;
         }
 
@@ -241,14 +270,8 @@ namespace gamevault.UserControls
 
         private void OpenSearch()
         {
-            if (Keys.Count == 0)
-            {
-                Keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".Select(c => new CouchLine { Text = c.ToString() })
-                    .Concat(new[] { new CouchLine { Text = Space }, new CouchLine { Text = Erase }, new CouchLine { Text = Done } }).ToList();
-                uiKeys.ItemsSource = Keys;
-            }
+            uiKeyboard.Open(text: false);
             Searching = true;
-            ShowKey(0);
             if (Query.Length > 0)
                 Navigator.Select(Tabs.Count - 1, 0);
             ShowTab();
@@ -261,25 +284,22 @@ namespace gamevault.UserControls
             ShowScreen();
         }
 
-        private void ShowKey(int to)
-        {
-            key = Math.Clamp(to, 0, Keys.Count - 1);
-            for (int i = 0; i < Keys.Count; i++)
-                Keys[i].IsSelected = i == key;
-        }
-
         private void InSearch(CouchCommand command)
         {
-            switch (command)
+            if (command is CouchCommand.Back or CouchCommand.Menu)
             {
-                case CouchCommand.Left when key % KeyColumns > 0: ShowKey(key - 1); break;
-                case CouchCommand.Right when key % KeyColumns < KeyColumns - 1: ShowKey(key + 1); break;
-                case CouchCommand.Up when key >= KeyColumns: ShowKey(key - KeyColumns); break;
-                case CouchCommand.Down when key / KeyColumns < (Keys.Count - 1) / KeyColumns: ShowKey(key + KeyColumns); break;
-                case CouchCommand.Accept: Type(Keys[key].Text); break;
-                case CouchCommand.View: Type(Erase); break;
-                case CouchCommand.Search: Type(Space); break;
-                case CouchCommand.Back or CouchCommand.Menu: CloseSearch(); break;
+                Play(CouchSound.Back);
+                CloseSearch();
+            }
+            else
+            {
+                int selected = uiKeyboard.Selected;
+                string query = Query;
+                uiKeyboard.Handle(command);
+                if (uiKeyboard.Selected != selected)
+                    Play(CouchSound.Move);
+                else if (Query != query)
+                    Play(CouchSound.Accept);
             }
         }
 
@@ -372,7 +392,7 @@ namespace gamevault.UserControls
         internal void Handle(CouchCommand command)
         {
             // A question of the client (delete? where to install?): its answers, from left to right
-            if (DialogService.Current is { } dialog)
+            if (DialogService.Current is { Input: null } dialog)
             {
                 switch (command)
                 {
@@ -383,11 +403,16 @@ namespace gamevault.UserControls
                 }
                 return;
             }
-            // A window of the client over the games (a notice, a trailer): B closes it, nothing else goes through
-            if (MainWindowViewModel.Instance.Popup != null)
+            // A question with a text to type, or a window of the client over the games (a game's settings, a notice,
+            // a trailer): the cross goes from control to control, A presses, B closes
+            if (DialogService.Current is { } asking)
             {
-                if (command == CouchCommand.Back)
-                    MainWindowViewModel.Instance.ClosePopup();
+                InWindow(asking.Scope, command, asking.Cancel);
+                return;
+            }
+            if (MainWindowViewModel.Instance.Popup is Control popup)
+            {
+                InWindow(popup, command, MainWindowViewModel.Instance.ClosePopup);
                 return;
             }
             if (Searching)
@@ -398,12 +423,20 @@ namespace gamevault.UserControls
             if (command == CouchCommand.Search)
             {
                 if (Navigator.Screen == CouchScreen.Home)
+                {
+                    Play(CouchSound.Accept);
                     OpenSearch();
+                }
                 return;
             }
             int tab = Navigator.Tab;
             CouchItem? before = Current;
-            switch (Navigator.Apply(command))
+            CouchEffect effect = Navigator.Apply(command);
+            if (effect != CouchEffect.None)
+                Play(command == CouchCommand.Back ? CouchSound.Back
+                    : effect == CouchEffect.Moved ? (Navigator.Tab != tab ? CouchSound.Tab : CouchSound.Move)
+                    : effect == CouchEffect.ViewChanged ? CouchSound.Tab : CouchSound.Accept);
+            switch (effect)
             {
                 case CouchEffect.Moved:
                     if (Navigator.Tab != tab)
@@ -435,6 +468,103 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
             Refresh();
+        }
+
+        // --- The client's own windows, with the gamepad ---
+
+        private CouchKeyboard? textKeyboard;
+        /// <summary>The keyboard shown over the client's windows to type in their text boxes (the window has it).</summary>
+        internal CouchKeyboard? TextKeyboard
+        {
+            get => textKeyboard;
+            set
+            {
+                if (textKeyboard != null)
+                    textKeyboard.Typed -= TypeInBox;
+                textKeyboard = value;
+                if (textKeyboard != null)
+                    textKeyboard.Typed += TypeInBox;
+            }
+        }
+        /// <summary>The text box typed in with the keyboard on the screen.</summary>
+        internal TextBox? Editing { get; private set; }
+
+        private void InWindow(Control scope, CouchCommand command, Action close)
+        {
+            if (Editing != null)
+            {
+                if (command is CouchCommand.Back or CouchCommand.Menu)
+                    StopEditing();
+                else
+                    TextKeyboard?.Handle(command);
+                return;
+            }
+            Control? focused = CouchFocus.Focused(scope);
+            switch (command)
+            {
+                case CouchCommand.Left when CouchFocus.Adjust(focused, -1):
+                case CouchCommand.Right when CouchFocus.Adjust(focused, 1):
+                    Play(CouchSound.Move);
+                    break;
+                case CouchCommand.Left or CouchCommand.Right or CouchCommand.Up or CouchCommand.Down:
+                    if (CouchFocus.Move(scope, command switch
+                    {
+                        CouchCommand.Left => NavigationDirection.Left, CouchCommand.Right => NavigationDirection.Right,
+                        CouchCommand.Up => NavigationDirection.Up, _ => NavigationDirection.Down,
+                    }))
+                        Play(CouchSound.Move);
+                    break;
+                case CouchCommand.Accept:
+                    Play(CouchSound.Accept);
+                    if (focused is TextBox box && TextKeyboard != null)
+                        StartEditing(box);
+                    else if (focused != null)
+                        CouchFocus.Activate(focused);
+                    else
+                        CouchFocus.Move(scope, NavigationDirection.Down);
+                    break;
+                case CouchCommand.Back:
+                    Play(CouchSound.Back);
+                    close();
+                    break;
+            }
+        }
+
+        private void StartEditing(TextBox box)
+        {
+            Editing = box;
+            TextKeyboard!.Open(text: true);
+            TextKeyboard.IsVisible = true;
+            ShowEdited();
+        }
+
+        private void StopEditing()
+        {
+            Editing = null;
+            if (TextKeyboard != null)
+                TextKeyboard.IsVisible = false;
+        }
+
+        /// <summary>What the box holds, as it shows it (a password stays hidden).</summary>
+        private void ShowEdited()
+        {
+            string text = Editing?.Text ?? "";
+            TextKeyboard?.Show(Editing is { PasswordChar: not '\0' } ? new string('•', text.Length) : text);
+        }
+
+        private void TypeInBox(string typed)
+        {
+            // The window closed under the keyboard
+            if (Editing == null || !Editing.IsEffectivelyVisible || typed == CouchKeyboard.Done)
+            {
+                StopEditing();
+                return;
+            }
+            string text = Editing.Text ?? "";
+            Editing.Text = typed == CouchKeyboard.Erase ? (text.Length > 0 ? text[..^1] : "") : text + (typed == CouchKeyboard.Space ? " " : typed);
+            Editing.CaretIndex = Editing.Text.Length;
+            Play(CouchSound.Move);
+            ShowEdited();
         }
 
         /// <summary>A mouse or a remote that points: a click selects, a click on what is selected opens it.</summary>
@@ -610,8 +740,7 @@ namespace gamevault.UserControls
             uiGrid.IsVisible = uiGridTitle.IsVisible = grid;
             uiHero.IsVisible = item != null && !grid && !Searching;
             uiKeyboard.IsVisible = Searching && !details;
-            uiQuery.Text = Query.Length > 0 ? Query : Loc.T("Search a game");
-            uiQuery.Opacity = Query.Length > 0 ? 1 : 0.5;
+            uiKeyboard.Show(Query.Length > 0 ? Query : Loc.T("Search a game"), placeholder: Query.Length == 0);
             uiDim.IsVisible = details || grid || Searching;
             if (!details && shotShown)
             {
@@ -750,6 +879,7 @@ namespace gamevault.UserControls
                 new() { Text = Loc.T("Back to the games"), Run = () => { Navigator.CloseMenu(); ShowScreen(); return Task.CompletedTask; } },
                 new() { Text = Loc.T("Read the games again"), Run = async () => { Navigator.CloseMenu(); ShowScreen(); await LoadAsync(); } },
                 new() { Text = atStart ? Loc.T("At start: the living-room mode") : Loc.T("At start: the desktop"), Run = () => { StartsHere = !atStart; BuildMenu(); ShowScreen(false); return Task.CompletedTask; } },
+                new() { Text = SoundsOn ? Loc.T("Sounds: on") : Loc.T("Sounds: off"), Run = () => { SoundsOn = !SoundsOn; BuildMenu(); ShowScreen(false); return Task.CompletedTask; } },
                 new() { Text = Loc.T("Back to the desktop"), Run = () => { Navigator.CloseMenu(); ShowScreen(); LeaveRequested?.Invoke(); return Task.CompletedTask; } },
                 new() { Text = Loc.T("Quit SanctuaryVault"), Run = () => App.Instance.ExitApp() },
             };
@@ -810,6 +940,8 @@ namespace gamevault.UserControls
                     _ = NextShotAsync(current);
             }
             DialogService.Current?.Mark();
+            if (Editing is { IsEffectivelyVisible: false })
+                StopEditing();
             int unread = MainWindowViewModel.Instance.IsChatAvailable ? ChatService.Instance.TotalUnread : 0;
             uiUnreadPill.IsVisible = unread > 0;
             uiUnread.Text = Loc.Plural(unread, "{0} message", "{0} messages");
