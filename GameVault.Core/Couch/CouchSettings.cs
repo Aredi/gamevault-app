@@ -55,6 +55,7 @@ namespace GameVault.Core.Couch
             [nameof(SoundPack)] = new[] { "soft", "retro", "crystal" },
             [nameof(MusicTheme)] = new[] { "calm", "night" },
             [nameof(StartTab)] = new[] { "home", "library", "installed" },
+            [nameof(LoginBackground)] = new[] { "game", "aurora", "night", "synthwave", "accent" },
         };
 
         /// <summary>A game's screen: on its picture at the left, in a panel, or centered at the bottom.</summary>
@@ -88,8 +89,10 @@ namespace GameVault.Core.Couch
         public string MusicTheme { get; set; } = "calm";
         /// <summary>The music's loudness, in percent (25 to 100).</summary>
         public int MusicVolume { get; set; } = 75;
-        /// <summary>The greeting when the mode opens with the client.</summary>
+        /// <summary>The login screen when the mode opens with the client.</summary>
         public bool Welcome { get; set; } = true;
+        /// <summary>Behind the login screen: the game played last, or a background made here.</summary>
+        public string LoginBackground { get; set; } = "game";
         /// <summary>The tab shown when the mode opens.</summary>
         public string StartTab { get; set; } = "home";
 

@@ -115,6 +115,38 @@
                 </Animation>
             </Style.Animations>
         </Style>
+        <!-- The login screen: the chosen profile large, ringed and glowing; "press A" breathing -->
+        <Style Selector="StackPanel.couchProfile">
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="RenderTransform" Value="scale(0.72)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="StackPanel.couchProfile.selected">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="StackPanel.couchProfile.selected Border.couchAvatar">
+            <Setter Property="BorderBrush" Value="#F4F6FA" />
+            <Setter Property="BorderThickness" Value="4" />
+            <Setter Property="BoxShadow" Value="0 0 40 6 #66FFFFFF" />
+        </Style>
+        <Style Selector="TextBlock.couchPulse">
+            <Style.Animations>
+                <Animation Duration="0:0:1.4" IterationCount="Infinite" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0.45" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
         <Style Selector="Border.couchKey">
             <Setter Property="MinWidth" Value="34" />
             <Setter Property="Height" Value="34" />
@@ -566,13 +598,56 @@
                         </Border.Background>
                     </Border>
                     <StackPanel Margin="96,0,96,90" VerticalAlignment="Bottom" Spacing="14">
-                        <Border x:Name="uiCurtainAvatarFrame" Width="110" Height="110" CornerRadius="55" ClipToBounds="True" Background="#22FFFFFF" HorizontalAlignment="Left" IsVisible="False">
-                            <local:CacheImage x:Name="uiCurtainAvatar" ImageCacheType="UserAvatar" Stretch="UniformToFill" />
-                        </Border>
                         <TextBlock x:Name="uiCurtainTitle" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="72" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
                         <TextBlock x:Name="uiCurtainText" FontSize="24" Opacity="0.8" />
                     </StackPanel>
                     <TextBlock x:Name="uiCurtainClock" FontSize="44" FontWeight="SemiBold" Margin="0,60,96,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                </Panel>
+                <!-- The login screen, as a console's: the time, the profiles of this PC, "press A" -->
+                <Panel Grid.RowSpan="3" x:Name="uiLogin" Background="#05070B" IsVisible="False">
+                    <local:CacheImage x:Name="uiLoginPc" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" IsVisible="False" />
+                    <Image x:Name="uiLoginRetro" Stretch="UniformToFill" IsVisible="False" />
+                    <Panel x:Name="uiLoginPack" />
+                    <Border>
+                        <Border.Background>
+                            <RadialGradientBrush Center="50%,55%" GradientOrigin="50%,55%" RadiusX="70%" RadiusY="80%">
+                                <GradientStop Offset="0" Color="#8005070B" />
+                                <GradientStop Offset="1" Color="#F205070B" />
+                            </RadialGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" Margin="0,-30,0,0">
+                        <TextBlock x:Name="uiLoginTime" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="124" HorizontalAlignment="Center">
+                            <TextBlock.Effect>
+                                <DropShadowEffect BlurRadius="30" OffsetX="0" OffsetY="4" Color="#B0000000" />
+                            </TextBlock.Effect>
+                        </TextBlock>
+                        <TextBlock x:Name="uiLoginDate" FontSize="27" Opacity="0.8" HorizontalAlignment="Center" />
+                        <ItemsControl x:Name="uiLoginProfiles" HorizontalAlignment="Center" Margin="0,64,0,26">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="34" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="local:LoginProfile">
+                                    <StackPanel Classes="couchProfile" Classes.selected="{Binding IsSelected}" Spacing="14" Width="220">
+                                        <Border Classes="couchAvatar" Width="160" Height="160" CornerRadius="80" ClipToBounds="True" HorizontalAlignment="Center" Background="{DynamicResource Brush.Accent}">
+                                            <Panel>
+                                                <TextBlock Text="{Binding Initial}" FontSize="64" FontWeight="ExtraBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <local:CacheImage Data="{Binding AvatarData}" ImageCacheType="UserAvatar" Stretch="UniformToFill" IsVisible="{Binding IsCurrent}" />
+                                                <Image Source="{Binding Avatar}" Stretch="UniformToFill" />
+                                            </Panel>
+                                        </Border>
+                                        <TextBlock Text="{Binding Name}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Server}" FontSize="16" Opacity="0.6" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock x:Name="uiLoginPrompt" Classes="couchPulse" FontSize="25" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="uiLoginOthers" FontSize="18" Opacity="0.6" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    </StackPanel>
                 </Panel>
                 <!-- Read for its color only: the accent follows the selected game's cover -->
                 <local:CacheImage x:Name="uiAccentProbe" ImageCacheType="GameCover" ComputeAccent="True" Width="2" Height="3" Opacity="0" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" />

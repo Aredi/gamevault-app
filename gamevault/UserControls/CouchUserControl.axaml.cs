@@ -127,6 +127,8 @@ namespace gamevault.UserControls
             {
                 if (Navigator.Screen == CouchScreen.Menu && menu == CouchMenu.Custom)
                     BuildMenu();
+                if (LoginShown)
+                    ShowLoginSelection();
                 ShowScreen(false);
             }
         }
@@ -211,7 +213,7 @@ namespace gamevault.UserControls
             Shown = true;
             idle.Restart();
             if (welcome && Settings.Welcome)
-                ShowWelcome();
+                ShowLoginAtStart();
             Focus();
             Fit();
             uiAvatar.Data = MainWindowViewModel.Instance.UserAvatar;
@@ -226,6 +228,9 @@ namespace gamevault.UserControls
             timer.Start();
             await LoadAsync();
             OpenStartTab();
+            // The game played last is known now: behind the login screen
+            if (LoginShown)
+                ShowLoginBackground();
         }
 
         /// <summary>The tab the customization opens the mode on (the home, the library, the installed games).</summary>
@@ -251,6 +256,7 @@ namespace gamevault.UserControls
             audio = null;
             StopEditing();
             StopTrailer();
+            uiLogin.IsVisible = false;
             CloseOverlay();
             HideCurtain();
             ApplyMouse(CouchButtons.None, default);
@@ -571,6 +577,11 @@ namespace gamevault.UserControls
         internal void Handle(CouchCommand command)
         {
             idle.Restart();
+            if (LoginShown)
+            {
+                HandleLogin(command);
+                return;
+            }
             // The screensaver, a game's picture while it starts, the welcome: any button takes it away
             if (uiCurtain.IsVisible)
             {
@@ -1243,6 +1254,8 @@ namespace gamevault.UserControls
             }
             WatchGame();
             KeepTrailer();
+            if (LoginShown)
+                ShowLoginClock();
             bool active = IsVisible && TopLevel.GetTopLevel(this) is Window { IsActive: true };
             KeepDrift(active);
             // The music: in the menus only, never over a game, a trailer or a game that starts

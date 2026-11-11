@@ -21,6 +21,8 @@ namespace GameVault.Core.Couch
         Launch,
         /// <summary>Nothing further that way: the end of a list.</summary>
         Edge,
+        /// <summary>The login screen comes: a slow chord rising, as a console that wakes.</summary>
+        Login,
     }
 
     /// <summary>
@@ -118,6 +120,13 @@ namespace GameVault.Core.Couch
                     Note(b, i * 0.065, notes[i]*t.Pitch, i == notes.Length - 1 ? 0.6 : 0.8, (0.18 + i * 0.03) * t.Decay, t.Bright);
                 Sweep(b, 0.2, 0.5, (0.25) * t.Sweep, 2000, 9000, 7);
             }, 0.45),
+            CouchSound.Login => (0.95, 0.16, b =>
+            {
+                Sweep(b, 0, 0.7, (0.5) * t.Sweep, 300, 6000, 8);
+                double[] notes = { 261.6, 392, 523.3, 659.3, 784 };
+                for (int i = 0; i < notes.Length; i++)
+                    Note(b, 0.08 + i * 0.09, notes[i] * t.Pitch, 0.55, (0.3 + i * 0.04) * t.Decay, t.Bright);
+            }, 0.5),
             _ => (0.12, 0.09, b => { Note(b, 0, 220*t.Pitch, 1, (0.025) * t.Decay, t.Main); Note(b, 0.035, 196*t.Pitch, 0.8, (0.03) * t.Decay, t.Main); }, 0.1),
         };
 

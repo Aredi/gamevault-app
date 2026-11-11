@@ -2128,5 +2128,14 @@
   "No moving background, no screenshots, no trailer, no animation.": "Pas de fond animé, de captures, de bande-annonce ni d'animation.",
   "Menu over a game (Start + Back)": "Menu par-dessus un jeu (Start + Back)",
   "Start and Back together over a game show a menu to go back to it or quit it.": "Start et Back ensemble pendant un jeu ouvrent un menu pour y revenir ou le quitter.",
-  "A program started from the home: a video player, another launcher.": "Un programme lancé depuis l'accueil : un lecteur vidéo, un autre lanceur."
+  "A program started from the home: a video player, another launcher.": "Un programme lancé depuis l'accueil : un lecteur vidéo, un autre lanceur.",
+  "Press {0} to come in": "Appuyez sur {0} pour entrer",
+  "Press {0} to sign in as {1}": "Appuyez sur {0} pour vous connecter en tant que {1}",
+  "Left and right: another profile of this PC": "Gauche et droite : un autre profil de ce PC",
+  "Change of profile": "Changer de profil",
+  "Login screen": "Écran de connexion",
+  "The time, the profiles of this PC and \"press A\" when the mode opens with SanctuaryVault.": "L'heure, les profils de ce PC et « appuyez sur A » quand le mode s'ouvre avec SanctuaryVault.",
+  "Behind the login screen": "Fond de l'écran de connexion",
+  "The game played last, or a background made by SanctuaryVault.": "Le dernier jeu joué, ou un fond créé par SanctuaryVault.",
+  "The game played last": "Le dernier jeu joué"
 }

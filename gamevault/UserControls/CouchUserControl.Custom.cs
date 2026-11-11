@@ -332,7 +332,8 @@ namespace gamevault.UserControls
             // "panel" is also the numbers' place at the screen's edge
             string value = Settings.Get(name);
             string shown = name == nameof(CouchSettings.InfoStyle) && value == "panel" ? Loc.T("At the screen's edge")
-                : name == nameof(CouchSettings.SoundPack) && value == "soft" ? Loc.T("Soft") : ValueName(value);
+                : name == nameof(CouchSettings.SoundPack) && value == "soft" ? Loc.T("Soft")
+                : name == nameof(CouchSettings.LoginBackground) && value == "game" ? Loc.T("The game played last") : ValueName(value);
             return Changed(Loc.F("{0}: {1}", Loc.T(label), shown), help, () => Settings.Set(name, CouchSettings.Next(CouchSettings.Choices[name], value)), games);
         }
 
@@ -419,7 +420,8 @@ namespace gamevault.UserControls
                 "start" => new List<CouchLine>
                 {
                     Changed(StartsHere ? Loc.T("At start: the living-room mode") : Loc.T("At start: the desktop"), "SanctuaryVault opens in this mode (a PC plugged to the TV).", () => StartsHere = !StartsHere),
-                    Toggle("Welcome", s.Welcome, v => s.Welcome = v, "The greeting when the mode opens with SanctuaryVault."),
+                    Toggle("Login screen", s.Welcome, v => s.Welcome = v, "The time, the profiles of this PC and \"press A\" when the mode opens with SanctuaryVault."),
+                    Choice("Behind the login screen", nameof(CouchSettings.LoginBackground), "The game played last, or a background made by SanctuaryVault."),
                     Choice("Tab at start", nameof(CouchSettings.StartTab), "The tab shown when the mode opens."),
                     Changed(Loc.F("Screensaver: {0}", s.ScreenSaverMinutes == 0 ? Loc.T("never") : Loc.F("after {0} min", s.ScreenSaverMinutes)), "The games one after the other when nothing is touched.",
                         () => s.ScreenSaverMinutes = CouchSettings.Next(new[] { 5, 10, 20, 0 }, s.ScreenSaverMinutes)),

@@ -174,7 +174,7 @@ namespace GameVault.UiTests
                 // The menu: the start in this mode is kept, the desktop is asked back
                 couch.Handle(CouchCommand.Menu);
                 Assert.True(couch.uiMenu.IsVisible);
-                Assert.Equal(7, couch.MenuLines.Count);
+                Assert.Equal(8, couch.MenuLines.Count);
                 Capture(window, "4-menu");
                 // Its settings: the start in this mode; B goes back to the menu
                 CouchUserControl.StartsHere = false;
@@ -849,14 +849,15 @@ namespace GameVault.UiTests
                 window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
                 Assert.True(window.IsCouchShown);
 
-                // Opened at the client's start: the welcome, until a button is pressed
+                // Opened at the client's start: the login screen, with the profile signed in, until A comes in
                 window.LeaveCouch();
                 window.EnterCouch(welcome: true);
                 var couch = window.FindControl<CouchUserControl>("uiCouch")!;
-                Assert.Equal(CouchUserControl.Curtain.Welcome, couch.CurtainShown);
-                Assert.Equal(Loc.F("Hello {0}", "admin"), couch.CurtainTitle);
+                Assert.True(couch.LoginShown);
+                Assert.Equal("admin", couch.LoginProfiles[0].Name);
+                Assert.True(couch.LoginProfiles[0].IsCurrent && couch.LoginProfiles[0].IsSelected);
                 window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
-                Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
+                Assert.False(couch.LoginShown);
                 Assert.True(window.IsCouchShown);
             }
             finally
@@ -1277,6 +1278,73 @@ namespace GameVault.UiTests
             finally
             {
                 File.Delete(file);
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task TheLoginScreen_ShowsTheTimeAndTheProfiles_AndSignsInWithAnother()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            var switched = new List<string>();
+            var switchProfile = CouchUserControl.SwitchProfile;
+            CouchUserControl.SwitchProfile = switched.Add;
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings { LoginBackground = "synthwave" };
+                couch.Show(games, Retro());
+                couch.ShowLogin(new List<LoginProfile>
+                {
+                    new() { RootDir = "/me", Name = "admin", Server = "gamevault.example", IsCurrent = true },
+                    new() { RootDir = "/kid", Name = "Lou", Server = "gamevault.example" },
+                });
+                Assert.True(couch.LoginShown);
+                Assert.Equal(CouchSound.Login, couch.Played[^1]);
+                Assert.Equal(DateTime.Now.ToString("t", System.Globalization.CultureInfo.CurrentCulture), couch.uiLoginTime.Text);
+                Assert.Equal(Loc.F("Press {0} to come in", "A"), couch.uiLoginPrompt.Text);
+                Assert.Single(couch.uiLoginPack.Children);
+                Capture(window, "login");
+
+                // Left and right choose a profile; nothing else moves behind it
+                string? selected = couch.Current?.Title;
+                couch.Handle(CouchCommand.Right);
+                Assert.Equal(1, couch.LoginSelected);
+                Assert.True(couch.LoginProfiles[1].IsSelected && !couch.LoginProfiles[0].IsSelected);
+                Assert.Equal(Loc.F("Press {0} to sign in as {1}", "A", "Lou"), couch.uiLoginPrompt.Text);
+                Assert.Equal(selected, couch.Current?.Title);
+                couch.Handle(CouchCommand.Right);
+                Assert.Equal(CouchSound.Edge, couch.Played[^1]);
+                // A PlayStation gamepad: its cross
+                couch.UsePad(CouchSettings.PlayStation);
+                Assert.Equal(Loc.F("Press {0} to sign in as {1}", "✕", "Lou"), couch.uiLoginPrompt.Text);
+                // A on another profile: the client signs in with it
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal(new[] { "/kid" }, switched);
+
+                // A on the profile signed in: the mode
+                couch.Handle(CouchCommand.Left);
+                couch.Handle(CouchCommand.Accept);
+                Assert.False(couch.LoginShown);
+                Assert.Equal(CouchSound.Open, couch.Played[^1]);
+
+                // From the menu: change of profile; no screensaver over it
+                couch.ShowMenu(CouchMenu.Main);
+                await couch.MenuLines.Single(l => l.Text == Loc.T("Change of profile")).Run();
+                Assert.True(couch.LoginShown && !couch.uiMenu.IsVisible);
+                couch.Settings.ScreenSaverMinutes = 5;
+                couch.CheckIdle(TimeSpan.FromHours(1));
+                Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
+            }
+            finally
+            {
+                CouchUserControl.SwitchProfile = switchProfile;
                 window.Close();
                 foreach (Game game in games)
                     session.Server.RemoveGame(game.ID);

@@ -383,6 +383,7 @@ namespace gamevault.UserControls
             Line(Loc.T("Settings"), () => ShowMenu(CouchMenu.Settings)),
             Line(Loc.T("Statistics"), () => ShowMenu(CouchMenu.Stats)),
             Line(Loc.T("Back to the desktop"), () => { CloseMenu(); LeaveRequested?.Invoke(); }),
+            Line(Loc.T("Change of profile"), () => { CloseMenu(); ShowLogin(); }),
             new() { Text = Loc.T("Quit SanctuaryVault"), Run = () => App.Instance.ExitApp() },
         };
 
@@ -652,7 +653,7 @@ namespace gamevault.UserControls
 
         // --- Over everything: the welcome, a game that starts, the screensaver ---
 
-        internal enum Curtain { None, Welcome, Splash, Saver }
+        internal enum Curtain { None, Splash, Saver }
         private Curtain curtain;
         private int curtainGeneration, saverTicks;
         internal Curtain CurtainShown => curtain;
@@ -667,9 +668,6 @@ namespace gamevault.UserControls
                 uiCurtainPc.Data = item.Pc;
             uiCurtainRetro.IsVisible = item?.Retro != null;
             uiCurtainRetro.Source = item?.Retro?.Banner;
-            uiCurtainAvatarFrame.IsVisible = kind == Curtain.Welcome;
-            if (kind == Curtain.Welcome)
-                uiCurtainAvatar.Data = MainWindowViewModel.Instance.UserAvatar;
             uiCurtainTitle.Text = title;
             uiCurtainText.Text = text;
             uiCurtainClock.Text = kind == Curtain.Saver ? DateTime.Now.ToString("t", CultureInfo.CurrentCulture) : "";
@@ -682,9 +680,6 @@ namespace gamevault.UserControls
             uiCurtain.IsVisible = false;
             idle.Restart();
         }
-
-        private void ShowWelcome() => ShowCurtain(Curtain.Welcome, null,
-            Loc.F("Hello {0}", LoginManager.Instance.GetCurrentUser()?.Username ?? ""), Loc.T("Press a button to start"));
 
         /// <summary>The game's picture while it starts: it goes when the game's window comes, or after a moment.</summary>
         internal void ShowSplash(CouchItem item)
@@ -712,7 +707,7 @@ namespace gamevault.UserControls
                     uiCurtainClock.Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
                 return;
             }
-            if (Settings.ScreenSaverMinutes <= 0 || curtain != Curtain.None || idleFor < TimeSpan.FromMinutes(Settings.ScreenSaverMinutes) || all.Count == 0
+            if (Settings.ScreenSaverMinutes <= 0 || curtain != Curtain.None || LoginShown || idleFor < TimeSpan.FromMinutes(Settings.ScreenSaverMinutes) || all.Count == 0
                 || MainWindowViewModel.Instance.Popup != null || DialogService.Current != null || Editing != null || overlay != null)
                 return;
             saverTicks = 0;
