@@ -21,6 +21,9 @@ namespace GameVault.Uploader
 
         private string File(string name) => Path.Combine(options.LogosDirectory, name);
 
+        /// <summary>Nothing can be said now (no key, a site that fails): the game is not marked as having no logo.</summary>
+        private sealed class NotNowException(string message) : Exception(message);
+
         /// <summary>The picture's type by its first bytes; null when it is not a picture a client shows.</summary>
         public static string? TypeOf(ReadOnlySpan<byte> start) =>
             start.Length >= 8 && start[0] == 0x89 && start[1] == 0x50 && start[2] == 0x4E && start[3] == 0x47 ? "image/png"
@@ -44,7 +47,7 @@ namespace GameVault.Uploader
                 Directory.CreateDirectory(options.LogosDirectory);
                 byte[]? logo = null;
                 try { logo = await find(); }
-                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or RommProxy.RommException && !cancellationToken.IsCancellationRequested)
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or RommProxy.RommException or NotNowException && !cancellationToken.IsCancellationRequested)
                 {
                     // Asked again at the next game's screen: nothing is kept of a failure
                     logger.LogInformation("The logo {Name} could not be fetched: {Error}", name, ex.Message);
@@ -75,11 +78,17 @@ namespace GameVault.Uploader
             {
                 if (Text(screenScraper, "logo_path") is string path && await romm.ResourceAsync(path, cancellationToken) is byte[] kept && TypeOf(kept) != null)
                     return kept;
-                if (Text(screenScraper, "logo_url") is string address && IsScreenScraper(address) && await DownloadAsync(address, null, cancellationToken) is byte[] fetched && TypeOf(fetched) != null)
-                    return fetched;
+                // ScreenScraper refuses at times (its quota): SteamGridDB is asked instead
+                try
+                {
+                    if (Text(screenScraper, "logo_url") is string address && IsScreenScraper(address) && await DownloadAsync(address, null, cancellationToken) is byte[] fetched && TypeOf(fetched) != null)
+                        return fetched;
+                }
+                catch (HttpRequestException ex) { logger.LogInformation("ScreenScraper's logo of {Rom} could not be fetched: {Error}", romId, ex.Message); }
             }
+            // Without the key, nobody else can be asked: asked again once it is given
             if (!HasSteamGrid)
-                return null;
+                throw new NotNowException("No SteamGridDB key");
             int? id = game.TryGetProperty("sgdb_id", out JsonElement matched) && matched.ValueKind == JsonValueKind.Number ? matched.GetInt32() : null;
             id ??= Text(game, "name") is string name ? await SteamGridIdAsync(name, cancellationToken) : null;
             return id is int found ? await SteamGridLogoAsync(found, cancellationToken) : null;
@@ -106,7 +115,12 @@ namespace GameVault.Uploader
             if (bearer != null)
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
             using HttpResponseMessage response = await web.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > MaxSize)
+            // Not there: no picture. Any other refusal (a wrong key, a site down) is a failure, not kept
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"{address.Split('?')[0]} answered {(int)response.StatusCode}", null, response.StatusCode);
+            if (response.Content.Headers.ContentLength > MaxSize)
                 return null;
             await using Stream body = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var bytes = new MemoryStream();

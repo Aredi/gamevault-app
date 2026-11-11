@@ -1022,5 +1022,137 @@ namespace GameVault.UiTests
                     session.Server.RemoveGame(game.ID);
             }
         }
+
+        [AvaloniaFact]
+        public async Task AGamesScreenshots_FadeOneIntoTheOther_NeverThroughBlack()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            static byte[] Png(SkiaSharp.SKColor color)
+            {
+                using var bitmap = new SkiaSharp.SKBitmap(64, 36);
+                bitmap.Erase(color);
+                using var image = SkiaSharp.SKImage.FromBitmap(bitmap);
+                return image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 90).ToArray();
+            }
+            session.Server.Media[9801] = Png(SkiaSharp.SKColors.Red);
+            session.Server.Media[9802] = Png(SkiaSharp.SKColors.Blue);
+            games[0].Metadata!.Screenshots = new[] { $"{session.Server.Url}/api/media/9801", $"{session.Server.Url}/api/media/9802" };
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+                while (couch.Tabs[couch.Navigator.Tab].Name != Loc.T("Library"))
+                    couch.Handle(CouchCommand.NextTab);
+                couch.Handle(CouchCommand.Accept);
+                // The fades are animations: their end is read once they ran
+                async Task Settle()
+                {
+                    for (int i = 0; i < 50; i++)
+                    {
+                        await Task.Delay(40);
+                        Dispatcher.UIThread.RunJobs();
+                        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    }
+                }
+
+                // The game's picture shown, then the first screenshot fades in over it, the picture staying as it is under it
+                await Settle();
+                double back = couch.uiBack.Opacity;
+                await couch.NextShotAsync(couch.Current!);
+                await Settle();
+                Assert.Equal((1d, 0d), (couch.uiShotA.Opacity, couch.uiShotB.Opacity));
+                Assert.Equal(back, couch.uiBack.Opacity);
+                // The next one over it; the one under goes once covered
+                await couch.NextShotAsync(couch.Current!);
+                Assert.True(couch.uiShotB.ZIndex > couch.uiShotA.ZIndex);
+                Assert.Equal(1, couch.uiShotA.Opacity);
+                await Settle();
+                Assert.Equal((0d, 1d), (couch.uiShotA.Opacity, couch.uiShotB.Opacity));
+                Assert.Equal(back, couch.uiBack.Opacity);
+
+                // Back to the list: the game's picture again
+                couch.Handle(CouchCommand.Back);
+                await Settle();
+                Assert.Equal((0d, 0d), (couch.uiShotA.Opacity, couch.uiShotB.Opacity));
+            }
+            finally
+            {
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task ALibraryGameStartedFromTheMode_GivesItBack_OnlyWhenSeenRunningThenClosed()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            var installed = new KeyValuePair<Game, string>(games[2], Path.Combine(session.LibraryRoot, "couch-watched"));
+            InstallViewModel.Instance.InstalledGames.Add(installed);
+            var isRunning = CouchUserControl.IsRunning;
+            TimeSpan giveUp = CouchUserControl.GiveUpAfter;
+            bool running = false;
+            CouchUserControl.IsRunning = (_, _) => running;
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+                CouchItem item = couch.Tabs.SelectMany(t => t.Items).First(i => i.Pc?.ID == games[2].ID);
+                void Watch()
+                {
+                    // Looked at every tenth time (every 5 seconds)
+                    for (int i = 0; i < 10; i++)
+                        couch.WatchGame();
+                }
+
+                // Seen running, then closed: the mode comes back in front
+                couch.GameStarted(item);
+                running = true;
+                Watch();
+                await Task.Delay(200);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Same(item, couch.Playing);
+                running = false;
+                Watch();
+                await TestSession.WaitUntil(() => couch.Playing == null, TimeSpan.FromSeconds(5), "the game's end");
+                Assert.Equal(1, couch.BroughtBack);
+
+                // Never seen (it runs from elsewhere): let go after a while, the window is not put over it
+                CouchUserControl.GiveUpAfter = TimeSpan.Zero;
+                couch.GameStarted(item);
+                Watch();
+                await TestSession.WaitUntil(() => couch.Playing == null, TimeSpan.FromSeconds(5), "letting the game go");
+                Assert.Equal(1, couch.BroughtBack);
+            }
+            finally
+            {
+                CouchUserControl.IsRunning = isRunning;
+                CouchUserControl.GiveUpAfter = giveUp;
+                InstallViewModel.Instance.InstalledGames.Remove(installed);
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [Fact]
+        public void EmptyGamepadSlots_AreLookedAtEveryTwoSeconds_NotAtEachFrame()
+        {
+            long last = long.MinValue;
+            Assert.True(CouchGamepad.LookAtEmptySlots(10_000, ref last));
+            Assert.False(CouchGamepad.LookAtEmptySlots(10_016, ref last));
+            Assert.False(CouchGamepad.LookAtEmptySlots(11_999, ref last));
+            Assert.True(CouchGamepad.LookAtEmptySlots(12_000, ref last));
+        }
     }
 }

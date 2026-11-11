@@ -8,7 +8,6 @@ using GameVault.Core.Couch;
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace gamevault.UserControls
@@ -27,6 +26,13 @@ namespace gamevault.UserControls
 
         /// <summary>The game started from here and not closed yet.</summary>
         internal CouchItem? Playing => playing;
+
+        /// <summary>A program of the library game installed in this folder runs (the tests say it instead).</summary>
+        internal static Func<int, string, bool> IsRunning { get; set; } = GameTimeTracker.IsRunning;
+        /// <summary>A library game never seen running after this long is let go (a launcher that gave up, a game run from elsewhere).</summary>
+        internal static TimeSpan GiveUpAfter { get; set; } = TimeSpan.FromSeconds(60);
+        /// <summary>The times the window was brought back in front (the tests count them).</summary>
+        internal int BroughtBack { get; private set; }
 
         internal void ListenToGames(bool listen)
         {
@@ -86,10 +92,10 @@ namespace gamevault.UserControls
 
         /// <summary>
         /// Twice a second while a game runs. A library game is not started by us but by its own program: it is over when
-        /// none of its programs runs anymore (looked at every 2 seconds, away from the screen's thread). A player who
+        /// none of its programs runs anymore (looked at every 5 seconds, away from the screen's thread). A player who
         /// comes back to the window while the game runs gets the mode back.
         /// </summary>
-        private void WatchGame()
+        internal void WatchGame()
         {
             if (playing == null)
                 return;
@@ -99,7 +105,7 @@ namespace gamevault.UserControls
                 GameClosed(bringBack: false);
                 return;
             }
-            if (playing.Pc is not Game game || checkingPc || ++playingChecks % 4 != 0)
+            if (playing.Pc is not Game game || checkingPc || ++playingChecks % 10 != 0)
                 return;
             string? folder = InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key?.ID == game.ID).Value;
             if (folder == null)
@@ -109,45 +115,36 @@ namespace gamevault.UserControls
             }
             checkingPc = true;
             CouchItem item = playing;
-            _ = Task.Run(() => GameTimeTracker.IsRunning(game.ID, folder)).ContinueWith(running =>
+            _ = Task.Run(() => IsRunning(game.ID, folder)).ContinueWith(running =>
             {
                 checkingPc = false;
                 if (!ReferenceEquals(item, playing))
                     return;
-                if (running.IsCompletedSuccessfully && running.Result)
+                if (!running.IsCompletedSuccessfully)
+                    return;
+                if (running.Result)
                     playingSeen = true;
-                // Closed, or never seen running (a launcher that gave up)
-                else if (playingSeen || playingFor.Elapsed > TimeSpan.FromSeconds(60))
+                // Seen, then closed: the mode comes back in front
+                else if (playingSeen)
                     GameClosed(bringBack: true);
+                // Never seen: it may run from elsewhere, so the window is not put over it
+                else if (playingFor.Elapsed > GiveUpAfter)
+                    GameClosed(bringBack: false);
             }, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
-        [DllImport("user32.dll")] private static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
-        [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
-        [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
-
-        /// <summary>
-        /// The window in front again. Windows refuses the foreground to a program the player did not touch last: a press
-        /// of Alt (nothing else happens with it) makes it accept, as when the player clicks the window.
-        /// </summary>
+        /// <summary>The window in front again, the mode's keys and gamepad with it.</summary>
         private void BringToFront()
         {
             if (TopLevel.GetTopLevel(this) is not Window window)
                 return;
+            BroughtBack++;
             try
             {
                 if (window.WindowState == WindowState.Minimized)
                     window.WindowState = WindowState.FullScreen;
                 if (OperatingSystem.IsWindows() && window.TryGetPlatformHandle()?.Handle is IntPtr handle && handle != IntPtr.Zero)
-                {
-                    const byte alt = 0x12;
-                    const uint up = 0x0002;
-                    if (IsIconic(handle))
-                        ShowWindow(handle, 9);
-                    keybd_event(alt, 0, 0, UIntPtr.Zero);
-                    keybd_event(alt, 0, up, UIntPtr.Zero);
-                    SetForegroundWindow(handle);
-                }
+                    CouchSystem.ToFront(handle);
                 window.Activate();
                 Focus();
             }

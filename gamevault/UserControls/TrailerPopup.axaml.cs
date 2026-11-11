@@ -82,7 +82,8 @@ namespace gamevault.UserControls
         }
 
         /// <summary>YouTube links become the addresses of their video and audio streams; other links stay as they are.</summary>
-        internal static async Task<Tuple<string, string>?> PlayableUrl(string input)
+        /// <param name="maxHeight">The tallest video taken (a small player does not need 4K); none: the best one.</param>
+        internal static async Task<Tuple<string, string>?> PlayableUrl(string input, int? maxHeight = null)
         {
             try
             {
@@ -90,7 +91,10 @@ namespace gamevault.UserControls
                     return new Tuple<string, string>(input, "");
                 youtube ??= new YoutubeClient();
                 var manifest = await youtube.Videos.Streams.GetManifestAsync(input);
-                var video = manifest.GetVideoStreams().GetWithHighestVideoQuality();
+                var streams = manifest.GetVideoStreams().ToList();
+                var small = streams.Where(v => v.VideoQuality.MaxHeight <= (maxHeight ?? int.MaxValue)).ToList();
+                // None small enough: the smallest there is
+                var video = small.Count > 0 ? small.GetWithHighestVideoQuality() : streams.OrderBy(v => v.VideoQuality.MaxHeight).First();
                 var audio = manifest.GetAudioStreams().GetWithHighestBitrate();
                 return new Tuple<string, string>(video.Url, audio.Url);
             }

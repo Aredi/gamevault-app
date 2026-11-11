@@ -103,16 +103,8 @@ namespace gamevault.UserControls
                 ViewModel.Achievements = achievements.Select(a => new RetroAchievementRow(a)).ToList();
                 // Earned elsewhere too (another PC, RetroAchievements' site): the profile and the activity follow
                 _ = RetroLibrary.ShareAchievementsAsync(ViewModel.Game, achievements);
-                // The badges, a few at a time (a game has up to a few hundred)
-                await Parallel.ForEachAsync(ViewModel.Achievements.Where(a => a.BadgeUrl != null), new ParallelOptions { MaxDegreeOfParallelism = 6 }, async (row, _) =>
-                {
-                    try
-                    {
-                        var badge = await RetroService.BadgeImageAsync(row.BadgeUrl!);
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() => row.Badge = badge);
-                    }
-                    catch (Exception ex) { Log.Ignored(ex); }
-                });
+                await RetroService.LoadBadgesAsync(ViewModel.Achievements.Where(a => a.BadgeUrl != null)
+                    .Select(row => (row.BadgeUrl!, (Action<Avalonia.Media.Imaging.Bitmap>)(badge => row.Badge = badge))));
             }
             catch (RommAccount.MissingScopeException ex) { ViewModel.RommNote = WebExceptionHelper.TryGetServerMessage(ex); }
             catch (Exception ex) { Log.Ignored(ex); }

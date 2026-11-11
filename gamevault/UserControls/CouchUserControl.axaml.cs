@@ -160,7 +160,7 @@ namespace gamevault.UserControls
             DoubleTapped += Pointed;
         }
 
-        /// <summary>The mode is open (read from any thread): the system's notifications stay quiet, the mode tells its own.</summary>
+        /// <summary>The mode is on the screen (read from any thread): the system's notifications stay quiet, the mode tells its own. Its window hidden or minimized, they come back.</summary>
         internal static volatile bool Shown;
 
         /// <summary>The living-room mode is shown: its games are read again, the gamepads listened to.</summary>
@@ -1023,7 +1023,7 @@ namespace gamevault.UserControls
         }
 
         /// <summary>The game's screenshots behind its screen, one after the other.</summary>
-        private async Task NextShotAsync(CouchItem item)
+        internal async Task NextShotAsync(CouchItem item)
         {
             object game = (object?)item.Retro ?? item.Pc!;
             List<string> sources = CoverSlideshow.Sources(game);

@@ -75,6 +75,12 @@ namespace gamevault.Windows
                     e.Handled = true;
                 }
             }, RoutingStrategies.Tunnel);
+            // Hidden in the tray or minimized, the mode is not on the screen: the system's notifications are shown again
+            PropertyChanged += (_, e) =>
+            {
+                if (e.Property == IsVisibleProperty || e.Property == WindowStateProperty)
+                    UserControls.CouchUserControl.Shown = uiCouch.IsVisible && IsVisible && WindowState != WindowState.Minimized;
+            };
             Opened += (_, _) =>
             {
                 if (UserControls.CouchUserControl.StartsHere)

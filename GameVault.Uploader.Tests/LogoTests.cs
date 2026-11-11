@@ -73,6 +73,32 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task NoKey_OrAKeySteamGridDbRefuses_IsNotRememberedAsNoLogo()
+        {
+            string folder = Path.Combine(Path.GetTempPath(), "gv-logos-" + Guid.NewGuid().ToString("N"));
+            RommProxy romm = factory.Services.GetRequiredService<RommProxy>();
+            GameLogos With(string? key) => new(new HttpClient(logoSites), new UploaderOptions { GameVaultUrl = "http://gamevault.test", FilesDirectory = folder, LogosDirectory = folder, SteamGridDbKey = key }, romm,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<GameLogos>.Instance);
+            try
+            {
+                // Before the key is given, and with a key SteamGridDB refuses: nothing is said of these games
+                Assert.Null(await With(null).RetroAsync(47, default));
+                Assert.Null(await With("wrong-key").RetroAsync(47, default));
+                Assert.Null(await With("wrong-key").PcAsync(8, "Hades", default));
+                Assert.Empty(Directory.Exists(folder) ? Directory.GetFiles(folder, "*.none") : Array.Empty<string>());
+
+                // The right key: their logos at once, not a week later
+                Assert.NotNull(await With("sgdb-key").RetroAsync(47, default));
+                Assert.NotNull(await With("sgdb-key").PcAsync(8, "Hades", default));
+            }
+            finally
+            {
+                if (Directory.Exists(folder))
+                    Directory.Delete(folder, true);
+            }
+        }
+
+        [Fact]
         public void OnlyPictures_AndOnlyScreenScrapersAddresses()
         {
             Assert.Equal("image/png", GameLogos.TypeOf(FakeLogos.Png(1)));

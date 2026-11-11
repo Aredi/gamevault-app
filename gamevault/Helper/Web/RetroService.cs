@@ -472,6 +472,18 @@ namespace gamevault.Helper
             return await Task.Run(() => new Bitmap(file));
         }
 
+        /// <summary>Badges read a few at a time (a game has up to a few hundred), each given on the screen's thread once read.</summary>
+        public static Task LoadBadgesAsync(IEnumerable<(string Url, Action<Bitmap> Show)> badges) =>
+            Parallel.ForEachAsync(badges, new ParallelOptions { MaxDegreeOfParallelism = 6 }, async (badge, _) =>
+            {
+                try
+                {
+                    Bitmap image = await BadgeImageAsync(badge.Url);
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => badge.Show(image));
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+            });
+
         public static async Task<Bitmap> MediaImageAsync(string media, int width, string? version = null)
         {
             string file = await MediaFileAsync(media, version);

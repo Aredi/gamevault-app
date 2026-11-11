@@ -54,8 +54,32 @@ namespace gamevault.Helper
                 : ("pactl", new[] { "set-sink-volume", "@DEFAULT_SINK@", direction > 0 ? "+5%" : "-5%" });
         }
 
-        [DllImport("user32.dll")]
-        private static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
+        [DllImport("user32.dll")] private static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
+        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
+        [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
+        [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
+
+        /// <summary>A key pressed and let go, as on the keyboard (Windows).</summary>
+        internal static void PressKey(byte key)
+        {
+            keybd_event(key, 0, 0, UIntPtr.Zero);
+            keybd_event(key, 0, 2, UIntPtr.Zero);
+        }
+
+        /// <summary>
+        /// A window in front (Windows). Windows refuses the foreground to a program the player did not touch last: a press
+        /// of Alt (nothing else happens with it) makes it accept, as when the player clicks the window.
+        /// </summary>
+        internal static void ToFront(IntPtr window)
+        {
+            if (IsIconic(window))
+                ShowWindow(window, 9);
+            PressKey(0x12);
+            SetForegroundWindow(window);
+        }
+
+        /// <summary>A window given back the foreground it had (a game's, under the menu over it).</summary>
+        internal static void GiveFront(IntPtr window) => SetForegroundWindow(window);
 
         public static void Volume(int direction)
         {
@@ -67,9 +91,7 @@ namespace gamevault.Helper
                     return;
                 }
                 // The keyboard's volume keys: louder, lower, mute
-                byte key = direction > 0 ? (byte)0xAF : direction < 0 ? (byte)0xAE : (byte)0xAD;
-                keybd_event(key, 0, 0, UIntPtr.Zero);
-                keybd_event(key, 0, 2, UIntPtr.Zero);
+                PressKey(direction > 0 ? (byte)0xAF : direction < 0 ? (byte)0xAE : (byte)0xAD);
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }

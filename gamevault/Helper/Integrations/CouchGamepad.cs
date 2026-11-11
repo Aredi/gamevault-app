@@ -195,12 +195,33 @@ namespace gamevault.Helper
             (0x1000, CouchButtons.A), (0x2000, CouchButtons.B), (0x4000, CouchButtons.X), (0x8000, CouchButtons.Y),
         };
 
+        /// <summary>The XInput slots with a gamepad; the empty ones are looked at every 2 seconds only.</summary>
+        private readonly bool[] plugged = new bool[4];
+        private long lookedForPads = long.MinValue;
+
+        /// <summary>
+        /// Asking an empty slot is slow (Windows looks for the device each time) and Microsoft advises against doing it at
+        /// each frame: done 60 times a second on the screen's thread, it made the menus stutter.
+        /// </summary>
+        internal static bool LookAtEmptySlots(long now, ref long lastLook)
+        {
+            // Never looked yet: at once (now - long.MinValue would overflow)
+            if (lastLook != long.MinValue && now - lastLook < 2000)
+                return false;
+            lastLook = now;
+            return true;
+        }
+
         private CouchButtons ReadXInput()
         {
             CouchButtons held = CouchButtons.None;
+            bool lookAtEmpty = LookAtEmptySlots(Environment.TickCount64, ref lookedForPads);
             for (uint i = 0; i < 4; i++)
             {
-                if (XInputGetState(i, out XInputState state) != 0)
+                if (!plugged[i] && !lookAtEmpty)
+                    continue;
+                plugged[i] = XInputGetState(i, out XInputState state) == 0;
+                if (!plugged[i])
                     continue;
                 foreach (var (mask, flag) in XInputButtons)
                     if ((state.Buttons & mask) != 0)

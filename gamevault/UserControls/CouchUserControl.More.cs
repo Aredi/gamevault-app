@@ -493,7 +493,7 @@ namespace gamevault.UserControls
                 Line(Loc.F("Earned: {0} of {1} · {2} of {3} points", earned, achievements.Count, achievements.Where(a => a.Earned).Sum(a => a.Points), achievements.Sum(a => a.Points)), () => { }),
             };
             var shown = achievements.OrderByDescending(a => a.Earned).ThenByDescending(a => a.EarnedAt ?? DateTime.MinValue).ToList();
-            var withBadges = new List<(CouchLine Line, string Url)>();
+            var withBadges = new List<(string Url, Action<Avalonia.Media.Imaging.Bitmap> Show)>();
             foreach (var a in shown)
             {
                 string detail = a.Description + " · " + Loc.F("{0} pts", a.Points);
@@ -502,24 +502,11 @@ namespace gamevault.UserControls
                 var line = new CouchLine { Text = a.Title, Detail = detail, Opacity = a.Earned ? 1 : 0.5 };
                 lines.Add(line);
                 if ((a.Earned ? a.Badge : a.LockedBadge ?? a.Badge) is string url)
-                    withBadges.Add((line, url));
+                    withBadges.Add((url, badge => line.Picture = badge));
             }
             lines.Add(Line(Loc.T("Back"), CloseMenu));
-            _ = LoadBadgesAsync(withBadges);
+            _ = RetroService.LoadBadgesAsync(withBadges);
             return lines;
-        }
-
-        private static async Task LoadBadgesAsync(List<(CouchLine Line, string Url)> badges)
-        {
-            await Parallel.ForEachAsync(badges, new ParallelOptions { MaxDegreeOfParallelism = 6 }, async (badge, _) =>
-            {
-                try
-                {
-                    var image = await RetroService.BadgeImageAsync(badge.Url);
-                    Dispatcher.UIThread.Post(() => badge.Line.Picture = image);
-                }
-                catch (Exception ex) { Log.Ignored(ex); }
-            });
         }
 
         // --- The trailer in a game's screen ---
@@ -585,7 +572,8 @@ namespace gamevault.UserControls
             trailerStarting = true;
             try
             {
-                trailerUrl ??= await TrailerPopup.PlayableUrl(trailerVideo!);
+                // Shown 860 pixels wide: 720p is plenty
+                trailerUrl ??= await TrailerPopup.PlayableUrl(trailerVideo!, maxHeight: 720);
                 if (trailerUrl == null)
                 {
                     // Not playable: not asked again for this game
@@ -798,7 +786,6 @@ namespace gamevault.UserControls
         [DllImport("user32.dll")] private static extern void mouse_event(uint flags, int dx, int dy, uint data, UIntPtr extra);
         [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
-        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
 
         private (double X, double Y) mouseRest;
         private bool mouseDown, comboHeld;
@@ -870,7 +857,7 @@ namespace gamevault.UserControls
                 // Never the desktop itself
                 if (name.Equals("explorer", StringComparison.OrdinalIgnoreCase))
                     return;
-                OpenOverlay(name, () => SetForegroundWindow(window), () =>
+                OpenOverlay(name, () => CouchSystem.GiveFront(window), () =>
                 {
                     using Process game = Process.GetProcessById((int)id);
                     game.Kill(entireProcessTree: true);
