@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace gamevault.UserControls
 {
     /// <summary>The menus of the living-room mode.</summary>
-    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats }
+    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements }
 
     /// <summary>
     /// The menu shown over a game (Start + Back, Windows): a small window always in front, moved through with the
@@ -269,6 +269,7 @@ namespace gamevault.UserControls
             CouchMenu.Filter => Loc.T("Order and filters"),
             CouchMenu.Settings => Loc.T("Settings"),
             CouchMenu.Stats => Loc.T("Statistics"),
+            CouchMenu.Achievements => Loc.T("Achievements"),
             _ => Loc.T("Living-room mode"),
         };
 
@@ -331,10 +332,14 @@ namespace gamevault.UserControls
                 CouchMenu.Filter => FilterLines(),
                 CouchMenu.Settings => SettingsLines(),
                 CouchMenu.Stats => StatsLines(),
+                CouchMenu.Achievements => AchievementLines(),
                 _ => MainLines(),
             };
             Navigator.MenuCount = MenuLines.Count;
             uiMenuLines.ItemsSource = MenuLines;
+            // A list of achievements needs the width of their descriptions
+            uiMenuBox.Width = menu == CouchMenu.Achievements ? 900 : 560;
+            uiMenuScroll.Offset = default;
         }
 
         private static CouchLine Line(string text, Action run) => new() { Text = text, Run = () => { run(); return Task.CompletedTask; } };
@@ -470,6 +475,50 @@ namespace gamevault.UserControls
             var shown = lines.Select(text => Line(text, () => { })).ToList();
             shown.Add(Line(Loc.T("Back"), () => ShowMenu(CouchMenu.Main)));
             return shown;
+        }
+
+        // --- The achievements of a retro game ---
+
+        /// <summary>The achievements of the game whose screen is shown, once RomM gave them.</summary>
+        internal IReadOnlyList<GameVault.Core.Retro.RommProgress.Achievement> ShownAchievements { get; private set; } = Array.Empty<GameVault.Core.Retro.RommProgress.Achievement>();
+
+        /// <summary>The earned ones first (the last earned on top), then the others; their badges a few at a time.</summary>
+        private List<CouchLine> AchievementLines()
+        {
+            var achievements = ShownAchievements;
+            int earned = achievements.Count(a => a.Earned);
+            var lines = new List<CouchLine>
+            {
+                Line(Loc.F("Earned: {0} of {1} · {2} of {3} points", earned, achievements.Count, achievements.Where(a => a.Earned).Sum(a => a.Points), achievements.Sum(a => a.Points)), () => { }),
+            };
+            var shown = achievements.OrderByDescending(a => a.Earned).ThenByDescending(a => a.EarnedAt ?? DateTime.MinValue).ToList();
+            var withBadges = new List<(CouchLine Line, string Url)>();
+            foreach (var a in shown)
+            {
+                string detail = a.Description + " · " + Loc.F("{0} pts", a.Points);
+                if (a.EarnedAt is DateTime at)
+                    detail += " · " + Loc.F("earned on {0}", at.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture));
+                var line = new CouchLine { Text = a.Title, Detail = detail, Opacity = a.Earned ? 1 : 0.5 };
+                lines.Add(line);
+                if ((a.Earned ? a.Badge : a.LockedBadge ?? a.Badge) is string url)
+                    withBadges.Add((line, url));
+            }
+            lines.Add(Line(Loc.T("Back"), CloseMenu));
+            _ = LoadBadgesAsync(withBadges);
+            return lines;
+        }
+
+        private static async Task LoadBadgesAsync(List<(CouchLine Line, string Url)> badges)
+        {
+            await Parallel.ForEachAsync(badges, new ParallelOptions { MaxDegreeOfParallelism = 6 }, async (badge, _) =>
+            {
+                try
+                {
+                    var image = await RetroService.BadgeImageAsync(badge.Url);
+                    Dispatcher.UIThread.Post(() => badge.Line.Picture = image);
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+            });
         }
 
         // --- The logo of the selected game ---

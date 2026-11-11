@@ -3,6 +3,9 @@ namespace GameVault.Core.Couch
     /// <summary>What the living-room mode shows.</summary>
     public enum CouchScreen { Home, Details, Menu }
 
+    /// <summary>How the games of a tab are laid: a strip of covers, rows of covers, or a list of names.</summary>
+    public enum CouchView { Strip, Grid, List }
+
     /// <summary>What a command did: what the screen has to do about it.</summary>
     public enum CouchEffect
     {
@@ -28,7 +31,9 @@ namespace GameVault.Core.Couch
 
         public CouchScreen Screen { get; private set; } = CouchScreen.Home;
         public int Tab { get; private set; }
-        public bool IsGrid { get; private set; }
+        public CouchView View { get; private set; }
+        public bool IsGrid => View == CouchView.Grid;
+        public bool IsList => View == CouchView.List;
         /// <summary>The games of a row of the grid, as the screen lays them.</summary>
         public int Columns { get; set; } = 6;
         /// <summary>The actions of the game's screen (Play, the game's page...) and the lines of the menu.</summary>
@@ -74,16 +79,18 @@ namespace GameVault.Core.Couch
         {
             switch (command)
             {
-                case CouchCommand.Left: return Move(-1, sameRow: IsGrid);
-                case CouchCommand.Right: return Move(1, sameRow: IsGrid);
-                case CouchCommand.Up: return IsGrid ? Move(-Columns, false) : CouchEffect.None;
-                case CouchCommand.Down: return IsGrid ? MoveDown() : CouchEffect.None;
+                // The list goes up and down only
+                case CouchCommand.Left: return IsList ? CouchEffect.None : Move(-1, sameRow: IsGrid);
+                case CouchCommand.Right: return IsList ? CouchEffect.None : Move(1, sameRow: IsGrid);
+                case CouchCommand.Up: return IsGrid ? Move(-Columns, false) : IsList ? Move(-1, false) : CouchEffect.None;
+                case CouchCommand.Down: return IsGrid ? MoveDown() : IsList ? Move(1, false) : CouchEffect.None;
                 case CouchCommand.PreviousTab: return ToTab(Tab - 1);
                 case CouchCommand.NextTab: return ToTab(Tab + 1);
                 case CouchCommand.PreviousLetter: return ToLetter(-1);
                 case CouchCommand.NextLetter: return ToLetter(1);
+                // The strip, then the grid, then the list
                 case CouchCommand.View:
-                    IsGrid = !IsGrid;
+                    View = (CouchView)(((int)View + 1) % 3);
                     return CouchEffect.ViewChanged;
                 case CouchCommand.Accept:
                     if (Index < 0)
@@ -92,8 +99,7 @@ namespace GameVault.Core.Couch
                     Screen = CouchScreen.Details;
                     return CouchEffect.ScreenChanged;
                 case CouchCommand.Menu:
-                    MenuLine = 0;
-                    Screen = CouchScreen.Menu;
+                    OpenMenu();
                     return CouchEffect.ScreenChanged;
                 default: return CouchEffect.None;
             }
@@ -196,8 +202,7 @@ namespace GameVault.Core.Couch
                     Screen = CouchScreen.Home;
                     return CouchEffect.ScreenChanged;
                 case CouchCommand.Menu:
-                    MenuLine = 0;
-                    Screen = CouchScreen.Menu;
+                    OpenMenu();
                     return CouchEffect.ScreenChanged;
                 default: return CouchEffect.None;
             }
@@ -225,8 +230,14 @@ namespace GameVault.Core.Couch
         public void OpenMenu()
         {
             MenuLine = 0;
+            if (Screen != CouchScreen.Menu)
+                beforeMenu = Screen;
             Screen = CouchScreen.Menu;
         }
+
+        private CouchScreen beforeMenu = CouchScreen.Home;
+        /// <summary>What the menu was opened over, and goes back to.</summary>
+        public CouchScreen BeforeMenu => beforeMenu;
 
         /// <summary>The mouse points at a tab: shown with the game it had.</summary>
         public void SelectTab(int tab)
@@ -244,7 +255,10 @@ namespace GameVault.Core.Couch
                 Action = Math.Clamp(line, 0, Math.Max(0, ActionCount - 1));
         }
 
-        /// <summary>Back to the list of games.</summary>
-        public void CloseMenu() => Screen = CouchScreen.Home;
+        /// <summary>Back to what the menu was opened over: the list of games, or a game's screen.</summary>
+        public void CloseMenu() => Screen = beforeMenu == CouchScreen.Details && Index >= 0 ? CouchScreen.Details : CouchScreen.Home;
+
+        /// <summary>Back to the list of games, whatever the menu was opened over.</summary>
+        public void BackToList() => Screen = CouchScreen.Home;
     }
 }

@@ -2019,5 +2019,9 @@
   "Back to the game": "Retour au jeu",
   "Quit the game": "Quitter le jeu",
   "Show SanctuaryVault": "Afficher SanctuaryVault",
-  "Logo of the game instead of its name: {0}": "Logo du jeu à la place de son nom : {0}"
+  "Logo of the game instead of its name: {0}": "Logo du jeu à la place de son nom : {0}",
+  "Achievements ({0})": "Succès ({0})",
+  "Earned: {0} of {1} · {2} of {3} points": "Obtenus : {0} sur {1} · {2} points sur {3}",
+  "earned on {0}": "obtenu le {0}",
+  "List": "Liste"
 }

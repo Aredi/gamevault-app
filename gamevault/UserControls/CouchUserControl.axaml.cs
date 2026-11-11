@@ -67,6 +67,13 @@ namespace gamevault.UserControls
     internal sealed class CouchLine : ViewModelBase
     {
         public string Text { get; init; } = "";
+        /// <summary>A second line under the text (an achievement's description); none for most lines.</summary>
+        public string? Detail { get; init; }
+        public bool HasDetail => !string.IsNullOrEmpty(Detail);
+        /// <summary>A picture before the text (an achievement's badge), once loaded.</summary>
+        private Avalonia.Media.Imaging.Bitmap? picture;
+        public Avalonia.Media.Imaging.Bitmap? Picture { get => picture; set { picture = value; OnPropertyChanged(); } }
+        public double Opacity { get; init; } = 1;
         public Func<Task> Run { get; init; } = () => Task.CompletedTask;
         private bool isSelected;
         public bool IsSelected { get => isSelected; set { if (isSelected != value) { isSelected = value; OnPropertyChanged(); } } }
@@ -408,7 +415,7 @@ namespace gamevault.UserControls
                 tab = Tabs.FindIndex(t => t.Name == Loc.T("Library"));
             if (tab < 0 || Tabs[tab].Items.Count == 0)
                 return;
-            Navigator.CloseMenu();
+            Navigator.BackToList();
             Navigator.Select(tab, (random ?? Random.Shared).Next(Tabs[tab].Items.Count));
             ShowTab();
             Navigator.Apply(CouchCommand.Accept);
@@ -738,6 +745,7 @@ namespace gamevault.UserControls
                 item.IsSelected = false;
             uiStripItems.ItemsSource = items;
             uiGridItems.ItemsSource = items;
+            uiListItems.ItemsSource = items;
             uiEmpty.Text = Loc.T("No game here yet.");
             uiEmpty.IsVisible = items.Count == 0;
             // The selected tab in sight among the tabs
@@ -768,7 +776,12 @@ namespace gamevault.UserControls
             double maxY = GridTop + GridBottom + rows * CardHeight + Math.Max(0, rows - 1) * GridRowGap - uiGrid.Viewport.Height;
             uiStrip.Offset = new Vector(Math.Clamp(x, 0, Math.Max(0, maxX)), 0);
             uiGrid.Offset = new Vector(0, Math.Clamp(y, 0, Math.Max(0, maxY)));
+            double listY = index * ListRow + ListRow / 2 - uiList.Viewport.Height / 2;
+            uiList.Offset = new Vector(0, Math.Clamp(listY, 0, Math.Max(0, count * ListRow - uiList.Viewport.Height)));
         }
+
+        /// <summary>A line of the list and the space under it.</summary>
+        private const double ListRow = 78;
 
         internal string HeroTitle => uiTitle.Text ?? "";
         internal IReadOnlyList<CouchStat> Stats { get; private set; } = Array.Empty<CouchStat>();
@@ -872,28 +885,38 @@ namespace gamevault.UserControls
             CouchScreen screen = Navigator.Screen;
             CouchItem? item = Current;
             bool details = screen == CouchScreen.Details && item != null;
-            uiHome.IsVisible = !details;
-            uiDetails.IsVisible = details;
+            // A menu opened over a game's screen keeps it behind
+            bool detailsBehind = details || (screen == CouchScreen.Menu && Navigator.BeforeMenu == CouchScreen.Details && item != null);
+            uiHome.IsVisible = !detailsBehind;
+            uiDetails.IsVisible = detailsBehind;
             uiMenu.IsVisible = screen == CouchScreen.Menu;
             // The keyboard takes the place of the selected game's name, over the strip of the games found
             bool grid = Navigator.IsGrid && !Searching;
-            uiStrip.IsVisible = !grid;
+            bool list = Navigator.IsList && !Searching;
+            uiStrip.IsVisible = !grid && !list;
             uiGrid.IsVisible = uiGridTitle.IsVisible = grid;
+            uiListBox.IsVisible = list;
+            // Beside the list, the selected game's name keeps the left of the screen
+            uiHero.Margin = list ? new Thickness(96, 0, 790, 54) : new Thickness(96, 0, 72, 34);
             uiHero.IsVisible = item != null && !grid && !Searching;
             uiKeyboard.IsVisible = Searching && !details;
             uiKeyboard.Show(Query.Length > 0 ? Query : Loc.T("Search a game"), placeholder: Query.Length == 0);
-            uiDim.IsVisible = details || grid || Searching;
-            if (!details && shotShown)
+            uiDim.IsVisible = detailsBehind || grid || Searching;
+            if (!detailsBehind && shotShown)
             {
                 shotShown = false;
                 ShowBack(item);
             }
-            if (details && rebuild)
+            // Back from a menu to the same game: its screen is as it was
+            if (details && rebuild && !(shownScreen == CouchScreen.Menu && ReferenceEquals(item, detailsItem)))
                 ShowDetails(item!);
+            shownScreen = screen;
             for (int i = 0; i < Actions.Count; i++)
                 Actions[i].IsSelected = i == Navigator.Action;
             for (int i = 0; i < MenuLines.Count; i++)
                 MenuLines[i].IsSelected = i == Navigator.MenuLine;
+            if (screen == CouchScreen.Menu)
+                Dispatcher.UIThread.Post(() => (uiMenuLines.ContainerFromIndex(Navigator.MenuLine) as Control)?.BringIntoView(), DispatcherPriority.Background);
             uiPadState.Text = gamepad is { CanRead: true } ? "" : Loc.T("No gamepad can be read on this PC: the arrows, Enter and Escape do the same.");
 
             Hints = Searching ? new[] { new CouchStat("A", Loc.T("Type")), new CouchStat("X", Loc.T("Erase")), new CouchStat("Y", Loc.T("Space")), new CouchStat("B", Loc.T("Close")) } : screen switch
@@ -902,7 +925,7 @@ namespace gamevault.UserControls
                 CouchScreen.Details => new[] { new CouchStat("A", Loc.T("Choose")), new CouchStat("B", Loc.T("Back")), new CouchStat("LB RB", Loc.T("Other games")), new CouchStat("START", Loc.T("Menu")) },
                 _ => new[]
                 {
-                    new CouchStat("A", Loc.T("Open")), new CouchStat("X", Navigator.IsGrid ? Loc.T("Strip") : Loc.T("Grid")), new CouchStat("Y", Loc.T("Search")),
+                    new CouchStat("A", Loc.T("Open")), new CouchStat("X", Navigator.View switch { CouchView.Strip => Loc.T("Grid"), CouchView.Grid => Loc.T("List"), _ => Loc.T("Strip") }), new CouchStat("Y", Loc.T("Search")),
                     new CouchStat("LB RB", Loc.T("Tabs")), new CouchStat("LT RT", Loc.T("Letters")), new CouchStat("START", Loc.T("Menu")),
                 },
             };
@@ -914,8 +937,13 @@ namespace gamevault.UserControls
             Dispatcher.UIThread.Post(ScrollToSelection, DispatcherPriority.Background);
         }
 
+        private CouchScreen shownScreen = CouchScreen.Home;
+        private CouchItem? detailsItem;
+
         private void ShowDetails(CouchItem item)
         {
+            detailsItem = item;
+            ShownAchievements = Array.Empty<GameVault.Core.Retro.RommProgress.Achievement>();
             uiDetailCoverPc.IsVisible = item.Pc != null;
             uiDetailCoverRetro.IsVisible = item.Retro != null;
             if (item.Pc != null)
@@ -951,7 +979,14 @@ namespace gamevault.UserControls
                 var achievements = GameVault.Core.Retro.RommProgress.AchievementsOf(rom, me);
                 if (achievements.Count == 0 || generation != detailGeneration)
                     return;
-                uiDetailStats.ItemsSource = StatsOf(item).Append(new CouchStat(Loc.T("Achievements"), Loc.F("{0} of {1}", achievements.Count(a => a.Earned), achievements.Count))).ToList();
+                string earned = Loc.F("{0} of {1}", achievements.Count(a => a.Earned), achievements.Count);
+                uiDetailStats.ItemsSource = StatsOf(item).Append(new CouchStat(Loc.T("Achievements"), earned)).ToList();
+                // Their list, from the game's screen
+                ShownAchievements = achievements;
+                Actions = Actions.Append(new CouchLine { Text = Loc.F("Achievements ({0})", earned), Run = () => { ShowMenu(CouchMenu.Achievements); return Task.CompletedTask; } }).ToList();
+                Navigator.ActionCount = Actions.Count;
+                uiActions.ItemsSource = Actions;
+                ShowScreen(false);
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }

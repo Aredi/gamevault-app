@@ -9,6 +9,7 @@ using gamevault.Helper;
 using gamevault.Localization;
 using gamevault.Models;
 using gamevault.UserControls;
+using gamevault.UserControls.SettingsComponents;
 using gamevault.ViewModels;
 
 namespace GameVault.UiTests
@@ -119,7 +120,7 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.View);
                 Assert.True(couch.Navigator.IsGrid && couch.uiGrid.IsVisible && !couch.uiStrip.IsVisible);
                 Assert.Equal(8, couch.Navigator.Columns);
-                Assert.Contains(couch.Hints, h => h.Label == "X" && h.Value == Loc.T("Strip"));
+                Assert.Contains(couch.Hints, h => h.Label == "X" && h.Value == Loc.T("List"));
                 Capture(window, "2-grid");
                 // A narrower screen has fewer games by row
                 window.Width = 1280;
@@ -129,6 +130,8 @@ namespace GameVault.UiTests
                 Assert.Equal("Zephyr Run", couch.Current.Title);
                 window.Width = 1920;
                 Dispatcher.UIThread.RunJobs();
+                // The list, then the strip again
+                couch.Handle(CouchCommand.View);
                 couch.Handle(CouchCommand.View);
                 couch.Handle(CouchCommand.PreviousLetter);
                 couch.Handle(CouchCommand.PreviousLetter);
@@ -215,7 +218,10 @@ namespace GameVault.UiTests
                 Assert.True(couch.uiDetails.IsVisible);
                 couch.Handle(CouchCommand.Menu);
                 Click(() => couch.uiMenuLines.ContainerFromIndex(0));
+                // Opened over the game's screen, the menu goes back to it
                 Assert.False(couch.uiMenu.IsVisible);
+                Assert.True(couch.uiDetails.IsVisible);
+                couch.Handle(CouchCommand.Back);
                 Click(() => couch.uiTabs.ContainerFromIndex(2));
                 Assert.Equal(Loc.T("Library"), couch.Tabs[couch.Navigator.Tab].Name);
                 Click(() => couch.uiTabs.ContainerFromIndex(3));
@@ -830,6 +836,76 @@ namespace GameVault.UiTests
             {
                 window.LeaveCouch();
                 window.WindowState = before;
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task TheGames_AreAlsoAList_AndARetroGamesAchievements_AreListedFromItsScreen()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            SanctuaryService.Current = session.Server.Url;
+            session.Server.RommLinkable = true;
+            RommAccount.ForgetUrl();
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                await new RetroSettingsUserControl().LinkRommAsync(open: false);
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+
+                // The library as a list of names: after the strip and the grid, up and down
+                while (couch.Tabs[couch.Navigator.Tab].Name != Loc.T("Library"))
+                    couch.Handle(CouchCommand.NextTab);
+                couch.Handle(CouchCommand.View);
+                couch.Handle(CouchCommand.View);
+                Assert.True(couch.Navigator.IsList && couch.uiListBox.IsVisible && !couch.uiStrip.IsVisible && !couch.uiGrid.IsVisible);
+                Assert.True(couch.uiHero.IsVisible);
+                Assert.Contains(couch.Hints, h => h.Label == "X" && h.Value == Loc.T("Strip"));
+                couch.Handle(CouchCommand.Down);
+                couch.Handle(CouchCommand.Down);
+                Assert.Equal("Hollow Tides", couch.Current!.Title);
+                Assert.Equal("Hollow Tides", couch.HeroTitle);
+                couch.Handle(CouchCommand.Right);
+                Assert.Equal("Hollow Tides", couch.Current.Title);
+                Capture(window, "list");
+
+                // A retro game's screen: its achievements, once RomM gave them, one more action
+                couch.Handle(CouchCommand.NextTab);
+                couch.Handle(CouchCommand.Down);
+                Assert.Equal("Zelda", couch.Current.Title);
+                couch.Handle(CouchCommand.Accept);
+                string action = Loc.F("Achievements ({0})", Loc.F("{0} of {1}", 1, 2));
+                await TestSession.WaitUntil(() => couch.Actions.Any(a => a.Text == action), TimeSpan.FromSeconds(10), "the achievements' action");
+                couch.Navigator.SelectLine(couch.Actions.FindIndex(a => a.Text == action));
+                couch.Handle(CouchCommand.Accept);
+                await TestSession.WaitUntil(() => couch.Menu == CouchMenu.Achievements, TimeSpan.FromSeconds(5), "the achievements");
+                // What was earned first, then the rest, greyed; the game's screen stays behind
+                Assert.Equal(4, couch.MenuLines.Count);
+                Assert.Equal(1, couch.MenuLines[1].Opacity);
+                Assert.Equal(0.5, couch.MenuLines[2].Opacity);
+                Assert.True(couch.MenuLines[1].HasDetail && !couch.MenuLines[0].HasDetail);
+                Assert.True(couch.uiDetails.IsVisible && couch.uiMenu.IsVisible);
+                Capture(window, "achievements");
+
+                // B: back to the same game's screen, as it was
+                couch.Handle(CouchCommand.Back);
+                Assert.Equal(CouchScreen.Details, couch.Navigator.Screen);
+                Assert.Equal("Zelda", couch.uiDetailTitle.Text);
+                Assert.Contains(couch.Actions, a => a.Text == action);
+            }
+            finally
+            {
+                window.Close();
+                RommAccount.Unlink();
+                RommAccount.ForgetUrl();
+                session.Server.RommLinkable = false;
+                SanctuaryService.Current = SanctuaryService.Url;
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
             }
         }
     }

@@ -34,6 +34,14 @@
             <Setter Property="Background" Value="#33FFFFFF" />
             <Setter Property="Opacity" Value="1" />
         </Style>
+        <Style Selector="TextBlock.couchLineText">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.couchLineText.left">
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="TextAlignment" Value="Left" />
+        </Style>
         <Style Selector="Border.couchLine">
             <Setter Property="Padding" Value="22,15" />
             <Setter Property="CornerRadius" Value="14" />
@@ -225,6 +233,39 @@
                             </ItemsRepeater.Layout>
                         </ItemsRepeater>
                     </ScrollViewer>
+                    <!-- The same games as a list of names, the selected one's picture and name beside -->
+                    <Border Grid.RowSpan="2" x:Name="uiListBox" Classes="couchGlass" Width="660" Margin="0,30,72,30" Padding="14" HorizontalAlignment="Right" IsVisible="False">
+                        <ScrollViewer x:Name="uiList" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                            <ScrollViewer.Transitions>
+                                <Transitions>
+                                    <VectorTransition Property="Offset" Duration="0:0:0.12" Easing="CubicEaseOut" />
+                                </Transitions>
+                            </ScrollViewer.Transitions>
+                            <ItemsRepeater x:Name="uiListItems">
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Orientation="Vertical" Spacing="6" />
+                                </ItemsRepeater.Layout>
+                                <ItemsRepeater.ItemTemplate>
+                                    <DataTemplate x:DataType="local:CouchItem">
+                                        <Border Classes="couchLine" Classes.selected="{Binding IsSelected}" Height="72" Padding="10,6">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                                                <Border Width="44" Height="58" CornerRadius="6" ClipToBounds="True" Background="#1FFFFFFF">
+                                                    <Panel>
+                                                        <Border IsVisible="{Binding IsTile}" Background="{DynamicResource Brush.Accent}" Opacity="0.55" />
+                                                        <local:CacheImage ImageCacheType="GameCover" Data="{Binding Pc}" Stretch="UniformToFill" IsVisible="{Binding IsPc}" />
+                                                        <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding IsRetro}" />
+                                                    </Panel>
+                                                </Border>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="21" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                <Path Grid.Column="2" Data="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" Stroke="#F4F6FA" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"
+                                                      Width="18" Height="18" Stretch="Uniform" Opacity="0.7" VerticalAlignment="Center" IsVisible="{Binding !Installed}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsRepeater.ItemTemplate>
+                            </ItemsRepeater>
+                        </ScrollViewer>
+                    </Border>
                     <TextBlock x:Name="uiGridTitle" Grid.RowSpan="2" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="40" Margin="96,34,96,0"
                                HorizontalAlignment="Center" VerticalAlignment="Top" TextTrimming="CharacterEllipsis" MaxLines="1" IsVisible="False" />
                 </Grid>
@@ -301,23 +342,32 @@
 
                 <!-- The menu, over everything -->
                 <Border Grid.RowSpan="3" x:Name="uiMenu" Background="#CC05070B" IsVisible="False">
-                    <Border Classes="couchGlass" Width="560" Padding="34,30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border x:Name="uiMenuBox" Classes="couchGlass" Width="560" Padding="34,30" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <StackPanel Spacing="18">
                             <TextBlock x:Name="uiMenuTitle" Text="{l:T 'Living-room mode'}" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="30" HorizontalAlignment="Center" />
-                            <ItemsControl x:Name="uiMenuLines">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Spacing="10" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="local:CouchLine">
-                                        <Border Classes="couchLine" Classes.selected="{Binding IsSelected}">
-                                            <TextBlock Text="{Binding Text}" FontSize="21" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <!-- Long lists (a game's achievements) scroll with the selection -->
+                            <ScrollViewer x:Name="uiMenuScroll" MaxHeight="760" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl x:Name="uiMenuLines">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="10" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="local:CouchLine">
+                                            <Border Classes="couchLine" Classes.selected="{Binding IsSelected}">
+                                                <Grid ColumnDefinitions="Auto,*" Opacity="{Binding Opacity}">
+                                                    <Image Source="{Binding Picture}" Width="56" Height="56" Margin="0,0,16,0" IsVisible="{Binding HasDetail}" VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                        <TextBlock Classes="couchLineText" Classes.left="{Binding HasDetail}" Text="{Binding Text}" FontSize="21" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding Detail}" FontSize="16" Opacity="0.75" TextWrapping="Wrap" IsVisible="{Binding HasDetail}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
                             <TextBlock x:Name="uiPadState" FontSize="15" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                         </StackPanel>
                     </Border>

@@ -74,6 +74,38 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void TheList_ComesAfterTheGrid_AndGoesUpAndDown()
+        {
+            CouchNavigator navigator = Navigator();
+            navigator.Apply(CouchCommand.View);
+            navigator.Apply(CouchCommand.View);
+            Assert.True(navigator.IsList);
+            Assert.Equal(CouchEffect.None, navigator.Apply(CouchCommand.Up));
+            Assert.Equal(CouchEffect.Moved, navigator.Apply(CouchCommand.Down));
+            Assert.Equal(1, navigator.Index);
+            Assert.Equal(CouchEffect.None, navigator.Apply(CouchCommand.Right));
+            navigator.Apply(CouchCommand.View);
+            Assert.Equal(CouchView.Strip, navigator.View);
+        }
+
+        [Fact]
+        public void TheMenu_GoesBackToWhatItWasOpenedOver()
+        {
+            CouchNavigator navigator = Navigator();
+            navigator.Apply(CouchCommand.Accept);
+            navigator.Apply(CouchCommand.Menu);
+            Assert.Equal(CouchScreen.Details, navigator.BeforeMenu);
+            // Another menu opened from this one still goes back to the game
+            navigator.OpenMenu();
+            Assert.Equal(CouchEffect.ScreenChanged, navigator.Apply(CouchCommand.Back));
+            Assert.Equal(CouchScreen.Details, navigator.Screen);
+            navigator.Apply(CouchCommand.Back);
+            navigator.Apply(CouchCommand.Menu);
+            navigator.CloseMenu();
+            Assert.Equal(CouchScreen.Home, navigator.Screen);
+        }
+
+        [Fact]
         public void TheGrid_GoesByRows_AndItsEndsLeadNowhere()
         {
             CouchNavigator navigator = Navigator();
@@ -137,11 +169,11 @@ namespace GameVault.Core.Tests
             Assert.Equal(CouchEffect.None, navigator.Apply(CouchCommand.Down));
             Assert.Equal(2, navigator.MenuLine);
             Assert.Equal(CouchEffect.Action, navigator.Apply(CouchCommand.Accept));
+            // Opened over the game's screen, the menu goes back to it
             Assert.Equal(CouchEffect.ScreenChanged, navigator.Apply(CouchCommand.Back));
-            Assert.Equal(CouchScreen.Home, navigator.Screen);
+            Assert.Equal(CouchScreen.Details, navigator.Screen);
 
             // The games change under the player: the tab's game is kept when it can, a game's screen left when its tab is empty
-            navigator.Apply(CouchCommand.Accept);
             navigator.SetTabs(new[] { Array.Empty<string>() });
             Assert.Equal(CouchScreen.Home, navigator.Screen);
             Assert.Equal(-1, navigator.Index);
