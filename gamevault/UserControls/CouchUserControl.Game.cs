@@ -38,10 +38,12 @@ namespace gamevault.UserControls
         {
             RetroPlay.Started -= RetroStarted;
             RetroPlay.Closed -= RetroClosed;
+            RetroPlay.Synced -= RetroSynced;
             if (!listen)
                 return;
             RetroPlay.Started += RetroStarted;
             RetroPlay.Closed += RetroClosed;
+            RetroPlay.Synced += RetroSynced;
         }
 
         private CouchItem? ItemOf(RetroGame game) =>
@@ -52,6 +54,13 @@ namespace gamevault.UserControls
         {
             if (IsVisible && ItemOf(game) is CouchItem item)
                 GameStarted(item);
+        }
+
+        /// <summary>Its achievements came back from RetroAchievements: the new ones ring, the level follows.</summary>
+        private void RetroSynced(RetroGame game)
+        {
+            _ = TellNewAchievementsAsync(game);
+            _ = LoadLevelAsync();
         }
 
         private void RetroClosed(RetroGame game)
@@ -65,6 +74,8 @@ namespace gamevault.UserControls
         {
             playing = item;
             Play(CouchSound.Launch);
+            if (item.Retro is RetroGame retro)
+                _ = RememberAchievementsAsync(retro);
             playingFor.Restart();
             playingSeen = false;
             playingChecks = 0;

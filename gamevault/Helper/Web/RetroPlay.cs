@@ -15,9 +15,13 @@ namespace gamevault.Helper
     {
         /// <summary>A game's emulator (or recomp) was started, then closed: on the UI thread.</summary>
         internal static event Action<RetroGame>? Started, Closed;
+        /// <summary>A game's achievements came back from RetroAchievements after it was closed (RomM linked).</summary>
+        internal static event Action<RetroGame>? Synced;
 
         /// <summary>Told to whoever listens (the living-room mode); the tests tell it as a real game would.</summary>
         internal static void Raise(bool started, RetroGame game) => Raise(started ? Started : Closed, game);
+
+        internal static void RaiseSynced(RetroGame game) => Raise(Synced, game);
 
         private static void Raise(Action<RetroGame>? handler, RetroGame game)
         {
@@ -195,6 +199,7 @@ namespace gamevault.Helper
                 {
                     await RetroAchievementsAccount.SyncRommAsync();
                     await RetroAchievementsAccount.ShareAsync(game);
+                    Raise(Synced, game);
                 }
             }
             game.Status = "";

@@ -228,6 +228,7 @@ namespace gamevault.UserControls
             timer.Start();
             await LoadAsync();
             OpenStartTab();
+            _ = LoadLevelAsync();
             // The game played last is known now: behind the login screen
             if (LoginShown)
                 ShowLoginBackground();
@@ -486,7 +487,8 @@ namespace gamevault.UserControls
         }
 
         /// <summary>"What to play?": a game drawn among the installed ones (the whole library when none is), its screen opened.</summary>
-        internal void OpenRandom(Random? random = null)
+        /// <param name="spin">The roulette before (none in the light mode or without animations).</param>
+        internal void OpenRandom(Random? random = null, bool spin = true)
         {
             int tab = Tabs.FindIndex(t => t.Name == Loc.T("Installed games"));
             if (tab < 0)
@@ -494,7 +496,16 @@ namespace gamevault.UserControls
             if (tab < 0 || Tabs[tab].Items.Count == 0)
                 return;
             Navigator.BackToList();
-            Navigator.Select(tab, (random ?? Random.Shared).Next(Tabs[tab].Items.Count));
+            int target = (random ?? Random.Shared).Next(Tabs[tab].Items.Count);
+            if (spin && Settings.Animations && !Settings.Performance && !spinning)
+            {
+                Navigator.SelectTab(tab);
+                ShowTab();
+                ShowScreen();
+                _ = SpinAsync(tab, target);
+                return;
+            }
+            Navigator.Select(tab, target);
             ShowTab();
             Navigator.Apply(CouchCommand.Accept);
             ShowScreen();
@@ -580,6 +591,13 @@ namespace gamevault.UserControls
             if (LoginShown)
             {
                 HandleLogin(command);
+                return;
+            }
+            // The roulette runs: B stops it where it is
+            if (spinning)
+            {
+                if (command == CouchCommand.Back)
+                    spinning = false;
                 return;
             }
             // The screensaver, a game's picture while it starts, the welcome: any button takes it away
@@ -839,6 +857,7 @@ namespace gamevault.UserControls
         /// <summary>The tab's games in the strip and the grid, its selected game shown.</summary>
         private void ShowTab()
         {
+            RevealTopBar();
             for (int i = 0; i < Tabs.Count; i++)
                 Tabs[i].IsSelected = i == Navigator.Tab;
             List<CouchItem> items = Navigator.Tab < Tabs.Count ? Tabs[Navigator.Tab].Items : new();
@@ -1062,7 +1081,7 @@ namespace gamevault.UserControls
             uiDetailTitle.IsVisible = true;
             uiDetailEyebrow.Text = (item.Retro?.Platform.Name ?? Loc.T("Library")).ToUpper(CultureInfo.CurrentCulture);
             uiDetailTitle.Text = item.Title;
-            uiDetailSub.Text = MetaOf(item);
+            ShowFacts(item);
             uiDetailStats.ItemsSource = StatsOf(item);
             string? description = item.Retro?.Summary ?? item.Pc?.Metadata?.Description;
             uiDescription.Text = description;
@@ -1224,7 +1243,7 @@ namespace gamevault.UserControls
         private void ShowClock() => uiClock.Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
 
         /// <summary>Twice a second: the time, a game installed or removed meanwhile, a retro game's progress.</summary>
-        private void Refresh()
+        internal void Refresh()
         {
             ShowClock();
             HashSet<int>? installed = null;
@@ -1237,6 +1256,7 @@ namespace gamevault.UserControls
                 if (now == item.Installed)
                     continue;
                 item.Installed = now;
+                InstalledChanged(now);
                 if (ReferenceEquals(item, Current))
                 {
                     ShowHero(item);

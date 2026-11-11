@@ -4,6 +4,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using GameVault.Core.Couch;
+using gamevault.Helper;
 using gamevault.Localization;
 using System;
 using System.Collections.Generic;
@@ -68,6 +69,7 @@ namespace gamevault.UserControls
             uiShadeStrong.IsVisible = s.Shade == "strong";
             uiHints.IsVisible = s.Hints;
             uiClock.IsVisible = s.Clock;
+            RevealTopBar();
             BuildPack();
             ApplyLayout();
             audio?.Configure(s.SoundPack, s.SoundVolume, s.MusicTheme, s.MusicVolume);
@@ -131,9 +133,9 @@ namespace gamevault.UserControls
         private void BuildPack()
         {
             string pack = Settings.Background;
-            if (pack == shownPack)
+            if (pack + "|" + Settings.BackgroundFolder == shownPack)
                 return;
-            shownPack = pack;
+            shownPack = pack + "|" + Settings.BackgroundFolder;
             uiPack.Children.Clear();
             Control? drawn = pack switch
             {
@@ -141,6 +143,7 @@ namespace gamevault.UserControls
                 "night" => Night(),
                 "synthwave" => Synthwave(),
                 "accent" => Accent(),
+                "folder" => FolderPicture(),
                 _ => null,
             };
             if (drawn != null)
@@ -318,6 +321,8 @@ namespace gamevault.UserControls
             "sora" => "Sora", "figtree" => "Figtree", "system" => "The system's",
             "round" => "Rounded", "square" => "Square", "soft" => "Very rounded",
             "compact" => "Under its name",
+            "folder" => "Your pictures",
+            "always" => "Always", "auto" => "When the tab changes",
             "normal" => "Normal", "light" => "Light", "strong" => "Strong",
             "portrait" => "Portrait", "small" => "Small", "large" => "Large",
             "retro" => "Retro", "crystal" => "Crystal",
@@ -390,7 +395,13 @@ namespace gamevault.UserControls
                 },
                 "backgrounds" => new List<CouchLine>
                 {
-                    Choice("Behind the lists", nameof(CouchSettings.Background), "The selected game's picture, a background made by SanctuaryVault, the color, or nothing."),
+                    Choice("Behind the lists", nameof(CouchSettings.Background), "The selected game's picture, a background made by SanctuaryVault, the color, your own pictures, or nothing."),
+                    new CouchLine
+                    {
+                        Text = s.BackgroundFolder.Length > 0 ? Loc.F("Your pictures: {0}", System.IO.Path.GetFileName(s.BackgroundFolder.TrimEnd('/', '\\'))) : Loc.T("Choose a folder of your pictures..."),
+                        Help = Loc.T("A folder of images (JPG, PNG, WebP): one of them behind the lists or the login screen, another each time the mode opens."),
+                        Run = ChooseFolderAsync,
+                    },
                     Toggle("Game's picture in its screen", s.DetailsBackground, v => s.DetailsBackground = v, "A game's screen shows its own picture, whatever is behind the lists."),
                     Toggle("Moving background", s.Drift, v => s.Drift = v, "The picture behind drifts and zooms slowly."),
                     Toggle("Screenshots behind a game", s.Shots, v => s.Shots = v, "A game's screenshots come one after the other behind its screen."),
@@ -406,6 +417,7 @@ namespace gamevault.UserControls
                 {
                     Toggle("Help of the buttons", s.Hints, v => s.Hints = v, "What each button does, at the bottom of the screen."),
                     Toggle("Clock", s.Clock, v => s.Clock = v, "The time at the top right."),
+                    Choice("Bar of the tabs", nameof(CouchSettings.TopBar), "Always there, or shown a moment when the tab changes: the picture takes the whole screen."),
                     ButtonsLine(),
                 },
                 "sounds" => new List<CouchLine>
@@ -450,6 +462,22 @@ namespace gamevault.UserControls
             };
             if (OperatingSystem.IsWindows())
                 lines.Add(Toggle("Menu over a game (Start + Back)", s.Overlay, v => s.Overlay = v, "Start and Back together over a game show a menu to go back to it or quit it."));
+            lines.Add(new CouchLine
+            {
+                Text = Loc.T("Back to the usual settings"),
+                Help = Loc.T("Every setting of this mode as it was at first; your applications stay. The ones of now are kept to come back to."),
+                Run = async () =>
+                {
+                    if (await DialogService.ConfirmAsync(Loc.T("Put every setting of the living-room mode back as it was at first?")))
+                    {
+                        ResetSettings();
+                        BuildMenu();
+                        ShowScreen(false);
+                    }
+                },
+            });
+            if (HasBackup)
+                lines.Add(Changed(Loc.T("Back to the settings before"), "The settings as they were before they were put back to the usual ones.", RestoreSettings));
             lines.Add(new CouchLine { Text = Loc.T("Add an application to the home..."), Help = Loc.T("A program started from the home: a video player, another launcher."), Run = AddAppAsync });
             foreach (CouchApp app in s.Apps.Take(4))
                 lines.Add(Changed(Loc.F("Remove '{0}' from the home", app.Name), "", () => s.Apps.Remove(app), games: true));

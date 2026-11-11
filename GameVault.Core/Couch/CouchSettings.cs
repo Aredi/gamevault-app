@@ -45,7 +45,8 @@ namespace GameVault.Core.Couch
         public static readonly IReadOnlyDictionary<string, string[]> Choices = new Dictionary<string, string[]>
         {
             [nameof(Layout)] = new[] { "signature", "panel", "showcase" },
-            [nameof(Background)] = new[] { "game", "aurora", "night", "synthwave", "accent", "none" },
+            [nameof(Background)] = new[] { "game", "aurora", "night", "synthwave", "accent", "folder", "none" },
+            [nameof(TopBar)] = new[] { "always", "auto" },
             [nameof(Font)] = new[] { "sora", "figtree", "system" },
             [nameof(Corners)] = new[] { "round", "square", "soft" },
             [nameof(InfoStyle)] = new[] { "panel", "compact" },
@@ -55,7 +56,7 @@ namespace GameVault.Core.Couch
             [nameof(SoundPack)] = new[] { "soft", "retro", "crystal" },
             [nameof(MusicTheme)] = new[] { "calm", "night" },
             [nameof(StartTab)] = new[] { "home", "library", "installed" },
-            [nameof(LoginBackground)] = new[] { "game", "aurora", "night", "synthwave", "accent" },
+            [nameof(LoginBackground)] = new[] { "game", "aurora", "night", "synthwave", "accent", "folder" },
         };
 
         /// <summary>A game's screen: on its picture at the left, in a panel, or centered at the bottom.</summary>
@@ -83,6 +84,10 @@ namespace GameVault.Core.Couch
         /// <summary>What the buttons do, at the bottom of the screen.</summary>
         public bool Hints { get; set; } = true;
         public bool Clock { get; set; } = true;
+        /// <summary>The bar of the tabs: always there, or only a moment when the tab changes.</summary>
+        public string TopBar { get; set; } = "always";
+        /// <summary>A folder of the player's own pictures, for the "folder" backgrounds.</summary>
+        public string BackgroundFolder { get; set; } = "";
         public string SoundPack { get; set; } = "soft";
         /// <summary>The sounds' loudness, in percent (25 to 100).</summary>
         public int SoundVolume { get; set; } = 100;
@@ -112,6 +117,9 @@ namespace GameVault.Core.Couch
         }
 
         public static readonly int[] Volumes = { 25, 50, 75, 100 };
+
+        /// <summary>The settings as they were before, for "back to the usual settings": its applications kept.</summary>
+        public CouchSettings Reset() => new() { Apps = Apps, Version = Version };
 
         public string Sort { get; set; } = ByName;
         public bool InstalledOnly { get; set; }

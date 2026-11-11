@@ -23,6 +23,15 @@ namespace GameVault.Core.Couch
         Edge,
         /// <summary>The login screen comes: a slow chord rising, as a console that wakes.</summary>
         Login,
+        /// <summary>A game is now installed here, or removed.</summary>
+        Installed,
+        Uninstalled,
+        /// <summary>The roulette of "a game at random" stops on its game.</summary>
+        Lucky,
+        /// <summary>An achievement earned: common, rare, ultra-rare.</summary>
+        Trophy,
+        TrophyRare,
+        TrophyUltra,
     }
 
     /// <summary>
@@ -127,6 +136,32 @@ namespace GameVault.Core.Couch
                 for (int i = 0; i < notes.Length; i++)
                     Note(b, 0.08 + i * 0.09, notes[i] * t.Pitch, 0.55, (0.3 + i * 0.04) * t.Decay, t.Bright);
             }, 0.5),
+            CouchSound.Installed => (0.5, 0.16, b => { Note(b, 0, 784 * t.Pitch, 0.8, 0.08 * t.Decay, t.Main); Note(b, 0.08, 1046.5 * t.Pitch, 0.8, 0.1 * t.Decay, t.Main); Note(b, 0.16, 1568 * t.Pitch, 0.6, 0.18 * t.Decay, t.Bright); }, 0.35),
+            CouchSound.Uninstalled => (0.4, 0.13, b => { Note(b, 0, 784 * t.Pitch, 0.8, 0.07 * t.Decay, t.Main); Note(b, 0.08, 523.3 * t.Pitch, 0.8, 0.09 * t.Decay, t.Main); Note(b, 0.16, 392 * t.Pitch, 0.7, 0.12 * t.Decay, t.Main); }, 0.3),
+            CouchSound.Lucky => (0.85, 0.17, b =>
+            {
+                // A little fanfare: the same note twice, then up
+                Note(b, 0, 784 * t.Pitch, 0.7, 0.06 * t.Decay, t.Main);
+                Note(b, 0.1, 784 * t.Pitch, 0.7, 0.06 * t.Decay, t.Main);
+                Note(b, 0.2, 1046.5 * t.Pitch, 0.9, 0.25 * t.Decay, t.Bright);
+                Note(b, 0.2, 1318.5 * t.Pitch, 0.6, 0.25 * t.Decay, t.Bright);
+                Sweep(b, 0.2, 0.4, 0.2 * t.Sweep, 3000, 9000, 9);
+            }, 0.4),
+            CouchSound.Trophy => (0.55, 0.15, b => { Note(b, 0, 1318.5 * t.Pitch, 0.8, 0.12 * t.Decay, t.Bright); Note(b, 0.09, 1975.5 * t.Pitch, 0.6, 0.18 * t.Decay, t.Bright); }, 0.4),
+            CouchSound.TrophyRare => (0.75, 0.16, b =>
+            {
+                double[] notes = { 1046.5, 1318.5, 1568, 2093 };
+                for (int i = 0; i < notes.Length; i++)
+                    Note(b, i * 0.07, notes[i] * t.Pitch, 0.6, (0.16 + i * 0.03) * t.Decay, t.Bright);
+            }, 0.45),
+            CouchSound.TrophyUltra => (0.98, 0.18, b =>
+            {
+                // A shimmer up, then the whole chord
+                Sweep(b, 0, 0.5, 0.35 * t.Sweep, 1500, 10000, 10);
+                double[] notes = { 523.3, 659.3, 784, 1046.5, 1318.5, 1568, 2093 };
+                for (int i = 0; i < notes.Length; i++)
+                    Note(b, 0.05 + i * 0.05, notes[i] * t.Pitch, 0.5, (0.22 + i * 0.03) * t.Decay, t.Bright);
+            }, 0.55),
             _ => (0.12, 0.09, b => { Note(b, 0, 220*t.Pitch, 1, (0.025) * t.Decay, t.Main); Note(b, 0.035, 196*t.Pitch, 0.8, (0.03) * t.Decay, t.Main); }, 0.1),
         };
 

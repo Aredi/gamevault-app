@@ -263,14 +263,29 @@
         <LayoutTransformControl x:Name="uiScale" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <Grid x:Name="uiStage" Height="1080" RowDefinitions="Auto,*,Auto">
                 <!-- The top: the player, the tabs, the time -->
-                <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="72,40,72,0" Height="64">
+                <Grid Grid.Row="0" x:Name="uiTopBar" ColumnDefinitions="Auto,*,Auto" Margin="72,40,72,0" Height="64">
+                    <Grid.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.3" />
+                        </Transitions>
+                    </Grid.Transitions>
                     <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                         <Border Width="52" Height="52" CornerRadius="26" ClipToBounds="True" Background="#22FFFFFF">
                             <local:CacheImage x:Name="uiAvatar" ImageCacheType="UserAvatar" Stretch="UniformToFill" />
                         </Border>
                         <StackPanel VerticalAlignment="Center" Spacing="1">
                             <TextBlock Text="SanctuaryVault" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="21" />
-                            <TextBlock x:Name="uiPlayer" FontSize="16" Opacity="0.7" />
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock x:Name="uiPlayer" FontSize="16" Opacity="0.7" VerticalAlignment="Center" />
+                                <!-- The player's level: its medal, its number, how far to the next -->
+                                <StackPanel x:Name="uiLevel" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" IsVisible="False">
+                                    <Ellipse x:Name="uiLevelMedal" Width="13" Height="13" />
+                                    <TextBlock x:Name="uiLevelText" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <Border Width="70" Height="4" CornerRadius="2" Background="#33FFFFFF" VerticalAlignment="Center">
+                                        <Border x:Name="uiLevelBar" HorizontalAlignment="Left" CornerRadius="2" Background="{DynamicResource Brush.Accent}" Width="0" />
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
@@ -484,6 +499,21 @@
                             </TextBlock.Effect>
                         </TextBlock>
                         <TextBlock x:Name="uiDetailSub" FontSize="20" Opacity="0.78" TextWrapping="Wrap" Margin="0,-6,0,0" />
+                        <!-- Its rating, its age, how long it lasts, who made it: small pills -->
+                        <ItemsControl x:Name="uiDetailFacts">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel ItemSpacing="10" LineSpacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Border CornerRadius="{DynamicResource Couch.Radius}" Background="#40000000" BorderBrush="#3DFFFFFF" BorderThickness="1" Padding="12,5">
+                                        <TextBlock Text="{Binding}" FontSize="17" FontWeight="SemiBold" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                         <!-- Its numbers: "label : value", as a line -->
                         <ItemsControl x:Name="uiDetailStats">
                             <ItemsControl.ItemsPanel>
@@ -521,6 +551,9 @@
                     </StackPanel>
                     </Border>
                     <!-- The game's trailer after a moment on its screen (a web player: nothing is drawn over it, it stops under a menu) -->
+                    <!-- Its genres and tags, at the bottom right as on a console -->
+                    <TextBlock Grid.Column="1" x:Name="uiDetailGenres" FontSize="22" FontWeight="SemiBold" Opacity="0.85" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                               TextTrimming="CharacterEllipsis" Margin="36,0,0,6" />
                     <Border Grid.Column="1" x:Name="uiTrailerBox" Classes="couchGlass" Margin="36,40,0,0" Padding="10" Width="880" Height="515"
                             HorizontalAlignment="Right" VerticalAlignment="Top" IsVisible="False">
                         <Border x:Name="uiTrailerHost" CornerRadius="14" ClipToBounds="True" Background="Black" />
@@ -603,6 +636,23 @@
                     </StackPanel>
                     <TextBlock x:Name="uiCurtainClock" FontSize="44" FontWeight="SemiBold" Margin="0,60,96,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
                 </Panel>
+                <!-- An achievement just earned: its badge, its name, its points, sliding in at the top right -->
+                <Border Grid.RowSpan="3" x:Name="uiTrophy" Classes="couchGlass" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,130,72,0" Padding="18,14" Width="520"
+                        IsVisible="False" BoxShadow="0 18 40 0 #99000000">
+                    <Border.RenderTransform>
+                        <TranslateTransform />
+                    </Border.RenderTransform>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                        <Border Width="72" Height="72" CornerRadius="10" ClipToBounds="True" Background="#22FFFFFF">
+                            <Image x:Name="uiTrophyBadge" Stretch="UniformToFill" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                            <TextBlock x:Name="uiTrophyKind" FontSize="14" FontWeight="Bold" LetterSpacing="2" />
+                            <TextBlock x:Name="uiTrophyTitle" FontSize="22" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="uiTrophyText" FontSize="16" Opacity="0.75" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
                 <!-- The login screen, as a console's: the time, the profiles of this PC, "press A" -->
                 <Panel Grid.RowSpan="3" x:Name="uiLogin" Background="#05070B" IsVisible="False">
                     <local:CacheImage x:Name="uiLoginPc" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" IsVisible="False" />
@@ -641,6 +691,7 @@
                                         </Border>
                                         <TextBlock Text="{Binding Name}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding Server}" FontSize="16" Opacity="0.6" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding LevelText}" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Accent}" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

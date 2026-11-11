@@ -345,7 +345,7 @@ namespace GameVault.UiTests
                 // "A game at random" of the menu: a game's screen, among the library when nothing is installed
                 couch.Handle(CouchCommand.Menu);
                 Assert.Contains(couch.MenuLines, l => l.Text == Loc.T("A game at random"));
-                couch.OpenRandom(new Random(3));
+                couch.OpenRandom(new Random(3), spin: false);
                 Assert.True(couch.uiDetails.IsVisible && !couch.uiMenu.IsVisible);
                 Assert.Contains(couch.uiDetailTitle.Text, Titles);
 
@@ -1345,6 +1345,132 @@ namespace GameVault.UiTests
             finally
             {
                 CouchUserControl.SwitchProfile = switchProfile;
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task AnikisExtras_FactsRouletteSoundsLevelTrophiesBarFolderAndReset()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            GameMetadata metadata = games[0].Metadata!;
+            metadata.Rating = 84;
+            metadata.AgeRating = 16;
+            metadata.AveragePlaytime = 1500;
+            metadata.Developers = new List<DeveloperMetadata> { new() { Name = "Lantern Works" } };
+            metadata.Tags = new List<TagMetadata> { new() { Name = "Open World" }, new() { Name = "Co-op" } };
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            string folder = Path.Combine(Path.GetTempPath(), "gv-couch-pictures-" + Guid.NewGuid().ToString("N"));
+            async Task Settle(int times = 25)
+            {
+                for (int i = 0; i < times; i++)
+                {
+                    await Task.Delay(40);
+                    Dispatcher.UIThread.RunJobs();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                }
+            }
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+                while (couch.Tabs[couch.Navigator.Tab].Name != Loc.T("Library"))
+                    couch.Handle(CouchCommand.NextTab);
+
+                // A game's facts: its rating, its age, its length, who made it, its genres and tags
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("Astral Drift", couch.uiDetailTitle.Text);
+                var facts = (List<string>)couch.uiDetailFacts.ItemsSource!;
+                Assert.Equal(new[] { "★★★★☆  84", "PEGI 16", Loc.F("About {0} h to finish", 25) }, facts);
+                Assert.StartsWith("Lantern Works · 2019", couch.uiDetailSub.Text);
+                Assert.Equal("Adventure  •  Open World  •  Co-op", couch.uiDetailGenres.Text);
+                Capture(window, "extras-facts");
+                couch.Handle(CouchCommand.Back);
+
+                // The roulette: the strip runs through the games and stops on one, a fanfare, then its screen
+                couch.Played.Clear();
+                couch.OpenRandom(new Random(5));
+                couch.Handle(CouchCommand.Right);
+                await TestSession.WaitUntil(() => couch.uiDetails.IsVisible, TimeSpan.FromSeconds(15), "the roulette's game");
+                Assert.True(couch.Played.Count(p => p == CouchSound.Move) >= 24);
+                Assert.Contains(CouchSound.Lucky, couch.Played);
+                couch.Handle(CouchCommand.Back);
+
+                // A game installed meanwhile: its sound
+                var installed = new KeyValuePair<Game, string>(games[0], Path.Combine(session.LibraryRoot, "couch-extras"));
+                InstallViewModel.Instance.InstalledGames.Add(installed);
+                try
+                {
+                    couch.Refresh();
+                    Assert.Contains(CouchSound.Installed, couch.Played);
+                }
+                finally { InstallViewModel.Instance.InstalledGames.Remove(installed); }
+                couch.Refresh();
+                Assert.Equal(CouchSound.Uninstalled, couch.Played.Last(p => p is CouchSound.Installed or CouchSound.Uninstalled));
+
+                // The player's level, beside their name
+                couch.ShowLevel(CouchLevel.Of(300, 0, 0));
+                Assert.True(couch.uiLevel.IsVisible);
+                Assert.Equal(Loc.F("Level {0} · {1}", 11, Loc.T("Silver") + " I"), couch.uiLevelText.Text);
+                await couch.LoadLevelAsync();
+                Assert.NotNull(couch.Level);
+
+                // An achievement earned: it slides in with the sound of its rarity; the next one after it
+                couch.ShowTrophy(new GameVault.Core.Retro.RommProgress.Achievement("1", "Sky Master", "Win every race", 30, null, null, true));
+                couch.ShowTrophy(new GameVault.Core.Retro.RommProgress.Achievement("2", "First Lap", "Finish a race", 3, null, null, true));
+                Assert.True(couch.TrophyShown);
+                Assert.Equal("Sky Master", couch.uiTrophyTitle.Text);
+                Assert.Equal(CouchSound.TrophyUltra, couch.Played[^1]);
+                Assert.Equal(CouchSound.Trophy, CouchUserControl.TrophySound(3));
+                Assert.Equal(CouchSound.TrophyRare, CouchUserControl.TrophySound(10));
+                Capture(window, "extras-trophy");
+                await TestSession.WaitUntil(() => couch.uiTrophyTitle.Text == "First Lap", TimeSpan.FromSeconds(8), "the next achievement");
+
+                // The bar of the tabs, shown a moment when the tab changes
+                couch.Settings.TopBar = "auto";
+                couch.ApplyLook();
+                couch.Handle(CouchCommand.NextTab);
+                Assert.Equal(1, couch.uiTopBar.Opacity);
+                await Settle(85);
+                Assert.Equal(0, couch.uiTopBar.Opacity);
+                couch.Settings.TopBar = "always";
+                couch.ApplyLook();
+                await Settle(12);
+                Assert.Equal(1, couch.uiTopBar.Opacity);
+
+                // Your own pictures behind the lists
+                Directory.CreateDirectory(folder);
+                using (var bitmap = new SkiaSharp.SKBitmap(64, 36))
+                {
+                    bitmap.Erase(SkiaSharp.SKColors.Teal);
+                    using var image = SkiaSharp.SKImage.FromBitmap(bitmap);
+                    File.WriteAllBytes(Path.Combine(folder, "mine.png"), image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 90).ToArray());
+                }
+                File.WriteAllText(Path.Combine(folder, "notes.txt"), "not a picture");
+                Assert.Equal(Path.Combine(folder, "mine.png"), CouchUserControl.PictureOf(folder));
+                Assert.Null(CouchUserControl.PictureOf(Path.Combine(folder, "nowhere")));
+                couch.UseFolder(folder);
+                Assert.Equal("folder", couch.Settings.Background);
+                Assert.IsType<Image>(Assert.Single(couch.uiPack.Children));
+
+                // Back to the usual settings, and back to the ones before
+                couch.Settings.Layout = "panel";
+                couch.ResetSettings();
+                Assert.Equal(("signature", "game"), (couch.Settings.Layout, couch.Settings.Background));
+                Assert.True(couch.HasBackup);
+                couch.RestoreSettings();
+                Assert.Equal(("panel", "folder"), (couch.Settings.Layout, couch.Settings.Background));
+                Assert.False(couch.HasBackup);
+            }
+            finally
+            {
+                try { Directory.Delete(folder, true); } catch { }
                 window.Close();
                 foreach (Game game in games)
                     session.Server.RemoveGame(game.ID);

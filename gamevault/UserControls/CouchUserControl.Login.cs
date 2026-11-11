@@ -27,6 +27,9 @@ namespace gamevault.UserControls
         public User? AvatarData { get; init; }
         /// <summary>Another profile's avatar, as it was kept on this PC.</summary>
         public Bitmap? Avatar { get; init; }
+        private string levelText = "";
+        /// <summary>The player's level, for the profile signed in.</summary>
+        public string LevelText { get => levelText; set { if (levelText != value) { levelText = value; OnPropertyChanged(); } } }
         private bool isSelected;
         public bool IsSelected { get => isSelected; set { if (isSelected != value) { isSelected = value; OnPropertyChanged(); } } }
     }
@@ -110,6 +113,9 @@ namespace gamevault.UserControls
             LoginProfiles = profiles ?? ProfilesOfThisPc();
             LoginSelected = 0;
             uiLoginProfiles.ItemsSource = LoginProfiles;
+            if (Level != null)
+                foreach (LoginProfile profile in LoginProfiles.Where(p => p.IsCurrent))
+                    profile.LevelText = uiLevelText.Text ?? "";
             ShowLoginBackground();
             ShowLoginSelection();
             ShowLoginClock();
@@ -131,6 +137,7 @@ namespace gamevault.UserControls
             // No game played yet: the aurora
             Control? scene = art != null ? null : background switch
             {
+                "folder" => FolderPicture() ?? Aurora(),
                 "night" => Night(),
                 "synthwave" => Synthwave(),
                 "accent" => Accent(),

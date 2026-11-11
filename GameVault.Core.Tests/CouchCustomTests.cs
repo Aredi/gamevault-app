@@ -61,5 +61,36 @@ namespace GameVault.Core.Tests
             Assert.NotEqual(calm, night);
             Assert.InRange(night.Max(s => Math.Abs((int)s)), short.MaxValue / 8, short.MaxValue / 5);
         }
+
+        [Fact]
+        public void APlayersLevel_GrowsWithTheAchievementsTheGamesFinishedAndTheTime()
+        {
+            Assert.Equal(new CouchLevel(1, CouchLevel.Bronze, 1, 0), CouchLevel.Of(0, 0, 0));
+            // 5 points for level 2, 10 more for level 3
+            Assert.Equal(2, CouchLevel.Of(5, 0, 0).Level);
+            Assert.Equal(2, CouchLevel.Of(14, 0, 0).Level);
+            Assert.Equal(0.9, CouchLevel.Of(14, 0, 0).Progress, 3);
+            Assert.Equal(3, CouchLevel.Of(15, 0, 0).Level);
+            // A game at 100 % is 15 points, two hours one point
+            Assert.Equal(CouchLevel.Points(15, 0, 0), CouchLevel.Points(0, 1, 0));
+            Assert.Equal(1, CouchLevel.Points(0, 0, 120));
+            // The tiers and their steps
+            CouchLevel silver = CouchLevel.Of(300, 0, 0);
+            Assert.Equal((11, CouchLevel.Silver, 1), (silver.Level, silver.Tier, silver.Step));
+            Assert.Equal(CouchLevel.Gold, CouchLevel.Of(2000, 0, 0).Tier);
+            Assert.Equal(CouchLevel.Platinum, CouchLevel.Of(8000, 0, 0).Tier);
+            Assert.Equal(3, CouchLevel.Of(200, 0, 0).Step);
+            Assert.InRange(CouchLevel.Of(-5, -1, -100).Level, 1, 1);
+        }
+
+        [Fact]
+        public void BackToTheUsualSettings_KeepsTheApplications()
+        {
+            var settings = new CouchSettings { Layout = "panel", Background = "night", SoundVolume = 25 };
+            settings.Apps.Add(new CouchApp("Kodi", "/usr/bin/kodi"));
+            CouchSettings usual = settings.Reset();
+            Assert.Equal(("signature", "game", 100), (usual.Layout, usual.Background, usual.SoundVolume));
+            Assert.Single(usual.Apps);
+        }
     }
 }
