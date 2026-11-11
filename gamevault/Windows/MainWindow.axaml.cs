@@ -54,6 +54,11 @@ namespace gamevault.Windows
         {
             uiCouch.LeaveRequested += LeaveCouch;
             uiCouch.TextKeyboard = uiCouchKeys;
+            SizeChanged += (_, _) =>
+            {
+                if (uiCouch.IsVisible)
+                    ZoomForCouch();
+            };
             AddHandler(KeyDownEvent, (_, e) =>
             {
                 if (CouchFocus.Activating)
@@ -88,7 +93,18 @@ namespace gamevault.Windows
             uiQuickSearch.Close();
             uiDesktop.IsVisible = false;
             WindowState = WindowState.FullScreen;
+            ZoomForCouch();
             _ = uiCouch.OpenAsync();
+        }
+
+        /// <summary>The client's windows and questions are made for a desk: larger on a TV, as much as the screen is taller than them.</summary>
+        private void ZoomForCouch()
+        {
+            double zoom = uiCouch.IsVisible || !uiDesktop.IsVisible ? Math.Clamp(Bounds.Height / 820, 1, 1.7) : 1;
+            Avalonia.Media.ScaleTransform? scale = zoom > 1.01 ? new Avalonia.Media.ScaleTransform(zoom, zoom) : null;
+            uiPopupZoom.LayoutTransform = scale;
+            DialogLayer.RenderTransform = scale;
+            uiCouchKeys.RenderTransform = scale;
         }
 
         internal void LeaveCouch()
@@ -98,6 +114,7 @@ namespace gamevault.Windows
             uiCouch.Close();
             uiDesktop.IsVisible = true;
             WindowState = beforeCouch;
+            ZoomForCouch();
         }
 
         private void Couch_Click(object? sender, RoutedEventArgs e) => EnterCouch();

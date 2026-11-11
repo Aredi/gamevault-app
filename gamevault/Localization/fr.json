@@ -1960,5 +1960,9 @@
   "{0} message": "{0} message",
   "{0} messages": "{0} messages",
   "Sounds: on": "Sons : activés",
-  "Sounds: off": "Sons : coupés"
+  "Sounds: off": "Sons : coupés",
+  "Favorites": "Favoris",
+  "Add to the favorites": "Ajouter aux favoris",
+  "Remove from the favorites": "Retirer des favoris",
+  "A game at random": "Un jeu au hasard"
 }

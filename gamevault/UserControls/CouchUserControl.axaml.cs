@@ -230,6 +230,9 @@ namespace gamevault.UserControls
             var here = ByTitle(pc.Concat(retro).Where(i => i.Installed), i => i.Title).ToList();
             if (here.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Installed games"), Items = here });
+            var favorites = ByTitle(pc.Concat(retro).Where(IsFavorite), i => i.Title).ToList();
+            if (favorites.Count > 0)
+                tabs.Add(new CouchTab { Name = Loc.T("Favorites"), Items = favorites });
             tabs.Add(new CouchTab { Name = Loc.T("Library"), Items = pc });
             foreach (var platform in retro.GroupBy(i => i.Retro!.Platform.Name).OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
                 tabs.Add(new CouchTab { Name = platform.Key, Items = platform.ToList() });
@@ -323,6 +326,69 @@ namespace gamevault.UserControls
             else if (onSearch)
                 Navigator.Select(Math.Max(0, Tabs.FindIndex(t => t.Name == Loc.T("Library"))), 0);
             ShowTab();
+            ShowScreen();
+        }
+
+        /// <summary>A retro game's star, a library game's bookmark.</summary>
+        internal static bool IsFavorite(CouchItem item)
+        {
+            int me = LoginManager.Instance.GetCurrentUser()?.ID ?? -1;
+            return item.Retro?.IsFavorite ?? item.Pc!.BookmarkedUsers?.Any(u => u.ID == me) == true;
+        }
+
+        private async Task SetFavoriteAsync(CouchItem item, bool favorite)
+        {
+            if (item.Retro != null)
+                item.Retro.IsFavorite = favorite;
+            else
+            {
+                string address = $"{SettingsViewModel.Instance.ServerUrl}/api/users/me/bookmark/{item.Pc!.ID}";
+                if (favorite)
+                    await WebHelper.PostAsync(address, "");
+                else
+                    await WebHelper.DeleteAsync(address);
+                item.Pc.BookmarkedUsers = favorite ? new List<User> { LoginManager.Instance.GetCurrentUser()! } : new List<User>();
+            }
+            // The Favorites tab follows; the game's screen stays on its game
+            Show(all.Where(i => i.Pc != null).Select(i => i.Pc!), all.Where(i => i.Retro != null).Select(i => i.Retro!));
+        }
+
+        /// <summary>Removed from this PC, after the question the client always asks.</summary>
+        private async Task UninstallAsync(CouchItem item)
+        {
+            if (item.Retro is RetroGame retro)
+            {
+                if (retro.Busy || RetroService.InstalledFolder(retro) is not string folder)
+                    return;
+                if (!await DialogService.ConfirmAsync(Loc.F("Delete '{0}' from this PC? Its saves are kept.", retro.Name)))
+                    return;
+                System.IO.Directory.Delete(folder, true);
+                retro.Refresh();
+                return;
+            }
+            // The game's settings ask what they need to (its saves, its shortcuts) and remove it
+            var settings = new GameSettingsUserControl(item.Pc!) { Width = 1200, Height = 800, Margin = new Thickness(50) };
+            MainWindowViewModel.Instance.OpenPopup(settings);
+            try { await settings.UninstallGame(); }
+            finally
+            {
+                if (ReferenceEquals(MainWindowViewModel.Instance.Popup, settings))
+                    MainWindowViewModel.Instance.ClosePopup();
+            }
+        }
+
+        /// <summary>"What to play?": a game drawn among the installed ones (the whole library when none is), its screen opened.</summary>
+        internal void OpenRandom(Random? random = null)
+        {
+            int tab = Tabs.FindIndex(t => t.Name == Loc.T("Installed games"));
+            if (tab < 0)
+                tab = Tabs.FindIndex(t => t.Name == Loc.T("Library"));
+            if (tab < 0 || Tabs[tab].Items.Count == 0)
+                return;
+            Navigator.CloseMenu();
+            Navigator.Select(tab, (random ?? Random.Shared).Next(Tabs[tab].Items.Count));
+            ShowTab();
+            Navigator.Apply(CouchCommand.Accept);
             ShowScreen();
         }
 
@@ -486,6 +552,7 @@ namespace gamevault.UserControls
                     textKeyboard.Typed += TypeInBox;
             }
         }
+        private ComboBox? openChoices;
         /// <summary>The text box typed in with the keyboard on the screen.</summary>
         internal TextBox? Editing { get; private set; }
 
@@ -499,6 +566,24 @@ namespace gamevault.UserControls
                     TextKeyboard?.Handle(command);
                 return;
             }
+            // A list of choices opened with A: up and down go through it, A or B closes it on the choice shown
+            if (openChoices is { IsDropDownOpen: true } choices)
+            {
+                if (command is CouchCommand.Up or CouchCommand.Down && choices.ItemCount > 0)
+                {
+                    choices.SelectedIndex = Math.Clamp(choices.SelectedIndex + (command == CouchCommand.Up ? -1 : 1), 0, choices.ItemCount - 1);
+                    Play(CouchSound.Move);
+                }
+                else if (command is CouchCommand.Accept or CouchCommand.Back)
+                {
+                    choices.IsDropDownOpen = false;
+                    choices.Focus(NavigationMethod.Directional);
+                    openChoices = null;
+                    Play(command == CouchCommand.Accept ? CouchSound.Accept : CouchSound.Back);
+                }
+                return;
+            }
+            openChoices = null;
             Control? focused = CouchFocus.Focused(scope);
             switch (command)
             {
@@ -518,6 +603,11 @@ namespace gamevault.UserControls
                     Play(CouchSound.Accept);
                     if (focused is TextBox box && TextKeyboard != null)
                         StartEditing(box);
+                    else if (focused is ComboBox list)
+                    {
+                        openChoices = list;
+                        list.IsDropDownOpen = true;
+                    }
                     else if (focused != null)
                         CouchFocus.Activate(focused);
                     else
@@ -850,6 +940,7 @@ namespace gamevault.UserControls
                 }
                 if (retro.HasVideo)
                     lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => { MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(new[] { $"https://www.youtube.com/watch?v={Uri.EscapeDataString(retro.Video!)}" }, retro.Name)); return Task.CompletedTask; } });
+                AddCommon(lines, item);
                 lines.Add(new CouchLine { Text = Loc.T("Open its page"), Run = () => { LeaveRequested?.Invoke(); return MainWindowViewModel.Instance.Retro.ShowGameAsync(retro.Platform.Slug, retro.Id); } });
             }
             else
@@ -864,11 +955,21 @@ namespace gamevault.UserControls
                 }
                 if (game.Metadata is GameMetadata metadata && TrailerPopup.HasVideos(metadata))
                     lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => { MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(metadata, item.Title)); return Task.CompletedTask; } });
+                AddCommon(lines, item);
                 lines.Add(new CouchLine { Text = Loc.T("Open its page"), Run = () => { LeaveRequested?.Invoke(); MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(game)); return Task.CompletedTask; } });
             }
             Actions = lines;
             Navigator.ActionCount = lines.Count;
             uiActions.ItemsSource = lines;
+        }
+
+        /// <summary>The favorites and, for a game installed here, its removal.</summary>
+        private void AddCommon(List<CouchLine> lines, CouchItem item)
+        {
+            bool favorite = IsFavorite(item);
+            lines.Add(new CouchLine { Text = favorite ? Loc.T("Remove from the favorites") : Loc.T("Add to the favorites"), Run = () => SetFavoriteAsync(item, !favorite) });
+            if (item.Installed)
+                lines.Add(new CouchLine { Text = Loc.T("Uninstall"), Run = () => UninstallAsync(item) });
         }
 
         private void BuildMenu()
@@ -877,6 +978,7 @@ namespace gamevault.UserControls
             MenuLines = new List<CouchLine>
             {
                 new() { Text = Loc.T("Back to the games"), Run = () => { Navigator.CloseMenu(); ShowScreen(); return Task.CompletedTask; } },
+                new() { Text = Loc.T("A game at random"), Run = () => { OpenRandom(); return Task.CompletedTask; } },
                 new() { Text = Loc.T("Read the games again"), Run = async () => { Navigator.CloseMenu(); ShowScreen(); await LoadAsync(); } },
                 new() { Text = atStart ? Loc.T("At start: the living-room mode") : Loc.T("At start: the desktop"), Run = () => { StartsHere = !atStart; BuildMenu(); ShowScreen(false); return Task.CompletedTask; } },
                 new() { Text = SoundsOn ? Loc.T("Sounds: on") : Loc.T("Sounds: off"), Run = () => { SoundsOn = !SoundsOn; BuildMenu(); ShowScreen(false); return Task.CompletedTask; } },

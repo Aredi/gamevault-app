@@ -22,9 +22,11 @@ namespace gamevault.UserControls
     /// </summary>
     public partial class CouchKeyboard : UserControl
     {
-        internal const string Erase = "⌫", Space = "␣", Done = "OK", Shift = "⇧";
+        internal const string Erase = "⌫", Space = "␣", Done = "OK", Shift = "⇧", Signs2 = "é!?", Abc = "abc";
         private const int Columns = 10;
         private const string Letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", Digits = "0123456789", Signs = ".-_@";
+        /// <summary>The other page of the text keyboard, key for key: the accents, then the signs.</summary>
+        private const string Accents = "ÉÈÊËÀÂÄÇÙÛÜÎÏÔÖÑ", More = "!?,;:'\"()/+*=&%#$€<>";
 
         internal List<CouchKey> Keys { get; private set; } = new();
         /// <summary>A key was typed: a character, or <see cref="Erase"/>, <see cref="Space"/>, <see cref="Done"/>.</summary>
@@ -32,6 +34,7 @@ namespace gamevault.UserControls
         private int key;
         private bool upper = true;
         private bool cases;
+        private bool others;
 
         public CouchKeyboard()
         {
@@ -53,9 +56,10 @@ namespace gamevault.UserControls
         {
             cases = text;
             upper = !text;
+            others = false;
             IEnumerable<string> keys = Letters.Select(c => (upper ? c : char.ToLowerInvariant(c)).ToString()).Concat(Digits.Select(c => c.ToString()));
             if (text)
-                keys = keys.Concat(Signs.Select(c => c.ToString())).Append(Shift);
+                keys = keys.Concat(Signs.Select(c => c.ToString())).Append(Shift).Append(Signs2);
             Keys = keys.Concat(new[] { Space, Erase, Done }).Select(k => new CouchKey { Text = k }).ToList();
             uiKeys.ItemsSource = Keys;
             Select(0);
@@ -96,14 +100,23 @@ namespace gamevault.UserControls
 
         private void Press(string text)
         {
-            if (text != Shift)
+            if (text is not (Shift or Signs2 or Abc))
             {
                 Typed?.Invoke(text);
                 return;
             }
-            upper = !upper;
+            if (text == Shift)
+                upper = !upper;
+            else
+                others = !others;
+            // The same keys, with the other page's or the other case's characters
+            string letters = others ? Accents + More[..(Letters.Length - Accents.Length)] : Letters;
+            string digits = others ? More[(Letters.Length - Accents.Length)..] : Digits;
             for (int i = 0; i < Letters.Length; i++)
-                Keys[i].Text = (upper ? Letters[i] : char.ToLowerInvariant(Letters[i])).ToString();
+                Keys[i].Text = (upper ? letters[i] : char.ToLowerInvariant(letters[i])).ToString();
+            for (int i = 0; i < Digits.Length; i++)
+                Keys[Letters.Length + i].Text = digits[i].ToString();
+            Keys.First(k => k.Text is Signs2 or Abc).Text = others ? Abc : Signs2;
         }
     }
 }

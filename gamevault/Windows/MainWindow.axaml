@@ -378,15 +378,18 @@
         <uc:CouchUserControl x:Name="uiCouch" IsVisible="False" />
 
         <!-- The living-room mode's keyboard for the text boxes of the popups and the questions: over them -->
-        <uc:CouchKeyboard x:Name="uiCouchKeys" ZIndex="20" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,36" />
+        <uc:CouchKeyboard x:Name="uiCouchKeys" ZIndex="20" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,36" RenderTransformOrigin="50%,100%" />
 
         <!-- Popups (game settings, user settings, news, ...): shown at their real size, only scaled down when the window is too small -->
         <Panel x:Name="uiPopupLayer" ZIndex="1" Background="#A6000000"
                IsVisible="{Binding Popup, Converter={x:Static ObjectConverters.IsNotNull}}">
             <Viewbox x:Name="uiPopupFit" StretchDirection="DownOnly" Margin="28">
-                <Border x:Name="uiPopupFrame" CornerRadius="18" ClipToBounds="True" BoxShadow="0 30 80 -20 #E6000000">
-                    <ContentControl Content="{Binding Popup}" />
-                </Border>
+                <!-- Larger in the living-room mode: read from the couch -->
+                <LayoutTransformControl x:Name="uiPopupZoom">
+                    <Border x:Name="uiPopupFrame" CornerRadius="18" ClipToBounds="True" BoxShadow="0 30 80 -20 #E6000000">
+                        <ContentControl Content="{Binding Popup}" />
+                    </Border>
+                </LayoutTransformControl>
             </Viewbox>
         </Panel>
 

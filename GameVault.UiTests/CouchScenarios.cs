@@ -135,7 +135,7 @@ namespace GameVault.UiTests
                 // A game's screen: what can be done with it, then the next game without leaving it
                 couch.Handle(CouchCommand.Accept);
                 Assert.True(couch.uiDetails.IsVisible && !couch.uiHome.IsVisible);
-                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
+                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Add to the favorites"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
                 Assert.True(couch.Actions[0].IsSelected);
                 couch.Handle(CouchCommand.Down);
                 Assert.True(couch.Actions[1].IsSelected && !couch.Actions[0].IsSelected);
@@ -144,7 +144,7 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.PreviousTab);
                 couch.Handle(CouchCommand.PreviousTab);
                 Assert.Equal("Hollow Tides", couch.uiDetailTitle.Text);
-                Assert.Equal(new[] { Loc.T("Play"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
+                Assert.Equal(new[] { Loc.T("Play"), Loc.T("Add to the favorites"), Loc.T("Uninstall"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
                 couch.Handle(CouchCommand.Back);
                 Assert.True(couch.uiHome.IsVisible);
 
@@ -168,15 +168,16 @@ namespace GameVault.UiTests
                 // The menu: the start in this mode is kept, the desktop is asked back
                 couch.Handle(CouchCommand.Menu);
                 Assert.True(couch.uiMenu.IsVisible);
-                Assert.Equal(6, couch.MenuLines.Count);
+                Assert.Equal(7, couch.MenuLines.Count);
                 Capture(window, "4-menu");
                 CouchUserControl.StartsHere = false;
                 couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Down);
+                couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Accept);
                 Assert.True(CouchUserControl.StartsHere);
-                Assert.Equal(Loc.T("At start: the living-room mode"), couch.MenuLines[2].Text);
-                Assert.True(couch.MenuLines[2].IsSelected);
+                Assert.Equal(Loc.T("At start: the living-room mode"), couch.MenuLines[3].Text);
+                Assert.True(couch.MenuLines[3].IsSelected);
                 bool left = false;
                 couch.LeaveRequested += () => left = true;
                 couch.Handle(CouchCommand.Down);
@@ -300,7 +301,25 @@ namespace GameVault.UiTests
                 couch.Navigator.Select(couch.Navigator.Tab, 4);
                 couch.Handle(CouchCommand.Accept);
                 Assert.Equal("Lumen Trail", couch.uiDetailTitle.Text);
-                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Watch the trailer"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
+                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Watch the trailer"), Loc.T("Add to the favorites"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
+
+                // Its star: the game is bookmarked on the server and gets the Favorites tab; the screen stays on it
+                session.Server.Bookmarks.Clear();
+                await couch.Actions.Single(a => a.Text == Loc.T("Add to the favorites")).Run();
+                Assert.Equal(new[] { $"POST {games[4].ID}" }, session.Server.Bookmarks);
+                Assert.Equal(new[] { "Lumen Trail" }, couch.Tabs.Single(t => t.Name == Loc.T("Favorites")).Items.Select(i => i.Title));
+                Assert.Equal("Lumen Trail", couch.uiDetailTitle.Text);
+                Assert.Contains(couch.Actions, a => a.Text == Loc.T("Remove from the favorites"));
+                await couch.Actions.Single(a => a.Text == Loc.T("Remove from the favorites")).Run();
+                Assert.Equal($"DELETE {games[4].ID}", session.Server.Bookmarks.Last());
+                Assert.DoesNotContain(couch.Tabs, t => t.Name == Loc.T("Favorites"));
+
+                // "A game at random" of the menu: a game's screen, among the library when nothing is installed
+                couch.Handle(CouchCommand.Menu);
+                Assert.Contains(couch.MenuLines, l => l.Text == Loc.T("A game at random"));
+                couch.OpenRandom(new Random(3));
+                Assert.True(couch.uiDetails.IsVisible && !couch.uiMenu.IsVisible);
+                Assert.Contains(couch.uiDetailTitle.Text, Titles);
 
                 // A question of the client: left and right choose the answer, A gives it, B says no; nothing moves under it
                 Task<bool> asked = DialogService.ConfirmAsync("Delete it?");
@@ -382,7 +401,7 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.Accept);
                 Assert.Same(name, couch.Editing);
                 Assert.True(keyboard.IsVisible);
-                Assert.Equal(44, keyboard.Keys.Count);
+                Assert.Equal(45, keyboard.Keys.Count);
                 // "a", then the capitals with the shift key, a space with Y, erased with X
                 couch.Handle(CouchCommand.Accept);
                 Assert.Equal("a", name.Text);
@@ -401,6 +420,19 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.View);
                 Assert.Equal("aB", name.Text);
                 Assert.Equal("aB", keyboard.Shown);
+                // The other page: the accents and the signs on the same keys, in the case chosen
+                int page = keyboard.Keys.FindIndex(k => k.Text == CouchKeyboard.Signs2);
+                Assert.Equal(1, keyboard.Selected);
+                for (int row = 0; row < 4; row++)
+                    couch.Handle(CouchCommand.Down);
+                Assert.Equal(page, keyboard.Selected);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal(("É", "!", CouchKeyboard.Abc), (keyboard.Keys[0].Text, keyboard.Keys[16].Text, keyboard.Keys[page].Text));
+                for (int row = 0; row < 4; row++)
+                    couch.Handle(CouchCommand.Up);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal("aBÈ", name.Text);
+                couch.Handle(CouchCommand.View);
                 // B closes the keyboard, not the window
                 couch.Handle(CouchCommand.Back);
                 Assert.Null(couch.Editing);
@@ -418,6 +450,19 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.Right);
                 couch.Handle(CouchCommand.Left);
                 Assert.Equal(1, choice.SelectedIndex);
+                // A opens its list: up and down go through it without leaving it, A closes it on the choice
+                couch.Handle(CouchCommand.Accept);
+                Assert.True(choice.IsDropDownOpen);
+                couch.Handle(CouchCommand.Down);
+                couch.Handle(CouchCommand.Down);
+                couch.Handle(CouchCommand.Left);
+                Assert.Equal(2, choice.SelectedIndex);
+                couch.Handle(CouchCommand.Up);
+                couch.Handle(CouchCommand.Accept);
+                Assert.False(choice.IsDropDownOpen);
+                Assert.Equal(1, choice.SelectedIndex);
+                Settle();
+                Assert.Same(choice, CouchFocus.Focused(popup));
                 couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Right);
                 Assert.Equal(6, slider.Value);
@@ -454,6 +499,7 @@ namespace GameVault.UiTests
                 keyboard.Handle(CouchCommand.Down);
                 keyboard.Handle(CouchCommand.Down);
                 keyboard.Handle(CouchCommand.Down);
+                keyboard.Handle(CouchCommand.Right);
                 keyboard.Handle(CouchCommand.Right);
                 Assert.Equal(CouchKeyboard.Done, keyboard.Keys[keyboard.Selected].Text);
                 couch.Handle(CouchCommand.Accept);
@@ -497,8 +543,13 @@ namespace GameVault.UiTests
                 Assert.True(window.IsCouchShown);
                 Assert.Equal(WindowState.FullScreen, window.WindowState);
                 Assert.False(window.FindControl<Grid>("uiDesktop")!.IsVisible);
+                // The client's windows are larger there, as much as the screen is taller than them; at their size on the desktop
+                var zoom = window.FindControl<LayoutTransformControl>("uiPopupZoom")!;
+                double expected = Math.Clamp(window.Bounds.Height / 820, 1, 1.7);
+                Assert.Equal(expected > 1.01, zoom.LayoutTransform != null);
                 window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
                 Assert.False(window.IsCouchShown);
+                Assert.Null(zoom.LayoutTransform);
                 Assert.True(window.FindControl<Grid>("uiDesktop")!.IsVisible);
                 Assert.Equal(before, window.WindowState);
                 window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
