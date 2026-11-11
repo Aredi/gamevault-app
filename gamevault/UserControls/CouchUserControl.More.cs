@@ -418,13 +418,15 @@ namespace gamevault.UserControls
 
         private List<CouchLine> SettingsLines()
         {
-            string buttons = Settings.Buttons switch { CouchSettings.PlayStation => "PlayStation", CouchSettings.Switch => "Switch", _ => "Xbox" };
+            static string Named(string style) => style switch { CouchSettings.PlayStation => "PlayStation", CouchSettings.Switch => "Switch", _ => "Xbox" };
+            // Automatic: the gamepad in the player's hands, named
+            string buttons = Settings.Buttons == CouchSettings.Auto ? Loc.F("as the gamepad used ({0})", Named(ButtonStyle)) : Named(Settings.Buttons);
             string saver = Settings.ScreenSaverMinutes == 0 ? Loc.T("never") : Loc.F("after {0} min", Settings.ScreenSaverMinutes);
             var lines = new List<CouchLine>
             {
                 Line(StartsHere ? Loc.T("At start: the living-room mode") : Loc.T("At start: the desktop"), () => { StartsHere = !StartsHere; BuildMenu(); ShowScreen(false); }),
                 Line(SoundsOn ? Loc.T("Sounds: on") : Loc.T("Sounds: off"), () => { SoundsOn = !SoundsOn; BuildMenu(); ShowScreen(false); }),
-                Setting(Loc.F("Buttons shown: {0}", buttons), () => Settings.Buttons = CouchSettings.Next(new[] { CouchSettings.Xbox, CouchSettings.PlayStation, CouchSettings.Switch }, Settings.Buttons)),
+                Setting(Loc.F("Buttons shown: {0}", buttons), () => Settings.Buttons = CouchSettings.Next(new[] { CouchSettings.Auto, CouchSettings.Xbox, CouchSettings.PlayStation, CouchSettings.Switch }, Settings.Buttons)),
                 Setting(Loc.F("Color of the selected game: {0}", YesNo(Settings.DynamicColors)), () => { Settings.DynamicColors = !Settings.DynamicColors; ShowAccent(shownBack); }),
                 Setting(Loc.F("Color: {0}", Settings.Accent.Length > 0 ? Settings.Accent : Loc.T("the theme's")), () => { Settings.Accent = CouchSettings.Next(CouchSettings.Accents, Settings.Accent); ShowAccent(shownBack); }),
                 Setting(Loc.F("Numbers of the selected game: {0}", YesNo(Settings.ShowStats)), () => Settings.ShowStats = !Settings.ShowStats),

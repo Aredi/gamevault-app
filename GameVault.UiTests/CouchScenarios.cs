@@ -639,8 +639,21 @@ namespace GameVault.UiTests
 
                 // The settings: the buttons named as the player's gamepad, the color, the numbers
                 couch.ShowMenu(CouchMenu.Settings);
+                // By default, the gamepad in the player's hands: a PlayStation one names its buttons at once
+                Assert.Contains(couch.MenuLines, l => l.Text == Loc.F("Buttons shown: {0}", Loc.F("as the gamepad used ({0})", "Xbox")));
+                couch.UsePad(CouchSettings.PlayStation);
+                Assert.Contains(couch.Hints, h => h.Label == "✕");
+                Assert.Equal("L1", couch.uiTabLeftKey.Text);
+                Assert.Contains(couch.MenuLines, l => l.Text == Loc.F("Buttons shown: {0}", Loc.F("as the gamepad used ({0})", "PlayStation")));
+                couch.UsePad(CouchSettings.Xbox);
+                Assert.Contains(couch.Hints, h => h.Label == "A");
+                Assert.Equal("LB", couch.uiTabLeftKey.Text);
+                // Chosen: they stay, whatever the gamepad
+                await couch.MenuLines.Single(l => l.Text.StartsWith(Loc.F("Buttons shown: {0}", ""))).Run();
+                Assert.Equal(CouchSettings.Xbox, couch.Settings.Buttons);
                 await couch.MenuLines.Single(l => l.Text == Loc.F("Buttons shown: {0}", "Xbox")).Run();
                 Assert.Equal(CouchSettings.PlayStation, couch.Settings.Buttons);
+                couch.UsePad(CouchSettings.Switch);
                 Assert.Contains(couch.Hints, h => h.Label == "✕");
                 Assert.Contains(couch.MenuLines, l => l.Text == Loc.F("Buttons shown: {0}", "PlayStation"));
                 couch.Settings.DynamicColors = false;

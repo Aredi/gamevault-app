@@ -104,6 +104,27 @@ namespace gamevault.UserControls
         /// <summary>A short sound for what the gamepad just did, unless they are turned off in the menu.</summary>
         private readonly Stopwatch edgeSound = Stopwatch.StartNew();
 
+        /// <summary>The kind of the gamepad a button was last pressed on (CouchSettings.Xbox, PlayStation, Switch); none yet.</summary>
+        internal string? PadUsed { get; private set; }
+
+        /// <summary>The buttons the hints name: the ones chosen, else those of the gamepad in the player's hands.</summary>
+        internal string ButtonStyle => CouchGlyphs.Resolve(Settings.Buttons, PadUsed);
+
+        /// <summary>Another gamepad took over (a PlayStation one after an Xbox one): the hints name its buttons at once.</summary>
+        internal void UsePad(string? kind)
+        {
+            if (kind == null || kind == PadUsed)
+                return;
+            string before = ButtonStyle;
+            PadUsed = kind;
+            if (ButtonStyle != before)
+            {
+                if (Navigator.Screen == CouchScreen.Menu && menu == CouchMenu.Settings)
+                    BuildMenu();
+                ShowScreen(false);
+            }
+        }
+
         /// <summary>A sound by event, as a console's menus: a tick to move, a sweep to change tab, a chime to open...</summary>
         internal static CouchSound SoundOf(CouchCommand command, CouchEffect effect, CouchScreen from, CouchScreen to, bool otherTab) => effect switch
         {
@@ -474,6 +495,7 @@ namespace gamevault.UserControls
             if (gamepad == null)
                 return;
             CouchButtons held = gamepad.Read();
+            UsePad(gamepad.LastUsed);
             TickMore(held, listen);
             if (overlay != null)
                 listen = padListened = true;
@@ -983,7 +1005,10 @@ namespace gamevault.UserControls
             };
             if (!Searching && screen == CouchScreen.Home)
                 Hints = Hints.Concat(new[] { new CouchStat("BACK", Loc.T("Quick access")), new CouchStat("L3", Loc.T("Filters")) }).ToArray();
-            Hints = Hints.Select(h => h with { Label = CouchGlyphs.Label(Settings.Buttons, h.Label) }).ToArray();
+            string style = ButtonStyle;
+            Hints = Hints.Select(h => h with { Label = CouchGlyphs.Label(style, h.Label) }).ToArray();
+            uiTabLeftKey.Text = CouchGlyphs.Label(style, "LB");
+            uiTabRightKey.Text = CouchGlyphs.Label(style, "RB");
             uiHints.ItemsSource = Hints;
             uiMenuTitle.Text = MenuTitle;
             Dispatcher.UIThread.Post(ScrollToSelection, DispatcherPriority.Background);

@@ -2026,5 +2026,6 @@
   "List": "Liste",
   "Trailer in a game's screen: {0}": "Bande-annonce dans la fiche : {0}",
   "In game": "En jeu",
-  "Music in the menus: {0}": "Musique dans les menus : {0}"
+  "Music in the menus: {0}": "Musique dans les menus : {0}",
+  "as the gamepad used ({0})": "selon la manette utilisée ({0})"
 }

@@ -9,11 +9,13 @@ namespace GameVault.Core.Couch
     /// <summary>How the living-room mode looks and behaves, kept in "couch.json" beside the profile's settings.</summary>
     public sealed class CouchSettings
     {
-        public const string Xbox = "xbox", PlayStation = "playstation", Switch = "switch";
+        public const string Xbox = "xbox", PlayStation = "playstation", Switch = "switch", Auto = "auto";
         public const string ByName = "name", ByRecent = "recent", ByTime = "time";
 
-        /// <summary>The gamepad whose buttons the hints name.</summary>
-        public string Buttons { get; set; } = Xbox;
+        /// <summary>The gamepad whose buttons the hints name; <see cref="Auto"/>: the one the player uses.</summary>
+        public string Buttons { get; set; } = Auto;
+        /// <summary>The settings' version: 2 since the buttons follow the gamepad by default.</summary>
+        public int Version { get; set; }
         /// <summary>The accent color follows the selected game's cover.</summary>
         public bool DynamicColors { get; set; } = true;
         /// <summary>The accent color chosen ("#RRGGBB"); empty: the theme's.</summary>
@@ -55,8 +57,12 @@ namespace GameVault.Core.Couch
             {
                 if (File.Exists(file) && JsonSerializer.Deserialize<CouchSettings>(File.ReadAllText(file)) is CouchSettings read)
                 {
-                    if (read.Buttons is not (Xbox or PlayStation or Switch))
-                        read.Buttons = Xbox;
+                    // Before the buttons followed the gamepad, "xbox" was kept without being chosen
+                    if (read.Version < 2 && read.Buttons == Xbox)
+                        read.Buttons = Auto;
+                    if (read.Buttons is not (Xbox or PlayStation or Switch or Auto))
+                        read.Buttons = Auto;
+                    read.Version = 2;
                     if (read.Sort is not (ByName or ByRecent or ByTime))
                         read.Sort = ByName;
                     read.Apps ??= new();
@@ -93,6 +99,30 @@ namespace GameVault.Core.Couch
     /// <summary>What a button is called on each gamepad: the hints say "A" on an Xbox one, the cross on a PlayStation one.</summary>
     public static class CouchGlyphs
     {
+        /// <summary>The buttons to name: the ones chosen, else the gamepad that moved last (an Xbox one before any).</summary>
+        public static string Resolve(string chosen, string? used) => chosen == CouchSettings.Auto ? used ?? CouchSettings.Xbox : chosen;
+
+        /// <summary>
+        /// The kind of a gamepad SDL reads, by the type SDL gives (SDL 2.0.12 and later) or else by its name: the
+        /// PlayStation and Nintendo ones; any other is named as an Xbox one.
+        /// </summary>
+        public static string KindOf(int sdlType, string? name)
+        {
+            switch (sdlType)
+            {
+                case 3 or 4 or 7: return CouchSettings.PlayStation;
+                case 5 or 11 or 12 or 13: return CouchSettings.Switch;
+                case 1 or 2: return CouchSettings.Xbox;
+            }
+            string n = name ?? "";
+            bool Has(string part) => n.Contains(part, StringComparison.OrdinalIgnoreCase);
+            if (Has("PS3") || Has("PS4") || Has("PS5") || Has("DualShock") || Has("DualSense") || Has("PlayStation") || Has("Sony"))
+                return CouchSettings.PlayStation;
+            if (Has("Nintendo") || Has("Switch") || Has("Joy-Con") || Has("Pro Controller"))
+                return CouchSettings.Switch;
+            return CouchSettings.Xbox;
+        }
+
         /// <param name="xbox">The button as an Xbox gamepad names it: "A", "LB RB", "START", "BACK", "L3".</param>
         public static string Label(string style, string xbox) => string.Join(" ", xbox.Split(' ').Select(button => style switch
         {

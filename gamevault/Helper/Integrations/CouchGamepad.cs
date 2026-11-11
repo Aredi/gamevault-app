@@ -26,6 +26,8 @@ namespace gamevault.Helper
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate void VoidOfPtr(IntPtr value);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate byte ByteOfPtrInt(IntPtr device, int index);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate short ShortOfPtrInt(IntPtr device, int index);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int IntOfPtr(IntPtr value);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate IntPtr StringOfPtr(IntPtr value);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int IntOfStrings([MarshalAs(UnmanagedType.LPUTF8Str)] string name, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         private IntPtr library;
@@ -38,6 +40,13 @@ namespace gamevault.Helper
         private ByteOfPtrInt? button;
         private ShortOfPtrInt? axis;
         private readonly List<IntPtr> controllers = new();
+        // The kind of each controller opened (CouchSettings.Xbox, PlayStation, Switch), in the same order
+        private readonly List<string> kinds = new();
+        private IntOfPtr? typeOf;
+        private StringOfPtr? nameOf;
+
+        /// <summary>The kind of the gamepad a button was last pressed on (none yet): the hints name its buttons.</summary>
+        public string? LastUsed { get; private set; }
         private int devices = -1;
         private bool xinput = OperatingSystem.IsWindows();
 
@@ -63,6 +72,10 @@ namespace gamevault.Helper
                 close = Function<VoidOfPtr>("SDL_GameControllerClose");
                 button = Function<ByteOfPtrInt>("SDL_GameControllerGetButton");
                 axis = Function<ShortOfPtrInt>("SDL_GameControllerGetAxis");
+                // Its type since SDL 2.0.12; its name always
+                if (NativeLibrary.TryGetExport(library, "SDL_GameControllerGetType", out IntPtr type))
+                    typeOf = Marshal.GetDelegateForFunctionPointer<IntOfPtr>(type);
+                nameOf = Function<StringOfPtr>("SDL_GameControllerName");
             }
             catch (Exception ex)
             {
@@ -110,7 +123,13 @@ namespace gamevault.Helper
             }
             if (xinput)
             {
-                try { held |= ReadXInput(); }
+                try
+                {
+                    CouchButtons fromXInput = ReadXInput();
+                    if (fromXInput != CouchButtons.None && held == CouchButtons.None)
+                        LastUsed = CouchSettings.Xbox;
+                    held |= fromXInput;
+                }
                 catch (Exception ex)
                 {
                     // No XInput on this Windows
@@ -141,27 +160,51 @@ namespace gamevault.Helper
                 foreach (IntPtr controller in controllers)
                     close!(controller);
                 controllers.Clear();
+                kinds.Clear();
                 for (int i = 0; i < now; i++)
                     if (isController!(i) != 0 && open!(i) is var opened && opened != IntPtr.Zero)
+                    {
                         controllers.Add(opened);
+                        kinds.Add(KindOf(opened));
+                    }
             }
             CouchButtons held = CouchButtons.None;
-            foreach (IntPtr controller in controllers)
+            for (int c = 0; c < controllers.Count; c++)
             {
+                IntPtr controller = controllers[c];
+                CouchButtons mine = CouchButtons.None;
                 foreach (var (index, flag) in SdlButtons)
                     if (button!(controller, index) != 0)
-                        held |= flag;
-                held |= Stick(axis!(controller, 0), axis(controller, 1), down: true);
+                        mine |= flag;
+                mine |= Stick(axis!(controller, 0), axis(controller, 1), down: true);
                 Aim(axis(controller, 2), axis(controller, 3));
                 if (axis(controller, 4) > Pulled)
-                    held |= CouchButtons.LeftTrigger;
+                    mine |= CouchButtons.LeftTrigger;
                 if (axis(controller, 5) > Pulled)
-                    held |= CouchButtons.RightTrigger;
+                    mine |= CouchButtons.RightTrigger;
+                if (mine != CouchButtons.None)
+                    LastUsed = kinds[c];
+                held |= mine;
             }
             return held;
         }
 
         /// <param name="down">A positive y is down (SDL) or up (XInput).</param>
+        private string KindOf(IntPtr controller)
+        {
+            try
+            {
+                int type = typeOf?.Invoke(controller) ?? 0;
+                string? name = nameOf?.Invoke(controller) is IntPtr text && text != IntPtr.Zero ? Marshal.PtrToStringUTF8(text) : null;
+                return CouchGlyphs.KindOf(type, name);
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return CouchSettings.Xbox;
+            }
+        }
+
         private static CouchButtons Stick(short x, short y, bool down)
         {
             CouchButtons held = CouchButtons.None;
@@ -223,15 +266,17 @@ namespace gamevault.Helper
                 plugged[i] = XInputGetState(i, out XInputState state) == 0;
                 if (!plugged[i])
                     continue;
+                CouchButtons mine = CouchButtons.None;
                 foreach (var (mask, flag) in XInputButtons)
                     if ((state.Buttons & mask) != 0)
-                        held |= flag;
-                held |= Stick(state.LeftX, state.LeftY, down: false);
+                        mine |= flag;
+                mine |= Stick(state.LeftX, state.LeftY, down: false);
                 Aim(state.RightX, (short)Math.Clamp(-(int)state.RightY, short.MinValue, short.MaxValue));
                 if (state.LeftTrigger > 90)
-                    held |= CouchButtons.LeftTrigger;
+                    mine |= CouchButtons.LeftTrigger;
                 if (state.RightTrigger > 90)
-                    held |= CouchButtons.RightTrigger;
+                    mine |= CouchButtons.RightTrigger;
+                held |= mine;
             }
             return held;
         }

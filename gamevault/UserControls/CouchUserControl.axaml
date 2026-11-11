@@ -209,7 +209,7 @@
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
                         <Border Classes="couchKey" VerticalAlignment="Center">
-                            <TextBlock Text="LB" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock x:Name="uiTabLeftKey" Text="LB" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ScrollViewer x:Name="uiTabsScroll" MaxWidth="1100" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                             <ItemsControl x:Name="uiTabs">
@@ -228,7 +228,7 @@
                             </ItemsControl>
                         </ScrollViewer>
                         <Border Classes="couchKey" VerticalAlignment="Center">
-                            <TextBlock Text="RB" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <TextBlock x:Name="uiTabRightKey" Text="RB" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="20" VerticalAlignment="Center">

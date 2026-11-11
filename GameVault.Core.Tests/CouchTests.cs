@@ -256,7 +256,7 @@ namespace GameVault.Core.Tests
             string file = Path.Combine(Path.GetTempPath(), "gv-couch-" + Guid.NewGuid().ToString("N") + ".json");
             try
             {
-                Assert.Equal(CouchSettings.Xbox, CouchSettings.Load(file).Buttons);
+                Assert.Equal(CouchSettings.Auto, CouchSettings.Load(file).Buttons);
                 var settings = new CouchSettings { Buttons = CouchSettings.PlayStation, Accent = "#2F9BFF", ScreenSaverMinutes = 0, Sort = CouchSettings.ByTime, Genre = "RPG" };
                 settings.Apps.Add(new CouchApp("Kodi", "C:\\Kodi\\kodi.exe", "-fs"));
                 settings.Save(file);
@@ -267,7 +267,14 @@ namespace GameVault.Core.Tests
 
                 File.WriteAllText(file, "{\"Buttons\":\"dreamcast\",\"Sort\":\"size\",\"ScreenSaverMinutes\":900,\"Apps\":null}");
                 read = CouchSettings.Load(file);
-                Assert.Equal((CouchSettings.Xbox, CouchSettings.ByName, 60), (read.Buttons, read.Sort, read.ScreenSaverMinutes));
+                Assert.Equal((CouchSettings.Auto, CouchSettings.ByName, 60), (read.Buttons, read.Sort, read.ScreenSaverMinutes));
+                // Kept before the buttons followed the gamepad, "xbox" was never chosen: it follows it now; chosen since, it stays
+                File.WriteAllText(file, "{\"Buttons\":\"xbox\"}");
+                read = CouchSettings.Load(file);
+                Assert.Equal((CouchSettings.Auto, 2), (read.Buttons, read.Version));
+                read.Buttons = CouchSettings.Xbox;
+                read.Save(file);
+                Assert.Equal(CouchSettings.Xbox, CouchSettings.Load(file).Buttons);
                 Assert.Empty(read.Apps);
                 File.WriteAllText(file, "not json");
                 Assert.False(CouchSettings.Load(file).IsFiltered);
@@ -289,6 +296,25 @@ namespace GameVault.Core.Tests
             Assert.Equal("B", CouchGlyphs.Label(CouchSettings.Switch, "A"));
             Assert.Equal("ZL ZR", CouchGlyphs.Label(CouchSettings.Switch, "LT RT"));
             Assert.Equal("L3", CouchGlyphs.Label(CouchSettings.Switch, "L3"));
+        }
+
+        [Fact]
+        public void TheButtonsNamed_FollowTheGamepadInThePlayersHands_UnlessChosen()
+        {
+            // SDL's types: PS3, PS4, PS5; the Switch Pro and Joy-Cons; the Xbox ones
+            Assert.Equal(CouchSettings.PlayStation, CouchGlyphs.KindOf(4, "PS4 Controller"));
+            Assert.Equal(CouchSettings.PlayStation, CouchGlyphs.KindOf(7, null));
+            Assert.Equal(CouchSettings.Switch, CouchGlyphs.KindOf(5, null));
+            Assert.Equal(CouchSettings.Xbox, CouchGlyphs.KindOf(2, "Xbox One Controller"));
+            // An older SDL without types: the name says it
+            Assert.Equal(CouchSettings.PlayStation, CouchGlyphs.KindOf(0, "Sony DualSense Wireless Controller"));
+            Assert.Equal(CouchSettings.Switch, CouchGlyphs.KindOf(0, "Nintendo Switch Pro Controller"));
+            Assert.Equal(CouchSettings.Xbox, CouchGlyphs.KindOf(0, "8BitDo SN30 Pro"));
+            Assert.Equal(CouchSettings.Xbox, CouchGlyphs.KindOf(0, null));
+
+            Assert.Equal(CouchSettings.PlayStation, CouchGlyphs.Resolve(CouchSettings.Auto, CouchSettings.PlayStation));
+            Assert.Equal(CouchSettings.Xbox, CouchGlyphs.Resolve(CouchSettings.Auto, null));
+            Assert.Equal(CouchSettings.Switch, CouchGlyphs.Resolve(CouchSettings.Switch, CouchSettings.PlayStation));
         }
 
         [Fact]
