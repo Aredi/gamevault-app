@@ -34,6 +34,8 @@ namespace GameVault.Core.Couch
         public bool Splash { get; set; } = true;
         /// <summary>A game's trailer plays in its screen after a moment.</summary>
         public bool Trailers { get; set; } = true;
+        /// <summary>The quiet music behind the menus.</summary>
+        public bool Music { get; set; } = true;
 
         public string Sort { get; set; } = ByName;
         public bool InstalledOnly { get; set; }

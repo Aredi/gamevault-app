@@ -1154,5 +1154,20 @@ namespace GameVault.UiTests
             Assert.False(CouchGamepad.LookAtEmptySlots(11_999, ref last));
             Assert.True(CouchGamepad.LookAtEmptySlots(12_000, ref last));
         }
+
+        [Fact]
+        public void EachMove_HasItsOwnSound_AsAConsolesMenus()
+        {
+            CouchSound Of(CouchCommand command, CouchEffect effect, CouchScreen from, CouchScreen to, bool otherTab = false) =>
+                CouchUserControl.SoundOf(command, effect, from, to, otherTab);
+            Assert.Equal(CouchSound.Move, Of(CouchCommand.Right, CouchEffect.Moved, CouchScreen.Home, CouchScreen.Home));
+            Assert.Equal(CouchSound.Tab, Of(CouchCommand.NextTab, CouchEffect.Moved, CouchScreen.Home, CouchScreen.Home, otherTab: true));
+            Assert.Equal(CouchSound.Tab, Of(CouchCommand.View, CouchEffect.ViewChanged, CouchScreen.Home, CouchScreen.Home));
+            Assert.Equal(CouchSound.Open, Of(CouchCommand.Accept, CouchEffect.ScreenChanged, CouchScreen.Home, CouchScreen.Details));
+            Assert.Equal(CouchSound.Close, Of(CouchCommand.Back, CouchEffect.ScreenChanged, CouchScreen.Details, CouchScreen.Home));
+            Assert.Equal(CouchSound.Panel, Of(CouchCommand.Menu, CouchEffect.ScreenChanged, CouchScreen.Details, CouchScreen.Menu));
+            Assert.Equal(CouchSound.PanelClose, Of(CouchCommand.Back, CouchEffect.ScreenChanged, CouchScreen.Menu, CouchScreen.Details));
+            Assert.Equal(CouchSound.Accept, Of(CouchCommand.Accept, CouchEffect.Action, CouchScreen.Details, CouchScreen.Details));
+        }
     }
 }

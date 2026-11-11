@@ -102,6 +102,20 @@ namespace gamevault.UserControls
         internal List<CouchSound> Played { get; } = new();
 
         /// <summary>A short sound for what the gamepad just did, unless they are turned off in the menu.</summary>
+        private readonly Stopwatch edgeSound = Stopwatch.StartNew();
+
+        /// <summary>A sound by event, as a console's menus: a tick to move, a sweep to change tab, a chime to open...</summary>
+        internal static CouchSound SoundOf(CouchCommand command, CouchEffect effect, CouchScreen from, CouchScreen to, bool otherTab) => effect switch
+        {
+            CouchEffect.Moved => otherTab ? CouchSound.Tab : CouchSound.Move,
+            CouchEffect.ViewChanged => CouchSound.Tab,
+            CouchEffect.ScreenChanged when to == CouchScreen.Menu => CouchSound.Panel,
+            CouchEffect.ScreenChanged when from == CouchScreen.Menu => CouchSound.PanelClose,
+            CouchEffect.ScreenChanged when to == CouchScreen.Details => CouchSound.Open,
+            CouchEffect.ScreenChanged when from == CouchScreen.Details => CouchSound.Close,
+            _ => command == CouchCommand.Back ? CouchSound.Back : CouchSound.Accept,
+        };
+
         private void Play(CouchSound sound)
         {
             if (Played.Count < 1000)
@@ -571,11 +585,16 @@ namespace gamevault.UserControls
                 return;
             int tab = Navigator.Tab;
             CouchItem? before = Current;
+            CouchScreen screenBefore = Navigator.Screen;
             CouchEffect effect = Navigator.Apply(command);
             if (effect != CouchEffect.None)
-                Play(command == CouchCommand.Back ? CouchSound.Back
-                    : effect == CouchEffect.Moved ? (Navigator.Tab != tab ? CouchSound.Tab : CouchSound.Move)
-                    : effect == CouchEffect.ViewChanged ? CouchSound.Tab : CouchSound.Accept);
+                Play(SoundOf(command, effect, screenBefore, Navigator.Screen, Navigator.Tab != tab));
+            else if (command is CouchCommand.Left or CouchCommand.Right or CouchCommand.Up or CouchCommand.Down && edgeSound.Elapsed > TimeSpan.FromMilliseconds(400))
+            {
+                // The end of the list: once, not at each repeat of a held direction
+                edgeSound.Restart();
+                Play(CouchSound.Edge);
+            }
             switch (effect)
             {
                 case CouchEffect.Moved:
@@ -931,7 +950,13 @@ namespace gamevault.UserControls
             uiHero.IsVisible = item != null && !grid && !Searching;
             uiKeyboard.IsVisible = Searching && !details;
             uiKeyboard.Show(Query.Length > 0 ? Query : Loc.T("Search a game"), placeholder: Query.Length == 0);
-            uiDim.IsVisible = detailsBehind || grid || Searching;
+            uiDim.IsVisible = !detailsBehind && (grid || Searching);
+            uiDetailShade.IsVisible = detailsBehind;
+            // Coming in: a game's screen from the left, a menu from below
+            if (detailsBehind && shownScreen == CouchScreen.Home && screen == CouchScreen.Details)
+                Enter(uiDetailPanel, -48, 0);
+            if (screen == CouchScreen.Menu && shownScreen != CouchScreen.Menu)
+                Enter(uiMenuBox, 0, 28);
             if (!detailsBehind && shotShown)
                 HideShots();
             // Back from a menu to the same game: its screen is as it was
@@ -974,11 +999,8 @@ namespace gamevault.UserControls
                 HideShots();
             detailsItem = item;
             ShownAchievements = Array.Empty<GameVault.Core.Retro.RommProgress.Achievement>();
-            uiDetailCoverPc.IsVisible = item.Pc != null;
-            uiDetailCoverRetro.IsVisible = item.Retro != null;
-            if (item.Pc != null)
-                uiDetailCoverPc.Data = item.Pc;
-            uiDetailCoverRetro.Source = item.Retro?.CoverImage;
+            uiDetailLogo.IsVisible = false;
+            uiDetailTitle.IsVisible = true;
             uiDetailEyebrow.Text = (item.Retro?.Platform.Name ?? Loc.T("Library")).ToUpper(CultureInfo.CurrentCulture);
             uiDetailTitle.Text = item.Title;
             uiDetailSub.Text = MetaOf(item);
@@ -991,11 +1013,29 @@ namespace gamevault.UserControls
             shot = -1;
             refreshes = 0;
             int generation = ++detailGeneration;
+            _ = ShowDetailLogoAsync(item, generation);
             if (item.Retro is RetroGame retro && RommAccount.IsLinked)
                 _ = ShowAchievementsAsync(item, retro, generation);
             if (item.Pc != null)
                 _ = ShowFriendsAsync(item, generation);
             QueueTrailer(item);
+        }
+
+        /// <summary>The game's logo instead of its name, as on the list (asked once, kept).</summary>
+        private async Task ShowDetailLogoAsync(CouchItem item, int generation)
+        {
+            if (item.IsTile || !Settings.Logos)
+                return;
+            try
+            {
+                Avalonia.Media.Imaging.Bitmap? logo = item.Retro != null ? await GameLogoService.OfAsync(item.Retro) : await GameLogoService.OfAsync(item.Pc!);
+                if (logo == null || generation != detailGeneration)
+                    return;
+                uiDetailLogo.Source = logo;
+                uiDetailLogo.IsVisible = true;
+                uiDetailTitle.IsVisible = false;
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         /// <summary>A retro game's achievements earned, among its numbers, once RomM answered.</summary>
@@ -1155,6 +1195,10 @@ namespace gamevault.UserControls
             }
             WatchGame();
             KeepTrailer();
+            bool active = IsVisible && TopLevel.GetTopLevel(this) is Window { IsActive: true };
+            KeepDrift(active);
+            // The music: in the menus only, never over a game, a trailer or a game that starts
+            audio?.Music(SoundsOn && Settings.Music && active && playing == null && !TrailerShown && curtain != Curtain.Splash);
             DialogService.Current?.Mark();
             if (Editing is { IsEffectivelyVisible: false })
                 StopEditing();

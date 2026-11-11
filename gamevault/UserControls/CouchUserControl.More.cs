@@ -293,7 +293,7 @@ namespace gamevault.UserControls
             bool inMenu = Navigator.Screen == CouchScreen.Menu;
             if (!inMenu && command is CouchCommand.Menu or CouchCommand.Quick)
             {
-                Play(CouchSound.Accept);
+                Play(CouchSound.Panel);
                 ShowMenu(command == CouchCommand.Menu ? CouchMenu.Main : CouchMenu.Quick);
                 return true;
             }
@@ -303,7 +303,7 @@ namespace gamevault.UserControls
             {
                 if (Navigator.Screen == CouchScreen.Home)
                 {
-                    Play(CouchSound.Accept);
+                    Play(CouchSound.Panel);
                     ShowMenu(CouchMenu.Filter);
                 }
                 return true;
@@ -433,6 +433,7 @@ namespace gamevault.UserControls
                 Setting(Loc.F("Screensaver: {0}", saver), () => Settings.ScreenSaverMinutes = CouchSettings.Next(new[] { 5, 10, 20, 0 }, Settings.ScreenSaverMinutes)),
                 Setting(Loc.F("Picture of a game that starts: {0}", YesNo(Settings.Splash)), () => Settings.Splash = !Settings.Splash),
                 Setting(Loc.F("Trailer in a game's screen: {0}", YesNo(Settings.Trailers)), () => { Settings.Trailers = !Settings.Trailers; StopTrailer(); }),
+                Setting(Loc.F("Music in the menus: {0}", YesNo(Settings.Music)), () => Settings.Music = !Settings.Music),
             };
             if (OperatingSystem.IsWindows())
                 lines.Add(Setting(Loc.F("Menu over a game (Start + Back): {0}", YesNo(Settings.Overlay)), () => Settings.Overlay = !Settings.Overlay));
@@ -588,7 +589,6 @@ namespace gamevault.UserControls
                     uiTrailerHost.Child = trailer;
                 }
                 uiTrailerBox.IsVisible = true;
-                uiDescription.MaxLines = 5;
                 await trailer.InitVideoPlayer();
                 trailer.SetMediaList(new List<Tuple<string, string>> { trailerUrl });
                 await trailer.LoadFirstElement();
@@ -604,7 +604,6 @@ namespace gamevault.UserControls
             try { trailer?.UnloadMediaSlider(); }
             catch (Exception ex) { Log.Ignored(ex); }
             uiTrailerBox.IsVisible = false;
-            uiDescription.MaxLines = 9;
         }
 
         // --- The logo of the selected game ---

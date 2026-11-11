@@ -64,6 +64,7 @@ namespace gamevault.UserControls
         internal void GameStarted(CouchItem item)
         {
             playing = item;
+            Play(CouchSound.Launch);
             playingFor.Restart();
             playingSeen = false;
             playingChecks = 0;

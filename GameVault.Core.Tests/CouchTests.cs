@@ -191,7 +191,8 @@ namespace GameVault.Core.Tests
             foreach (CouchSound sound in Enum.GetValues<CouchSound>())
             {
                 short[] samples = CouchSounds.Samples(sound);
-                Assert.InRange(samples.Length, CouchSounds.Rate / 50, CouchSounds.Rate / 5);
+                // A tick for a move, about a second for a game that starts
+                Assert.InRange(samples.Length, CouchSounds.Rate / 50, CouchSounds.Rate);
                 Assert.InRange(samples.Max(s => Math.Abs((int)s)), short.MaxValue / 20, short.MaxValue / 4);
                 Assert.InRange(Math.Abs((int)samples[0]), 0, 200);
                 Assert.InRange(Math.Abs((int)samples[^1]), 0, 200);
@@ -203,8 +204,44 @@ namespace GameVault.Core.Tests
                 Assert.Equal(CouchSounds.Header + samples.Length * 2, wave.Length);
                 Assert.Equal(samples.Length * 2, BitConverter.ToInt32(wave, 40));
             }
-            // Not the same sound for everything
-            Assert.NotEqual(CouchSounds.Samples(CouchSound.Accept), CouchSounds.Samples(CouchSound.Back));
+            // A sound by event, and the moves the shortest (they come many at a time)
+            var all = Enum.GetValues<CouchSound>().Select(CouchSounds.Samples).ToList();
+            for (int i = 0; i < all.Count; i++)
+                for (int j = i + 1; j < all.Count; j++)
+                    Assert.NotEqual(all[i], all[j]);
+            Assert.Equal(all.Min(a => a.Length), CouchSounds.Samples(CouchSound.Move).Length);
+            // Made the same each time: the tests and the players hear the same thing
+            Assert.Equal(CouchSounds.Samples(CouchSound.Tab), CouchSounds.Samples(CouchSound.Tab));
+        }
+
+        /// <summary>COUCH_SOUNDS_DIR: the sounds and the music written as WAV files, to listen to them.</summary>
+        [Fact]
+        public void TheSounds_CanBeWrittenToListenToThem()
+        {
+            if (Environment.GetEnvironmentVariable("COUCH_SOUNDS_DIR") is not { Length: > 0 } folder)
+                return;
+            Directory.CreateDirectory(folder);
+            foreach (CouchSound sound in Enum.GetValues<CouchSound>())
+                File.WriteAllBytes(Path.Combine(folder, $"{(int)sound:00}-{sound}.wav"), CouchSounds.Wave(sound));
+            File.WriteAllBytes(Path.Combine(folder, "99-Music.wav"), CouchSounds.Wave(CouchMusic.Samples(), CouchMusic.Rate));
+        }
+
+        [Fact]
+        public void TheMusic_LoopsWithoutASeam_AndStaysQuiet()
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            short[] music = CouchMusic.Samples();
+            // Made once when the mode opens, away from the screen: a few seconds at most
+            Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), clock.Elapsed.ToString());
+            Assert.Equal((int)(CouchMusic.Seconds * CouchMusic.Rate), music.Length);
+            Assert.InRange(music.Max(s => Math.Abs((int)s)), short.MaxValue / 8, short.MaxValue / 5);
+            // The end leads into the start as one sample into the next
+            int jump = Math.Abs(music[^1] - music[0]);
+            int usual = (int)Enumerable.Range(1, music.Length - 1).Average(i => Math.Abs(music[i] - music[i - 1]));
+            Assert.InRange(jump, 0, Math.Max(40, usual * 6));
+            // Never silent for long: a pad under everything
+            for (int second = 0; second < (int)CouchMusic.Seconds; second++)
+                Assert.True(music.Skip(second * CouchMusic.Rate).Take(CouchMusic.Rate).Max(s => Math.Abs((int)s)) > short.MaxValue / 60, $"second {second}");
         }
     }
 }
