@@ -83,9 +83,21 @@ namespace gamevault.Helper
         /// <summary>A way to read gamepads was found (none: the keyboard only).</summary>
         public bool CanRead => library != IntPtr.Zero || xinput;
 
+        /// <summary>Where the right stick points, from -1 to 1 each way (down is positive): the mouse's move.</summary>
+        public (double X, double Y) RightStick { get; private set; }
+
+        /// <summary>The right stick the furthest from its rest, among the gamepads.</summary>
+        private void Aim(short x, short y)
+        {
+            (double X, double Y) aim = (x / 32768.0, y / 32768.0);
+            if (aim.X * aim.X + aim.Y * aim.Y > RightStick.X * RightStick.X + RightStick.Y * RightStick.Y)
+                RightStick = aim;
+        }
+
         /// <summary>The buttons held on any gamepad, the left stick as the cross.</summary>
         public CouchButtons Read()
         {
+            RightStick = default;
             CouchButtons held = CouchButtons.None;
             if (library != IntPtr.Zero)
             {
@@ -112,7 +124,8 @@ namespace gamevault.Helper
         // SDL's game controller: its buttons and axes
         private static readonly (int Button, CouchButtons Flag)[] SdlButtons =
         {
-            (0, CouchButtons.A), (1, CouchButtons.B), (2, CouchButtons.X), (3, CouchButtons.Y), (6, CouchButtons.Start),
+            (0, CouchButtons.A), (1, CouchButtons.B), (2, CouchButtons.X), (3, CouchButtons.Y), (4, CouchButtons.Back), (6, CouchButtons.Start),
+            (7, CouchButtons.LeftStick), (8, CouchButtons.RightStick),
             (9, CouchButtons.LeftShoulder), (10, CouchButtons.RightShoulder),
             (11, CouchButtons.Up), (12, CouchButtons.Down), (13, CouchButtons.Left), (14, CouchButtons.Right),
         };
@@ -139,6 +152,7 @@ namespace gamevault.Helper
                     if (button!(controller, index) != 0)
                         held |= flag;
                 held |= Stick(axis!(controller, 0), axis(controller, 1), down: true);
+                Aim(axis(controller, 2), axis(controller, 3));
                 if (axis(controller, 4) > Pulled)
                     held |= CouchButtons.LeftTrigger;
                 if (axis(controller, 5) > Pulled)
@@ -176,11 +190,12 @@ namespace gamevault.Helper
         private static readonly (ushort Button, CouchButtons Flag)[] XInputButtons =
         {
             (0x0001, CouchButtons.Up), (0x0002, CouchButtons.Down), (0x0004, CouchButtons.Left), (0x0008, CouchButtons.Right),
-            (0x0010, CouchButtons.Start), (0x0100, CouchButtons.LeftShoulder), (0x0200, CouchButtons.RightShoulder),
+            (0x0010, CouchButtons.Start), (0x0020, CouchButtons.Back), (0x0040, CouchButtons.LeftStick), (0x0080, CouchButtons.RightStick),
+            (0x0100, CouchButtons.LeftShoulder), (0x0200, CouchButtons.RightShoulder),
             (0x1000, CouchButtons.A), (0x2000, CouchButtons.B), (0x4000, CouchButtons.X), (0x8000, CouchButtons.Y),
         };
 
-        private static CouchButtons ReadXInput()
+        private CouchButtons ReadXInput()
         {
             CouchButtons held = CouchButtons.None;
             for (uint i = 0; i < 4; i++)
@@ -191,6 +206,7 @@ namespace gamevault.Helper
                     if ((state.Buttons & mask) != 0)
                         held |= flag;
                 held |= Stick(state.LeftX, state.LeftY, down: false);
+                Aim(state.RightX, (short)Math.Clamp(-(int)state.RightY, short.MinValue, short.MaxValue));
                 if (state.LeftTrigger > 90)
                     held |= CouchButtons.LeftTrigger;
                 if (state.RightTrigger > 90)

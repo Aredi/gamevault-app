@@ -18,6 +18,10 @@ namespace GameVault.Core.Couch
         Menu,
         /// <summary>Y: the search, with its keyboard on the screen.</summary>
         Search,
+        /// <summary>Back (Select): the quick access, with the sound and the PC's power.</summary>
+        Quick,
+        /// <summary>A click of the left stick: the order and the filters of the games.</summary>
+        Filter,
     }
 
     /// <summary>The buttons held on the gamepads at one moment.</summary>
@@ -28,7 +32,7 @@ namespace GameVault.Core.Couch
         Up = 1, Down = 2, Left = 4, Right = 8,
         A = 16, B = 32, X = 64, Y = 128,
         LeftShoulder = 256, RightShoulder = 512, LeftTrigger = 1024, RightTrigger = 2048,
-        Start = 4096,
+        Start = 4096, Back = 8192, LeftStick = 16384, RightStick = 32768,
     }
 
     /// <summary>
@@ -47,7 +51,7 @@ namespace GameVault.Core.Couch
             (CouchButtons.X, CouchCommand.View, false), (CouchButtons.Y, CouchCommand.Search, false),
             (CouchButtons.LeftShoulder, CouchCommand.PreviousTab, false), (CouchButtons.RightShoulder, CouchCommand.NextTab, false),
             (CouchButtons.LeftTrigger, CouchCommand.PreviousLetter, true), (CouchButtons.RightTrigger, CouchCommand.NextLetter, true),
-            (CouchButtons.Start, CouchCommand.Menu, false),
+            (CouchButtons.Start, CouchCommand.Menu, false), (CouchButtons.Back, CouchCommand.Quick, false), (CouchButtons.LeftStick, CouchCommand.Filter, false),
         };
 
         private CouchButtons held;

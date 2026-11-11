@@ -87,12 +87,15 @@ namespace GameVault.UiTests
             {
                 window.Show();
                 Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
                 couch.Show(games, Retro());
 
-                // The tabs: what is installed, the library, then each console; the first game selected
-                Assert.Equal(new[] { Loc.T("Installed games"), Loc.T("Library"), "NES" }, couch.Tabs.Select(t => t.Name));
+                // The tabs: the home, what is installed, the library, then each console; the first game selected
+                Assert.Equal(new[] { Loc.T("Home"), Loc.T("Installed games"), Loc.T("Library"), "NES" }, couch.Tabs.Select(t => t.Name));
+                Assert.True(couch.Tabs[0].IsSelected && couch.Current!.IsTile);
+                couch.Handle(CouchCommand.NextTab);
                 Assert.Equal("Hollow Tides", couch.Current!.Title);
-                Assert.True(couch.Tabs[0].IsSelected && couch.Current.IsSelected && couch.Current.Installed);
+                Assert.True(couch.Tabs[1].IsSelected && couch.Current.IsSelected && couch.Current.Installed);
                 couch.Handle(CouchCommand.NextTab);
                 Assert.Equal("Astral Drift", couch.HeroTitle);
                 Assert.Equal(new[] { Loc.T("Not played yet"), "6 " + Loc.T("GB"), Loc.T("Not installed") }, couch.Stats.Select(s => s.Value));
@@ -150,7 +153,7 @@ namespace GameVault.UiTests
 
                 // A retro game
                 couch.Handle(CouchCommand.NextTab);
-                Assert.Equal(new[] { "Metroid", "Zelda" }, couch.Tabs[2].Items.Select(i => i.Title));
+                Assert.Equal(new[] { "Metroid", "Zelda" }, couch.Tabs[3].Items.Select(i => i.Title));
                 couch.Handle(CouchCommand.Right);
                 couch.Handle(CouchCommand.Accept);
                 Assert.Equal("NES", couch.uiDetailEyebrow.Text);
@@ -170,18 +173,24 @@ namespace GameVault.UiTests
                 Assert.True(couch.uiMenu.IsVisible);
                 Assert.Equal(7, couch.MenuLines.Count);
                 Capture(window, "4-menu");
+                // Its settings: the start in this mode; B goes back to the menu
                 CouchUserControl.StartsHere = false;
                 couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Accept);
+                Assert.Equal(CouchMenu.Settings, couch.Menu);
+                couch.Handle(CouchCommand.Accept);
                 Assert.True(CouchUserControl.StartsHere);
-                Assert.Equal(Loc.T("At start: the living-room mode"), couch.MenuLines[3].Text);
-                Assert.True(couch.MenuLines[3].IsSelected);
+                Assert.Equal(Loc.T("At start: the living-room mode"), couch.MenuLines[0].Text);
+                Assert.True(couch.MenuLines[0].IsSelected);
+                couch.Handle(CouchCommand.Back);
+                Assert.Equal(CouchMenu.Main, couch.Menu);
+                Assert.True(couch.uiMenu.IsVisible);
                 bool left = false;
                 couch.LeaveRequested += () => left = true;
-                couch.Handle(CouchCommand.Down);
-                couch.Handle(CouchCommand.Down);
+                for (int line = 0; line < 5; line++)
+                    couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Accept);
                 Assert.True(left);
                 Assert.False(couch.uiMenu.IsVisible);
@@ -207,9 +216,9 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.Menu);
                 Click(() => couch.uiMenuLines.ContainerFromIndex(0));
                 Assert.False(couch.uiMenu.IsVisible);
-                Click(() => couch.uiTabs.ContainerFromIndex(1));
-                Assert.Equal(Loc.T("Library"), couch.Tabs[couch.Navigator.Tab].Name);
                 Click(() => couch.uiTabs.ContainerFromIndex(2));
+                Assert.Equal(Loc.T("Library"), couch.Tabs[couch.Navigator.Tab].Name);
+                Click(() => couch.uiTabs.ContainerFromIndex(3));
                 Assert.Equal("Metroid", couch.Current!.Title);
                 couch.Handle(CouchCommand.Right);
 
@@ -247,6 +256,7 @@ namespace GameVault.UiTests
             {
                 window.Show();
                 Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
                 couch.Show(games, Retro());
                 int tabs = couch.Tabs.Count;
                 couch.Handle(CouchCommand.View);
@@ -513,7 +523,7 @@ namespace GameVault.UiTests
 
                 // The sounds are turned off in the menu
                 CouchUserControl.SoundsOn = true;
-                couch.Handle(CouchCommand.Menu);
+                couch.ShowMenu(CouchMenu.Settings);
                 CouchLine line = couch.MenuLines.Single(l => l.Text == Loc.T("Sounds: on"));
                 await line.Run();
                 Assert.False(CouchUserControl.SoundsOn);
@@ -528,6 +538,185 @@ namespace GameVault.UiTests
                 CouchUserControl.SoundsOn = sounds;
                 window.LeaveCouch();
                 window.WindowState = before;
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task TheHome_TheMenus_AndTheSettings_OfTheLivingRoom()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            // The library reads the play times when it opens: after it, these ones stay
+            DateTime settled = DateTime.UtcNow.AddSeconds(1.5);
+            await TestSession.WaitUntil(() => DateTime.UtcNow > settled, TimeSpan.FromSeconds(10), "the library to load");
+            var records = InstallViewModel.Instance.PlayRecords.Values.ToList();
+            InstallViewModel.Instance.SetPlayRecords(new[]
+            {
+                new GameVault.Core.Library.PlayRecord(games[1].ID, DateTime.UtcNow.AddDays(-1), 90),
+                new GameVault.Core.Library.PlayRecord(games[3].ID, DateTime.UtcNow.AddDays(-5), 300),
+            });
+            var started = new List<string>();
+            var (start, open) = (CouchSystem.Start, CouchSystem.Open);
+            CouchSystem.Start = (file, arguments) => started.Add($"{file} {string.Join(" ", arguments)}");
+            CouchSystem.Open = app => started.Add("open " + app.Path);
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+
+                // The home: tiles instead of games; "Resume" opens the screen of the game played last
+                Assert.Equal(new[] { "tile:resume", "tile:random", "tile:challenge", "tile:friends", "tile:downloads", "tile:news", "tile:stats" }, couch.Tabs[0].Items.Select(i => i.Key));
+                Assert.Equal((Loc.T("Resume"), "Cinder Vale"), (couch.HeroTitle, couch.Current!.Tile!.Subtitle));
+                Assert.Empty(couch.Stats);
+                Capture(window, "6-home");
+                couch.Handle(CouchCommand.Accept);
+                Assert.True(couch.uiDetails.IsVisible);
+                Assert.Equal("Cinder Vale", couch.uiDetailTitle.Text);
+                Assert.Equal(Loc.T("Recent"), couch.Tabs[couch.Navigator.Tab].Name);
+                couch.Handle(CouchCommand.Back);
+                couch.Handle(CouchCommand.PreviousTab);
+                // An application added to the home is a tile that opens it
+                couch.AddApp(new CouchApp("Kodi", "/opt/kodi/kodi"));
+                int kodi = couch.Tabs[0].Items.FindIndex(i => i.Title == "Kodi");
+                couch.Navigator.Select(0, kodi);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal(new[] { "open /opt/kodi/kodi" }, started);
+                Assert.True(couch.uiHome.IsVisible);
+
+                // The left stick's click: the order and the filters of the lists of games
+                int library = couch.Tabs.FindIndex(t => t.Name == Loc.T("Library"));
+                couch.Handle(CouchCommand.Filter);
+                Assert.Equal(CouchMenu.Filter, couch.Menu);
+                Assert.Equal(Loc.F("Order: {0}", Loc.T("name")), couch.MenuLines[0].Text);
+                await couch.MenuLines[0].Run();
+                await couch.MenuLines[0].Run();
+                Assert.Equal(CouchSettings.ByTime, couch.Settings.Sort);
+                Assert.True(couch.uiMenu.IsVisible);
+                Assert.Equal(new[] { "Iron Meridian", "Cinder Vale", "Astral Drift" }, couch.Tabs[library].Items.Take(3).Select(i => i.Title));
+                await couch.MenuLines.Single(l => l.Text == Loc.F("Genre: {0}", Loc.T("all"))).Run();
+                Assert.Equal("Adventure", couch.Settings.Genre);
+                Assert.Equal(new[] { "Astral Drift", "Hollow Tides", "Lumen Trail", "Paper Kingdoms" }, couch.Tabs[library].Items.Select(i => i.Title));
+                await couch.MenuLines.Single(l => l.Text == Loc.T("Show everything")).Run();
+                Assert.False(couch.Settings.IsFiltered);
+                Assert.Equal(Titles, couch.Tabs[library].Items.Select(i => i.Title));
+                couch.Handle(CouchCommand.Back);
+                Assert.False(couch.uiMenu.IsVisible);
+
+                // Back (Select): the quick access; the PC's power asks first
+                started.Clear();
+                couch.Handle(CouchCommand.Quick);
+                Assert.Equal(CouchMenu.Quick, couch.Menu);
+                Assert.Equal(Loc.T("Quick access"), couch.uiMenuTitle.Text);
+                await couch.MenuLines[0].Run();
+                if (OperatingSystem.IsLinux())
+                    Assert.Equal(new[] { "pactl set-sink-volume @DEFAULT_SINK@ +5%" }, started);
+                started.Clear();
+                Task off = couch.MenuLines.Single(l => l.Text == Loc.T("Shut down")).Run();
+                Assert.NotNull(DialogService.Current);
+                couch.Handle(CouchCommand.Back);
+                await off;
+                Assert.Empty(started);
+                off = couch.MenuLines.Single(l => l.Text == Loc.T("Shut down")).Run();
+                couch.Handle(CouchCommand.Accept);
+                await off;
+                var (file, arguments) = CouchSystem.PowerCommand(CouchPower.ShutDown, OperatingSystem.IsWindows(), OperatingSystem.IsMacOS());
+                Assert.Equal(new[] { $"{file} {string.Join(" ", arguments)}" }, started);
+                Assert.Equal(("shutdown.exe", "/s /t 0"), (CouchSystem.PowerCommand(CouchPower.ShutDown, true, false).File, string.Join(" ", CouchSystem.PowerCommand(CouchPower.ShutDown, true, false).Arguments)));
+                Assert.Equal("systemctl suspend", "systemctl " + CouchSystem.PowerCommand(CouchPower.Sleep, false, false).Arguments[0]);
+                Assert.Equal("pmset", CouchSystem.PowerCommand(CouchPower.Sleep, false, true).File);
+                Assert.Null(CouchSystem.VolumeCommand(1, true, false));
+                couch.Handle(CouchCommand.Back);
+
+                // The settings: the buttons named as the player's gamepad, the color, the numbers
+                couch.ShowMenu(CouchMenu.Settings);
+                await couch.MenuLines.Single(l => l.Text == Loc.F("Buttons shown: {0}", "Xbox")).Run();
+                Assert.Equal(CouchSettings.PlayStation, couch.Settings.Buttons);
+                Assert.Contains(couch.Hints, h => h.Label == "✕");
+                Assert.Contains(couch.MenuLines, l => l.Text == Loc.F("Buttons shown: {0}", "PlayStation"));
+                couch.Settings.DynamicColors = false;
+                await couch.MenuLines.Single(l => l.Text == Loc.F("Color: {0}", Loc.T("the theme's"))).Run();
+                Assert.Equal(Avalonia.Media.Color.Parse("#7C6BFF"), couch.AccentShown);
+                couch.Handle(CouchCommand.Back);
+                couch.Handle(CouchCommand.Back);
+                couch.Navigator.Select(library, 0);
+                couch.Handle(CouchCommand.NextTab);
+                couch.Handle(CouchCommand.PreviousTab);
+                Assert.Contains(couch.Hints, h => h.Label == "L1 R1");
+                Assert.Contains(couch.Hints, h => h.Label == "L3" && h.Value == Loc.T("Filters"));
+                Assert.True(couch.uiStatsCard.IsVisible);
+                couch.ShowMenu(CouchMenu.Settings);
+                await couch.MenuLines.Single(l => l.Text == Loc.F("Numbers of the selected game: {0}", Loc.T("Yes"))).Run();
+                Assert.False(couch.uiStatsCard.IsVisible);
+                // The statistics, from the menu
+                couch.ShowMenu(CouchMenu.Stats);
+                Assert.Contains(couch.MenuLines, l => l.Text.StartsWith("1. Iron Meridian"));
+                Assert.Contains(couch.MenuLines, l => l.Text == Loc.F("Library: {0} · Consoles and retro: {1}", 8, 2));
+                couch.Handle(CouchCommand.Back);
+                Assert.Equal(CouchMenu.Main, couch.Menu);
+                couch.Handle(CouchCommand.Back);
+
+                // Nothing touched for a while: the games one after the other, until a button
+                string selected = couch.Current!.Title;
+                couch.CheckIdle(TimeSpan.FromMinutes(4));
+                Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
+                couch.CheckIdle(TimeSpan.FromMinutes(6), new Random(1));
+                Assert.Equal(CouchUserControl.Curtain.Saver, couch.CurtainShown);
+                Assert.True(couch.uiCurtain.IsVisible);
+                Assert.Contains(couch.CurtainTitle, Titles);
+                Capture(window, "7-saver");
+                couch.Handle(CouchCommand.Right);
+                Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
+                Assert.Equal(selected, couch.Current!.Title);
+                couch.Settings.ScreenSaverMinutes = 0;
+                couch.CheckIdle(TimeSpan.FromHours(2));
+                Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
+                // A game that starts shows its picture
+                couch.ShowSplash(couch.Current);
+                Assert.Equal((CouchUserControl.Curtain.Splash, selected), (couch.CurtainShown, couch.CurtainTitle));
+                couch.Handle(CouchCommand.Accept);
+                Assert.False(couch.uiCurtain.IsVisible);
+                Assert.True(couch.uiHome.IsVisible);
+
+                // The menu over a game: its lines with the gamepad, whatever is behind
+                int resumed = 0, quit = 0;
+                couch.OpenOverlay("Hades", () => resumed++, () => quit++);
+                Assert.NotNull(couch.Overlay);
+                couch.Handle(CouchCommand.Right);
+                Assert.Equal(selected, couch.Current!.Title);
+                couch.Handle(CouchCommand.Down);
+                Assert.Equal(1, couch.Overlay!.Selected);
+                couch.Handle(CouchCommand.Accept);
+                Assert.Equal((0, 1), (resumed, quit));
+                Assert.Null(couch.Overlay);
+                couch.OpenOverlay("Hades", () => resumed++, () => quit++);
+                couch.Handle(CouchCommand.Back);
+                Assert.Equal((1, 1), (resumed, quit));
+                Assert.Null(couch.Overlay);
+
+                // The mouse with the right stick: nothing near its rest, fast at its end, what is under a pixel kept
+                (double X, double Y) rest = default;
+                Assert.Equal((0, 0), CouchUserControl.MouseStep((0.1, 0.05), ref rest));
+                Assert.Equal((23, 0), CouchUserControl.MouseStep((1, 0), ref rest));
+                rest = default;
+                var slow = Enumerable.Range(0, 4).Select(_ => CouchUserControl.MouseStep((0, 0.3), ref rest).Y).ToList();
+                Assert.InRange(slow.Sum(), 6, 9);
+                Assert.All(slow, step => Assert.InRange(step, 1, 3));
+            }
+            finally
+            {
+                while (DialogService.Current is { } left)
+                    left.Cancel();
+                (CouchSystem.Start, CouchSystem.Open) = (start, open);
+                couch.Settings = new CouchSettings();
+                couch.SaveSettings();
+                window.Close();
+                InstallViewModel.Instance.SetPlayRecords(records);
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
             }
         }
 
@@ -553,6 +742,16 @@ namespace GameVault.UiTests
                 Assert.True(window.FindControl<Grid>("uiDesktop")!.IsVisible);
                 Assert.Equal(before, window.WindowState);
                 window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
+                Assert.True(window.IsCouchShown);
+
+                // Opened at the client's start: the welcome, until a button is pressed
+                window.LeaveCouch();
+                window.EnterCouch(welcome: true);
+                var couch = window.FindControl<CouchUserControl>("uiCouch")!;
+                Assert.Equal(CouchUserControl.Curtain.Welcome, couch.CurtainShown);
+                Assert.Equal(Loc.F("Hello {0}", "admin"), couch.CurtainTitle);
+                window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+                Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
                 Assert.True(window.IsCouchShown);
             }
             finally

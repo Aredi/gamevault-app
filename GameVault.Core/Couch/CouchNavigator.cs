@@ -221,6 +221,13 @@ namespace GameVault.Core.Couch
             }
         }
 
+        /// <summary>A menu is opened over what is shown (the quick access, the filters): its first line selected.</summary>
+        public void OpenMenu()
+        {
+            MenuLine = 0;
+            Screen = CouchScreen.Menu;
+        }
+
         /// <summary>The mouse points at a tab: shown with the game it had.</summary>
         public void SelectTab(int tab)
         {

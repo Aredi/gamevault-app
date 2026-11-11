@@ -78,13 +78,13 @@ namespace gamevault.Windows
             Opened += (_, _) =>
             {
                 if (UserControls.CouchUserControl.StartsHere)
-                    EnterCouch();
+                    EnterCouch(welcome: true);
             };
         }
 
         internal bool IsCouchShown => uiCouch.IsVisible;
 
-        internal void EnterCouch()
+        internal void EnterCouch(bool welcome = false)
         {
             if (uiCouch.IsVisible)
                 return;
@@ -94,7 +94,7 @@ namespace gamevault.Windows
             uiDesktop.IsVisible = false;
             WindowState = WindowState.FullScreen;
             ZoomForCouch();
-            _ = uiCouch.OpenAsync();
+            _ = uiCouch.OpenAsync(welcome);
         }
 
         /// <summary>The client's windows and questions are made for a desk: larger on a TV, as much as the screen is taller than them.</summary>

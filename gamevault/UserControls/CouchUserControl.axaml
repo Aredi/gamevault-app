@@ -185,7 +185,13 @@
                                     <Panel Classes="couchCard" Classes.selected="{Binding IsSelected}" Width="184" Height="252">
                                         <Border CornerRadius="14" ClipToBounds="True" Background="#1FFFFFFF">
                                             <Panel>
-                                                <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
+                                                <!-- A tile of the home: what it is, and what it tells -->
+                                                <Border IsVisible="{Binding IsTile}" Background="{DynamicResource Brush.Accent}" Opacity="0.55" />
+                                                <StackPanel IsVisible="{Binding IsTile}" VerticalAlignment="Bottom" Margin="14,0,14,16" Spacing="6">
+                                                    <TextBlock Text="{Binding Tile.Title}" FontSize="19" FontWeight="Bold" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding Tile.Subtitle}" FontSize="14" Opacity="0.85" TextWrapping="Wrap" MaxLines="5" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Title}" IsVisible="{Binding !IsTile}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12" Opacity="0.8" />
                                                 <local:CacheImage ImageCacheType="GameCover" Data="{Binding Pc}" Stretch="UniformToFill" IsVisible="{Binding IsPc}" />
                                                 <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding IsRetro}" />
@@ -295,7 +301,7 @@
                 <Border Grid.RowSpan="3" x:Name="uiMenu" Background="#CC05070B" IsVisible="False">
                     <Border Classes="couchGlass" Width="560" Padding="34,30" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <StackPanel Spacing="18">
-                            <TextBlock Text="{l:T 'Living-room mode'}" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="30" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="uiMenuTitle" Text="{l:T 'Living-room mode'}" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="30" HorizontalAlignment="Center" />
                             <ItemsControl x:Name="uiMenuLines">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -314,6 +320,31 @@
                         </StackPanel>
                     </Border>
                 </Border>
+
+                <!-- Over everything: the screensaver, a game that starts, the welcome -->
+                <Panel Grid.RowSpan="3" x:Name="uiCurtain" Background="#05070B" IsVisible="False">
+                    <local:CacheImage x:Name="uiCurtainPc" ImageCacheType="GameBackground" FallbackToCover="True" Stretch="UniformToFill" IsVisible="False" />
+                    <Image x:Name="uiCurtainRetro" Stretch="UniformToFill" IsVisible="False" />
+                    <Border>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                <GradientStop Offset="0" Color="#3305070B" />
+                                <GradientStop Offset="0.5" Color="#3305070B" />
+                                <GradientStop Offset="1" Color="#F205070B" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <StackPanel Margin="96,0,96,90" VerticalAlignment="Bottom" Spacing="14">
+                        <Border x:Name="uiCurtainAvatarFrame" Width="110" Height="110" CornerRadius="55" ClipToBounds="True" Background="#22FFFFFF" HorizontalAlignment="Left" IsVisible="False">
+                            <local:CacheImage x:Name="uiCurtainAvatar" ImageCacheType="UserAvatar" Stretch="UniformToFill" />
+                        </Border>
+                        <TextBlock x:Name="uiCurtainTitle" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="72" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="uiCurtainText" FontSize="24" Opacity="0.8" />
+                    </StackPanel>
+                    <TextBlock x:Name="uiCurtainClock" FontSize="44" FontWeight="SemiBold" Margin="0,60,96,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                </Panel>
+                <!-- Read for its color only: the accent follows the selected game's cover -->
+                <local:CacheImage x:Name="uiAccentProbe" ImageCacheType="GameCover" ComputeAccent="True" Width="2" Height="3" Opacity="0" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" />
             </Grid>
         </LayoutTransformControl>
     </Panel>

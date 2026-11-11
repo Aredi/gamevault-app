@@ -26,17 +26,30 @@ namespace gamevault.UserControls
     {
         public Game? Pc { get; init; }
         public RetroGame? Retro { get; init; }
+        /// <summary>Not a game: a tile of the home (resume, the challenge, an application).</summary>
+        public CouchTile? Tile { get; init; }
         public bool IsPc => Pc != null;
         public bool IsRetro => Retro != null;
-        public string Title => Retro?.Name ?? Pc?.Title ?? "";
+        public bool IsTile => Tile != null;
+        public string Title => Tile?.Title ?? Retro?.Name ?? Pc?.Title ?? "";
         /// <summary>The same game in two tabs is the same game.</summary>
-        public string Key => Retro != null ? $"retro:{Retro.Platform.Slug}:{Retro.Id}" : $"pc:{Pc!.ID}";
+        public string Key => Tile != null ? $"tile:{Tile.Id}" : Retro != null ? $"retro:{Retro.Platform.Slug}:{Retro.Id}" : $"pc:{Pc!.ID}";
 
         private bool installed;
         public bool Installed { get => installed; set { if (installed != value) { installed = value; OnPropertyChanged(); } } }
 
         private bool isSelected;
         public bool IsSelected { get => isSelected; set { if (isSelected != value) { isSelected = value; OnPropertyChanged(); } } }
+    }
+
+    /// <summary>A tile of the home: what it is, what it tells now, and what A does on it.</summary>
+    internal sealed class CouchTile : ViewModelBase
+    {
+        public string Id { get; init; } = "";
+        public string Title { get; init; } = "";
+        private string subtitle = "";
+        public string Subtitle { get => subtitle; set { if (subtitle != value) { subtitle = value; OnPropertyChanged(); } } }
+        public Func<Task> Run { get; init; } = () => Task.CompletedTask;
     }
 
     internal sealed class CouchTab : ViewModelBase
@@ -126,14 +139,18 @@ namespace gamevault.UserControls
             SizeChanged += (_, _) => Fit();
             uiKeyboard.Typed += Type;
             Tapped += Pointed;
+            InitMore();
             // The second click of two fast ones is a double tap, not a tap: it opens what the first one selected
             DoubleTapped += Pointed;
         }
 
         /// <summary>The living-room mode is shown: its games are read again, the gamepads listened to.</summary>
-        internal async Task OpenAsync()
+        internal async Task OpenAsync(bool welcome = false)
         {
             IsVisible = true;
+            idle.Restart();
+            if (welcome)
+                ShowWelcome();
             Focus();
             Fit();
             uiAvatar.Data = MainWindowViewModel.Instance.UserAvatar;
@@ -155,6 +172,9 @@ namespace gamevault.UserControls
             audio?.Dispose();
             audio = null;
             StopEditing();
+            CloseOverlay();
+            HideCurtain();
+            ApplyMouse(CouchButtons.None, default);
             IsVisible = false;
         }
 
@@ -208,6 +228,7 @@ namespace gamevault.UserControls
                 try { retro = await MainWindowViewModel.Instance.Retro.AllGamesAsync(); }
                 catch (Exception ex) { Log.Ignored(ex); }
                 Show(pc.Values, retro);
+                _ = LoadChallengeAsync();
             }
             finally { loading = false; }
         }
@@ -233,9 +254,11 @@ namespace gamevault.UserControls
             var favorites = ByTitle(pc.Concat(retro).Where(IsFavorite), i => i.Title).ToList();
             if (favorites.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Favorites"), Items = favorites });
-            tabs.Add(new CouchTab { Name = Loc.T("Library"), Items = pc });
+            tabs.Add(new CouchTab { Name = Loc.T("Library"), Items = Filtered(pc) });
             foreach (var platform in retro.GroupBy(i => i.Retro!.Platform.Name).OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
-                tabs.Add(new CouchTab { Name = platform.Key, Items = platform.ToList() });
+                tabs.Add(new CouchTab { Name = platform.Key, Items = Filtered(platform.ToList()) });
+            genres = CouchFilter.Genres(pc.Concat(retro).Select(EntryOf));
+            tabs.Insert(0, new CouchTab { Name = Loc.T("Home"), Items = HomeTiles(recent.FirstOrDefault()) });
 
             all = pc.Concat(retro).ToList();
             baseTabs = tabs;
@@ -333,7 +356,7 @@ namespace gamevault.UserControls
         internal static bool IsFavorite(CouchItem item)
         {
             int me = LoginManager.Instance.GetCurrentUser()?.ID ?? -1;
-            return item.Retro?.IsFavorite ?? item.Pc!.BookmarkedUsers?.Any(u => u.ID == me) == true;
+            return !item.IsTile && (item.Retro?.IsFavorite ?? item.Pc!.BookmarkedUsers?.Any(u => u.ID == me) == true);
         }
 
         private async Task SetFavoriteAsync(CouchItem item, bool favorite)
@@ -405,6 +428,9 @@ namespace gamevault.UserControls
             // A game is played, or another window is in front: its gamepad is not ours
             bool listen = TopLevel.GetTopLevel(this) is Window { IsActive: true } && IsVisible;
             CouchButtons held = gamepad.Read();
+            TickMore(held, listen);
+            if (overlay != null)
+                listen = padListened = true;
             if (!listen || !padListened)
             {
                 // What is held when the menu comes back is not a press
@@ -457,6 +483,18 @@ namespace gamevault.UserControls
 
         internal void Handle(CouchCommand command)
         {
+            idle.Restart();
+            // The screensaver, a game's picture while it starts, the welcome: any button takes it away
+            if (uiCurtain.IsVisible)
+            {
+                HideCurtain();
+                return;
+            }
+            if (overlay != null)
+            {
+                overlay.Handle(command);
+                return;
+            }
             // A question of the client (delete? where to install?): its answers, from left to right
             if (DialogService.Current is { Input: null } dialog)
             {
@@ -495,6 +533,8 @@ namespace gamevault.UserControls
                 }
                 return;
             }
+            if (HandleMore(command))
+                return;
             int tab = Navigator.Tab;
             CouchItem? before = Current;
             CouchEffect effect = Navigator.Apply(command);
@@ -739,11 +779,11 @@ namespace gamevault.UserControls
         {
             uiHero.IsVisible = item != null && !Navigator.IsGrid && !Searching;
             uiTitle.Text = uiGridTitle.Text = item?.Title ?? "";
-            uiEyebrow.Text = item == null ? "" : (item.Retro?.Platform.Name ?? Loc.T("Library")).ToUpper(CultureInfo.CurrentCulture);
+            uiEyebrow.Text = item == null ? "" : (item.IsTile ? Loc.T("Home") : item.Retro?.Platform.Name ?? Loc.T("Library")).ToUpper(CultureInfo.CurrentCulture);
             uiMeta.Text = item == null ? "" : MetaOf(item);
             Stats = item == null ? Array.Empty<CouchStat>() : StatsOf(item);
             uiStats.ItemsSource = Stats;
-            uiStatsCard.IsVisible = Stats.Count > 0;
+            uiStatsCard.IsVisible = Stats.Count > 0 && Settings.ShowStats;
             int generation = ++backGeneration;
             DispatcherTimer.RunOnce(() =>
             {
@@ -762,16 +802,19 @@ namespace gamevault.UserControls
             {
                 if (!ReferenceEquals(item, shownBack))
                     return;
-                uiBackPc.IsVisible = item?.Pc != null;
-                uiBackRetro.IsVisible = item?.Retro != null;
-                if (item?.Pc != null)
-                    uiBackPc.Data = item.Pc;
-                if (item?.Retro is RetroGame retro)
+                // The home's tiles are over the picture of the game played last
+                CouchItem? art = item?.IsTile == true ? homeArt : item;
+                uiBackPc.IsVisible = art?.Pc != null;
+                uiBackRetro.IsVisible = art?.Retro != null;
+                ShowAccent(item);
+                if (art?.Pc != null)
+                    uiBackPc.Data = art.Pc;
+                if (art?.Retro is RetroGame retro)
                 {
                     uiBackRetro.Source = retro.Banner;
-                    _ = ShowRetroBackAsync(item, retro);
+                    _ = ShowRetroBackAsync(item!, retro);
                 }
-                uiBack.Opacity = item == null ? 0 : 1;
+                uiBack.Opacity = art == null ? 0 : item!.IsTile ? 0.55 : 1;
             }, TimeSpan.FromMilliseconds(140));
         }
 
@@ -789,11 +832,13 @@ namespace gamevault.UserControls
 
         private static string Minutes(int minutes) => (string)new Converter.GameTimeConverter().Convert(minutes, typeof(string), null, CultureInfo.CurrentCulture)!;
 
-        private static int MinutesOf(CouchItem item) => item.Retro?.MinutesPlayed
+        private static int MinutesOf(CouchItem item) => item.IsTile ? 0 : item.Retro?.MinutesPlayed
             ?? (InstallViewModel.Instance.PlayRecords.TryGetValue(item.Pc!.ID, out var record) ? record.MinutesPlayed : 0);
 
         private static string MetaOf(CouchItem item)
         {
+            if (item.Tile != null)
+                return item.Tile.Subtitle;
             if (item.Retro is RetroGame retro)
                 return retro.Info;
             Game game = item.Pc!;
@@ -805,6 +850,8 @@ namespace gamevault.UserControls
         private static IReadOnlyList<CouchStat> StatsOf(CouchItem item)
         {
             var stats = new List<CouchStat>();
+            if (item.IsTile)
+                return stats;
             int minutes = MinutesOf(item);
             stats.Add(new CouchStat(Loc.T("Play time"), minutes > 0 ? Minutes(minutes) : Loc.T("Not played yet")));
             string? size = item.Retro != null ? (item.Retro.Size > 0 ? item.Retro.SizeText : null)
@@ -855,7 +902,11 @@ namespace gamevault.UserControls
                     new CouchStat("LB RB", Loc.T("Tabs")), new CouchStat("LT RT", Loc.T("Letters")), new CouchStat("START", Loc.T("Menu")),
                 },
             };
+            if (!Searching && screen == CouchScreen.Home)
+                Hints = Hints.Concat(new[] { new CouchStat("BACK", Loc.T("Quick access")), new CouchStat("L3", Loc.T("Filters")) }).ToArray();
+            Hints = Hints.Select(h => h with { Label = CouchGlyphs.Label(Settings.Buttons, h.Label) }).ToArray();
             uiHints.ItemsSource = Hints;
+            uiMenuTitle.Text = MenuTitle;
             Dispatcher.UIThread.Post(ScrollToSelection, DispatcherPriority.Background);
         }
 
@@ -880,6 +931,8 @@ namespace gamevault.UserControls
             int generation = ++detailGeneration;
             if (item.Retro is RetroGame retro && RommAccount.IsLinked)
                 _ = ShowAchievementsAsync(item, retro, generation);
+            if (item.Pc != null)
+                _ = ShowFriendsAsync(item, generation);
         }
 
         /// <summary>A retro game's achievements earned, among its numbers, once RomM answered.</summary>
@@ -932,7 +985,7 @@ namespace gamevault.UserControls
             if (item.Retro is RetroGame retro)
             {
                 if (item.Installed)
-                    lines.Add(new CouchLine { Text = Loc.T("Play"), Run = () => RetroPlay.PlayAsync(retro) });
+                    lines.Add(new CouchLine { Text = Loc.T("Play"), Run = () => { ShowSplash(item); return RetroPlay.PlayAsync(retro); } });
                 else
                 {
                     lines.Add(new CouchLine { Text = Loc.T("Install and play"), Run = () => RetroPlay.InstallAsync(retro, playWhenDone: true) });
@@ -947,7 +1000,7 @@ namespace gamevault.UserControls
             {
                 Game game = item.Pc!;
                 if (item.Installed)
-                    lines.Add(new CouchLine { Text = Loc.T("Play"), Run = () => InstallUserControl.PlayGame(game.ID) });
+                    lines.Add(new CouchLine { Text = Loc.T("Play"), Run = () => { ShowSplash(item); return InstallUserControl.PlayGame(game.ID); } });
                 else
                 {
                     lines.Add(new CouchLine { Text = Loc.T("Install and play"), Run = () => MainWindowViewModel.Instance.Downloads.InstallAndPlay(game) });
@@ -970,23 +1023,6 @@ namespace gamevault.UserControls
             lines.Add(new CouchLine { Text = favorite ? Loc.T("Remove from the favorites") : Loc.T("Add to the favorites"), Run = () => SetFavoriteAsync(item, !favorite) });
             if (item.Installed)
                 lines.Add(new CouchLine { Text = Loc.T("Uninstall"), Run = () => UninstallAsync(item) });
-        }
-
-        private void BuildMenu()
-        {
-            bool atStart = StartsHere;
-            MenuLines = new List<CouchLine>
-            {
-                new() { Text = Loc.T("Back to the games"), Run = () => { Navigator.CloseMenu(); ShowScreen(); return Task.CompletedTask; } },
-                new() { Text = Loc.T("A game at random"), Run = () => { OpenRandom(); return Task.CompletedTask; } },
-                new() { Text = Loc.T("Read the games again"), Run = async () => { Navigator.CloseMenu(); ShowScreen(); await LoadAsync(); } },
-                new() { Text = atStart ? Loc.T("At start: the living-room mode") : Loc.T("At start: the desktop"), Run = () => { StartsHere = !atStart; BuildMenu(); ShowScreen(false); return Task.CompletedTask; } },
-                new() { Text = SoundsOn ? Loc.T("Sounds: on") : Loc.T("Sounds: off"), Run = () => { SoundsOn = !SoundsOn; BuildMenu(); ShowScreen(false); return Task.CompletedTask; } },
-                new() { Text = Loc.T("Back to the desktop"), Run = () => { Navigator.CloseMenu(); ShowScreen(); LeaveRequested?.Invoke(); return Task.CompletedTask; } },
-                new() { Text = Loc.T("Quit SanctuaryVault"), Run = () => App.Instance.ExitApp() },
-            };
-            Navigator.MenuCount = MenuLines.Count;
-            uiMenuLines.ItemsSource = MenuLines;
         }
 
         /// <summary>The client opens in the living-room mode (a PC plugged to the TV).</summary>
@@ -1021,8 +1057,11 @@ namespace gamevault.UserControls
         {
             ShowClock();
             HashSet<int>? installed = null;
+            RefreshMore();
             foreach (CouchItem item in Navigator.Tab < Tabs.Count ? Tabs[Navigator.Tab].Items : new())
             {
+                if (item.IsTile)
+                    continue;
                 bool now = item.Retro?.Installed ?? (installed ??= InstalledPc()).Contains(item.Pc!.ID);
                 if (now == item.Installed)
                     continue;
@@ -1038,7 +1077,7 @@ namespace gamevault.UserControls
             {
                 ShowStatus(current);
                 // A screenshot after 3 seconds, then one every 6
-                if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null)
+                if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null && !Settings.Performance)
                     _ = NextShotAsync(current);
             }
             DialogService.Current?.Mark();

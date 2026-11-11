@@ -176,3 +176,78 @@ namespace GameVault.Core.Tests
         }
     }
 }
+
+namespace GameVault.Core.Tests
+{
+    public class CouchSettingsTests
+    {
+        [Fact]
+        public void TheSettings_AreKept_AndAWrongFileGivesTheUsualOnes()
+        {
+            string file = Path.Combine(Path.GetTempPath(), "gv-couch-" + Guid.NewGuid().ToString("N") + ".json");
+            try
+            {
+                Assert.Equal(CouchSettings.Xbox, CouchSettings.Load(file).Buttons);
+                var settings = new CouchSettings { Buttons = CouchSettings.PlayStation, Accent = "#2F9BFF", ScreenSaverMinutes = 0, Sort = CouchSettings.ByTime, Genre = "RPG" };
+                settings.Apps.Add(new CouchApp("Kodi", "C:\\Kodi\\kodi.exe", "-fs"));
+                settings.Save(file);
+                CouchSettings read = CouchSettings.Load(file);
+                Assert.Equal((CouchSettings.PlayStation, "#2F9BFF", 0, CouchSettings.ByTime, "RPG"), (read.Buttons, read.Accent, read.ScreenSaverMinutes, read.Sort, read.Genre));
+                Assert.Equal(new CouchApp("Kodi", "C:\\Kodi\\kodi.exe", "-fs"), Assert.Single(read.Apps));
+                Assert.True(read.IsFiltered);
+
+                File.WriteAllText(file, "{\"Buttons\":\"dreamcast\",\"Sort\":\"size\",\"ScreenSaverMinutes\":900,\"Apps\":null}");
+                read = CouchSettings.Load(file);
+                Assert.Equal((CouchSettings.Xbox, CouchSettings.ByName, 60), (read.Buttons, read.Sort, read.ScreenSaverMinutes));
+                Assert.Empty(read.Apps);
+                File.WriteAllText(file, "not json");
+                Assert.False(CouchSettings.Load(file).IsFiltered);
+            }
+            finally { File.Delete(file); }
+            Assert.Equal("b", CouchSettings.Next(new[] { "a", "b" }, "a"));
+            Assert.Equal("a", CouchSettings.Next(new[] { "a", "b" }, "b"));
+            Assert.Equal("a", CouchSettings.Next(new[] { "a", "b" }, "unknown"));
+        }
+
+        [Fact]
+        public void TheHints_NameTheButtonsOfThePlayersGamepad()
+        {
+            Assert.Equal("A", CouchGlyphs.Label(CouchSettings.Xbox, "A"));
+            Assert.Equal("✕", CouchGlyphs.Label(CouchSettings.PlayStation, "A"));
+            Assert.Equal("L1 R1", CouchGlyphs.Label(CouchSettings.PlayStation, "LB RB"));
+            Assert.Equal("OPTIONS", CouchGlyphs.Label(CouchSettings.PlayStation, "START"));
+            // The same place on a Switch gamepad has the other letter
+            Assert.Equal("B", CouchGlyphs.Label(CouchSettings.Switch, "A"));
+            Assert.Equal("ZL ZR", CouchGlyphs.Label(CouchSettings.Switch, "LT RT"));
+            Assert.Equal("L3", CouchGlyphs.Label(CouchSettings.Switch, "L3"));
+        }
+
+        [Fact]
+        public void TheGames_AreFilteredAndOrdered()
+        {
+            var games = new[]
+            {
+                new CouchEntry("Astral", true, 120, new DateTime(2026, 11, 1), new[] { "RPG" }),
+                new CouchEntry("Cinder", false, 0, null, new[] { "Strategy", "RPG" }),
+                new CouchEntry("Hollow", true, 900, new DateTime(2026, 10, 1), new[] { "Adventure" }),
+                new CouchEntry("Iron", false, 30, new DateTime(2026, 11, 9), Array.Empty<string>()),
+            };
+            Assert.Equal(new[] { 0, 1, 2, 3 }, CouchFilter.Apply(games, new CouchSettings()));
+            Assert.Equal(new[] { 0, 2 }, CouchFilter.Apply(games, new CouchSettings { InstalledOnly = true }));
+            Assert.Equal(new[] { 1 }, CouchFilter.Apply(games, new CouchSettings { NeverPlayed = true }));
+            Assert.Equal(new[] { 0, 1 }, CouchFilter.Apply(games, new CouchSettings { Genre = "rpg" }));
+            Assert.Equal(new[] { 3, 0, 2, 1 }, CouchFilter.Apply(games, new CouchSettings { Sort = CouchSettings.ByRecent }));
+            Assert.Equal(new[] { 2, 0 }, CouchFilter.Apply(games, new CouchSettings { Sort = CouchSettings.ByTime, InstalledOnly = true }));
+            Assert.Equal(new[] { "Adventure", "RPG", "Strategy" }, CouchFilter.Genres(games));
+        }
+
+        [Fact]
+        public void TheNewButtons_AreTheQuickAccessAndTheFilters()
+        {
+            var pad = new CouchRepeater();
+            Assert.Equal(new[] { CouchCommand.Quick, CouchCommand.Filter }, pad.Next(CouchButtons.Back | CouchButtons.LeftStick, TimeSpan.Zero));
+            // The right stick's click is the mouse's, not a command
+            Assert.Empty(pad.Next(CouchButtons.RightStick, TimeSpan.FromSeconds(1)));
+        }
+    }
+}
