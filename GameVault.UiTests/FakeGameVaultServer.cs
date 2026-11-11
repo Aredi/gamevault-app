@@ -40,6 +40,8 @@ namespace GameVault.UiTests
         public ConcurrentQueue<string> ChallengesSet { get; } = new();
         /// <summary>The next minute said completes the challenge.</summary>
         public bool ChallengeDoneNext { get; set; }
+        /// <summary>The games' logos the service has, by their path ("/logos/pc/12", "/retro/games/40/logo").</summary>
+        public ConcurrentDictionary<string, byte[]> Logos { get; } = new();
         /// <summary>The games the player bookmarked or not ("POST 12", "DELETE 12").</summary>
         public ConcurrentQueue<string> Bookmarks { get; } = new();
         /// <summary>When the others read each conversation ("Seen").</summary>
@@ -484,6 +486,17 @@ namespace GameVault.UiTests
                     string key = $"{play.RootElement.GetProperty("platform").GetString()}:{play.RootElement.GetProperty("romId").GetInt32()}";
                     RetroMinutes.AddOrUpdate(key, play.RootElement.GetProperty("minutes").GetInt32(), (_, m) => m + play.RootElement.GetProperty("minutes").GetInt32());
                     response.StatusCode = 204;
+                }
+                else if (path == "/logos/pc" || path.StartsWith("/logos/pc/") || Regex.IsMatch(path, @"^/retro/games/\d+/logo$"))
+                {
+                    if (Logos.TryGetValue(path, out byte[]? logo))
+                    {
+                        response.ContentType = "image/png";
+                        response.ContentLength64 = logo.Length;
+                        await response.OutputStream.WriteAsync(logo);
+                    }
+                    else
+                        response.StatusCode = 404;
                 }
                 else if ((match = Regex.Match(path, @"^/api/users/me/bookmark/(\d+)$")).Success)
                 {

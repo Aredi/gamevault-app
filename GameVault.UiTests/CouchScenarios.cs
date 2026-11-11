@@ -721,6 +721,78 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheSelectedGame_ShowsItsLogo_InsteadOfItsName_WhenTheServerHasOne()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            // COUCH_LOGO: a real logo for the screenshot; else a small white picture
+            byte[] logo = Environment.GetEnvironmentVariable("COUCH_LOGO") is { Length: > 0 } file && File.Exists(file) ? File.ReadAllBytes(file) : Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAgAAAADCAYAAACuyE5IAAAAFUlEQVR4nGP8////fwY8gAmfJFEKAIIZBALOunCsAAAAAElFTkSuQmCC");
+            SanctuaryService.Current = session.Server.Url;
+            GameLogoService.Forget();
+            session.Server.Logos[$"/logos/pc/{games[2].ID}"] = logo;
+            session.Server.Logos["/retro/games/40/logo"] = logo;
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+                int library = couch.Tabs.FindIndex(t => t.Name == Loc.T("Library"));
+                couch.Navigator.Select(library, 1);
+                couch.Handle(CouchCommand.PreviousTab);
+                couch.Handle(CouchCommand.NextTab);
+                // No logo for this game: its name
+                Assert.Equal("Cinder Vale", couch.HeroTitle);
+                Assert.True(couch.uiTitle.IsVisible && !couch.LogoShown);
+                // The next one has a logo: it takes the place of the name, a moment after the game is selected
+                couch.Handle(CouchCommand.Right);
+                Assert.True(couch.uiTitle.IsVisible && !couch.LogoShown);
+                await TestSession.WaitUntil(() => couch.LogoShown, TimeSpan.FromSeconds(10), "the game's logo");
+                Assert.Equal("Hollow Tides", couch.HeroTitle);
+                Assert.False(couch.uiTitle.IsVisible);
+                Assert.Contains($"GET /logos/pc/{games[2].ID}", session.Server.Requests);
+                Capture(window, "8-logo");
+                // Back on the game without one: its name again, at once
+                couch.Handle(CouchCommand.Left);
+                Assert.True(couch.uiTitle.IsVisible && !couch.LogoShown);
+                DateTime waited = DateTime.UtcNow.AddMilliseconds(600);
+                await TestSession.WaitUntil(() => DateTime.UtcNow > waited, TimeSpan.FromSeconds(5), "a moment");
+                Assert.True(couch.uiTitle.IsVisible && !couch.LogoShown);
+                // Asked once by game: the second time the logo is there without the server
+                int asked = session.Server.Requests.Count(r => r.Contains("/logos/pc/"));
+                couch.Handle(CouchCommand.Right);
+                await TestSession.WaitUntil(() => couch.LogoShown, TimeSpan.FromSeconds(10), "the game's logo again");
+                Assert.Equal(asked, session.Server.Requests.Count(r => r.Contains("/logos/pc/")));
+
+                // A retro game's logo is RomM's
+                couch.Handle(CouchCommand.NextTab);
+                couch.Handle(CouchCommand.Right);
+                Assert.Equal("Zelda", couch.HeroTitle);
+                await TestSession.WaitUntil(() => couch.LogoShown, TimeSpan.FromSeconds(10), "the retro game's logo");
+                Assert.Contains("GET /retro/games/40/logo", session.Server.Requests);
+
+                // Turned off in the settings: the names
+                couch.Settings.Logos = false;
+                couch.Handle(CouchCommand.Left);
+                couch.Handle(CouchCommand.Right);
+                waited = DateTime.UtcNow.AddMilliseconds(600);
+                await TestSession.WaitUntil(() => DateTime.UtcNow > waited, TimeSpan.FromSeconds(5), "a moment");
+                Assert.True(couch.uiTitle.IsVisible && !couch.LogoShown);
+            }
+            finally
+            {
+                window.Close();
+                SanctuaryService.Current = SanctuaryService.Url;
+                GameLogoService.Forget();
+                session.Server.Logos.Clear();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheWindow_GoesToTheLivingRoomModeAndBack_WithItsKey()
         {
             var session = await TestSession.GetAsync();

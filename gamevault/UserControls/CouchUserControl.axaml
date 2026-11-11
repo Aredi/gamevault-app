@@ -146,6 +146,8 @@
                     <Grid x:Name="uiHero" ColumnDefinitions="*,Auto" Margin="96,0,72,34" VerticalAlignment="Bottom">
                         <StackPanel Spacing="12" MaxWidth="1000" HorizontalAlignment="Left" VerticalAlignment="Bottom">
                             <TextBlock x:Name="uiEyebrow" FontSize="18" FontWeight="Bold" LetterSpacing="3" Foreground="{DynamicResource Brush.Accent}" />
+                            <!-- The game's name as drawn on its box, when the server has it: instead of the name in letters -->
+                            <Image x:Name="uiLogo" MaxHeight="200" MaxWidth="760" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,4,0,8" IsVisible="False" />
                             <TextBlock x:Name="uiTitle" FontFamily="{StaticResource Font.Display}" FontWeight="ExtraBold" FontSize="68" TextWrapping="Wrap" MaxLines="2"
                                        TextTrimming="CharacterEllipsis" LineHeight="76" />
                             <TextBlock x:Name="uiMeta" FontSize="22" Opacity="0.8" />

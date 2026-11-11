@@ -28,6 +28,8 @@ namespace GameVault.Core.Couch
         public bool Mouse { get; set; }
         /// <summary>Start + Back while a game runs shows the menu over it (Windows).</summary>
         public bool Overlay { get; set; } = true;
+        /// <summary>The selected game's logo instead of its name, when the server has one.</summary>
+        public bool Logos { get; set; } = true;
         /// <summary>The picture of a game while it starts.</summary>
         public bool Splash { get; set; } = true;
 

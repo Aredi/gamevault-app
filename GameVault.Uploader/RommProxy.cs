@@ -224,6 +224,31 @@ namespace GameVault.Uploader
             await CopyAsync(file, response, cancellationToken);
         }
 
+        /// <summary>A picture RomM keeps for a game beside its cover (its logo): a file of the game's own folder, nothing else.</summary>
+        [GeneratedRegex(@"^roms/\d+/\d+/[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*\.(png|jpe?g|webp)$")]
+        private static partial Regex ResourcePath();
+
+        /// <summary>RomM's rom as it tells it; null when it has no such rom.</summary>
+        public async Task<JsonElement?> RomAsync(int id, CancellationToken cancellationToken)
+        {
+            using HttpResponseMessage response = await SendAsync(Get($"api/roms/{id}"), cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return null;
+            using JsonDocument rom = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+            return rom.RootElement.Clone();
+        }
+
+        /// <summary>A picture of RomM's resources (5 MB at most); null when it is not there or not a picture's path.</summary>
+        public async Task<byte[]?> ResourceAsync(string path, CancellationToken cancellationToken)
+        {
+            if (!ResourcePath().IsMatch(path))
+                return null;
+            using HttpResponseMessage response = await SendAsync(Get($"assets/romm/resources/{path}"), cancellationToken);
+            if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > 5 * 1024 * 1024)
+                return null;
+            return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        }
+
         public async Task MediaAsync(string path, HttpResponse response, CancellationToken cancellationToken)
         {
             if (!MediaPath().IsMatch(path))

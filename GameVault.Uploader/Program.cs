@@ -51,6 +51,11 @@ builder.Services.AddHttpClient<PcGamingWiki>(client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd($"SanctuaryVault/{UploaderOptions.Version} (+https://github.com/Aredi/gamevault-app)");
     client.Timeout = TimeSpan.FromSeconds(20);
 });
+builder.Services.AddHttpClient<GameLogos>(client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd($"SanctuaryVault/{UploaderOptions.Version} (+https://github.com/Aredi/gamevault-app)");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 builder.Services.AddHttpClient<RommProxy>(client =>
 {
     if (!string.IsNullOrEmpty(options.RommUrl))

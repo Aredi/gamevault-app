@@ -423,6 +423,7 @@ namespace gamevault.UserControls
                 Setting(Loc.F("Color of the selected game: {0}", YesNo(Settings.DynamicColors)), () => { Settings.DynamicColors = !Settings.DynamicColors; ShowAccent(shownBack); }),
                 Setting(Loc.F("Color: {0}", Settings.Accent.Length > 0 ? Settings.Accent : Loc.T("the theme's")), () => { Settings.Accent = CouchSettings.Next(CouchSettings.Accents, Settings.Accent); ShowAccent(shownBack); }),
                 Setting(Loc.F("Numbers of the selected game: {0}", YesNo(Settings.ShowStats)), () => Settings.ShowStats = !Settings.ShowStats),
+                Setting(Loc.F("Logo of the game instead of its name: {0}", YesNo(Settings.Logos)), () => Settings.Logos = !Settings.Logos),
                 Setting(Loc.F("Light mode for a small PC: {0}", YesNo(Settings.Performance)), () => { Settings.Performance = !Settings.Performance; ShowAccent(shownBack); }),
                 Setting(Loc.F("Screensaver: {0}", saver), () => Settings.ScreenSaverMinutes = CouchSettings.Next(new[] { 5, 10, 20, 0 }, Settings.ScreenSaverMinutes)),
                 Setting(Loc.F("Picture of a game that starts: {0}", YesNo(Settings.Splash)), () => Settings.Splash = !Settings.Splash),
@@ -469,6 +470,24 @@ namespace gamevault.UserControls
             var shown = lines.Select(text => Line(text, () => { })).ToList();
             shown.Add(Line(Loc.T("Back"), () => ShowMenu(CouchMenu.Main)));
             return shown;
+        }
+
+        // --- The logo of the selected game ---
+
+        /// <summary>The selected game's logo is shown instead of its name.</summary>
+        internal bool LogoShown => uiLogo.IsVisible;
+
+        internal async Task ShowLogoAsync(CouchItem? item, int generation)
+        {
+            if (item == null || item.IsTile || !Settings.Logos)
+                return;
+            Avalonia.Media.Imaging.Bitmap? logo = item.Retro != null ? await GameLogoService.OfAsync(item.Retro) : await GameLogoService.OfAsync(item.Pc!);
+            // Another game was selected while it came
+            if (logo == null || generation != backGeneration || !Settings.Logos)
+                return;
+            uiLogo.Source = logo;
+            uiLogo.IsVisible = true;
+            uiTitle.IsVisible = false;
         }
 
         // --- The color of the selected game ---

@@ -59,6 +59,8 @@ namespace GameVault.Uploader.Tests
                             : Array.Empty<object>(),
                     }),
                 });
+            if (path.EndsWith("/api/games/8"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 8, title = "Hades" }) });
             if (path.EndsWith("/api/games/6"))
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 6, title = "Prey" }) });
             if (path.EndsWith("/api/games") && request.Headers.Authorization?.Parameter == "admin")
@@ -153,6 +155,46 @@ namespace GameVault.Uploader.Tests
     }
 
     /// <summary>RomM: one platform with one game, a cover, and the game's file sent in parts.</summary>
+    /// <summary>ScreenScraper and SteamGridDB, as the service asks them for logos.</summary>
+    internal sealed class FakeLogos : HttpMessageHandler
+    {
+        public readonly List<string> Asked = new();
+
+        /// <summary>A PNG's first bytes, then what tells which one it is.</summary>
+        public static byte[] Png(byte id) => new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, id };
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Uri uri = request.RequestUri!;
+            lock (Asked)
+                Asked.Add(uri.Host + uri.AbsolutePath);
+            HttpResponseMessage answer;
+            if (uri.Host == "neoclone.screenscraper.fr" && uri.Query.Contains("devpassword=secret"))
+                answer = new(HttpStatusCode.OK) { Content = new ByteArrayContent(Png(45)) };
+            else if (uri.Host == "www.steamgriddb.com" && request.Headers.Authorization?.Parameter != "sgdb-key")
+                answer = new(HttpStatusCode.Unauthorized);
+            else if (uri.Host == "www.steamgriddb.com" && uri.AbsolutePath.StartsWith("/api/v2/search/autocomplete/"))
+            {
+                string name = Uri.UnescapeDataString(uri.AbsolutePath.Split('/').Last());
+                object[] games = name switch { "Metroid" => new object[] { new { id = 888, name } }, "Hades" => new object[] { new { id = 999, name } }, _ => Array.Empty<object>() };
+                answer = new(HttpStatusCode.OK) { Content = JsonContent.Create(new { success = true, data = games }) };
+            }
+            else if (uri.Host == "www.steamgriddb.com" && uri.AbsolutePath.StartsWith("/api/v2/logos/game/"))
+            {
+                string id = uri.AbsolutePath.Split('/').Last();
+                // The first one is not a picture: the next is taken
+                answer = new(HttpStatusCode.OK) { Content = JsonContent.Create(new { success = true, data = new[] { new { url = "https://cdn2.steamgriddb.com/logo/broken.png" }, new { url = $"https://cdn2.steamgriddb.com/logo/{id}.png" } } }) };
+            }
+            else if (uri.Host == "cdn2.steamgriddb.com" && uri.AbsolutePath == "/logo/broken.png")
+                answer = new(HttpStatusCode.OK) { Content = new StringContent("<html>not a picture</html>") };
+            else if (uri.Host == "cdn2.steamgriddb.com")
+                answer = new(HttpStatusCode.OK) { Content = new ByteArrayContent(Png((byte)(int.Parse(Path.GetFileNameWithoutExtension(uri.AbsolutePath)) % 256))) };
+            else
+                answer = new(HttpStatusCode.NotFound);
+            return Task.FromResult(answer);
+        }
+    }
+
     internal sealed class FakeRomm : HttpMessageHandler
     {
         public static readonly byte[] Rom = System.Text.Encoding.ASCII.GetBytes("NES-ROM-CONTENT");
@@ -188,6 +230,13 @@ namespace GameVault.Uploader.Tests
                 "/api/firmware/7/content/scph5501.bin" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 1, 2, 3, 4 }) },
                 "/api/roms/40/content/Zelda%20%28E%29.nes" => Part(request),
                 "/assets/romm/resources/roms/3/40/cover/big.png" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 0x89, 0x50 }) { Headers = { ContentType = new("image/png") } } },
+                // Logos: ScreenScraper's address (with RomM's keys), a picture RomM kept, SteamGridDB's id, a name only, nothing
+                "/api/roms/45" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 45, name = "Castlevania", ss_metadata = new { logo_url = "https://neoclone.screenscraper.fr/api2/mediaJeu.php?devid=romm&devpassword=secret&media=wheel" } }) },
+                "/api/roms/46" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 46, name = "Contra", ss_metadata = new { logo_path = "roms/3/46/logo/logo.png", logo_url = "https://neoclone.screenscraper.fr/unused" } }) },
+                "/assets/romm/resources/roms/3/46/logo/logo.png" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(FakeLogos.Png(46)) },
+                "/api/roms/47" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 47, name = "Kirby", sgdb_id = 777 }) },
+                "/api/roms/48" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 48, name = "Metroid" }) },
+                "/api/roms/49" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 49, name = "Unknown Game", ss_metadata = new { logo_url = "https://evil.example/logo.png", logo_path = "roms/3/49/../../../secret.png" } }) },
                 _ => new(HttpStatusCode.NotFound),
             };
             return Task.FromResult(answer);
@@ -219,6 +268,8 @@ namespace GameVault.Uploader.Tests
         private readonly string emulators = Path.Combine(Path.GetTempPath(), $"gv-emulators-{Guid.NewGuid():N}");
         private readonly string chat = Path.Combine(Path.GetTempPath(), $"gv-chat-{Guid.NewGuid():N}");
         private readonly string challenges = Path.Combine(Path.GetTempPath(), $"gv-challenges-{Guid.NewGuid():N}");
+        private readonly string logos = Path.Combine(Path.GetTempPath(), $"gv-logos-{Guid.NewGuid():N}");
+        private readonly FakeLogos logoSites = new();
         private readonly FakeZeroTier zeroTier = new();
         private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
@@ -264,6 +315,8 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("EMULATORS_DIRECTORY", emulators);
                 host.UseSetting("CHAT_DIRECTORY", chat);
                 host.UseSetting("CHALLENGES_DIRECTORY", challenges);
+                host.UseSetting("LOGOS_DIRECTORY", logos);
+                host.UseSetting("STEAMGRIDDB_API_KEY", "sgdb-key");
                 host.UseSetting("GAMEVAULT_API_KEY", "admin-key");
                 host.ConfigureServices(services =>
                 {
@@ -271,6 +324,7 @@ namespace GameVault.Uploader.Tests
                     services.AddHttpClient<GameVaultProxy>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
                     services.AddHttpClient<GameRequestsProxy>().ConfigurePrimaryHttpMessageHandler(() => bot);
                     services.AddHttpClient<RommProxy>().ConfigurePrimaryHttpMessageHandler(() => romm);
+                    services.AddHttpClient<GameLogos>().ConfigurePrimaryHttpMessageHandler(() => logoSites);
                     services.AddHttpClient<ZeroTierController>().ConfigurePrimaryHttpMessageHandler(() => zeroTier);
                     services.AddHttpClient<PcGamingWiki>().ConfigurePrimaryHttpMessageHandler(() => wiki);
                 });
@@ -293,6 +347,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(emulators, true); } catch { }
             try { Directory.Delete(chat, true); } catch { }
             try { Directory.Delete(challenges, true); } catch { }
+            try { Directory.Delete(logos, true); } catch { }
             try { File.Delete(chat + ".key"); } catch { }
         }
 

@@ -784,11 +784,15 @@ namespace gamevault.UserControls
             Stats = item == null ? Array.Empty<CouchStat>() : StatsOf(item);
             uiStats.ItemsSource = Stats;
             uiStatsCard.IsVisible = Stats.Count > 0 && Settings.ShowStats;
+            uiLogo.IsVisible = false;
+            uiTitle.IsVisible = true;
             int generation = ++backGeneration;
             DispatcherTimer.RunOnce(() =>
             {
-                if (generation == backGeneration)
-                    ShowBack(item);
+                if (generation != backGeneration)
+                    return;
+                ShowBack(item);
+                _ = ShowLogoAsync(item, generation);
             }, TimeSpan.FromMilliseconds(220));
         }
 

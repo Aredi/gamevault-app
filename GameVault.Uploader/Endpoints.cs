@@ -30,6 +30,8 @@ namespace GameVault.Uploader
     /// POST /reports, GET /reports                a player reports a problem on a game / the reports (all for an administrator, else the player's)
     /// GET  /reports/{id}/diagnostic              what an administrator reads of a report's diagnostic
     /// POST /reports/{id}/resolve                 an administrator says a report is handled
+    /// GET  /retro/games/{romId}/logo             a retro game's logo (RomM's from ScreenScraper, else SteamGridDB's); 404 without one
+    /// GET  /logos/pc/{gameId}                    a library game's logo from SteamGridDB (STEAMGRIDDB_API_KEY); 404 without one
     /// GET  /retro/emulators                      the emulators given to retro games instead of their console's, and their games
     /// PUT|DELETE /retro/emulators/{id}           an administrator adds, changes or drops one (its builds' https links by system, its program's name; kind "recomp": a program that reads the game's files, with its arguments)
     /// PUT  /retro/emulators/games/{romId}        an administrator gives a RomM game one ({ emulator: null }: its console's again)
@@ -80,6 +82,20 @@ namespace GameVault.Uploader
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.GamesAsync(platformId, ct))));
             app.MapGet("/retro/media/{**path}", (string path, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => { await romm.MediaAsync(path, context.Response, ct); return Results.Empty; }));
+            // The games' logos for the living-room mode: fetched once, kept, and sent as pictures
+            app.MapGet("/retro/games/{romId:int}/logo", (int romId, HttpContext context, AdminCheck users, RommProxy romm, GameLogos logos, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Logo(context, await logos.RetroAsync(romId, ct))));
+            app.MapGet("/logos/pc/{gameId:int}", async (int gameId, HttpContext context, AdminCheck users, GameVaultProxy gameVault, GameLogos logos, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(context.Request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!logos.HasSteamGrid)
+                    return Results.NotFound();
+                // The game's title as the server has it: a player does not choose what is searched
+                var game = await gameVault.GetGameAsync(context.Request.Headers.Authorization.ToString(), gameId, ct);
+                return game == null ? Results.NotFound() : Logo(context, await logos.PcAsync(gameId, game.Title, ct));
+            });
             app.MapGet("/retro/platforms/{platformId:int}/firmware", (int platformId, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.FirmwareAsync(platformId, ct))));
             app.MapGet("/retro/firmware/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
@@ -759,6 +775,18 @@ namespace GameVault.Uploader
             {
                 return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status502BadGateway);
             }
+        }
+
+        private static IResult Logo(HttpContext context, string? file)
+        {
+            if (file == null)
+                return Results.NotFound();
+            byte[] start = new byte[12];
+            using (FileStream stream = File.OpenRead(file))
+                stream.ReadAtLeast(start, start.Length, throwOnEndOfStream: false);
+            // Kept by the client too: a game's logo does not change
+            context.Response.Headers.CacheControl = "private, max-age=604800";
+            return Results.File(file, GameLogos.TypeOf(start) ?? "application/octet-stream");
         }
 
         private static IResult EmulatorsOff() => Results.Json(new { error = "Emulators by game are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
