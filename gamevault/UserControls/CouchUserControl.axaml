@@ -181,22 +181,8 @@
         <Panel x:Name="uiBack" Opacity="0" RenderTransformOrigin="50%,40%">
             <Panel.RenderTransform>
                 <TransformGroup>
-                    <ScaleTransform ScaleX="1.02" ScaleY="1.02">
-                        <ScaleTransform.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="ScaleX" Duration="0:0:2" Easing="SineEaseInOut" />
-                                <DoubleTransition Property="ScaleY" Duration="0:0:2" Easing="SineEaseInOut" />
-                            </Transitions>
-                        </ScaleTransform.Transitions>
-                    </ScaleTransform>
-                    <TranslateTransform>
-                        <TranslateTransform.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="X" Duration="0:0:2" Easing="SineEaseInOut" />
-                                <DoubleTransition Property="Y" Duration="0:0:2" Easing="SineEaseInOut" />
-                            </Transitions>
-                        </TranslateTransform.Transitions>
-                    </TranslateTransform>
+                    <ScaleTransform ScaleX="1.02" ScaleY="1.02" />
+                    <TranslateTransform />
                 </TransformGroup>
             </Panel.RenderTransform>
             <Panel.Transitions>
@@ -211,22 +197,8 @@
         <Panel x:Name="uiPack" IsVisible="False" RenderTransformOrigin="50%,40%">
             <Panel.RenderTransform>
                 <TransformGroup>
-                    <ScaleTransform ScaleX="1.02" ScaleY="1.02">
-                        <ScaleTransform.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="ScaleX" Duration="0:0:2" Easing="SineEaseInOut" />
-                                <DoubleTransition Property="ScaleY" Duration="0:0:2" Easing="SineEaseInOut" />
-                            </Transitions>
-                        </ScaleTransform.Transitions>
-                    </ScaleTransform>
-                    <TranslateTransform>
-                        <TranslateTransform.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="X" Duration="0:0:2" Easing="SineEaseInOut" />
-                                <DoubleTransition Property="Y" Duration="0:0:2" Easing="SineEaseInOut" />
-                            </Transitions>
-                        </TranslateTransform.Transitions>
-                    </TranslateTransform>
+                    <ScaleTransform ScaleX="1.02" ScaleY="1.02" />
+                    <TranslateTransform />
                 </TransformGroup>
             </Panel.RenderTransform>
         </Panel>
@@ -234,22 +206,8 @@
         <Panel x:Name="uiShots" RenderTransformOrigin="50%,40%">
             <Panel.RenderTransform>
                 <TransformGroup>
-                    <ScaleTransform ScaleX="1.02" ScaleY="1.02">
-                        <ScaleTransform.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="ScaleX" Duration="0:0:2" Easing="SineEaseInOut" />
-                                <DoubleTransition Property="ScaleY" Duration="0:0:2" Easing="SineEaseInOut" />
-                            </Transitions>
-                        </ScaleTransform.Transitions>
-                    </ScaleTransform>
-                    <TranslateTransform>
-                        <TranslateTransform.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="X" Duration="0:0:2" Easing="SineEaseInOut" />
-                                <DoubleTransition Property="Y" Duration="0:0:2" Easing="SineEaseInOut" />
-                            </Transitions>
-                        </TranslateTransform.Transitions>
-                    </TranslateTransform>
+                    <ScaleTransform ScaleX="1.02" ScaleY="1.02" />
+                    <TranslateTransform />
                 </TransformGroup>
             </Panel.RenderTransform>
             <Image x:Name="uiShotA" Stretch="UniformToFill" Opacity="0">

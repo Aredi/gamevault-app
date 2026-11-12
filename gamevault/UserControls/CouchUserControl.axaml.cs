@@ -194,6 +194,7 @@ namespace gamevault.UserControls
         {
             InitializeComponent();
             uiGridItems.ItemTemplate = uiStripItems.ItemTemplate;
+            SettleSlowly();
             timer.Tick += (_, _) => Tick();
             SizeChanged += (_, _) => Fit();
             uiKeyboard.Typed += Type;
@@ -959,7 +960,9 @@ namespace gamevault.UserControls
             }, TimeSpan.FromMilliseconds(140));
         }
 
-        /// <summary>A retro game's first screenshot, larger than its cover, once it is read.</summary>
+        /// <summary>The first screenshot read for the background, and its game: the start screen and the saver show it too.</summary>
+        private (RetroGame Game, Avalonia.Media.Imaging.Bitmap Shot)? retroShot;
+
         /// <summary>
         /// A retro game's first screenshot, larger than its cover, once it is read. Only that one, through the images kept
         /// within a budget: all of a game's screenshots kept on it, for every game passed, filled the memory.
@@ -971,6 +974,8 @@ namespace gamevault.UserControls
                 if (retro.ScreenshotImages != null || retro.Screenshots.FirstOrDefault() is not string first)
                     return;
                 Avalonia.Media.Imaging.Bitmap? shot = await CoverSlideshow.LoadAsync(retro, first);
+                if (shot != null)
+                    retroShot = (retro, shot);
                 if (shot != null && ReferenceEquals(item, shownBack))
                     uiBackRetro.Source = shot;
             }

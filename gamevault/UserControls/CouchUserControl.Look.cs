@@ -32,6 +32,18 @@ namespace gamevault.UserControls
         /// <summary>How long the picture drifts after the last button.</summary>
         internal static TimeSpan DriftFor { get; set; } = TimeSpan.FromSeconds(30);
 
+        /// <summary>The drift stopped, the picture settles back slowly instead of jumping (the same for the three of them).</summary>
+        private void SettleSlowly()
+        {
+            DoubleTransition Slow(AvaloniaProperty property) =>
+                new() { Property = property, Duration = TimeSpan.FromSeconds(2), Easing = new SineEaseInOut() };
+            foreach (Panel panel in new[] { uiBack, uiPack, uiShots })
+                foreach (Transform transform in ((TransformGroup)panel.RenderTransform!).Children)
+                    transform.Transitions = transform is ScaleTransform
+                        ? new Transitions { Slow(ScaleTransform.ScaleXProperty), Slow(ScaleTransform.ScaleYProperty) }
+                        : new Transitions { Slow(TranslateTransform.XProperty), Slow(TranslateTransform.YProperty) };
+        }
+
         /// <summary>
         /// Twice a second: the picture behind drifts slowly while the mode is looked at; still behind a game and in the
         /// light mode (a moving picture is drawn again at each frame).

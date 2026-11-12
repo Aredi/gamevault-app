@@ -682,7 +682,9 @@ namespace gamevault.UserControls
             if (item?.Pc != null)
                 uiCurtainPc.Data = item.Pc;
             uiCurtainRetro.IsVisible = item?.Retro != null;
-            uiCurtainRetro.Source = item?.Retro?.Banner;
+            // The screenshot of the background when it was read for this game, not its small cover stretched over the TV
+            uiCurtainRetro.Source = item?.Retro is RetroGame retro && retroShot is { } known
+                && known.Game.Id == retro.Id && known.Game.Platform.Slug == retro.Platform.Slug ? known.Shot : item?.Retro?.Banner;
             uiCurtainTitle.Text = title;
             uiCurtainText.Text = text;
             uiCurtainClock.Text = kind == Curtain.Saver ? DateTime.Now.ToString("t", CultureInfo.CurrentCulture) : "";
