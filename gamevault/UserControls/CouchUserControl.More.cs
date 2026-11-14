@@ -877,10 +877,13 @@ namespace gamevault.UserControls
                 // Never the desktop itself
                 if (name.Equals("explorer", StringComparison.OrdinalIgnoreCase))
                     return;
-                OpenOverlay(name, () => CouchSystem.GiveFront(window), () => _ = QuitGameAsync((int)id));
+                OpenOverlay(OverlayTitle(name), () => CouchSystem.GiveFront(window), () => _ = QuitGameAsync((int)id));
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
+
+        /// <summary>The menu over a game names the game started from this mode, not its emulator's window ("RetroArch mGBA 0.10…").</summary>
+        internal string OverlayTitle(string window) => playing?.Title is { Length: > 0 } title ? title : window;
 
         /// <summary>
         /// Asked to close as its own window's cross does (RetroArch writes the game's save then), killed only when it is

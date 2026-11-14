@@ -1223,6 +1223,8 @@ namespace GameVault.UiTests
                 RetroPlay.Raise(false, retro[1]);
                 Dispatcher.UIThread.RunJobs();
                 Assert.NotNull(couch.Playing);
+                // The menu over it names the game, not the emulator's window
+                Assert.Equal(couch.Playing!.Title, couch.OverlayTitle("RetroArch mGBA 0.10.3"));
 
                 // Closed: the mode is back on the game's screen
                 RetroPlay.Raise(false, retro[0]);
@@ -1230,6 +1232,7 @@ namespace GameVault.UiTests
                 Assert.Null(couch.Playing);
                 Assert.Equal(CouchUserControl.Curtain.None, couch.CurtainShown);
                 Assert.True(couch.uiDetails.IsVisible);
+                Assert.Equal("RetroArch mGBA 0.10.3", couch.OverlayTitle("RetroArch mGBA 0.10.3"));
 
                 // A button pressed on the picture: the player is back, the game is no longer waited for
                 couch.GameStarted(couch.Current!);
