@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace gamevault.UserControls
 {
     /// <summary>The menus of the living-room mode.</summary>
-    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom }
+    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Download, Challenge, Friends }
 
     /// <summary>
     /// The menu shown over a game (Start + Back, Windows): a small window always in front, moved through with the
@@ -186,21 +186,15 @@ namespace gamevault.UserControls
             if (lastPlayed != null)
                 Add("resume", Loc.T("Resume"), lastPlayed.Title, () => Do(() => OpenGame(lastPlayed.Key)));
             Add("random", Loc.T("A game at random"), Loc.T("Among the games installed here"), () => Do(() => OpenRandom()));
-            Add("challenge", Loc.T("Challenge of the week"), challengeText, () => Do(() => Leave(() => MainWindowViewModel.Instance.SetActiveControl(MainControl.Challenges))));
-            Add("friends", Loc.T("Friends"), FriendsText(), () => Do(() => Leave(() => MainWindowViewModel.Instance.IsChatOpen = true)));
-            Add("downloads", Loc.T("Downloads"), DownloadsText(), () => Do(() => Leave(() => MainWindowViewModel.Instance.SetActiveControl(MainControl.Downloads))));
+            // Read here, with the gamepad: the desktop's pages are not left for
+            Add("challenge", Loc.T("Challenge of the week"), challengeText, OpenChallengeAsync);
+            Add("friends", Loc.T("Friends"), FriendsText(), OpenFriendsAsync);
+            Add("downloads", Loc.T("Downloads"), DownloadsText(), () => Do(() => ShowMenu(CouchMenu.Downloads)));
             Add("news", Loc.T("News"), Loc.T("What is new on the server"), () => Do(() => MainWindowViewModel.Instance.OpenPopup(new NewsPopup())));
             Add("stats", Loc.T("Statistics"), Loc.T("Your games and your play time"), () => Do(() => ShowMenu(CouchMenu.Stats)));
             foreach (CouchApp app in Settings.Apps)
                 Add("app:" + app.Path, app.Name, Loc.T("Application"), () => Do(() => CouchSystem.Open(app)));
             return home;
-        }
-
-        /// <summary>The desktop again, on a page of the client.</summary>
-        private void Leave(Action then)
-        {
-            LeaveRequested?.Invoke();
-            then();
         }
 
         /// <summary>A game's screen, from wherever: its tab is shown, the recent ones first.</summary>
@@ -275,6 +269,9 @@ namespace gamevault.UserControls
             CouchMenu.Stats => Loc.T("Statistics"),
             CouchMenu.Achievements => Loc.T("Achievements"),
             CouchMenu.Custom => PageName,
+            CouchMenu.Downloads or CouchMenu.Download => Loc.T("Downloads"),
+            CouchMenu.Challenge => Loc.T("Challenge of the week"),
+            CouchMenu.Friends => Loc.T("Friends"),
             _ => Loc.T("Living-room mode"),
         };
 
@@ -314,6 +311,13 @@ namespace gamevault.UserControls
                 return true;
             }
             // The settings and the statistics are opened from the menu: back to it
+            // A download's actions go back to the downloads
+            if (inMenu && command == CouchCommand.Back && menu == CouchMenu.Download)
+            {
+                Play(CouchSound.Back);
+                ShowMenu(CouchMenu.Downloads);
+                return true;
+            }
             if (inMenu && command == CouchCommand.Back && menu is CouchMenu.Settings or CouchMenu.Stats or CouchMenu.Custom)
             {
                 Play(CouchSound.Back);
@@ -347,6 +351,10 @@ namespace gamevault.UserControls
                 CouchMenu.Custom => CustomLines(),
                 CouchMenu.Stats => StatsLines(),
                 CouchMenu.Achievements => AchievementLines(),
+                CouchMenu.Downloads => DownloadsLines(),
+                CouchMenu.Download => DownloadLines(),
+                CouchMenu.Challenge => ChallengeLines(),
+                CouchMenu.Friends => FriendsLines(),
                 _ => MainLines(),
             };
             Navigator.MenuCount = MenuLines.Count;
@@ -776,6 +784,7 @@ namespace gamevault.UserControls
         /// <summary>Twice a second: the screensaver, and what the home's tiles tell.</summary>
         private void RefreshMore()
         {
+            RefreshDownloads();
             bool front = TopLevel.GetTopLevel(this) is Window { IsActive: true };
             if (front && !ActivityService.Instance.IsPlayingHere)
                 CheckIdle(idle.Elapsed);

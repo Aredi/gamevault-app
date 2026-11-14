@@ -1,0 +1,230 @@
+using gamevault.Converter;
+using gamevault.Helper;
+using gamevault.Localization;
+using gamevault.Models;
+using gamevault.ViewModels;
+using GameVault.Core;
+using GameVault.Core.Couch;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+namespace gamevault.UserControls
+{
+    /// <summary>
+    /// What the desktop's pages show, in the living-room mode itself, read with the gamepad: the downloads (paused,
+    /// resumed, cancelled from here), the challenge of the week and its ranking, the friends and what they play.
+    /// </summary>
+    public partial class CouchUserControl
+    {
+        // --- The downloads ---
+
+        /// <summary>The download whose actions are shown (a library game's or a retro game's).</summary>
+        private object? shownDownload;
+
+        private static string Percent(int progress) => progress > 0 ? $" · {progress} %" : "";
+
+        private List<CouchLine> DownloadsLines()
+        {
+            var lines = new List<CouchLine>();
+            foreach (GameDownloadUserControl download in DownloadsViewModel.Instance.DownloadedGames.ToList())
+            {
+                string state = Loc.T(download.StateText);
+                lines.Add(new CouchLine
+                {
+                    Text = download.GameTitle,
+                    Detail = state + (download.IsDownloading() || download.IsPaused() ? Percent(download.GetDownloadProgress()) : ""),
+                    Run = () => { OpenDownload(download); return Task.CompletedTask; },
+                });
+            }
+            foreach (RetroDownload download in DownloadsViewModel.Instance.RetroDownloads.ToList())
+            {
+                lines.Add(new CouchLine
+                {
+                    Text = download.Game.Name,
+                    Detail = $"{download.Game.Platform.Name} · {download.State}" + (download.IsRunning || download.IsPaused ? Percent(download.Progress) : ""),
+                    Run = () => { OpenDownload(download); return Task.CompletedTask; },
+                });
+            }
+            if (lines.Count == 0)
+                lines.Add(Line(Loc.T("None in progress"), () => { }));
+            lines.Add(Line(Loc.T("Back"), CloseMenu));
+            return lines;
+        }
+
+        private void OpenDownload(object download)
+        {
+            shownDownload = download;
+            ShowMenu(CouchMenu.Download);
+        }
+
+        /// <summary>What can be done with the download chosen: pause or resume it, try it again, cancel it.</summary>
+        private List<CouchLine> DownloadLines()
+        {
+            var lines = new List<CouchLine>();
+            void Back() => ShowMenu(CouchMenu.Downloads);
+            void Then(Action action)
+            {
+                try { action(); }
+                catch (Exception ex) { Log.Ignored(ex); }
+                Back();
+            }
+            CouchLine Cancel(string title, Action cancel) => new()
+            {
+                Text = Loc.T("Cancel the download"),
+                Run = async () =>
+                {
+                    if (await DialogService.ConfirmAsync(Loc.F("Cancel the download of {0}?", title)))
+                        Then(cancel);
+                    else
+                        ShowMenu(CouchMenu.Download);
+                },
+            };
+            switch (shownDownload)
+            {
+                case GameDownloadUserControl pc when DownloadsViewModel.Instance.DownloadedGames.Contains(pc):
+                    lines.Add(new CouchLine { Text = pc.GameTitle, Detail = Loc.T(pc.StateText) + Percent(pc.GetDownloadProgress()), Run = () => Task.CompletedTask });
+                    if (pc.IsPaused())
+                        lines.Add(Line(Loc.T("Resume"), () => Then(pc.TogglePause)));
+                    else if (pc.IsDownloading())
+                        lines.Add(Line(Loc.T("Pause"), () => Then(pc.TogglePause)));
+                    if (pc.IsDownloading() || pc.IsPaused())
+                        lines.Add(Cancel(pc.GameTitle, pc.CancelDownload));
+                    break;
+                case RetroDownload retro when DownloadsViewModel.Instance.RetroDownloads.Contains(retro):
+                    lines.Add(new CouchLine { Text = retro.Game.Name, Detail = retro.State + Percent(retro.Progress), Run = () => Task.CompletedTask });
+                    if (retro.IsPaused)
+                        lines.Add(Line(Loc.T("Resume"), () => Then(retro.Resume)));
+                    else if (retro.IsActive)
+                        lines.Add(Line(Loc.T("Pause"), () => Then(() => retro.Pause())));
+                    if (retro.IsFailed)
+                        lines.Add(Line(Loc.T("Retry"), () => Then(retro.Retry)));
+                    if (retro.IsRunning || retro.IsPaused || retro.IsQueued)
+                        lines.Add(Cancel(retro.Game.Name, retro.Cancel));
+                    if (retro.IsDone || retro.IsFailed)
+                        lines.Add(Line(Loc.T("Remove from the list"), () => Then(retro.Dismiss)));
+                    break;
+                default:
+                    // Gone meanwhile (finished and removed)
+                    lines.Add(Line(Loc.T("None in progress"), () => { }));
+                    break;
+            }
+            lines.Add(Line(Loc.T("Back"), Back));
+            return lines;
+        }
+
+        /// <summary>Twice a second, the downloads shown move on: their lines are written again, on the same one.</summary>
+        private void RefreshDownloads()
+        {
+            if (Navigator.Screen != CouchScreen.Menu || menu is not (CouchMenu.Downloads or CouchMenu.Download))
+                return;
+            int line = Navigator.MenuLine;
+            BuildMenu();
+            Navigator.SelectLine(Math.Min(line, MenuLines.Count - 1));
+            ShowScreen(false);
+        }
+
+        // --- The challenge of the week ---
+
+        private ChallengeState? challenge;
+
+        private async Task OpenChallengeAsync()
+        {
+            try { challenge = await ChallengesService.GetAsync(); }
+            catch (Exception ex) { Log.Ignored(ex); challenge = null; }
+            ShowMenu(CouchMenu.Challenge);
+        }
+
+        private List<CouchLine> ChallengeLines()
+        {
+            var lines = new List<CouchLine>();
+            if (challenge is not ChallengeState state)
+                lines.Add(Line(Loc.T("Not available on this server"), () => { }));
+            else
+            {
+                ChallengeInfo info = state.Challenge;
+                int me = LoginManager.Instance.GetCurrentUser()?.ID ?? -1;
+                ChallengeRank? mine = state.Board.FirstOrDefault(r => r.UserId == me);
+                lines.Add(new CouchLine { Text = info.Text, Detail = info.Hint, Run = () => Task.CompletedTask });
+                string progress = mine?.DoneAt != null ? Loc.T("Completed") : Loc.F("{0} of {1}", info.Amount(mine?.Value ?? 0), info.Amount(info.Goal));
+                lines.Add(new CouchLine
+                {
+                    Text = Loc.F("You: {0}", progress),
+                    Detail = Loc.F("Ends on {0}", state.EndsAt.ToLocalTime().ToString("d MMMM yyyy, HH:mm", CultureInfo.CurrentCulture)),
+                    Run = () => Task.CompletedTask,
+                });
+                // A game to play for it: its screen
+                if (info.TheGame is { } game && all.FirstOrDefault(i => i.Pc?.ID == game.Id) is CouchItem item)
+                    lines.Add(Line(Loc.F("Open {0}", item.Title), () => { CloseMenu(); OpenGame(item.Key); }));
+                int place = 0;
+                foreach (ChallengeRank rank in state.Board)
+                {
+                    place++;
+                    string done = rank.DoneAt != null ? " · " + Loc.T("Completed") : "";
+                    lines.Add(new CouchLine { Text = $"{place}. {rank.Username}", Detail = info.Amount(rank.Value) + done, Opacity = rank.UserId == me ? 1 : 0.8, Run = () => Task.CompletedTask });
+                }
+                if (state.Board.Count == 0)
+                    lines.Add(Line(Loc.T("Nobody took part yet"), () => { }));
+            }
+            lines.Add(Line(Loc.T("Back"), CloseMenu));
+            return lines;
+        }
+
+        // --- The friends ---
+
+        private static User[]? users;
+
+        private async Task OpenFriendsAsync()
+        {
+            try
+            {
+                users ??= JsonSerializer.Deserialize<User[]>(await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/users"));
+                await PresenceConverter.LoadTitlesAsync();
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            ShowMenu(CouchMenu.Friends);
+        }
+
+        /// <summary>The players of the server, the ones playing first, then online, away, offline; A on one playing opens the game.</summary>
+        private List<CouchLine> FriendsLines()
+        {
+            var lines = new List<CouchLine>();
+            int me = LoginManager.Instance.GetCurrentUser()?.ID ?? -1;
+            var friends = (users ?? Array.Empty<User>()).Where(u => u.ID != me && u.DeletedAt == null)
+                .Select(u => (User: u, Seen: PresenceConverter.Describe(u.ID)))
+                .OrderBy(f => f.Seen.Rank).ThenBy(f => f.User.Username, StringComparer.CurrentCultureIgnoreCase);
+            foreach (var (user, seen) in friends)
+            {
+                string? game = GameKeyOf(user.ID);
+                lines.Add(new CouchLine
+                {
+                    Text = user.Username ?? "",
+                    Detail = seen.Text,
+                    Opacity = seen.Dot == null ? 0.55 : 1,
+                    Run = () =>
+                    {
+                        if (game != null && all.Any(i => i.Key == game))
+                        {
+                            CloseMenu();
+                            OpenGame(game);
+                        }
+                        return Task.CompletedTask;
+                    },
+                });
+            }
+            if (lines.Count == 0)
+                lines.Add(Line(Loc.T("Nobody is online"), () => { }));
+            lines.Add(Line(Loc.T("Back"), CloseMenu));
+            return lines;
+        }
+
+        /// <summary>The game a player is playing, as this mode names it; null when none or not in its lists.</summary>
+        private static string? GameKeyOf(int userId) =>
+            ActivityService.Instance.Of(userId) is { IsPlaying: true } activity ? $"pc:{activity.GameId}"
+            : ActivityService.Instance.RetroOf(userId) is RetroActivity retro ? $"retro:{retro.Platform}:{retro.RomId}"
+            : null;
+    }
+}

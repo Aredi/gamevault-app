@@ -1119,6 +1119,83 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheDownloads_TheChallenge_AndTheFriends_AreReadInTheMode_NotOnTheDesktop()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            SanctuaryService.Current = session.Server.Url;
+            session.Server.ChallengeState = new
+            {
+                week = "2026-W46", startsAt = DateTime.UtcNow.AddDays(-2), endsAt = DateTime.UtcNow.AddDays(5),
+                challenge = new { kind = "hours", goal = 300 },
+                board = new object[]
+                {
+                    new { userId = 2, username = "Léa", value = 320, doneAt = (DateTime?)DateTime.UtcNow.AddHours(-3) },
+                    new { userId = 1, username = "admin", value = 90, doneAt = (DateTime?)null },
+                },
+                allTime = Array.Empty<object>(), past = Array.Empty<object>(),
+            };
+            var download = new RetroDownload(Retro()[1], Path.Combine(Path.GetTempPath(), "gv-couch-download-" + Guid.NewGuid().ToString("N")));
+            DownloadsViewModel.Instance.RetroDownloads.Add(download);
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            bool left = false;
+            couch.LeaveRequested += () => left = true;
+            async Task OpenTile(string key, CouchMenu menu)
+            {
+                couch.Navigator.Select(0, couch.Tabs[0].Items.FindIndex(i => i.Key == key));
+                couch.Handle(CouchCommand.Accept);
+                await TestSession.WaitUntil(() => couch.Menu == menu && couch.uiMenu.IsVisible, TimeSpan.FromSeconds(10), menu.ToString());
+            }
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+
+                // The downloads: each one, and what can be done with it; B goes back to the list, then to the home
+                await OpenTile("tile:downloads", CouchMenu.Downloads);
+                Assert.Equal(Loc.T("Downloads"), couch.uiMenuTitle.Text);
+                CouchLine metroid = couch.MenuLines.Single(l => l.Text == "Metroid");
+                Assert.StartsWith("NES", metroid.Detail);
+                await metroid.Run();
+                Assert.Equal(CouchMenu.Download, couch.Menu);
+                Assert.Equal("Metroid", couch.MenuLines[0].Text);
+                Assert.Equal(Loc.T("Back"), couch.MenuLines[^1].Text);
+                couch.Handle(CouchCommand.Back);
+                Assert.Equal(CouchMenu.Downloads, couch.Menu);
+                couch.Handle(CouchCommand.Back);
+                Assert.False(couch.uiMenu.IsVisible);
+
+                // The challenge of the week: what it asks, where I am, the ranking
+                await OpenTile("tile:challenge", CouchMenu.Challenge);
+                Assert.Equal(Loc.F("Play {0} this week", "5 h"), couch.MenuLines[0].Text);
+                Assert.Equal(Loc.F("You: {0}", Loc.F("{0} of {1}", "1 h 30", "5 h")), couch.MenuLines[1].Text);
+                Assert.Contains(couch.MenuLines, l => l.Text == "1. Léa" && l.Detail!.Contains(Loc.T("Completed")));
+                couch.Handle(CouchCommand.Back);
+
+                // The friends: the other players, not me
+                await OpenTile("tile:friends", CouchMenu.Friends);
+                Assert.DoesNotContain(couch.MenuLines, l => l.Text == "admin");
+                Assert.Equal(Loc.T("Back"), couch.MenuLines[^1].Text);
+                couch.Handle(CouchCommand.Back);
+
+                // Never the desktop's pages
+                Assert.False(left);
+            }
+            finally
+            {
+                window.Close();
+                DownloadsViewModel.Instance.RetroDownloads.Remove(download);
+                session.Server.ChallengeState = null;
+                SanctuaryService.Current = SanctuaryService.Url;
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AGameLeftRunning_ByShowSanctuaryVault_IsOfferedBackFirstInTheMenu()
         {
             var session = await TestSession.GetAsync();

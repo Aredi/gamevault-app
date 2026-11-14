@@ -2164,5 +2164,11 @@
   "Every setting of this mode as it was at first; your applications stay. The ones of now are kept to come back to.": "Tous les réglages de ce mode comme au début ; vos applications restent. Ceux d'aujourd'hui sont gardés pour y revenir.",
   "Put every setting of the living-room mode back as it was at first?": "Remettre tous les réglages du mode salon comme au début ?",
   "Back to the settings before": "Revenir aux réglages d'avant",
-  "The settings as they were before they were put back to the usual ones.": "Les réglages tels qu'ils étaient avant d'être rétablis."
+  "The settings as they were before they were put back to the usual ones.": "Les réglages tels qu'ils étaient avant d'être rétablis.",
+  "Pause": "Pause",
+  "Cancel the download": "Annuler le téléchargement",
+  "Cancel the download of {0}?": "Annuler le téléchargement de {0} ?",
+  "You: {0}": "Vous : {0}",
+  "Ends on {0}": "Se termine le {0}",
+  "Nobody took part yet": "Personne n'y a encore participé"
 }

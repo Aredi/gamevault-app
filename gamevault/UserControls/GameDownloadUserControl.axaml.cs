@@ -401,7 +401,10 @@ namespace gamevault.UserControls
             // Through the queue, so a retry does not exceed the limits
             DownloadQueue.Enqueue(this, atFront: true);
         }
-        private void PauseResume_Click(object sender, RoutedEventArgs e)
+        private void PauseResume_Click(object sender, RoutedEventArgs e) => TogglePause();
+
+        /// <summary>Paused: resumed now (the button, the living-room mode); downloading: paused.</summary>
+        internal void TogglePause()
         {
             if (ViewModel.IsDownloadPaused)
             {
