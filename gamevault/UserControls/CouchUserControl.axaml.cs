@@ -356,7 +356,11 @@ namespace gamevault.UserControls
             string? selectedKey = Current?.Key;
             SetTabs();
             int tab = tabName == null ? 0 : Math.Max(0, Tabs.FindIndex(t => t.Name == tabName));
-            Navigator.Select(tab, selectedKey == null ? 0 : Math.Max(0, Tabs[tab].Items.FindIndex(i => i.Key == selectedKey)));
+            int index = selectedKey == null ? 0 : Tabs[tab].Items.FindIndex(i => i.Key == selectedKey);
+            Navigator.Select(tab, Math.Max(0, index));
+            // The game whose screen was shown left its tab (removed from the installed ones): not another game's screen
+            if (index < 0 && Navigator.Screen == CouchScreen.Details)
+                Navigator.BackToList();
             ShowClock();
             BuildMenu();
             ShowTab();
@@ -1265,6 +1269,7 @@ namespace gamevault.UserControls
             ShowClock();
             HashSet<int>? installed = null;
             RefreshMore();
+            bool changed = false;
             foreach (CouchItem item in Navigator.Tab < Tabs.Count ? Tabs[Navigator.Tab].Items : new())
             {
                 if (item.IsTile)
@@ -1274,13 +1279,11 @@ namespace gamevault.UserControls
                     continue;
                 item.Installed = now;
                 InstalledChanged(now);
-                if (ReferenceEquals(item, Current))
-                {
-                    ShowHero(item);
-                    if (Navigator.Screen == CouchScreen.Details)
-                        ShowScreen();
-                }
+                changed = true;
             }
+            // The tab of the installed games follows: a game installed comes in, a game removed goes
+            if (changed)
+                Reshow();
             if (Navigator.Screen == CouchScreen.Details && Current is CouchItem current)
             {
                 ShowStatus(current);

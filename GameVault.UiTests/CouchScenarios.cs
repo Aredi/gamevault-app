@@ -299,6 +299,53 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheInstalledTab_FollowsTheGamesInstalledAndRemoved_WhileTheModeIsShown()
+        {
+            var session = await TestSession.GetAsync();
+            var games = new List<Game>
+            {
+                new() { ID = 9795, Title = "Brass Orbit", SortTitle = "brass orbit", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9796, Title = "Cobalt Reach", SortTitle = "cobalt reach", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9797, Title = "Dune Lantern", SortTitle = "dune lantern", Type = GameType.WINDOWS_PORTABLE },
+            };
+            var installed = new KeyValuePair<Game, string>(games[1], Path.Combine(session.LibraryRoot, "couch-follows"));
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, new List<RetroGame>());
+                Assert.DoesNotContain(couch.Tabs, t => t.Name == Loc.T("Installed games"));
+                couch.Navigator.Select(couch.Tabs.FindIndex(t => t.Name == Loc.T("Library")), 1);
+
+                // Installed meanwhile (a download that ended): the tab comes, the same game stays selected
+                InstallViewModel.Instance.InstalledGames.Add(installed);
+                couch.Refresh();
+                CouchTab here = couch.Tabs.Single(t => t.Name == Loc.T("Installed games"));
+                Assert.Equal(new[] { "Cobalt Reach" }, here.Items.Select(i => i.Title));
+                Assert.Equal(Loc.T("Library"), couch.Tabs[couch.Navigator.Tab].Name);
+                Assert.Equal("Cobalt Reach", couch.Current!.Title);
+
+                // Removed while its screen is shown from that tab: back to the list, not another game's screen
+                couch.Navigator.Select(couch.Tabs.IndexOf(here), 0);
+                couch.Handle(CouchCommand.Accept);
+                Assert.True(couch.uiDetails.IsVisible);
+                InstallViewModel.Instance.InstalledGames.Remove(installed);
+                couch.Refresh();
+                Assert.DoesNotContain(couch.Tabs, t => t.Name == Loc.T("Installed games"));
+                Assert.Equal(CouchScreen.Home, couch.Navigator.Screen);
+                Assert.False(couch.uiDetails.IsVisible);
+            }
+            finally
+            {
+                InstallViewModel.Instance.InstalledGames.Remove(installed);
+                window.Close();
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheSearch_IsTypedOnTheScreen_AndTheClientsQuestions_AreAnsweredWithTheGamepad()
         {
             var session = await TestSession.GetAsync();
