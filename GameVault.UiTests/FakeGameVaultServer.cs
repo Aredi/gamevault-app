@@ -158,6 +158,9 @@ namespace GameVault.UiTests
         /// <summary>The retro plays sent (JSON), and the time kept per game key ("nes:40").</summary>
         public ConcurrentQueue<string> RetroPlaysSent { get; } = new();
         public ConcurrentDictionary<string, int> RetroMinutes { get; } = new();
+        /// <summary>The service can not take the plays (offline); each play sent waits the next of these delays first.</summary>
+        public bool RetroPlaysFail { get; set; }
+        public ConcurrentQueue<TimeSpan> RetroPlaysDelays { get; } = new();
         /// <summary>The games' achievements a player shared, by game ("nes:40"), as the client sent them.</summary>
         public ConcurrentDictionary<string, JsonElement> RetroAchievements { get; } = new();
         public string RetroFavorites { get; set; } = "[]";
@@ -469,6 +472,13 @@ namespace GameVault.UiTests
                     });
                 else if (path == "/retro/players/me/plays")
                 {
+                    if (RetroPlaysDelays.TryDequeue(out TimeSpan delay))
+                        await Task.Delay(delay);
+                    if (RetroPlaysFail)
+                    {
+                        response.StatusCode = 503;
+                        return;
+                    }
                     string body = await new StreamReader(request.InputStream).ReadToEndAsync();
                     RetroPlaysSent.Enqueue(body);
                     using JsonDocument play = JsonDocument.Parse(body);
