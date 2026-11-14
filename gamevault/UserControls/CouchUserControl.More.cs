@@ -828,8 +828,12 @@ namespace gamevault.UserControls
         // When Start and Back were last seen held: pressed together in a hurry, they are seldom both down at one reading
         private readonly Stopwatch comboClock = Stopwatch.StartNew();
         private TimeSpan startSeen = TimeSpan.FromDays(-1), backSeen = TimeSpan.FromDays(-1);
-        /// <summary>Start and Back count as pressed together when each was held within this time of the other.</summary>
-        internal static readonly TimeSpan ComboWindow = TimeSpan.FromMilliseconds(350);
+        /// <summary>
+        /// Start and Back count as pressed together when each was held within this time of the other: some readings (33 ms
+        /// apart) for two buttons pressed a little out of step, too little for two presses one after the other (Start to
+        /// pause the game, then Select in its menu).
+        /// </summary>
+        internal static readonly TimeSpan ComboWindow = TimeSpan.FromMilliseconds(100);
 
         /// <summary>How far the mouse goes for where the stick points: slow near its rest, fast at its end; what is under a pixel is kept for the next time.</summary>
         internal static (int X, int Y) MouseStep((double X, double Y) stick, ref (double X, double Y) rest)
