@@ -330,6 +330,21 @@ namespace gamevault.Helper
             .FirstOrDefault(folder => Directory.Exists(folder) && !File.Exists(Path.Combine(folder, DownloadMetadata)));
 
         /// <summary>
+        /// The game's folder deleted away from the screen's thread (a PS3 or a Switch game has thousands of files, the
+        /// window froze meanwhile); busy until then, so it is not started half deleted.
+        /// </summary>
+        public static async Task DeleteAsync(RetroGame game, string folder)
+        {
+            game.Busy = true;
+            try { await Task.Run(() => Directory.Delete(folder, true)); }
+            finally
+            {
+                game.Busy = false;
+                game.Refresh();
+            }
+        }
+
+        /// <summary>
         /// The retro games in the library folders, from the description written beside each: the installed ones, or the
         /// ones whose download stopped half way.
         /// </summary>

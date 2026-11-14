@@ -99,6 +99,24 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task ARetroGameDeleted_IsBusyUntilItsFolderIsGone_AndTheWindowIsNotHeld()
+        {
+            var (session, _, zelda) = await InstallZeldaAsync();
+            try
+            {
+                string folder = RetroService.InstalledFolder(zelda)!;
+                Task deleting = RetroService.DeleteAsync(zelda, folder);
+                // Away from the screen's thread: not started meanwhile
+                Assert.True(zelda.Busy);
+                await deleting;
+                Assert.False(Directory.Exists(folder));
+                Assert.False(zelda.Busy);
+                Assert.False(zelda.Installed);
+            }
+            finally { CleanUp(session); }
+        }
+
+        [AvaloniaFact]
         public async Task TheTimePlayedOffline_IsKept_WhenAnotherGameEndsWhileItIsSent()
         {
             var session = await TestSession.GetAsync();
