@@ -478,8 +478,7 @@ namespace gamevault.UserControls
                     return;
                 if (!await DialogService.ConfirmAsync(Loc.F("Delete '{0}' from this PC? Its saves are kept.", retro.Name)))
                     return;
-                System.IO.Directory.Delete(folder, true);
-                retro.Refresh();
+                await RetroService.DeleteAsync(retro, folder);
                 return;
             }
             // The game's settings ask what they need to (its saves, its shortcuts) and remove it
