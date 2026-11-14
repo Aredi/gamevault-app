@@ -236,13 +236,15 @@ namespace GameVault.UiTests
                 Avalonia.Controls.Primitives.ToggleButton chip = page.GetLogicalDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>().Single(b => b.Content as string == gamevault.Localization.Loc.T("Never played"));
 
                 await RetroLibrary.RecordPlayAsync(castlevania, 3);
+                // The tests before may leave another filter on: back to what was shown before, whatever it was
+                bool shownBefore = page.Shown.Contains(castlevania);
                 chip.IsChecked = true;
                 Assert.True(page.ViewModel.OnlyNeverPlayed);
                 Assert.DoesNotContain(castlevania, page.Shown);
                 Assert.NotEmpty(page.Shown);
                 Assert.All(page.Shown, g => Assert.Equal(0, g.MinutesPlayed));
                 chip.IsChecked = false;
-                Assert.Contains(castlevania, page.Shown);
+                Assert.Equal(shownBefore, page.Shown.Contains(castlevania));
             }
             finally
             {

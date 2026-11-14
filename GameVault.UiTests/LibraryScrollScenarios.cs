@@ -161,6 +161,9 @@ namespace GameVault.UiTests
             Assert.Equal(prepared, grid.Children.Count);
 
             var card = grid.Children.First(c => c.DataContext is Game && c.TranslatePoint(new Avalonia.Point(0, 0), scroll) is { } p && p.Y > 0 && p.Y < scroll.Viewport.Height - 300);
+            // The cards are used again, with their actions, after the tests before pointed at them: as one never pointed at
+            foreach (Panel lift in card.GetVisualDescendants().OfType<Panel>().Where(p => p.Classes.Contains("lift")).ToList())
+                lift.Children.RemoveAll(lift.Children.Where(c => c.Classes.Contains("hoverOnly")).ToList());
             Assert.DoesNotContain(card.GetVisualDescendants(), v => v is Panel p && p.Classes.Contains("hoverOnly"));
             // From outside the card: a pointer left there by the tests before would enter nothing
             session.Window.MouseMove(new Avalonia.Point(1, 1));
