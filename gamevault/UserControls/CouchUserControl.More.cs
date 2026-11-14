@@ -375,17 +375,24 @@ namespace gamevault.UserControls
 
         private static string YesNo(bool value) => value ? Loc.T("Yes") : Loc.T("No");
 
-        private List<CouchLine> MainLines() => new()
+        private List<CouchLine> MainLines()
         {
-            Line(Loc.T("Back to the games"), CloseMenu),
-            Line(Loc.T("A game at random"), () => OpenRandom()),
-            new() { Text = Loc.T("Read the games again"), Run = async () => { CloseMenu(); await LoadAsync(); } },
-            Line(Loc.T("Settings"), () => ShowMenu(CouchMenu.Settings)),
-            Line(Loc.T("Statistics"), () => ShowMenu(CouchMenu.Stats)),
-            Line(Loc.T("Back to the desktop"), () => { CloseMenu(); LeaveRequested?.Invoke(); }),
-            Line(Loc.T("Change of profile"), () => { CloseMenu(); ShowLogin(); }),
-            new() { Text = Loc.T("Quit SanctuaryVault"), Run = () => App.Instance.ExitApp() },
-        };
+            var lines = new List<CouchLine>
+            {
+                Line(Loc.T("Back to the games"), CloseMenu),
+                Line(Loc.T("A game at random"), () => OpenRandom()),
+                new() { Text = Loc.T("Read the games again"), Run = async () => { CloseMenu(); await LoadAsync(); } },
+                Line(Loc.T("Settings"), () => ShowMenu(CouchMenu.Settings)),
+                Line(Loc.T("Statistics"), () => ShowMenu(CouchMenu.Stats)),
+                Line(Loc.T("Back to the desktop"), () => { CloseMenu(); LeaveRequested?.Invoke(); }),
+                Line(Loc.T("Change of profile"), () => { CloseMenu(); ShowLogin(); }),
+                new() { Text = Loc.T("Quit SanctuaryVault"), Run = () => App.Instance.ExitApp() },
+            };
+            // A game left running behind: going back to it comes first
+            if (GameBehind is string game)
+                lines.Insert(0, Line(Loc.F("Back to {0}", game), BackToGameBehind));
+            return lines;
+        }
 
         private List<CouchLine> QuickLines()
         {
@@ -859,6 +866,9 @@ namespace gamevault.UserControls
                     CloseOverlay();
                 else if (!listen)
                     OpenOverlayOverGame();
+                // Here after "Show SanctuaryVault": the same buttons go back to the game
+                else if (GameBehind != null)
+                    BackToGameBehind();
             }
             comboHeld = combo;
         }
@@ -877,7 +887,8 @@ namespace gamevault.UserControls
                 // Never the desktop itself
                 if (name.Equals("explorer", StringComparison.OrdinalIgnoreCase))
                     return;
-                OpenOverlay(OverlayTitle(name), () => CouchSystem.GiveFront(window), () => _ = QuitGameAsync((int)id));
+                string title = OverlayTitle(name);
+                OpenOverlay(title, () => CouchSystem.GiveFront(window), () => _ = QuitGameAsync((int)id), () => KeepGameBehind(window, title));
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
@@ -903,7 +914,30 @@ namespace gamevault.UserControls
 
         internal CouchOverlay? Overlay => overlay;
 
-        internal void OpenOverlay(string title, Action resume, Action quit)
+        // The game left running by "Show SanctuaryVault": its window and its name
+        private (IntPtr Window, string Title)? gameBehind;
+
+        /// <summary>The name of the game left running behind the mode, while its window is open; null otherwise.</summary>
+        internal string? GameBehind => gameBehind is { } behind && CouchSystem.Exists(behind.Window) ? behind.Title : null;
+
+        /// <summary>"Show SanctuaryVault" over a game: the mode offers to go back to it (menu, hint, Start + Back).</summary>
+        internal void KeepGameBehind(IntPtr window, string title)
+        {
+            gameBehind = (window, title);
+            BuildMenu();
+            ShowScreen(false);
+        }
+
+        internal void BackToGameBehind()
+        {
+            if (gameBehind is not { } behind || !CouchSystem.Exists(behind.Window))
+                return;
+            CloseMenu();
+            try { CouchSystem.ToFront(behind.Window); }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        internal void OpenOverlay(string title, Action resume, Action quit, Action? stayHere = null)
         {
             CloseOverlay();
             void Then(Action action, bool here)
@@ -918,7 +952,7 @@ namespace gamevault.UserControls
             {
                 (Loc.T("Back to the game"), () => Then(resume, false)),
                 (Loc.T("Quit the game"), () => Then(quit, true)),
-                (Loc.T("Show SanctuaryVault"), () => Then(() => { }, true)),
+                (Loc.T("Show SanctuaryVault"), () => Then(stayHere ?? (() => { }), true)),
             });
             overlay.Closed += (_, _) => overlay = null;
             overlay.Show();

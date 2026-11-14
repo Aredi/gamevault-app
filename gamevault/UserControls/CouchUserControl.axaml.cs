@@ -987,20 +987,25 @@ namespace gamevault.UserControls
             }, TimeSpan.FromMilliseconds(140));
         }
 
-        /// <summary>The first screenshot read for the background, and its game: the start screen and the saver show it too.</summary>
+        /// <summary>The picture read for the background, and its game: the start screen and the saver show it too.</summary>
         private (RetroGame Game, Avalonia.Media.Imaging.Bitmap Shot)? retroShot;
 
         /// <summary>
-        /// A retro game's first screenshot, larger than its cover, once it is read. Only that one, through the images kept
-        /// within a budget: all of a game's screenshots kept on it, for every game passed, filled the memory.
+        /// A retro game's background, as GameVault's: its large picture (fanart, hero) from the service; without one, its
+        /// first screenshot (a small console's is blurred at that size). Only that one, through the images kept within a
+        /// budget: all of a game's screenshots kept on it, for every game passed, filled the memory.
         /// </summary>
         private async Task ShowRetroBackAsync(CouchItem item, RetroGame retro)
         {
             try
             {
-                if (retro.ScreenshotImages != null || retro.Screenshots.FirstOrDefault() is not string first)
-                    return;
-                Avalonia.Media.Imaging.Bitmap? shot = await CoverSlideshow.LoadAsync(retro, first);
+                Avalonia.Media.Imaging.Bitmap? shot = await GameLogoService.HeroOfAsync(retro);
+                if (shot == null)
+                {
+                    if (retro.ScreenshotImages != null || retro.Screenshots.FirstOrDefault() is not string first)
+                        return;
+                    shot = await CoverSlideshow.LoadAsync(retro, first);
+                }
                 if (shot != null)
                     retroShot = (retro, shot);
                 if (shot != null && ReferenceEquals(item, shownBack))
@@ -1100,6 +1105,9 @@ namespace gamevault.UserControls
             };
             if (!Searching && screen == CouchScreen.Home)
                 Hints = Hints.Concat(new[] { new CouchStat("BACK", Loc.T("Quick access")), new CouchStat("L3", Loc.T("Filters")) }).ToArray();
+            // A game left running behind the mode: the way back to it, first
+            if (!Searching && screen != CouchScreen.Menu && GameBehind != null && OperatingSystem.IsWindows() && Settings.Overlay)
+                Hints = new[] { new CouchStat("START BACK", Loc.T("Back to the game")) }.Concat(Hints).ToArray();
             string style = ButtonStyle;
             Hints = Hints.Select(h => h with { Label = CouchGlyphs.Label(style, h.Label) }).ToArray();
             uiTabLeftKey.Text = CouchGlyphs.Label(style, "LB");

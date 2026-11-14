@@ -879,9 +879,10 @@ namespace GameVault.UiTests
             // COUCH_LOGO: a real logo for the screenshot; else a small white picture
             byte[] logo = Environment.GetEnvironmentVariable("COUCH_LOGO") is { Length: > 0 } file && File.Exists(file) ? File.ReadAllBytes(file) : Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAgAAAADCAYAAACuyE5IAAAAFUlEQVR4nGP8////fwY8gAmfJFEKAIIZBALOunCsAAAAAElFTkSuQmCC");
             SanctuaryService.Current = session.Server.Url;
-            GameLogoService.Forget();
+            GameLogoService.Forget(files: true);
             session.Server.Logos[$"/logos/pc/{games[2].ID}"] = logo;
             session.Server.Logos["/retro/games/40/logo"] = logo;
+            session.Server.Logos["/retro/games/40/hero"] = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAABAAAAAJCAIAAAC0SDtlAAAAFUlEQVR4nGP438BAEiJN9agGWmkAACwH13FB5UAoAAAAAElFTkSuQmCC");
             var couch = new CouchUserControl();
             var window = new Window { Width = 1920, Height = 1080, Content = couch };
             try
@@ -923,6 +924,12 @@ namespace GameVault.UiTests
                 Assert.Equal("Zelda", couch.HeroTitle);
                 await TestSession.WaitUntil(() => couch.LogoShown, TimeSpan.FromSeconds(10), "the retro game's logo");
                 Assert.Contains("GET /retro/games/40/logo", session.Server.Requests);
+                // Behind it, its large picture (fanart, hero) rather than a screenshot, as GameVault's backgrounds
+                // (pictures are all 1 x 1 without a screen: the hero is told by being the one its loader gives)
+                var hero = await GameLogoService.HeroOfAsync(couch.Current!.Retro!);
+                Assert.NotNull(hero);
+                await TestSession.WaitUntil(() => ReferenceEquals(couch.uiBackRetro.Source, hero), TimeSpan.FromSeconds(10), "the retro game's hero");
+                Assert.Contains("GET /retro/games/40/hero", session.Server.Requests);
 
                 // Turned off in the settings: the names
                 couch.Settings.Logos = false;
@@ -1105,6 +1112,49 @@ namespace GameVault.UiTests
             }
             finally
             {
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task AGameLeftRunning_ByShowSanctuaryVault_IsOfferedBackFirstInTheMenu()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            var exists = CouchSystem.Exists;
+            bool open = true;
+            CouchSystem.Exists = window => open && window == (IntPtr)42;
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+                Assert.Null(couch.GameBehind);
+                couch.Handle(CouchCommand.Menu);
+                Assert.Equal(Loc.T("Back to the games"), couch.MenuLines[0].Text);
+                couch.Handle(CouchCommand.Back);
+
+                // "Show SanctuaryVault" over the game: going back to it comes first in the menu
+                couch.KeepGameBehind((IntPtr)42, "Hollow Knight");
+                Assert.Equal("Hollow Knight", couch.GameBehind);
+                couch.Handle(CouchCommand.Menu);
+                Assert.Equal(Loc.F("Back to {0}", "Hollow Knight"), couch.MenuLines[0].Text);
+                couch.Handle(CouchCommand.Back);
+
+                // The game closed meanwhile: offered no more
+                open = false;
+                Assert.Null(couch.GameBehind);
+                couch.Handle(CouchCommand.Menu);
+                Assert.Equal(Loc.T("Back to the games"), couch.MenuLines[0].Text);
+            }
+            finally
+            {
+                CouchSystem.Exists = exists;
                 window.Close();
                 foreach (Game game in games)
                     session.Server.RemoveGame(game.ID);

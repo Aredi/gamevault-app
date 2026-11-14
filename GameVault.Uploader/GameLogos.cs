@@ -4,14 +4,15 @@ using System.Text.Json;
 namespace GameVault.Uploader
 {
     /// <summary>
-    /// The logos of the games (their title as it is drawn on their box), for the living-room mode. A retro game's
+    /// The logos of the games (their title as it is drawn on their box), and the retro games' large pictures, for the living-room mode. A retro game's
     /// comes from RomM, which got it from ScreenScraper; without one, and for the library's games, SteamGridDB is
     /// asked when its key is given (STEAMGRIDDB_API_KEY). Each logo is fetched once and kept in LOGOS_DIRECTORY; the
     /// addresses RomM keeps carry its own keys and never leave this service.
     /// </summary>
     public sealed class GameLogos(HttpClient web, UploaderOptions options, RommProxy romm, ILogger<GameLogos> logger)
     {
-        private const int MaxSize = 6 * 1024 * 1024;
+        // A hero is larger than a logo (1920 pixels wide)
+        private const int MaxSize = 12 * 1024 * 1024;
         /// <summary>A game without a logo is asked again after this long (it may get one).</summary>
         public static readonly TimeSpan AskAgain = TimeSpan.FromDays(7);
         private static readonly SemaphoreSlim fetching = new(3, 3);
@@ -94,6 +95,33 @@ namespace GameVault.Uploader
             return id is int found ? await SteamGridLogoAsync(found, cancellationToken) : null;
         }, cancellationToken);
 
+        /// <summary>
+        /// A retro game's large picture behind its name in the living-room mode, as GameVault's backgrounds (a screenshot
+        /// of a small console is blurred and dark at that size): ScreenScraper's fanart RomM has, else SteamGridDB's hero.
+        /// </summary>
+        public Task<string?> RetroHeroAsync(int romId, CancellationToken cancellationToken) => KeptOrAsync($"hero-retro-{romId}", async () =>
+        {
+            JsonElement? rom = await romm.RomAsync(romId, cancellationToken);
+            if (rom is not JsonElement game)
+                return null;
+            if (game.TryGetProperty("ss_metadata", out JsonElement screenScraper) && screenScraper.ValueKind == JsonValueKind.Object)
+            {
+                if (Text(screenScraper, "fanart_path") is string path && await romm.ResourceAsync(path, cancellationToken) is byte[] kept && TypeOf(kept) != null)
+                    return kept;
+                try
+                {
+                    if (Text(screenScraper, "fanart_url") is string address && IsScreenScraper(address) && await DownloadAsync(address, null, cancellationToken) is byte[] fetched && TypeOf(fetched) != null)
+                        return fetched;
+                }
+                catch (HttpRequestException ex) { logger.LogInformation("ScreenScraper's fanart of {Rom} could not be fetched: {Error}", romId, ex.Message); }
+            }
+            if (!HasSteamGrid)
+                throw new NotNowException("No SteamGridDB key");
+            int? id = game.TryGetProperty("sgdb_id", out JsonElement matched) && matched.ValueKind == JsonValueKind.Number ? matched.GetInt32() : null;
+            id ??= Text(game, "name") is string name ? await SteamGridIdAsync(name, cancellationToken) : null;
+            return id is int found ? await SteamGridPictureAsync("heroes", found, cancellationToken) : null;
+        }, cancellationToken);
+
         /// <summary>A library game's logo, from SteamGridDB by its title; null without the key.</summary>
         public Task<string?> PcAsync(int gameId, string title, CancellationToken cancellationToken) => !HasSteamGrid || string.IsNullOrWhiteSpace(title)
             ? Task.FromResult<string?>(null)
@@ -149,10 +177,12 @@ namespace GameVault.Uploader
                 && games[0].TryGetProperty("id", out JsonElement id) && id.ValueKind == JsonValueKind.Number ? id.GetInt32() : null;
         }
 
-        /// <summary>The game's best logo that is a still picture (SteamGridDB gives the best first).</summary>
-        private async Task<byte[]?> SteamGridLogoAsync(int id, CancellationToken cancellationToken)
+        private Task<byte[]?> SteamGridLogoAsync(int id, CancellationToken cancellationToken) => SteamGridPictureAsync("logos", id, cancellationToken);
+
+        /// <summary>The game's best logo or hero ("logos", "heroes") that is a still picture (SteamGridDB gives the best first).</summary>
+        private async Task<byte[]?> SteamGridPictureAsync(string kind, int id, CancellationToken cancellationToken)
         {
-            using JsonDocument? found = await SteamGridAsync($"logos/game/{id}?types=static", cancellationToken);
+            using JsonDocument? found = await SteamGridAsync($"{kind}/game/{id}?types=static", cancellationToken);
             if (found == null || !found.RootElement.TryGetProperty("data", out JsonElement logos) || logos.ValueKind != JsonValueKind.Array)
                 return null;
             foreach (JsonElement logo in logos.EnumerateArray().Take(3))

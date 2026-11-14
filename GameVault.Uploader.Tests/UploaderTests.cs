@@ -179,6 +179,8 @@ namespace GameVault.Uploader.Tests
                 object[] games = name switch { "Metroid" => new object[] { new { id = 888, name } }, "Hades" => new object[] { new { id = 999, name } }, _ => Array.Empty<object>() };
                 answer = new(HttpStatusCode.OK) { Content = JsonContent.Create(new { success = true, data = games }) };
             }
+            else if (uri.Host == "www.steamgriddb.com" && uri.AbsolutePath.StartsWith("/api/v2/heroes/game/"))
+                answer = new(HttpStatusCode.OK) { Content = JsonContent.Create(new { success = true, data = new[] { new { url = $"https://cdn2.steamgriddb.com/hero/{uri.AbsolutePath.Split('/').Last()}.png" } } }) };
             else if (uri.Host == "www.steamgriddb.com" && uri.AbsolutePath.StartsWith("/api/v2/logos/game/"))
             {
                 string id = uri.AbsolutePath.Split('/').Last();

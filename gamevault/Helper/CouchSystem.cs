@@ -58,6 +58,10 @@ namespace gamevault.Helper
         [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
         [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
         [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
+        [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
+
+        /// <summary>The window is still open (Windows); the tests say it themselves.</summary>
+        internal static Func<IntPtr, bool> Exists { get; set; } = window => OperatingSystem.IsWindows() && window != IntPtr.Zero && IsWindow(window);
 
         /// <summary>A key pressed and let go, as on the keyboard (Windows).</summary>
         internal static void PressKey(byte key)

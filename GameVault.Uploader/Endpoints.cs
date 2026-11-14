@@ -31,6 +31,7 @@ namespace GameVault.Uploader
     /// GET  /reports/{id}/diagnostic              what an administrator reads of a report's diagnostic
     /// POST /reports/{id}/resolve                 an administrator says a report is handled
     /// GET  /retro/games/{romId}/logo             a retro game's logo (RomM's from ScreenScraper, else SteamGridDB's); 404 without one
+    /// GET  /retro/games/{romId}/hero             a retro game's large picture (ScreenScraper's fanart in RomM, else SteamGridDB's hero); 404 without one
     /// GET  /logos/pc/{gameId}                    a library game's logo from SteamGridDB (STEAMGRIDDB_API_KEY); 404 without one
     /// GET  /retro/emulators                      the emulators given to retro games instead of their console's, and their games
     /// PUT|DELETE /retro/emulators/{id}           an administrator adds, changes or drops one (its builds' https links by system, its program's name; kind "recomp": a program that reads the game's files, with its arguments)
@@ -85,6 +86,8 @@ namespace GameVault.Uploader
             // The games' logos for the living-room mode: fetched once, kept, and sent as pictures
             app.MapGet("/retro/games/{romId:int}/logo", (int romId, HttpContext context, AdminCheck users, RommProxy romm, GameLogos logos, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => Logo(context, await logos.RetroAsync(romId, ct))));
+            app.MapGet("/retro/games/{romId:int}/hero", (int romId, HttpContext context, AdminCheck users, RommProxy romm, GameLogos logos, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Logo(context, await logos.RetroHeroAsync(romId, ct))));
             app.MapGet("/logos/pc/{gameId:int}", async (int gameId, HttpContext context, AdminCheck users, GameVaultProxy gameVault, GameLogos logos, CancellationToken ct) =>
             {
                 var check = await users.CheckUserAsync(context.Request, ct);

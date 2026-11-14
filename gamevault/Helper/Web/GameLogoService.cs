@@ -25,18 +25,26 @@ namespace gamevault.Helper
 
         private static string Folder => Path.Combine(PlatformInfo.LocalDataDirectory, "cache", "logos");
 
-        /// <summary>The tests start from nothing.</summary>
-        internal static void Forget() => asked.Clear();
+        /// <summary>The tests start from nothing (with the files kept on the PC too, when asked).</summary>
+        internal static void Forget(bool files = false)
+        {
+            asked.Clear();
+            if (files && Directory.Exists(Folder))
+                Directory.Delete(Folder, true);
+        }
 
         public static Task<Bitmap?> OfAsync(Game game) => DecodeAsync(asked.GetOrAdd($"pc-{game.ID}", key => ReadAsync(key, $"/logos/pc/{game.ID}")));
 
         public static Task<Bitmap?> OfAsync(RetroGame game) => DecodeAsync(asked.GetOrAdd($"retro-{game.Id}", key => ReadAsync(key, $"/retro/games/{game.Id}/logo")));
 
-        private static async Task<Bitmap?> DecodeAsync(Task<string?> asking)
+        /// <summary>A retro game's large picture for the background (ScreenScraper's fanart, SteamGridDB's hero), the screen's width.</summary>
+        public static Task<Bitmap?> HeroOfAsync(RetroGame game) => DecodeAsync(asked.GetOrAdd($"hero-retro-{game.Id}", key => ReadAsync(key, $"/retro/games/{game.Id}/hero")), 1920);
+
+        private static async Task<Bitmap?> DecodeAsync(Task<string?> asking, int width = DecodeWidth)
         {
             if (await asking is not string file)
                 return null;
-            try { return DecodedImages.TryGet(file, DecodeWidth) ?? await Task.Run(() => DecodedImages.Load(file, DecodeWidth)); }
+            try { return DecodedImages.TryGet(file, width) ?? await Task.Run(() => DecodedImages.Load(file, width)); }
             catch (Exception ex)
             {
                 Log.Ignored(ex);

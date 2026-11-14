@@ -497,7 +497,7 @@ namespace GameVault.UiTests
                     RetroMinutes.AddOrUpdate(key, play.RootElement.GetProperty("minutes").GetInt32(), (_, m) => m + play.RootElement.GetProperty("minutes").GetInt32());
                     response.StatusCode = 204;
                 }
-                else if (path == "/logos/pc" || path.StartsWith("/logos/pc/") || Regex.IsMatch(path, @"^/retro/games/\d+/logo$"))
+                else if (path == "/logos/pc" || path.StartsWith("/logos/pc/") || Regex.IsMatch(path, @"^/retro/games/\d+/(logo|hero)$"))
                 {
                     if (Logos.TryGetValue(path, out byte[]? logo))
                     {

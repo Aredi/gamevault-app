@@ -59,6 +59,22 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task ARetroGamesHero_ComesFromSteamGridDb_ByTheIdRommMatched_AndIsFetchedOnce()
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/games/47/hero")).StatusCode);
+            logoSites.Asked.Clear();
+            Assert.Equal(FakeLogos.Png(777 % 256), await LogoAsync("/retro/games/47/hero"));
+            Assert.Equal(new[] { "www.steamgriddb.com/api/v2/heroes/game/777", "cdn2.steamgriddb.com/hero/777.png" }, logoSites.Asked);
+            // Kept apart from its logo, and not asked again
+            Assert.Equal(FakeLogos.Png(777 % 256), await LogoAsync("/retro/games/47/hero"));
+            Assert.Equal(2, logoSites.Asked.Count);
+            // By the name when RomM matched none; a game nobody knows; a rom RomM does not have
+            Assert.Equal(FakeLogos.Png(888 % 256), await LogoAsync("/retro/games/48/hero"));
+            Assert.Null(await LogoAsync("/retro/games/49/hero"));
+            Assert.Null(await LogoAsync("/retro/games/999/hero"));
+        }
+
+        [Fact]
         public async Task ALibraryGamesLogo_IsSearchedByTheTitleTheServerHas()
         {
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/logos/pc/8")).StatusCode);
