@@ -59,6 +59,11 @@ namespace gamevault.Helper
                 T Function<T>(string name) where T : Delegate => Marshal.GetDelegateForFunctionPointer<T>(NativeLibrary.GetExport(library, name));
                 // No window of SDL's has the focus here: the client says when its own window has it
                 Function<IntOfStrings>("SDL_SetHint")("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1");
+                // Read without taking them: through HIDAPI, SDL turns PlayStation and Switch gamepads to their own reports,
+                // and the emulator started from here (RetroArch through DirectInput) no longer gets their buttons. The
+                // system's shared reading (Raw Input, DirectInput, evdev) leaves them as they are
+                foreach (string kind in new[] { "SDL_JOYSTICK_HIDAPI_PS4", "SDL_JOYSTICK_HIDAPI_PS5", "SDL_JOYSTICK_HIDAPI_SWITCH", "SDL_JOYSTICK_HIDAPI_JOY_CONS" })
+                    Function<IntOfStrings>("SDL_SetHint")(kind, "0");
                 if (Function<IntOfUInt>("SDL_Init")(InitGameController) != 0)
                 {
                     library = IntPtr.Zero;
