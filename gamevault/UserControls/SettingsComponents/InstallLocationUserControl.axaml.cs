@@ -117,7 +117,8 @@ namespace gamevault.UserControls
 
         public Task<string> SelectInstallLocation() => ResultTaskSource.Task;
 
-        private void Choose(string directory)
+        /// <summary>The folder chosen (empty: none, the download is not started); the living-room mode answers through it too.</summary>
+        internal void Choose(string directory)
         {
             if (directory != string.Empty && movingFrom == null)
             {

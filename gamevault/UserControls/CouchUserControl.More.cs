@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace gamevault.UserControls
 {
     /// <summary>The menus of the living-room mode.</summary>
-    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Download, Challenge, Friends, News }
+    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Download, Challenge, Friends, News, InstallLocation }
 
     /// <summary>
     /// The menu shown over a game (Start + Back, Windows): a small window always in front, moved through with the
@@ -276,6 +276,7 @@ namespace gamevault.UserControls
             CouchMenu.Challenge => Loc.T("Challenge of the week"),
             CouchMenu.Friends => Loc.T("Friends"),
             CouchMenu.News => Loc.T("News"),
+            CouchMenu.InstallLocation => Loc.T("Where should the game be installed?"),
             _ => Loc.T("Living-room mode"),
         };
 
@@ -315,6 +316,13 @@ namespace gamevault.UserControls
                 return true;
             }
             // The settings and the statistics are opened from the menu: back to it
+            // No folder chosen: the download is not started
+            if (inMenu && command == CouchCommand.Back && menu == CouchMenu.InstallLocation)
+            {
+                Play(CouchSound.Back);
+                AnswerInstallLocation(string.Empty);
+                return true;
+            }
             // A download's actions go back to the downloads
             if (inMenu && command == CouchCommand.Back && menu == CouchMenu.Download)
             {
@@ -360,6 +368,7 @@ namespace gamevault.UserControls
                 CouchMenu.Challenge => ChallengeLines(),
                 CouchMenu.Friends => FriendsLines(),
                 CouchMenu.News => NewsLines(),
+                CouchMenu.InstallLocation => InstallLocationLines(),
                 _ => MainLines(),
             };
             Navigator.MenuCount = MenuLines.Count;

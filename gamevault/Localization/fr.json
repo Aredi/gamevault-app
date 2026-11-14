@@ -2174,5 +2174,6 @@
   "Message from the administrator": "Message de l'administrateur",
   "Nothing new for now": "Rien de nouveau pour le moment",
   "Signing in as {0}...": "Connexion en tant que {0}...",
-  "Show it again next time": "Le réafficher la prochaine fois"
+  "Show it again next time": "Le réafficher la prochaine fois",
+  "Ask each time: {0}": "Demander à chaque fois : {0}"
 }

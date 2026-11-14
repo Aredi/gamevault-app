@@ -1234,6 +1234,24 @@ namespace GameVault.UiTests
                 Assert.False(couch.FullTrailerShown);
                 Assert.True(couch.uiDetails.IsVisible);
 
+                // Where a game is installed: a screen of the mode, the folders with their room; B installs nothing
+                var picker = new InstallLocationUserControl(1);
+                Assert.NotEmpty(picker.Rows);
+                Task<string> asked = picker.SelectInstallLocation();
+                couch.ChooseInstallLocation(picker, "Astral Drift");
+                Assert.Equal(CouchMenu.InstallLocation, couch.Menu);
+                Assert.Contains(couch.MenuLines, l => l.Text == picker.Rows[0].Path);
+                Assert.Null(MainWindowViewModel.Instance.Popup);
+                couch.Handle(CouchCommand.Back);
+                Assert.Equal(string.Empty, await asked);
+                Assert.False(couch.uiMenu.IsVisible);
+                // A folder chosen: its answer
+                picker = new InstallLocationUserControl(1);
+                asked = picker.SelectInstallLocation();
+                couch.ChooseInstallLocation(picker, "Astral Drift");
+                await couch.MenuLines.First(l => l.Text == picker.Rows[0].Path).Run();
+                Assert.Equal(picker.Rows[0].Path, await asked);
+
                 // The client's messages (its bar is under the mode): at the bottom, or on the start screen of a game
                 MainWindowViewModel.Instance.AppBarText = "No valid Executable found";
                 await TestSession.WaitUntil(() => couch.Notice == Loc.T("No valid Executable found"), TimeSpan.FromSeconds(5), "the message");

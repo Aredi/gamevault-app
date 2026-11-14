@@ -320,5 +320,75 @@ namespace gamevault.UserControls
                     uiNotice.IsVisible = false;
             }, TimeSpan.FromSeconds(Math.Clamp(4 + text.Length / 40.0, 4, 10)));
         }
+
+        // --- Where a game is installed ---
+
+        private InstallLocationUserControl? locationPicker;
+        private string locationGame = "";
+        private bool askLocationAgain = true;
+
+        /// <summary>The desktop's question as a screen of the mode: the game folders with their free room, chosen with A; B: none.</summary>
+        internal void ChooseInstallLocation(InstallLocationUserControl picker, string game)
+        {
+            locationPicker?.Choose(string.Empty);
+            locationPicker = picker;
+            locationGame = game;
+            askLocationAgain = true;
+            ShowMenu(CouchMenu.InstallLocation);
+            // The folder used last is under the finger
+            int line = MenuLines.FindIndex(l => picker.Rows.Any(r => r.IsLast && r.HasRoom && r.Path == l.Text));
+            if (line >= 0)
+            {
+                Navigator.SelectLine(line);
+                ShowScreen(false);
+            }
+        }
+
+        private List<CouchLine> InstallLocationLines()
+        {
+            var lines = new List<CouchLine>();
+            if (locationPicker == null)
+                return new List<CouchLine> { Line(Loc.T("Back"), CloseMenu) };
+            if (locationPicker.uiNeeded.IsVisible)
+                lines.Add(new CouchLine { Text = locationGame, Detail = locationPicker.uiNeeded.Text, Opacity = 0.7, Run = () => Task.CompletedTask });
+            foreach (InstallLocationRow row in locationPicker.Rows)
+            {
+                string detail = row.IsLast && row.Details.Length > 0 ? $"{Loc.T("Last used")} · {row.Details}" : row.IsLast ? Loc.T("Last used") : row.Details;
+                lines.Add(new CouchLine
+                {
+                    Text = row.Path,
+                    Detail = detail,
+                    // Not enough room, or a disk unplugged: shown, not chosen
+                    Opacity = row.HasRoom ? 1 : 0.45,
+                    Run = () =>
+                    {
+                        if (row.HasRoom)
+                            AnswerInstallLocation(row.Path);
+                        return Task.CompletedTask;
+                    },
+                });
+            }
+            lines.Add(Line(Loc.F("Ask each time: {0}", askLocationAgain ? Loc.T("Yes") : Loc.T("No")), () =>
+            {
+                askLocationAgain = !askLocationAgain;
+                int line = Navigator.MenuLine;
+                BuildMenu();
+                Navigator.SelectLine(line);
+                ShowScreen(false);
+            }));
+            lines.Add(Line(Loc.T("Cancel"), () => AnswerInstallLocation(string.Empty)));
+            return lines;
+        }
+
+        private void AnswerInstallLocation(string directory)
+        {
+            InstallLocationUserControl? picker = locationPicker;
+            locationPicker = null;
+            CloseMenu();
+            if (picker == null)
+                return;
+            picker.uiDontAsk.IsChecked = !askLocationAgain;
+            picker.Choose(directory);
+        }
     }
 }

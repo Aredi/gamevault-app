@@ -232,8 +232,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = message;
                 return message;
             }
-            // Not asked in the living-room mode (a desktop window): the usual place, as long as there is one
-            bool ask = !unattended && (SettingsViewModel.Instance.RootDirectories.Count == 0 || (SettingsViewModel.Instance.AskInstallLocation && !CouchUserControl.Shown));
+            bool ask = !unattended && (SettingsViewModel.Instance.AskInstallLocation || SettingsViewModel.Instance.RootDirectories.Count == 0);
             if (!ask && SettingsViewModel.Instance.RootDirectories.Count == 0)
                 return Fail(Loc.T("No Root Directory configured! Go to ⚙️Settings->Data"));
             string selectedDirectory;
@@ -245,7 +244,11 @@ namespace gamevault.UserControls
             {
                 long.TryParse(game.Size, out long size);
                 var installLocationPicker = new InstallLocationUserControl(size);
-                MainWindowViewModel.Instance.OpenPopup(installLocationPicker);
+                // In the living-room mode: one of its screens, read with the gamepad, for the same answer
+                if (App.Instance.MainWindow is Windows.MainWindow { IsCouchShown: true } main && installLocationPicker.Rows.Count > 0)
+                    main.uiCouch.ChooseInstallLocation(installLocationPicker, game.Title);
+                else
+                    MainWindowViewModel.Instance.OpenPopup(installLocationPicker);
                 selectedDirectory = await installLocationPicker.SelectInstallLocation();
             }
             if (selectedDirectory == string.Empty)
