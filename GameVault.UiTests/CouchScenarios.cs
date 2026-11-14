@@ -141,7 +141,7 @@ namespace GameVault.UiTests
                 // A game's screen: what can be done with it, then the next game without leaving it
                 couch.Handle(CouchCommand.Accept);
                 Assert.True(couch.uiDetails.IsVisible && !couch.uiHome.IsVisible);
-                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Add to the favorites"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
+                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Add to the favorites") }, couch.Actions.Select(a => a.Text));
                 Assert.True(couch.Actions[0].IsSelected);
                 couch.Handle(CouchCommand.Down);
                 Assert.True(couch.Actions[1].IsSelected && !couch.Actions[0].IsSelected);
@@ -150,7 +150,7 @@ namespace GameVault.UiTests
                 couch.Handle(CouchCommand.PreviousTab);
                 couch.Handle(CouchCommand.PreviousTab);
                 Assert.Equal("Hollow Tides", couch.uiDetailTitle.Text);
-                Assert.Equal(new[] { Loc.T("Play"), Loc.T("Add to the favorites"), Loc.T("Uninstall"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
+                Assert.Equal(new[] { Loc.T("Play"), Loc.T("Add to the favorites"), Loc.T("Uninstall") }, couch.Actions.Select(a => a.Text));
                 couch.Handle(CouchCommand.Back);
                 Assert.True(couch.uiHome.IsVisible);
 
@@ -447,7 +447,7 @@ namespace GameVault.UiTests
                 couch.Navigator.Select(couch.Navigator.Tab, 4);
                 couch.Handle(CouchCommand.Accept);
                 Assert.Equal("Lumen Trail", couch.uiDetailTitle.Text);
-                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Watch the trailer"), Loc.T("Add to the favorites"), Loc.T("Open its page") }, couch.Actions.Select(a => a.Text));
+                Assert.Equal(new[] { Loc.T("Install and play"), Loc.T("Install"), Loc.T("Watch the trailer"), Loc.T("Add to the favorites") }, couch.Actions.Select(a => a.Text));
 
                 // Its star: the game is bookmarked on the server and gets the Favorites tab; the screen stays on it
                 session.Server.Bookmarks.Clear();

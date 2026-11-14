@@ -98,7 +98,7 @@ namespace gamevault.UserControls
         internal List<CouchLine> MenuLines { get; private set; } = new();
         /// <summary>The selected game of the tab shown.</summary>
         internal CouchItem? Current => Navigator.Index >= 0 && Navigator.Tab < Tabs.Count ? Tabs[Navigator.Tab].Items[Navigator.Index] : null;
-        /// <summary>Asked by the menu and by a game's "Open its page": the window shows the desktop again.</summary>
+        /// <summary>Asked by the menu: the window shows the desktop again.</summary>
         internal event Action? LeaveRequested;
 
         private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
@@ -1226,7 +1226,6 @@ namespace gamevault.UserControls
                 if (retro.HasVideo)
                     lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => { MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(new[] { $"https://www.youtube.com/watch?v={Uri.EscapeDataString(retro.Video!)}" }, retro.Name)); return Task.CompletedTask; } });
                 AddCommon(lines, item);
-                lines.Add(new CouchLine { Text = Loc.T("Open its page"), Run = () => { LeaveRequested?.Invoke(); return MainWindowViewModel.Instance.Retro.ShowGameAsync(retro.Platform.Slug, retro.Id); } });
             }
             else
             {
@@ -1241,7 +1240,6 @@ namespace gamevault.UserControls
                 if (game.Metadata is GameMetadata metadata && TrailerPopup.HasVideos(metadata))
                     lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => { MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(metadata, item.Title)); return Task.CompletedTask; } });
                 AddCommon(lines, item);
-                lines.Add(new CouchLine { Text = Loc.T("Open its page"), Run = () => { LeaveRequested?.Invoke(); MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(game)); return Task.CompletedTask; } });
             }
             Actions = lines;
             Navigator.ActionCount = lines.Count;
