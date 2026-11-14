@@ -133,15 +133,20 @@ namespace gamevault.Helper
             return users;
         }
         /// <summary>
-        /// The profile on another server address (its folder is named by it): its settings and links (RomM, RetroAchievements,
-        /// the retro consoles' controllers, languages and keys) kept, as the same server is often reached by another name.
+        /// The profile on another server address (its folder is named by it): its whole folder goes with it, as the same
+        /// server is often reached by another name. Its settings and links (RomM, RetroAchievements, the retro consoles'
+        /// controllers, languages and keys), its collections, its saves' history and what waits to be sent are kept.
         /// </summary>
         public static UserProfile ChangeServer(UserProfile userProfile, string serverUrl)
         {
-            string? settings = File.Exists(userProfile.UserConfigFile) ? File.ReadAllText(userProfile.UserConfigFile) : null;
             UserProfile moved = CreateUserProfile(WebHelper.RemoveSpecialCharactersFromUrl(serverUrl));
-            if (settings != null)
-                File.WriteAllText(moved.UserConfigFile, settings);
+            if (Directory.Exists(userProfile.RootDir))
+            {
+                // Both under the profiles' folder: renamed, not copied
+                Directory.Delete(moved.RootDir, true);
+                Directory.Move(userProfile.RootDir, moved.RootDir);
+                EnsureUserProfileFileTree(moved);
+            }
             DeleteUserProfile(userProfile);
             return moved;
         }
