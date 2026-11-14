@@ -161,6 +161,8 @@ namespace GameVault.Core.Couch
         {
             try
             {
+                // What is written is of this version: "xbox" kept from now on was chosen
+                Version = 2;
                 // Written aside then moved: never half written
                 File.WriteAllText(file + ".part", JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
                 File.Move(file + ".part", file, true);
