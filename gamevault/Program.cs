@@ -42,6 +42,9 @@ namespace gamevault
             // Must run first: handles the install/update/uninstall hooks of the Velopack installer and exits for them
             Velopack.VelopackApp.Build().Run();
             ReturnLargeBlocksToTheSystem();
+            // The living-room mode's trailers and game themes start by themselves, with their sound (no click on a TV)
+            if (OperatingSystem.IsWindows() && Environment.GetEnvironmentVariable("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS") == null)
+                Environment.SetEnvironmentVariable("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--autoplay-policy=no-user-gesture-required");
 
             CommandOptions cmdLineOptions;
             if (args.Length > 0 && args.Any(s => s.Contains("gamevault://")) && !args[0].Contains("--uridata"))

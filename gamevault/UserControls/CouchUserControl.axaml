@@ -554,9 +554,10 @@
                     <!-- Its genres and tags, at the bottom right as on a console -->
                     <TextBlock Grid.Column="1" x:Name="uiDetailGenres" FontSize="22" FontWeight="SemiBold" Opacity="0.85" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                TextTrimming="CharacterEllipsis" Margin="36,0,0,6" />
-                    <Border Grid.Column="1" x:Name="uiTrailerBox" Classes="couchGlass" Margin="36,40,0,0" Padding="10" Width="880" Height="515"
+                    <!-- The video alone, 16:9, nothing around it but a thin edge: the web player is drawn over everything inside -->
+                    <Border Grid.Column="1" x:Name="uiTrailerBox" Classes="couchGlass" Margin="36,40,0,0" Padding="2" Width="884" Height="501"
                             HorizontalAlignment="Right" VerticalAlignment="Top" IsVisible="False">
-                        <Border x:Name="uiTrailerHost" CornerRadius="14" ClipToBounds="True" Background="Black" />
+                        <Border x:Name="uiTrailerHost" ClipToBounds="True" Background="Black" />
                     </Border>
                 </Grid>
 
@@ -700,6 +701,8 @@
                         <TextBlock x:Name="uiLoginOthers" FontSize="18" Opacity="0.6" HorizontalAlignment="Center" Margin="0,8,0,0" />
                     </StackPanel>
                 </Panel>
+                <!-- The selected game's theme: a sound alone, its player the smallest there is (a web player is drawn over everything) -->
+                <Border x:Name="uiThemeHost" Width="1" Height="1" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" />
                 <!-- Read for its color only: the accent follows the selected game's cover -->
                 <local:CacheImage x:Name="uiAccentProbe" ImageCacheType="GameCover" ComputeAccent="True" Width="2" Height="3" Opacity="0" IsHitTestVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" />
             </Grid>

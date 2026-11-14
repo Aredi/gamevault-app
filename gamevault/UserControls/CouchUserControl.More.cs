@@ -499,7 +499,7 @@ namespace gamevault.UserControls
 
         // --- The trailer in a game's screen ---
 
-        private MediaSlider? trailer;
+        private CouchPlayer? trailer;
         /// <summary>The video of the game whose screen is shown, its address once YouTube gave it.</summary>
         private string? trailerVideo;
         private Tuple<string, string>? trailerUrl;
@@ -538,7 +538,10 @@ namespace gamevault.UserControls
             && Navigator.Screen == CouchScreen.Details && MainWindowViewModel.Instance.Popup == null && DialogService.Current == null
             && curtain == Curtain.None && Editing == null && playing == null && TopLevel.GetTopLevel(this) is Window { IsActive: true };
 
-        /// <summary>Twice a second: started after two seconds on the screen, stopped when something comes over it.</summary>
+        /// <summary>
+        /// Twice a second: started after two seconds on the screen, stopped when something comes over it. Played to its
+        /// end, or never come: the game's picture again, and it is not started again for this game.
+        /// </summary>
         internal void KeepTrailer()
         {
             if (!TrailerMayPlay)
@@ -547,11 +550,33 @@ namespace gamevault.UserControls
                     StopTrailer();
                 return;
             }
-            if (!TrailerShown && trailerWait.Elapsed >= TimeSpan.FromSeconds(2))
-                _ = StartTrailerAsync(trailerGeneration);
+            if (!TrailerShown)
+            {
+                if (trailerWait.Elapsed >= TimeSpan.FromSeconds(2))
+                    _ = StartTrailerAsync(trailerGeneration);
+                return;
+            }
+            _ = WatchTrailerAsync();
         }
 
         private bool trailerStarting;
+        private readonly Stopwatch trailerShownFor = new();
+
+        /// <summary>The trailer is heard (its sound plays): the menu's music and the game's theme are quiet meanwhile.</summary>
+        internal bool TrailerHeard => TrailerShown && trailer?.Now == CouchPlayer.State.Heard;
+
+        private async Task WatchTrailerAsync()
+        {
+            if (trailer == null)
+                return;
+            CouchPlayer.State state = await trailer.ReadStateAsync();
+            bool gaveUp = state == CouchPlayer.State.Loading && trailerShownFor.Elapsed > TimeSpan.FromSeconds(15);
+            if (TrailerShown && (state is CouchPlayer.State.Ended or CouchPlayer.State.Failed || gaveUp))
+            {
+                StopTrailer();
+                trailerVideo = null;
+            }
+        }
 
         private async Task StartTrailerAsync(int generation)
         {
@@ -560,7 +585,7 @@ namespace gamevault.UserControls
             trailerStarting = true;
             try
             {
-                // Shown 860 pixels wide: 720p is plenty
+                // Shown 880 pixels wide: 720p is plenty
                 trailerUrl ??= await TrailerPopup.PlayableUrl(trailerVideo!, maxHeight: 720);
                 if (trailerUrl == null)
                 {
@@ -572,13 +597,12 @@ namespace gamevault.UserControls
                     return;
                 if (trailer == null)
                 {
-                    trailer = new MediaSlider { ShowFullscreenButton = false };
+                    trailer = new CouchPlayer();
                     uiTrailerHost.Child = trailer;
                 }
                 uiTrailerBox.IsVisible = true;
-                await trailer.InitVideoPlayer();
-                trailer.SetMediaList(new List<Tuple<string, string>> { trailerUrl });
-                await trailer.LoadFirstElement();
+                trailerShownFor.Restart();
+                trailer.Play(trailerUrl.Item1, trailerUrl.Item2, volume: 0.9);
             }
             catch (Exception ex) { Log.Ignored(ex); }
             finally { trailerStarting = false; }
@@ -603,8 +627,7 @@ namespace gamevault.UserControls
         {
             if (!uiTrailerBox.IsVisible)
                 return;
-            try { trailer?.UnloadMediaSlider(); }
-            catch (Exception ex) { Log.Ignored(ex); }
+            trailer?.Stop();
             uiTrailerBox.IsVisible = false;
         }
 

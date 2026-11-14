@@ -931,6 +931,7 @@ namespace gamevault.UserControls
             uiStatsLine.IsVisible = Stats.Count > 0 && Settings.ShowStats && Settings.InfoStyle == "compact";
             uiLogo.IsVisible = false;
             uiTitle.IsVisible = true;
+            QueueTheme(item);
             int generation = ++backGeneration;
             DispatcherTimer.RunOnce(() =>
             {
@@ -1296,12 +1297,13 @@ namespace gamevault.UserControls
             }
             WatchGame();
             KeepTrailer();
+            KeepTheme();
             if (LoginShown)
                 ShowLoginClock();
             bool active = IsVisible && TopLevel.GetTopLevel(this) is Window { IsActive: true };
             KeepDrift(active);
             // The music: in the menus only, never over a game, a trailer or a game that starts
-            audio?.Music(SoundsOn && Settings.Music && active && playing == null && !TrailerShown && curtain != Curtain.Splash);
+            audio?.Music(SoundsOn && Settings.Music && active && playing == null && !TrailerHeard && !ThemeHeard && curtain != Curtain.Splash);
             DialogService.Current?.Mark();
             if (Editing is { IsEffectivelyVisible: false })
                 StopEditing();

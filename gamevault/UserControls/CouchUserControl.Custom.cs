@@ -111,8 +111,9 @@ namespace gamevault.UserControls
             Grid.SetColumn(uiTrailerBox, centered ? 0 : 1);
             Grid.SetColumnSpan(uiTrailerBox, centered ? 2 : 1);
             uiTrailerBox.HorizontalAlignment = centered ? HorizontalAlignment.Center : HorizontalAlignment.Right;
-            uiTrailerBox.Width = centered ? 720 : 880;
-            uiTrailerBox.Height = centered ? 405 : 515;
+            // 16:9 inside the thin edge
+            uiTrailerBox.Width = centered ? 724 : 884;
+            uiTrailerBox.Height = centered ? 409 : 501;
             uiTrailerBox.Margin = centered ? new Thickness(0, 10, 0, 0) : new Thickness(36, 40, 0, 0);
             // Dark under the texts: at the left, or at the bottom
             uiDetailShade.Background = new LinearGradientBrush
@@ -444,6 +445,7 @@ namespace gamevault.UserControls
                     Choice("Sounds", nameof(CouchSettings.SoundPack), "Soft mallets, an old console's square waves, or bells."),
                     Volume("Volume of the sounds", s.SoundVolume, v => s.SoundVolume = v, "Their loudness, under the TV's own volume."),
                     Toggle("Music in the menus", s.Music, v => s.Music = v, "Quiet music behind the menus, never over a game."),
+                    Toggle("Theme of the selected game", s.Themes, v => s.Themes = v, "A moment on a game plays its music, found on YouTube, instead of the menus'."),
                     Choice("Music", nameof(CouchSettings.MusicTheme), "Calm, or night: lower and darker."),
                     Volume("Volume of the music", s.MusicVolume, v => s.MusicVolume = v, "Its loudness, under the sounds."),
                 },

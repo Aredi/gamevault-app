@@ -38,6 +38,8 @@ namespace GameVault.Core.Couch
         public bool Trailers { get; set; } = true;
         /// <summary>The quiet music behind the menus.</summary>
         public bool Music { get; set; } = true;
+        /// <summary>The selected game's theme (found on YouTube) instead of the menus' music, a moment after it is chosen.</summary>
+        public bool Themes { get; set; } = true;
 
         // --- The customization, as Aniki ReMake's: each one has its few values, the first the usual one ---
 

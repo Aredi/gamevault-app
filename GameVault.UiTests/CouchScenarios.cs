@@ -994,6 +994,85 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task ASelectedGamesTheme_PlaysAfterAMoment_AndStopsForTheNextGame()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            var searched = new List<string>();
+            GameThemes.Instead = search =>
+            {
+                searched.Add(search);
+                return Task.FromResult<string?>(search.StartsWith("Astral Drift") ? "https://sounds.invalid/astral.m4a?a=1&b=2" : null);
+            };
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                window.Activate();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+                while (couch.Tabs[couch.Navigator.Tab].Name != Loc.T("Library"))
+                    couch.Handle(CouchCommand.NextTab);
+                Assert.Equal("Astral Drift", couch.Current!.Title);
+
+                // Not at once: passing through the games plays nothing
+                couch.KeepTheme();
+                Assert.Null(couch.ThemePlaying);
+                await Task.Delay(1300);
+                couch.KeepTheme();
+                await TestSession.WaitUntil(() => couch.ThemePlaying == couch.Current!.Key, TimeSpan.FromSeconds(5), "the theme");
+                Assert.Equal("Astral Drift main theme", searched[^1]);
+
+                // Its screen opened: the same theme goes on
+                couch.Handle(CouchCommand.Accept);
+                couch.KeepTheme();
+                Assert.Equal(couch.Current!.Key, couch.ThemePlaying);
+                couch.Handle(CouchCommand.Back);
+
+                // The next game: stopped; it has none, nothing plays and it is not searched again
+                couch.Handle(CouchCommand.Right);
+                Assert.Null(couch.ThemePlaying);
+                await Task.Delay(1300);
+                couch.KeepTheme();
+                await Task.Delay(200);
+                int searches = searched.Count;
+                couch.KeepTheme();
+                await Task.Delay(200);
+                Assert.Null(couch.ThemePlaying);
+                Assert.Equal(searches, searched.Count);
+
+                // The setting off, or the light mode: none
+                couch.Handle(CouchCommand.Left);
+                couch.Settings.Themes = false;
+                await Task.Delay(1300);
+                couch.KeepTheme();
+                await Task.Delay(200);
+                Assert.Null(couch.ThemePlaying);
+                couch.Settings.Themes = true;
+                couch.Settings.Performance = true;
+                couch.KeepTheme();
+                await Task.Delay(200);
+                Assert.Null(couch.ThemePlaying);
+
+                // A retro game's search names its console; the player's page plays the sound alone, looped
+                Assert.Equal("Metroid NES main theme", GameThemes.SearchOf(" Metroid ", "NES"));
+                string page = CouchPlayer.Page(null, "https://sounds.invalid/astral.m4a?a=1&b=2", 0.45, loop: true);
+                Assert.Contains("<audio id='a' src='https://sounds.invalid/astral.m4a?a=1&amp;b=2' preload='auto' loop>", page);
+                Assert.DoesNotContain("<video", page);
+                Assert.Contains("level=0.45", page);
+            }
+            finally
+            {
+                GameThemes.Instead = null;
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AGameStartedFromTheMode_KeepsItsPictureStill_AndGivesTheModeBackWhenClosed()
         {
             var session = await TestSession.GetAsync();
