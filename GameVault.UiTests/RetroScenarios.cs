@@ -158,6 +158,37 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task ShortestFirst_ListsTheQuickGamesToFinishFirst_AndTheUnknownOnesLast()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            RetroUserControl page = MainWindowViewModel.Instance.Retro;
+            int sortBefore = page.ViewModel.SortBy;
+            try
+            {
+                await page.LoadPlatformsAsync();
+                await page.SelectAllAsync();
+                Assert.Contains(page.Shown, g => g.Name == "Castlevania");
+                Assert.True(page.Shown.Count() >= 3);
+                RetroGame zelda = page.ViewModel.AllGames.First(g => g.Name == "Zelda"), castlevania = page.ViewModel.AllGames.First(g => g.Name == "Castlevania");
+                foreach (RetroGame game in page.ViewModel.AllGames)
+                    game.MainStory = null;
+                zelda.MainStory = 30 * 3600;
+                castlevania.MainStory = 8 * 3600;
+
+                page.ViewModel.SortBy = Array.IndexOf(page.ViewModel.SortOptions, gamevault.Localization.Loc.T("Shortest first"));
+                Assert.Equal(5, page.ViewModel.SortBy);
+                Assert.Equal(new[] { "Castlevania", "Zelda" }, page.Shown.Take(2).Select(g => g.Name));
+                Assert.All(page.Shown.Skip(2), g => Assert.Null(g.MainStory));
+            }
+            finally
+            {
+                page.ViewModel.SortBy = sortBefore;
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AnotherPlatform_ChosenFarDownTheGrid_LeavesNoCardDrawnOverTheOthers()
         {
             var session = await TestSession.GetAsync();

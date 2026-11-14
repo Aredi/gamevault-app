@@ -13,7 +13,7 @@ namespace gamevault.ViewModels
     {
         public RetroViewModel()
         {
-            SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating"), Loc.T("Last played"), Loc.T("Playtime") };
+            SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating"), Loc.T("Last played"), Loc.T("Playtime"), Loc.T("Shortest first") };
             collections = new() { Loc.T("All collections") };
             recent = RetroLibrary.Recent(12);
             SetAccent(null);
@@ -226,6 +226,8 @@ namespace gamevault.ViewModels
                 2 => shown.OrderByDescending(g => g.Rating ?? -1),
                 3 => shown.OrderByDescending(g => RetroLibrary.LastPlayedOf(g) ?? DateTime.MinValue),
                 4 => shown.OrderByDescending(g => g.MinutesPlayed),
+                // The time to finish its story: the ones without it last
+                5 => shown.OrderBy(g => g.MainStory ?? long.MaxValue).ThenBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase),
                 _ => shown.OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase),
             };
             Games = shown.ToList();
