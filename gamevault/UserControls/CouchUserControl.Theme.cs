@@ -4,6 +4,7 @@ using gamevault.ViewModels;
 using GameVault.Core;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
@@ -38,6 +39,35 @@ namespace gamevault.UserControls
             StopTheme();
             themeItem = game;
             themeWait.Restart();
+            // Its sound's address asked at once: ready when the moment has passed
+            if (game != null && Settings.Themes && !Settings.Performance && !themeless.Contains(game.Key))
+                _ = GameThemes.SoundOfAsync(SearchOf(game));
+        }
+
+        private static string SearchOf(CouchItem item) => GameThemes.SearchOf(item.Title, item.Retro?.Platform.Name);
+
+        /// <summary>
+        /// At start, in the background, a while after the window: every game's theme searched for once and kept on the PC
+        /// (the installed ones first, then the ones played last), so none is searched for when it is chosen.
+        /// </summary>
+        internal async Task PreloadThemesAsync(TimeSpan after)
+        {
+            try
+            {
+                await Task.Delay(after);
+                if (!Settings.Themes || Settings.Performance)
+                    return;
+                var (pc, retro) = await ReadGamesAsync();
+                HashSet<int> installed = InstalledPc();
+                var records = InstallViewModel.Instance.PlayRecords;
+                var items = pc.Select(g => new CouchItem { Pc = g, Installed = installed.Contains(g.ID) })
+                    .Concat(retro.Select(g => new CouchItem { Retro = g, Installed = g.Installed }));
+                DateTime LastPlayed(CouchItem i) => i.Pc != null && records.TryGetValue(i.Pc.ID, out var record) && record.LastPlayedAt is DateTime at ? at
+                    : i.Retro != null && RetroLibrary.LastPlayedOf(i.Retro) is DateTime retroAt ? retroAt : DateTime.MinValue;
+                var order = items.OrderByDescending(i => i.Installed).ThenByDescending(LastPlayed).Select(SearchOf).ToList();
+                await GameThemes.PreloadAsync(order);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         private bool ThemeMayPlay => themeItem != null && Settings.Themes && !Settings.Performance && SoundsOn && IsVisible
@@ -69,8 +99,7 @@ namespace gamevault.UserControls
             themeStarting = true;
             try
             {
-                string search = GameThemes.SearchOf(item.Title, item.Retro?.Platform.Name);
-                string? sound = await GameThemes.SoundOfAsync(search);
+                string? sound = await GameThemes.SoundOfAsync(SearchOf(item));
                 // Another game was chosen meanwhile, or something came over it
                 if (!ReferenceEquals(item, themeItem) || !ThemeMayPlay)
                     return;

@@ -1,7 +1,12 @@
 using GameVault.Core;
+using gamevault.Helper.Platform;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
@@ -11,25 +16,58 @@ namespace gamevault.Helper
     /// <summary>
     /// A game's theme, as a console plays it on the selected game: the first YouTube video found for its name and "main
     /// theme" that is a piece of music (not a whole soundtrack of an hour, not a 10-second clip), its sound alone.
+    /// The videos found are kept on the PC and searched for in the background at start (as Playnite's metadata): a
+    /// game chosen only asks YouTube for its sound's address, and that as soon as it is chosen.
     /// </summary>
     internal static class GameThemes
     {
         private static readonly TimeSpan Shortest = TimeSpan.FromSeconds(40), Longest = TimeSpan.FromMinutes(8);
-        // The video found by search (null: none): asked once a session; the sound's address is asked each time (it expires)
-        private static readonly ConcurrentDictionary<string, Task<string?>> found = new();
+        // A sound's address lasts some hours on YouTube: asked again after this
+        private static readonly TimeSpan SoundLasts = TimeSpan.FromHours(4);
+        // Between two searches in the background: YouTube is not hurried, the PC not slowed
+        internal static TimeSpan PreloadPause { get; set; } = TimeSpan.FromSeconds(2);
+
+        private static readonly object gate = new();
+        // The video found by search ("": none), as kept in the file
+        private static Dictionary<string, string>? known;
+        private static readonly ConcurrentDictionary<string, Task<string?>> searching = new();
+        private static readonly ConcurrentDictionary<string, (DateTime Asked, Task<string?> Sound)> sounds = new();
+        private static int preloading;
         private static YoutubeClient? youtube;
 
-        /// <summary>The tests' themes instead of YouTube's.</summary>
+        /// <summary>The tests' themes instead of YouTube's (the sound's address for a search).</summary>
         internal static Func<string, Task<string?>>? Instead { get; set; }
+        /// <summary>The tests' search instead of YouTube's (the video for a search).</summary>
+        internal static Func<string, Task<string?>>? SearchInstead { get; set; }
 
-        /// <summary>The sound's address of the theme found for this search, or null.</summary>
-        public static async Task<string?> SoundOfAsync(string search)
+        internal static string File => Path.Combine(PlatformInfo.LocalDataDirectory, "cache", "themes.json");
+
+        /// <summary>The tests start from what the file holds.</summary>
+        internal static void Forget()
+        {
+            lock (gate)
+                known = null;
+            searching.Clear();
+            sounds.Clear();
+        }
+
+        /// <summary>The sound's address of the theme found for this search, or null; asked once for some hours.</summary>
+        public static Task<string?> SoundOfAsync(string search)
         {
             if (Instead != null)
-                return await Instead(search);
+                return Instead(search);
+            if (sounds.TryGetValue(search, out var asked) && DateTime.UtcNow - asked.Asked < SoundLasts)
+                return asked.Sound;
+            Task<string?> sound = AskSoundAsync(search);
+            sounds[search] = (DateTime.UtcNow, sound);
+            return sound;
+        }
+
+        private static async Task<string?> AskSoundAsync(string search)
+        {
             try
             {
-                if (await found.GetOrAdd(search, FindAsync) is not string video)
+                if (await VideoOfAsync(search) is not string video)
                     return null;
                 youtube ??= new YoutubeClient();
                 var manifest = await youtube.Videos.Streams.GetManifestAsync(video);
@@ -37,15 +75,96 @@ namespace gamevault.Helper
             }
             catch (Exception ex)
             {
-                // No network a moment: asked again later
-                found.TryRemove(search, out _);
+                // No network a moment: asked again next time
+                sounds.TryRemove(search, out _);
                 Log.Ignored(ex);
                 return null;
             }
         }
 
+        /// <summary>The video kept for this search, else searched for (once at a time) and kept.</summary>
+        internal static async Task<string?> VideoOfAsync(string search)
+        {
+            Dictionary<string, string> kept = Known();
+            lock (gate)
+            {
+                if (kept.TryGetValue(search, out string? video))
+                    return video.Length > 0 ? video : null;
+            }
+            try
+            {
+                string? found = await searching.GetOrAdd(search, FindAsync);
+                lock (gate)
+                    kept[search] = found ?? "";
+                Save();
+                return found;
+            }
+            finally { searching.TryRemove(search, out _); }
+        }
+
+        /// <summary>
+        /// In the background at start: the games' themes not searched yet, one after the other, the first given first.
+        /// Once a session; stopped by the token.
+        /// </summary>
+        public static async Task PreloadAsync(IEnumerable<string> searches, CancellationToken stop = default)
+        {
+            if (Interlocked.Exchange(ref preloading, 1) == 1)
+                return;
+            try
+            {
+                foreach (string search in searches.Distinct().ToList())
+                {
+                    if (stop.IsCancellationRequested)
+                        return;
+                    bool kept;
+                    lock (gate)
+                        kept = Known().ContainsKey(search);
+                    if (kept)
+                        continue;
+                    try { await VideoOfAsync(search); }
+                    catch (Exception ex)
+                    {
+                        // No network: the rest another time
+                        Log.Ignored(ex);
+                        return;
+                    }
+                    await Task.Delay(PreloadPause, stop).ContinueWith(_ => { });
+                }
+            }
+            finally { Interlocked.Exchange(ref preloading, 0); }
+        }
+
+        private static Dictionary<string, string> Known()
+        {
+            lock (gate)
+            {
+                if (known != null)
+                    return known;
+                try { known = System.IO.File.Exists(File) ? JsonSerializer.Deserialize<Dictionary<string, string>>(System.IO.File.ReadAllText(File)) : null; }
+                catch (Exception ex) { Log.Ignored(ex); }
+                return known ??= new Dictionary<string, string>();
+            }
+        }
+
+        private static void Save()
+        {
+            try
+            {
+                // Written whole, one at a time
+                lock (gate)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(File)!);
+                    System.IO.File.WriteAllText(File + ".part", JsonSerializer.Serialize(known));
+                    System.IO.File.Move(File + ".part", File, true);
+                }
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
         private static async Task<string?> FindAsync(string search)
         {
+            if (SearchInstead != null)
+                return await SearchInstead(search);
             youtube ??= new YoutubeClient();
             int seen = 0;
             await foreach (var video in youtube.Search.GetVideosAsync(search))

@@ -253,6 +253,9 @@ namespace gamevault.Windows
             await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();
             await MainWindowViewModel.Instance.Downloads.RestoreDownloadedGames();
             RetroDownloads.Restore();
+            // The living-room mode's game themes, searched for in the background once the window is settled
+            if (LoginState.Success == state)
+                _ = uiCouch.PreloadThemesAsync(TimeSpan.FromSeconds(30));
             LoginManager.Instance.InitOnlineTimer();
             MainWindowViewModel.Instance.UserAvatar = LoginManager.Instance.GetCurrentUser();
 

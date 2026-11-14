@@ -305,28 +305,35 @@ namespace gamevault.UserControls
                     uiEmpty.Text = Loc.T("Loading your games...");
                     uiEmpty.IsVisible = true;
                 }
-                var pc = new Dictionary<int, Game>();
-                foreach (var install in InstallViewModel.Instance.InstalledGames.Where(g => g.Key != null))
-                    pc[install.Key.ID] = install.Key;
-                try
-                {
-                    string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?limit=-1");
-                    foreach (Game game in JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>())
-                        if (game.DeletedAt == null)
-                            pc.TryAdd(game.ID, game);
-                }
-                catch (Exception ex)
-                {
-                    // Offline: the installed games are enough
-                    Log.Ignored(ex);
-                }
-                List<RetroGame> retro = new();
-                try { retro = await MainWindowViewModel.Instance.Retro.AllGamesAsync(); }
-                catch (Exception ex) { Log.Ignored(ex); }
-                Show(pc.Values, retro);
+                var (pc, retro) = await ReadGamesAsync();
+                Show(pc, retro);
                 _ = LoadChallengeAsync();
             }
             finally { loading = false; }
+        }
+
+        /// <summary>The library's games (the installed ones when offline) and the retro games.</summary>
+        private static async Task<(List<Game> Pc, List<RetroGame> Retro)> ReadGamesAsync()
+        {
+            var pc = new Dictionary<int, Game>();
+            foreach (var install in InstallViewModel.Instance.InstalledGames.Where(g => g.Key != null))
+                pc[install.Key.ID] = install.Key;
+            try
+            {
+                string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?limit=-1");
+                foreach (Game game in JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>())
+                    if (game.DeletedAt == null)
+                        pc.TryAdd(game.ID, game);
+            }
+            catch (Exception ex)
+            {
+                // Offline: the installed games are enough
+                Log.Ignored(ex);
+            }
+            List<RetroGame> retro = new();
+            try { retro = await MainWindowViewModel.Instance.Retro.AllGamesAsync(); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            return (pc.Values.ToList(), retro);
         }
 
         private static IEnumerable<T> ByTitle<T>(IEnumerable<T> items, Func<T, string> title) => items.OrderBy(title, StringComparer.Create(CultureInfo.CurrentCulture, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace));

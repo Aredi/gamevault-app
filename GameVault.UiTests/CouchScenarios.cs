@@ -1112,6 +1112,43 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheThemes_AreSearchedForInTheBackground_AndKeptOnThePC()
+        {
+            await TestSession.GetAsync();
+            var searched = new List<string>();
+            GameThemes.SearchInstead = search =>
+            {
+                lock (searched)
+                    searched.Add(search);
+                return Task.FromResult<string?>(search.StartsWith("Zelda") ? null : "video-" + search.Length);
+            };
+            GameThemes.PreloadPause = TimeSpan.Zero;
+            File.Delete(GameThemes.File);
+            GameThemes.Forget();
+            try
+            {
+                // Each game once, in the order given
+                await GameThemes.PreloadAsync(new[] { "Astral main theme", "Zelda main theme", "Astral main theme" });
+                Assert.Equal(new[] { "Astral main theme", "Zelda main theme" }, searched);
+
+                // Another start: what was found (or not) is read from the PC, only the new game is searched for
+                GameThemes.Forget();
+                await GameThemes.PreloadAsync(new[] { "Astral main theme", "Zelda main theme", "Metroid main theme" });
+                Assert.Equal(new[] { "Astral main theme", "Zelda main theme", "Metroid main theme" }, searched);
+                Assert.Equal("video-17", await GameThemes.VideoOfAsync("Astral main theme"));
+                Assert.Null(await GameThemes.VideoOfAsync("Zelda main theme"));
+                Assert.Equal(3, searched.Count);
+            }
+            finally
+            {
+                GameThemes.SearchInstead = null;
+                GameThemes.PreloadPause = TimeSpan.FromSeconds(2);
+                File.Delete(GameThemes.File);
+                GameThemes.Forget();
+            }
+        }
+
+        [AvaloniaFact]
         public async Task ASelectedGamesTheme_PlaysAfterAMoment_AndStopsForTheNextGame()
         {
             var session = await TestSession.GetAsync();
