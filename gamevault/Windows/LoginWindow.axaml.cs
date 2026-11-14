@@ -74,6 +74,8 @@ namespace gamevault.Windows
         public Task<bool> Completion => completion.Task;
 
         private LoginWindowViewModel ViewModel { get; set; }
+        /// <summary>A step that waits for the player (a profile to choose, a password): not just loading.</summary>
+        internal event Action? NeedsThePlayer;
         private bool SkipBootTasks = false;
         private InputTimer InputTimer { get; set; }
         public LoginWindow(bool skipBootTasks = false)
@@ -88,6 +90,12 @@ namespace gamevault.Windows
             InputTimer.Interval = TimeSpan.FromMilliseconds(400);
             InputTimer.Tick += ServerUrlInput_Tick;
 
+            // Opened hidden by the living-room mode: shown only when it asks the player something
+            ViewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(LoginWindowViewModel.LoginStepIndex) && ViewModel.LoginStepIndex != (int)LoginStep.LoadingAction)
+                    NeedsThePlayer?.Invoke();
+            };
             Opened += LoginWindow_Loaded;
             Opened += (_, _) => _ = LoadArtWallAsync();
             Closed += LoginWindow_Closed;

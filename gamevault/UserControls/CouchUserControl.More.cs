@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace gamevault.UserControls
 {
     /// <summary>The menus of the living-room mode.</summary>
-    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Download, Challenge, Friends }
+    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Download, Challenge, Friends, News }
 
     /// <summary>
     /// The menu shown over a game (Start + Back, Windows): a small window always in front, moved through with the
@@ -127,6 +127,9 @@ namespace gamevault.UserControls
 
         private void InitMore()
         {
+            // The client's messages, whose bar the mode hides: shown in it while it is on the screen
+            AttachedToVisualTree += (_, _) => MainWindowViewModel.Instance.PropertyChanged += ClientSaid;
+            DetachedFromVisualTree += (_, _) => MainWindowViewModel.Instance.PropertyChanged -= ClientSaid;
             // A library game's color comes when its cover is read
             uiAccentProbe.PropertyChanged += (_, e) =>
             {
@@ -190,7 +193,7 @@ namespace gamevault.UserControls
             Add("challenge", Loc.T("Challenge of the week"), challengeText, OpenChallengeAsync);
             Add("friends", Loc.T("Friends"), FriendsText(), OpenFriendsAsync);
             Add("downloads", Loc.T("Downloads"), DownloadsText(), () => Do(() => ShowMenu(CouchMenu.Downloads)));
-            Add("news", Loc.T("News"), Loc.T("What is new on the server"), () => Do(() => MainWindowViewModel.Instance.OpenPopup(new NewsPopup())));
+            Add("news", Loc.T("News"), Loc.T("What is new on the server"), OpenNewsAsync);
             Add("stats", Loc.T("Statistics"), Loc.T("Your games and your play time"), () => Do(() => ShowMenu(CouchMenu.Stats)));
             foreach (CouchApp app in Settings.Apps)
                 Add("app:" + app.Path, app.Name, Loc.T("Application"), () => Do(() => CouchSystem.Open(app)));
@@ -272,6 +275,7 @@ namespace gamevault.UserControls
             CouchMenu.Downloads or CouchMenu.Download => Loc.T("Downloads"),
             CouchMenu.Challenge => Loc.T("Challenge of the week"),
             CouchMenu.Friends => Loc.T("Friends"),
+            CouchMenu.News => Loc.T("News"),
             _ => Loc.T("Living-room mode"),
         };
 
@@ -355,6 +359,7 @@ namespace gamevault.UserControls
                 CouchMenu.Download => DownloadLines(),
                 CouchMenu.Challenge => ChallengeLines(),
                 CouchMenu.Friends => FriendsLines(),
+                CouchMenu.News => NewsLines(),
                 _ => MainLines(),
             };
             Navigator.MenuCount = MenuLines.Count;
@@ -559,6 +564,11 @@ namespace gamevault.UserControls
         /// </summary>
         internal void KeepTrailer()
         {
+            if (FullTrailerShown)
+            {
+                _ = WatchFullTrailerAsync();
+                return;
+            }
             if (!TrailerMayPlay)
             {
                 if (TrailerShown)
@@ -578,7 +588,53 @@ namespace gamevault.UserControls
         private readonly Stopwatch trailerShownFor = new();
 
         /// <summary>The trailer is heard (its sound plays): the menu's music and the game's theme are quiet meanwhile.</summary>
-        internal bool TrailerHeard => TrailerShown && trailer?.Now == CouchPlayer.State.Heard;
+        internal bool TrailerHeard => (TrailerShown && trailer?.Now == CouchPlayer.State.Heard) || FullTrailerShown;
+
+        // --- "Watch the trailer": the whole screen ---
+
+        private CouchPlayer? fullTrailer;
+        internal bool FullTrailerShown => uiTrailerFull.IsVisible;
+
+        /// <summary>The game's video on the whole screen, in the mode's player (not the desktop's, with its side bar).</summary>
+        internal async Task OpenFullTrailerAsync(string video)
+        {
+            StopTrailer();
+            uiTrailerFull.IsVisible = true;
+            fullTrailer ??= new CouchPlayer();
+            uiTrailerFull.Child = fullTrailer;
+            Tuple<string, string>? url = await TrailerPopup.PlayableUrl(video, maxHeight: 1080);
+            if (!FullTrailerShown)
+                return;
+            if (url == null)
+            {
+                CloseFullTrailer();
+                return;
+            }
+            fullTrailer.Play(url.Item1, url.Item2, volume: 1);
+        }
+
+        internal void CloseFullTrailer()
+        {
+            if (!FullTrailerShown)
+                return;
+            fullTrailer?.Stop();
+            uiTrailerFull.Child = null;
+            fullTrailer = null;
+            uiTrailerFull.IsVisible = false;
+            // Just seen: the small one does not start again over the game's screen
+            trailerVideo = null;
+        }
+
+        /// <summary>Twice a second: played to its end, or never come, the game's screen comes back.</summary>
+        private async Task WatchFullTrailerAsync()
+        {
+            if (fullTrailer == null)
+                return;
+            // Watched, not idle: no screensaver over it
+            idle.Restart();
+            if (await fullTrailer.ReadStateAsync() is CouchPlayer.State.Ended or CouchPlayer.State.Failed)
+                CloseFullTrailer();
+        }
 
         private async Task WatchTrailerAsync()
         {

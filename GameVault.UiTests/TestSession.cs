@@ -84,6 +84,8 @@ namespace GameVault.UiTests
             if (!ShowcaseScenarios.Enabled)
                 gamevault.Localization.Loc.Initialize("en");
             Directory.CreateDirectory(LibraryRoot);
+            // No search of the games' themes on YouTube behind the scenarios (the themes' own test asks for it)
+            gamevault.Helper.GameThemes.PreloadAtStart = false;
             UserProfile profile = ProfileManager.CreateUserProfile(WebHelper.RemoveSpecialCharactersFromUrl(Server.Url));
             profile.ServerUrl = Server.Url;
             Preferences.Set(AppConfigKey.ServerUrl, Server.Url, profile.UserConfigFile, true);

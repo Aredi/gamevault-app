@@ -1196,6 +1196,58 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheNews_TheTrailer_AndTheClientsMessages_StayInTheMode()
+        {
+            var session = await TestSession.GetAsync();
+            List<Game> games = Games(session);
+            games[0].Metadata!.Trailers = new[] { "https://videos.invalid/astral.mp4" };
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            bool left = false;
+            couch.LeaveRequested += () => left = true;
+            try
+            {
+                window.Show();
+                window.Activate();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, Retro());
+
+                // The news: a screen of the mode, not the desktop's window
+                couch.Navigator.Select(0, couch.Tabs[0].Items.FindIndex(i => i.Key == "tile:news"));
+                couch.Handle(CouchCommand.Accept);
+                await TestSession.WaitUntil(() => couch.Menu == CouchMenu.News && couch.uiMenu.IsVisible, TimeSpan.FromSeconds(10), "the news");
+                Assert.Null(MainWindowViewModel.Instance.Popup);
+                Assert.Equal(Loc.T("Back"), couch.MenuLines[^1].Text);
+                couch.Handle(CouchCommand.Back);
+                Assert.Equal("Une nouvelle carte et un lien", CouchUserControl.PlainText("# Une **nouvelle** carte\n- et [un lien](https://x.invalid)"));
+
+                // "Watch the trailer": the mode's player on the whole screen, any button gives the game's screen back
+                while (couch.Tabs[couch.Navigator.Tab].Name != Loc.T("Library"))
+                    couch.Handle(CouchCommand.NextTab);
+                couch.Handle(CouchCommand.Accept);
+                CouchLine watch = couch.Actions.Single(a => a.Text == Loc.T("Watch the trailer"));
+                await watch.Run();
+                Assert.True(couch.FullTrailerShown);
+                Assert.Null(MainWindowViewModel.Instance.Popup);
+                couch.Handle(CouchCommand.Accept);
+                Assert.False(couch.FullTrailerShown);
+                Assert.True(couch.uiDetails.IsVisible);
+
+                // The client's messages (its bar is under the mode): at the bottom, or on the start screen of a game
+                MainWindowViewModel.Instance.AppBarText = "No valid Executable found";
+                await TestSession.WaitUntil(() => couch.Notice == Loc.T("No valid Executable found"), TimeSpan.FromSeconds(5), "the message");
+                Assert.False(left);
+            }
+            finally
+            {
+                window.Close();
+                foreach (Game game in games)
+                    session.Server.RemoveGame(game.ID);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AGameLeftRunning_ByShowSanctuaryVault_IsOfferedBackFirstInTheMenu()
         {
             var session = await TestSession.GetAsync();
@@ -1672,7 +1724,7 @@ namespace GameVault.UiTests
             List<Game> games = Games(session);
             var switched = new List<string>();
             var switchProfile = CouchUserControl.SwitchProfile;
-            CouchUserControl.SwitchProfile = switched.Add;
+            CouchUserControl.SwitchProfile = (dir, _) => switched.Add(dir);
             var couch = new CouchUserControl();
             var window = new Window { Width = 1920, Height = 1080, Content = couch };
             try

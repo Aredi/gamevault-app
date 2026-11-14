@@ -226,5 +226,99 @@ namespace gamevault.UserControls
             ActivityService.Instance.Of(userId) is { IsPlaying: true } activity ? $"pc:{activity.GameId}"
             : ActivityService.Instance.RetroOf(userId) is RetroActivity retro ? $"retro:{retro.Platform}:{retro.RomId}"
             : null;
+
+        // --- The news ---
+
+        private ServerNewsData? news;
+
+        private async Task OpenNewsAsync()
+        {
+            try
+            {
+                news = await ServerNewsService.LoadAsync();
+                ServerNewsService.MarkSeen();
+                MainWindowViewModel.Instance.NewsBadge = "";
+            }
+            catch (Exception ex) { Log.Ignored(ex); news = null; }
+            ShowMenu(CouchMenu.News);
+        }
+
+        /// <summary>The administrator's message, then the games added and updated lately, by group; A on one opens its screen here.</summary>
+        private List<CouchLine> NewsLines()
+        {
+            var lines = new List<CouchLine>();
+            if (news?.Announcement is { Length: > 0 } announcement)
+                lines.Add(new CouchLine { Text = Loc.T("Message from the administrator"), Detail = PlainText(announcement), Run = () => Task.CompletedTask });
+            foreach (NewsGroup group in news?.Groups ?? new List<NewsGroup>())
+            {
+                lines.Add(new CouchLine { Text = group.Title, Opacity = 0.6, Run = () => Task.CompletedTask });
+                foreach (NewsItem item in group.Items)
+                {
+                    string? key = item.Retro is RetroGame retro ? $"retro:{retro.Platform.Slug}:{retro.Id}" : item.Game != null ? $"pc:{item.Game.ID}" : null;
+                    lines.Add(new CouchLine
+                    {
+                        Text = item.Title,
+                        Detail = string.Join(" · ", new[] { item.KindText, item.Info, item.DateText }.Where(t => !string.IsNullOrEmpty(t))),
+                        Run = () =>
+                        {
+                            if (key != null && all.Any(i => i.Key == key))
+                            {
+                                CloseMenu();
+                                OpenGame(key);
+                            }
+                            return Task.CompletedTask;
+                        },
+                    });
+                }
+            }
+            if (lines.Count == 0)
+                lines.Add(Line(Loc.T("Nothing new for now"), () => { }));
+            lines.Add(Line(Loc.T("Back"), CloseMenu));
+            return lines;
+        }
+
+        /// <summary>The message's Markdown read as words: links as their text, no marks.</summary>
+        internal static string PlainText(string markdown)
+        {
+            string text = System.Text.RegularExpressions.Regex.Replace(markdown, @"!?\[([^\]]*)\]\([^)]*\)", "$1");
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"(^|\n)\s*(#+|[-*]|>)\s+", "$1");
+            text = text.Replace("**", "").Replace("__", "").Replace("`", "");
+            return string.Join(" ", text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()).Where(l => l.Length > 0));
+        }
+
+        // --- What the client says ---
+
+        private int noticeGeneration;
+
+        /// <summary>The text shown at the bottom, or on the start screen of a game; empty when none.</summary>
+        internal string Notice => uiNotice.IsVisible ? uiNoticeText.Text ?? "" : "";
+
+        private void ClientSaid(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(MainWindowViewModel.AppBarText) || !IsVisible || MainWindowViewModel.Instance.AppBarText is not { Length: > 0 } text)
+                return;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => ShowNotice(text));
+        }
+
+        /// <summary>
+        /// A game being started: on its start screen, under its name ("Syncing cloud save...", "No valid Executable
+        /// found"); else at the bottom of the screen for some seconds, as the client's bar does.
+        /// </summary>
+        internal void ShowNotice(string text)
+        {
+            if (curtain == Curtain.Splash)
+            {
+                uiCurtainText.Text = text;
+                return;
+            }
+            uiNoticeText.Text = text;
+            uiNotice.IsVisible = true;
+            int generation = ++noticeGeneration;
+            Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+            {
+                if (generation == noticeGeneration)
+                    uiNotice.IsVisible = false;
+            }, TimeSpan.FromSeconds(Math.Clamp(4 + text.Length / 40.0, 4, 10)));
+        }
     }
 }

@@ -38,10 +38,19 @@ namespace gamevault.UserControls
             catch (Exception ex) { Log.Ignored(ex); }
             if (notice?.Games.Contains(game.ID) != true || string.IsNullOrWhiteSpace(notice.Text))
                 return;
-            var popup = new HypervisorNoticePopup(game.Title, notice.Text);
-            MainWindowViewModel.Instance.OpenPopup(popup);
-            await popup.closed.Task;
-            if (popup.uiDontShow.IsChecked == true)
+            bool dontShow;
+            // The living-room mode: one of its questions, read with the gamepad, not the desktop's window
+            if (CouchUserControl.Shown)
+                dontShow = await App.Instance.MainWindow.ShowMessageAsync(game.Title, notice.Text, MessageDialogStyle.AffirmativeAndNegative,
+                    new MetroDialogSettings { AffirmativeButtonText = Loc.T("I understand"), NegativeButtonText = Loc.T("Show it again next time") }) != MessageDialogResult.Negative;
+            else
+            {
+                var popup = new HypervisorNoticePopup(game.Title, notice.Text);
+                MainWindowViewModel.Instance.OpenPopup(popup);
+                await popup.closed.Task;
+                dontShow = popup.uiDontShow.IsChecked == true;
+            }
+            if (dontShow)
             {
                 seen.Add(game.ID.ToString());
                 Preferences.Set(AppConfigKey.HypervisorNoticesSeen, string.Join(",", seen), config);

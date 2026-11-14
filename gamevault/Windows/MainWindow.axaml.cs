@@ -83,8 +83,10 @@ namespace gamevault.Windows
             };
             Opened += (_, _) =>
             {
-                if (UserControls.CouchUserControl.StartsHere)
+                // Back in the mode after a change of profile made in it, whatever the new profile chose
+                if (UserControls.CouchUserControl.TakeComeBack() || UserControls.CouchUserControl.StartsHere)
                     EnterCouch(welcome: true);
+                UserControls.CouchUserControl.CloseSwitchCurtain();
             };
         }
 
@@ -254,7 +256,7 @@ namespace gamevault.Windows
             await MainWindowViewModel.Instance.Downloads.RestoreDownloadedGames();
             RetroDownloads.Restore();
             // The living-room mode's game themes, searched for in the background once the window is settled
-            if (LoginState.Success == state)
+            if (LoginState.Success == state && GameThemes.PreloadAtStart)
                 _ = uiCouch.PreloadThemesAsync(TimeSpan.FromSeconds(30));
             LoginManager.Instance.InitOnlineTimer();
             MainWindowViewModel.Instance.UserAvatar = LoginManager.Instance.GetCurrentUser();

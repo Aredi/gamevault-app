@@ -195,8 +195,9 @@ namespace gamevault
             if (window is not gamevault.Windows.MainWindow)
                 return;
             window.Show();
+            // The living-room mode is on the whole screen: back to it, not to a window
             if (window.WindowState == WindowState.Minimized)
-                window.WindowState = WindowState.Normal;
+                window.WindowState = ((gamevault.Windows.MainWindow)window).IsCouchShown ? WindowState.FullScreen : WindowState.Normal;
             window.Activate();
         }
 

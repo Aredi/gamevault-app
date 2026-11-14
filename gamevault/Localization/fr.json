@@ -2170,5 +2170,9 @@
   "Cancel the download of {0}?": "Annuler le téléchargement de {0} ?",
   "You: {0}": "Vous : {0}",
   "Ends on {0}": "Se termine le {0}",
-  "Nobody took part yet": "Personne n'y a encore participé"
+  "Nobody took part yet": "Personne n'y a encore participé",
+  "Message from the administrator": "Message de l'administrateur",
+  "Nothing new for now": "Rien de nouveau pour le moment",
+  "Signing in as {0}...": "Connexion en tant que {0}...",
+  "Show it again next time": "Le réafficher la prochaine fois"
 }

@@ -232,7 +232,8 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = message;
                 return message;
             }
-            bool ask = !unattended && (SettingsViewModel.Instance.AskInstallLocation || SettingsViewModel.Instance.RootDirectories.Count == 0);
+            // Not asked in the living-room mode (a desktop window): the usual place, as long as there is one
+            bool ask = !unattended && (SettingsViewModel.Instance.RootDirectories.Count == 0 || (SettingsViewModel.Instance.AskInstallLocation && !CouchUserControl.Shown));
             if (!ask && SettingsViewModel.Instance.RootDirectories.Count == 0)
                 return Fail(Loc.T("No Root Directory configured! Go to ⚙️Settings->Data"));
             string selectedDirectory;

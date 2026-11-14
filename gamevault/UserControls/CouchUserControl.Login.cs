@@ -45,19 +45,62 @@ namespace gamevault.UserControls
         internal bool LoginShown => uiLogin.IsVisible;
 
         /// <summary>Signs in with another profile of this PC (the tests look at which instead): the client's login window takes it.</summary>
-        internal static Action<string> SwitchProfile { get; set; } = rootDir =>
+        internal static Action<string, string> SwitchProfile { get; set; } = (rootDir, name) =>
         {
             Preferences.Set(AppConfigKey.LastUserProfile, rootDir, ProfileManager.ProfileConfigFile);
             // The mode opens again with the other profile, without asking it to log in a second time
             skipLoginOnce = true;
+            comeBack = true;
+            // The screen stays the mode's: a dark curtain while the client signs in, the login window only if it asks something
+            switchCurtain = SwitchCurtain(name);
+            switchCurtain.Show();
             var mainWindow = (MainWindow)App.Instance.MainWindow!;
-            var loginWindow = new LoginWindow();
+            var loginWindow = new LoginWindow { Opacity = 0 };
+            loginWindow.NeedsThePlayer += () =>
+            {
+                loginWindow.Opacity = 1;
+                CloseSwitchCurtain();
+                loginWindow.Activate();
+            };
+            loginWindow.Closed += (_, _) => CloseSwitchCurtain();
             App.Instance.MainWindow = loginWindow;
             loginWindow.Show();
             mainWindow.Dispose();
         };
 
-        private static bool skipLoginOnce;
+        private static bool skipLoginOnce, comeBack;
+        private static Window? switchCurtain;
+
+        /// <summary>The mode was left for another profile: the next main window opens in it (once).</summary>
+        internal static bool TakeComeBack()
+        {
+            bool back = comeBack;
+            comeBack = false;
+            return back;
+        }
+
+        /// <summary>The new main window is there, or the login window asks something: the curtain goes.</summary>
+        internal static void CloseSwitchCurtain()
+        {
+            Window? curtain = switchCurtain;
+            switchCurtain = null;
+            curtain?.Close();
+        }
+
+        private static Window SwitchCurtain(string name) => new()
+        {
+            SystemDecorations = SystemDecorations.None,
+            WindowState = WindowState.FullScreen,
+            Topmost = true,
+            ShowInTaskbar = false,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#05070B")),
+            Content = new TextBlock
+            {
+                Text = Loc.F("Signing in as {0}...", name),
+                FontSize = 30, FontWeight = Avalonia.Media.FontWeight.SemiBold, Foreground = Avalonia.Media.Brushes.White, Opacity = 0.85,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            },
+        };
 
         /// <summary>The login screen when the mode opens with the client, unless a profile was just chosen on it.</summary>
         private void ShowLoginAtStart()
@@ -194,7 +237,7 @@ namespace gamevault.UserControls
                     else
                     {
                         Play(CouchSound.Launch);
-                        SwitchProfile(chosen.RootDir);
+                        SwitchProfile(chosen.RootDir, chosen.Name);
                     }
                     break;
             }

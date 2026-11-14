@@ -504,15 +504,8 @@ namespace gamevault.UserControls
                 await RetroService.DeleteAsync(retro, folder);
                 return;
             }
-            // The game's settings ask what they need to (its saves, its shortcuts) and remove it
-            var settings = new GameSettingsUserControl(item.Pc!) { Width = 1200, Height = 800, Margin = new Thickness(50) };
-            MainWindowViewModel.Instance.OpenPopup(settings);
-            try { await settings.UninstallGame(); }
-            finally
-            {
-                if (ReferenceEquals(MainWindowViewModel.Instance.Popup, settings))
-                    MainWindowViewModel.Instance.ClosePopup();
-            }
+            // The game's settings ask what they need to (in the mode's questions) and remove it; their page is not shown
+            await new GameSettingsUserControl(item.Pc!).UninstallGame();
         }
 
         /// <summary>"What to play?": a game drawn among the installed ones (the whole library when none is), its screen opened.</summary>
@@ -620,6 +613,16 @@ namespace gamevault.UserControls
         internal void Handle(CouchCommand command)
         {
             idle.Restart();
+            // The trailer on the whole screen: A, B or Start give the game's screen back
+            if (FullTrailerShown)
+            {
+                if (command is CouchCommand.Back or CouchCommand.Accept or CouchCommand.Menu)
+                {
+                    Play(CouchSound.Back);
+                    CloseFullTrailer();
+                }
+                return;
+            }
             if (LoginShown)
             {
                 HandleLogin(command);
@@ -1235,7 +1238,7 @@ namespace gamevault.UserControls
                     lines.Add(new CouchLine { Text = Loc.T("Install"), Run = () => RetroPlay.InstallAsync(retro) });
                 }
                 if (retro.HasVideo)
-                    lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => { MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(new[] { $"https://www.youtube.com/watch?v={Uri.EscapeDataString(retro.Video!)}" }, retro.Name)); return Task.CompletedTask; } });
+                    lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => OpenFullTrailerAsync($"https://www.youtube.com/watch?v={Uri.EscapeDataString(retro.Video!)}") });
                 AddCommon(lines, item);
             }
             else
@@ -1249,7 +1252,7 @@ namespace gamevault.UserControls
                     lines.Add(new CouchLine { Text = Loc.T("Install"), Run = async () => { await MainWindowViewModel.Instance.Downloads.TryStartDownload(game); } });
                 }
                 if (game.Metadata is GameMetadata metadata && TrailerPopup.HasVideos(metadata))
-                    lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => { MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(metadata, item.Title)); return Task.CompletedTask; } });
+                    lines.Add(new CouchLine { Text = Loc.T("Watch the trailer"), Run = () => OpenFullTrailerAsync(metadata.Trailers?.FirstOrDefault() ?? metadata.Gameplays!.First()) });
                 AddCommon(lines, item);
             }
             Actions = lines;

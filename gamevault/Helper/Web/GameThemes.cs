@@ -35,6 +35,9 @@ namespace gamevault.Helper
         private static int preloading;
         private static YoutubeClient? youtube;
 
+        /// <summary>The search at start, in the background (the tests turn it off: no YouTube while they run).</summary>
+        internal static bool PreloadAtStart { get; set; } = true;
+
         /// <summary>The tests' themes instead of YouTube's (the sound's address for a search).</summary>
         internal static Func<string, Task<string?>>? Instead { get; set; }
         /// <summary>The tests' search instead of YouTube's (the video for a search).</summary>
