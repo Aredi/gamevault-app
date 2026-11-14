@@ -25,7 +25,7 @@ namespace gamevault.ViewModels
                 Recent = RetroLibrary.Recent(12);
                 foreach (RetroGame game in AllGames)
                     game.RefreshPlayer();
-                if (OnlyFavorites || SortBy >= 3)
+                if (OnlyFavorites || OnlyNeverPlayed || SortBy >= 3)
                     ApplyFilter();
             });
         }
@@ -69,6 +69,12 @@ namespace gamevault.ViewModels
 
         private bool onlyFavorites;
         public bool OnlyFavorites { get => onlyFavorites; set { onlyFavorites = value; OnPropertyChanged(); ApplyFilter(); } }
+
+        private bool onlyNeverPlayed;
+        /// <summary>The games not started yet: what is left to discover.</summary>
+        public bool OnlyNeverPlayed { get => onlyNeverPlayed; set { onlyNeverPlayed = value; OnPropertyChanged(); ApplyFilter(); } }
+
+        internal static bool NeverPlayed(RetroGame game) => game.MinutesPlayed == 0 && RetroLibrary.LastPlayedOf(game) == null;
 
         private List<string> collections = new();
         /// <summary>"All collections", the profile's retro collections, then the player's RomM collections and the series.</summary>
@@ -233,6 +239,8 @@ namespace gamevault.ViewModels
                 shown = shown.Where(g => g.Installed);
             if (OnlyFavorites)
                 shown = shown.Where(g => g.IsFavorite);
+            if (OnlyNeverPlayed)
+                shown = shown.Where(NeverPlayed);
             if (ShowsACollection)
             {
                 var members = otherCollections.TryGetValue(Collections[Collection], out HashSet<int>? others) ? others
