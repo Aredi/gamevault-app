@@ -219,6 +219,42 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task NeverPlayed_ShowsOnlyTheGamesNotStartedYet()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            RetroUserControl page = MainWindowViewModel.Instance.Retro;
+            RetroGame? castlevania = null;
+            try
+            {
+                await page.LoadPlatformsAsync();
+                await page.SelectAllAsync();
+                castlevania = page.ViewModel.AllGames.First(g => g.Name == "Castlevania");
+                // The chip is on the page, next to "Bookmarks"
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
+                Dispatcher.UIThread.RunJobs();
+                Avalonia.Controls.Primitives.ToggleButton chip = page.GetLogicalDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>().Single(b => b.Content as string == gamevault.Localization.Loc.T("Never played"));
+
+                await RetroLibrary.RecordPlayAsync(castlevania, 3);
+                chip.IsChecked = true;
+                Assert.True(page.ViewModel.OnlyNeverPlayed);
+                Assert.DoesNotContain(castlevania, page.Shown);
+                Assert.NotEmpty(page.Shown);
+                Assert.All(page.Shown, g => Assert.Equal(0, g.MinutesPlayed));
+                chip.IsChecked = false;
+                Assert.Contains(castlevania, page.Shown);
+            }
+            finally
+            {
+                page.ViewModel.OnlyNeverPlayed = false;
+                if (castlevania != null)
+                    session.Server.RetroMinutes.TryRemove($"{castlevania.Platform.Slug}:{castlevania.Id}", out _);
+                await RetroLibrary.LoadAsync();
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AnotherPlatform_ChosenFarDownTheGrid_LeavesNoCardDrawnOverTheOthers()
         {
             var session = await TestSession.GetAsync();
