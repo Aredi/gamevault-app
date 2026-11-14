@@ -553,10 +553,11 @@ namespace gamevault.UserControls
             }
             // A game is played, or another window is in front: its gamepad is not ours
             bool listen = TopLevel.GetTopLevel(this) is Window { IsActive: true } && IsVisible;
-            // Read 60 times a second for the menus; 10 times behind a game (only Start + Back is looked for there)
+            // Read 60 times a second for the menus; 30 times behind a game (only Start + Back is looked for there: at 10, a
+            // quick press of both was missed)
             // No way to read a gamepad here (the keyboard only): twice a second, for the clock and the refresh
             TimeSpan rate = gamepad is not { CanRead: true } ? TimeSpan.FromMilliseconds(500)
-                : listen || overlay != null ? TimeSpan.FromMilliseconds(16) : TimeSpan.FromMilliseconds(100);
+                : listen || overlay != null ? TimeSpan.FromMilliseconds(16) : TimeSpan.FromMilliseconds(33);
             if (timer.Interval != rate)
                 timer.Interval = rate;
             if (gamepad == null)

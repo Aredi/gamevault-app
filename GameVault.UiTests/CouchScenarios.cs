@@ -1216,6 +1216,14 @@ namespace GameVault.UiTests
                 Assert.Equal(Loc.T("Back to the games"), couch.MenuLines[0].Text);
                 couch.Handle(CouchCommand.Back);
 
+                // Start and Back: together, or one just after the other (a quick press is seldom read at once); not apart
+                Assert.False(couch.IsCombo(CouchButtons.Start));
+                Assert.True(couch.IsCombo(CouchButtons.Back));
+                Assert.True(couch.IsCombo(CouchButtons.Start | CouchButtons.Back));
+                Assert.False(couch.IsCombo(CouchButtons.None));
+                await Task.Delay(CouchUserControl.ComboWindow + TimeSpan.FromMilliseconds(100));
+                Assert.False(couch.IsCombo(CouchButtons.Back));
+
                 // "Show SanctuaryVault" over the game: going back to it comes first in the menu
                 couch.KeepGameBehind((IntPtr)42, "Hollow Knight");
                 Assert.Equal("Hollow Knight", couch.GameBehind);

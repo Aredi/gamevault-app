@@ -825,6 +825,11 @@ namespace gamevault.UserControls
 
         private (double X, double Y) mouseRest;
         private bool mouseDown, comboHeld;
+        // When Start and Back were last seen held: pressed together in a hurry, they are seldom both down at one reading
+        private readonly Stopwatch comboClock = Stopwatch.StartNew();
+        private TimeSpan startSeen = TimeSpan.FromDays(-1), backSeen = TimeSpan.FromDays(-1);
+        /// <summary>Start and Back count as pressed together when each was held within this time of the other.</summary>
+        internal static readonly TimeSpan ComboWindow = TimeSpan.FromMilliseconds(350);
 
         /// <summary>How far the mouse goes for where the stick points: slow near its rest, fast at its end; what is under a pixel is kept for the next time.</summary>
         internal static (int X, int Y) MouseStep((double X, double Y) stick, ref (double X, double Y) rest)
@@ -868,7 +873,7 @@ namespace gamevault.UserControls
         {
             if (Settings.Mouse || mouseDown)
                 ApplyMouse(Settings.Mouse ? held : CouchButtons.None, Settings.Mouse ? gamepad!.RightStick : default);
-            bool combo = held.HasFlag(CouchButtons.Start) && held.HasFlag(CouchButtons.Back);
+            bool combo = IsCombo(held);
             if (combo && !comboHeld && OperatingSystem.IsWindows() && Settings.Overlay)
             {
                 if (overlay != null)
@@ -882,22 +887,54 @@ namespace gamevault.UserControls
             comboHeld = combo;
         }
 
+        /// <summary>
+        /// Start and Back together: both held now, or one held now and the other a moment ago (read every 33 ms behind a
+        /// game, a quick press of both is seldom seen at once).
+        /// </summary>
+        internal bool IsCombo(CouchButtons held)
+        {
+            TimeSpan now = comboClock.Elapsed;
+            if (held.HasFlag(CouchButtons.Start))
+                startSeen = now;
+            if (held.HasFlag(CouchButtons.Back))
+                backSeen = now;
+            return (held.HasFlag(CouchButtons.Start) || held.HasFlag(CouchButtons.Back))
+                && now - startSeen <= ComboWindow && now - backSeen <= ComboWindow;
+        }
+
         /// <summary>The window in front is a game's: the menu over it gives it back, closes it, or shows SanctuaryVault.</summary>
         private void OpenOverlayOverGame()
         {
             try
             {
                 IntPtr window = GetForegroundWindow();
-                if (window == IntPtr.Zero || GetWindowThreadProcessId(window, out uint id) == 0 || id == 0 || id == Environment.ProcessId)
+                // Each press over a game is written down: the diagnostic tells why a menu did not come
+                if (window == IntPtr.Zero || GetWindowThreadProcessId(window, out uint id) == 0 || id == 0)
+                {
+                    Log.Info("Start + Back over a game: no window in front");
                     return;
-                string name;
+                }
+                if (id == Environment.ProcessId)
+                {
+                    Log.Info("Start + Back over a game: SanctuaryVault's own window is in front");
+                    return;
+                }
+                string name, process;
                 using (Process game = Process.GetProcessById((int)id))
+                {
+                    process = game.ProcessName;
                     name = string.IsNullOrWhiteSpace(game.MainWindowTitle) ? game.ProcessName : game.MainWindowTitle;
+                }
                 // Never the desktop itself
-                if (name.Equals("explorer", StringComparison.OrdinalIgnoreCase))
+                if (process.Equals("explorer", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Info("Start + Back over a game: the desktop is in front");
                     return;
+                }
+                Log.Info($"Start + Back over a game: the menu over {process} ({name})");
                 string title = OverlayTitle(name);
-                OpenOverlay(title, () => CouchSystem.GiveFront(window), () => _ = QuitGameAsync((int)id), () => KeepGameBehind(window, title));
+                // Back to the game the strong way: a game in exclusive full screen is minimized while the menu is shown
+                OpenOverlay(title, () => CouchSystem.ToFront(window), () => _ = QuitGameAsync((int)id), () => KeepGameBehind(window, title));
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
@@ -966,6 +1003,12 @@ namespace gamevault.UserControls
             overlay.Closed += (_, _) => overlay = null;
             overlay.Show();
             overlay.Activate();
+            // Windows keeps the foreground for the game (a gamepad's press is not the player's for it): taken the strong way
+            if (OperatingSystem.IsWindows() && overlay.TryGetPlatformHandle()?.Handle is IntPtr handle && handle != IntPtr.Zero)
+            {
+                try { CouchSystem.ToFront(handle); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
             repeater.Reset(CouchButtons.Start | CouchButtons.Back);
         }
 
