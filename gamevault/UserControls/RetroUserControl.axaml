@@ -74,6 +74,7 @@
                     <Border Width="1" Height="20" Background="{DynamicResource Brush.Line}" Margin="4,6,12,14" />
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyInstalled}" Content="{l:T 'Installed'}" />
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyFavorites}" Content="{l:T 'Bookmarks'}" />
+                    <ToggleButton Classes="chip" IsChecked="{Binding OnlyNeverPlayed}" Content="{l:T 'Never played'}" />
                     <ToggleButton Classes="chip" IsChecked="{Binding ShowFilters}" Content="{l:T 'Filters'}" />
                 </WrapPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">

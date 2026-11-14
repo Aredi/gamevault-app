@@ -1,6 +1,7 @@
 using Avalonia.Media;
 using gamevault.Helper;
 using gamevault.Localization;
+using gamevault.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -13,7 +14,8 @@ namespace gamevault.ViewModels
     {
         public RetroViewModel()
         {
-            SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating"), Loc.T("Last played"), Loc.T("Playtime") };
+            SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating"), Loc.T("Last played"), Loc.T("Playtime"), Loc.T("Shortest first") };
+            sortBy = SavedSort();
             collections = new() { Loc.T("All collections") };
             recent = RetroLibrary.Recent(12);
             SetAccent(null);
@@ -23,7 +25,7 @@ namespace gamevault.ViewModels
                 Recent = RetroLibrary.Recent(12);
                 foreach (RetroGame game in AllGames)
                     game.RefreshPlayer();
-                if (OnlyFavorites || SortBy >= 3)
+                if (OnlyFavorites || OnlyNeverPlayed || SortBy >= 3)
                     ApplyFilter();
             });
         }
@@ -67,6 +69,12 @@ namespace gamevault.ViewModels
 
         private bool onlyFavorites;
         public bool OnlyFavorites { get => onlyFavorites; set { onlyFavorites = value; OnPropertyChanged(); ApplyFilter(); } }
+
+        private bool onlyNeverPlayed;
+        /// <summary>The games not started yet: what is left to discover.</summary>
+        public bool OnlyNeverPlayed { get => onlyNeverPlayed; set { onlyNeverPlayed = value; OnPropertyChanged(); ApplyFilter(); } }
+
+        internal static bool NeverPlayed(RetroGame game) => game.MinutesPlayed == 0 && RetroLibrary.LastPlayedOf(game) == null;
 
         private List<string> collections = new();
         /// <summary>"All collections", the profile's retro collections, then the player's RomM collections and the series.</summary>
@@ -181,7 +189,37 @@ namespace gamevault.ViewModels
 
         public string[] SortOptions { get; }
         private int sortBy;
-        public int SortBy { get => sortBy; set { sortBy = value; OnPropertyChanged(); ApplyFilter(); } }
+        public int SortBy
+        {
+            get => sortBy;
+            set
+            {
+                if (value < 0 || value >= SortOptions.Length)
+                    return;
+                bool changed = value != sortBy;
+                sortBy = value;
+                OnPropertyChanged();
+                ApplyFilter();
+                if (changed)
+                    SaveSort();
+            }
+        }
+
+        /// <summary>The sorts as saved: by name, so a sort added to the list does not change the one kept.</summary>
+        internal static readonly string[] SortKeys = { "title", "released", "rating", "lastPlayed", "playtime", "shortest" };
+
+        /// <summary>The sort chosen last time, kept for the next start; the title when none.</summary>
+        private static int SavedSort()
+        {
+            try { return Math.Max(0, Array.IndexOf(SortKeys, Preferences.Get(AppConfigKey.LastRetroSortBy, LoginManager.Instance.GetUserProfile().UserConfigFile))); }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); return 0; }
+        }
+
+        private void SaveSort()
+        {
+            try { Preferences.Set(AppConfigKey.LastRetroSortBy, SortKeys[sortBy], LoginManager.Instance.GetUserProfile().UserConfigFile); }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
 
         private string? message;
         /// <summary>Why there are no games (no service, no platform, an error).</summary>
@@ -201,6 +239,8 @@ namespace gamevault.ViewModels
                 shown = shown.Where(g => g.Installed);
             if (OnlyFavorites)
                 shown = shown.Where(g => g.IsFavorite);
+            if (OnlyNeverPlayed)
+                shown = shown.Where(NeverPlayed);
             if (ShowsACollection)
             {
                 var members = otherCollections.TryGetValue(Collections[Collection], out HashSet<int>? others) ? others
@@ -226,6 +266,8 @@ namespace gamevault.ViewModels
                 2 => shown.OrderByDescending(g => g.Rating ?? -1),
                 3 => shown.OrderByDescending(g => RetroLibrary.LastPlayedOf(g) ?? DateTime.MinValue),
                 4 => shown.OrderByDescending(g => g.MinutesPlayed),
+                // The time to finish its story: the ones without it last
+                5 => shown.OrderBy(g => g.MainStory ?? long.MaxValue).ThenBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase),
                 _ => shown.OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase),
             };
             Games = shown.ToList();

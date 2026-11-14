@@ -158,6 +158,103 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task ShortestFirst_ListsTheQuickGamesToFinishFirst_AndTheUnknownOnesLast()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            RetroUserControl page = MainWindowViewModel.Instance.Retro;
+            int sortBefore = page.ViewModel.SortBy;
+            try
+            {
+                await page.LoadPlatformsAsync();
+                await page.SelectAllAsync();
+                Assert.Contains(page.Shown, g => g.Name == "Castlevania");
+                Assert.True(page.Shown.Count() >= 3);
+                RetroGame zelda = page.ViewModel.AllGames.First(g => g.Name == "Zelda"), castlevania = page.ViewModel.AllGames.First(g => g.Name == "Castlevania");
+                foreach (RetroGame game in page.ViewModel.AllGames)
+                    game.MainStory = null;
+                zelda.MainStory = 30 * 3600;
+                castlevania.MainStory = 8 * 3600;
+
+                page.ViewModel.SortBy = Array.IndexOf(page.ViewModel.SortOptions, gamevault.Localization.Loc.T("Shortest first"));
+                Assert.Equal(5, page.ViewModel.SortBy);
+                Assert.Equal(new[] { "Castlevania", "Zelda" }, page.Shown.Take(2).Select(g => g.Name));
+                Assert.All(page.Shown.Skip(2), g => Assert.Null(g.MainStory));
+            }
+            finally
+            {
+                page.ViewModel.SortBy = sortBefore;
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task TheSortChosen_IsKept_ForTheNextStart()
+        {
+            await TestSession.GetAsync();
+            RetroUserControl page = MainWindowViewModel.Instance.Retro;
+            int sortBefore = page.ViewModel.SortBy;
+            string file = LoginManager.Instance.GetUserProfile().UserConfigFile;
+            try
+            {
+                page.ViewModel.SortBy = 0;
+                page.ViewModel.SortBy = 4;
+                Assert.Equal("playtime", Preferences.Get(gamevault.Models.AppConfigKey.LastRetroSortBy, file));
+                // The page of the next start sorts as chosen
+                Assert.Equal(4, new RetroViewModel().SortBy);
+                page.ViewModel.SortBy = 5;
+                Assert.Equal(5, new RetroViewModel().SortBy);
+                // A name not known (written by a newer version): the title
+                Preferences.Set(gamevault.Models.AppConfigKey.LastRetroSortBy, "someday", file);
+                Assert.Equal(0, new RetroViewModel().SortBy);
+                // The list emptying its choice changes nothing
+                page.ViewModel.SortBy = -1;
+                Assert.Equal(5, page.ViewModel.SortBy);
+            }
+            finally
+            {
+                page.ViewModel.SortBy = 0;
+                page.ViewModel.SortBy = sortBefore;
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task NeverPlayed_ShowsOnlyTheGamesNotStartedYet()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            RetroUserControl page = MainWindowViewModel.Instance.Retro;
+            RetroGame? castlevania = null;
+            try
+            {
+                await page.LoadPlatformsAsync();
+                await page.SelectAllAsync();
+                castlevania = page.ViewModel.AllGames.First(g => g.Name == "Castlevania");
+                // The chip is on the page, next to "Bookmarks"
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
+                Dispatcher.UIThread.RunJobs();
+                Avalonia.Controls.Primitives.ToggleButton chip = page.GetLogicalDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>().Single(b => b.Content as string == gamevault.Localization.Loc.T("Never played"));
+
+                await RetroLibrary.RecordPlayAsync(castlevania, 3);
+                chip.IsChecked = true;
+                Assert.True(page.ViewModel.OnlyNeverPlayed);
+                Assert.DoesNotContain(castlevania, page.Shown);
+                Assert.NotEmpty(page.Shown);
+                Assert.All(page.Shown, g => Assert.Equal(0, g.MinutesPlayed));
+                chip.IsChecked = false;
+                Assert.Contains(castlevania, page.Shown);
+            }
+            finally
+            {
+                page.ViewModel.OnlyNeverPlayed = false;
+                if (castlevania != null)
+                    session.Server.RetroMinutes.TryRemove($"{castlevania.Platform.Slug}:{castlevania.Id}", out _);
+                await RetroLibrary.LoadAsync();
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AnotherPlatform_ChosenFarDownTheGrid_LeavesNoCardDrawnOverTheOthers()
         {
             var session = await TestSession.GetAsync();
