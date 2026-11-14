@@ -46,6 +46,8 @@ namespace GameVault.Core.Couch
         public int Count => Tab < tabs.Count ? tabs[Tab].Count : 0;
         /// <summary>The selected game of the tab shown; -1 in an empty tab.</summary>
         public int Index => Count == 0 ? -1 : Math.Clamp(selected[Tab], 0, Count - 1);
+        /// <summary>The selected game of any tab; -1 in an empty tab.</summary>
+        public int SelectedIn(int tab) => tab < 0 || tab >= tabs.Count || tabs[tab].Count == 0 ? -1 : Math.Clamp(selected[tab], 0, tabs[tab].Count - 1);
 
         /// <summary>The games' titles by tab, in the order shown. Each tab keeps its selected game when it still has it.</summary>
         public void SetTabs(IReadOnlyList<IReadOnlyList<string>> titles)

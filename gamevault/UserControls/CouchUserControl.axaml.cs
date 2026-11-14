@@ -354,7 +354,14 @@ namespace gamevault.UserControls
             // The same tab and the same game after the games were read again
             string? tabName = Navigator.Tab < Tabs.Count ? Tabs[Navigator.Tab].Name : null;
             string? selectedKey = Current?.Key;
+            // Every tab keeps its game by its name: a tab that comes or goes (the favorites, the installed games) does not shift the others'
+            var kept = new Dictionary<string, string>();
+            for (int t = 0; t < Tabs.Count; t++)
+                if (Navigator.SelectedIn(t) is int i and >= 0)
+                    kept[Tabs[t].Name] = Tabs[t].Items[i].Key;
             SetTabs();
+            for (int t = 0; t < Tabs.Count; t++)
+                Navigator.Select(t, kept.TryGetValue(Tabs[t].Name, out string? key) ? Math.Max(0, Tabs[t].Items.FindIndex(item => item.Key == key)) : 0);
             int tab = tabName == null ? 0 : Math.Max(0, Tabs.FindIndex(t => t.Name == tabName));
             int index = selectedKey == null ? 0 : Tabs[tab].Items.FindIndex(i => i.Key == selectedKey);
             Navigator.Select(tab, Math.Max(0, index));

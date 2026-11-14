@@ -346,6 +346,41 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task EachTab_KeepsItsGame_WhenATabComesBeforeIt()
+        {
+            var session = await TestSession.GetAsync();
+            var games = new List<Game>
+            {
+                new() { ID = 9798, Title = "Ember Coast", SortTitle = "ember coast", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9799, Title = "Frost Gate", SortTitle = "frost gate", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9800, Title = "Glass Moor", SortTitle = "glass moor", Type = GameType.WINDOWS_PORTABLE },
+            };
+            var installed = new KeyValuePair<Game, string>(games[0], Path.Combine(session.LibraryRoot, "couch-keeps"));
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, new List<RetroGame>());
+                couch.Navigator.Select(couch.Tabs.FindIndex(t => t.Name == Loc.T("Library")), 2);
+                couch.Navigator.SelectTab(0);
+
+                // A first game installed: its tab comes before the library, which keeps "Glass Moor"
+                InstallViewModel.Instance.InstalledGames.Add(installed);
+                couch.Show(games, new List<RetroGame>());
+                couch.Navigator.SelectTab(couch.Tabs.FindIndex(t => t.Name == Loc.T("Library")));
+                Assert.Equal("Glass Moor", couch.Current!.Title);
+            }
+            finally
+            {
+                InstallViewModel.Instance.InstalledGames.Remove(installed);
+                window.Close();
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheSearch_IsTypedOnTheScreen_AndTheClientsQuestions_AreAnsweredWithTheGamepad()
         {
             var session = await TestSession.GetAsync();
