@@ -71,12 +71,56 @@ namespace gamevault.Helper
                     return null;
                 youtube ??= new YoutubeClient();
                 var manifest = await youtube.Videos.Streams.GetManifestAsync(video);
-                return manifest.GetAudioOnlyStreams().GetWithHighestBitrate()?.Url;
+                // WebM (Opus): its silences can be told without decoding it
+                var sounds = manifest.GetAudioOnlyStreams().OrderByDescending(s => s.Container == Container.WebM).ThenByDescending(s => s.Bitrate.BitsPerSecond).ToList();
+                if (sounds.FirstOrDefault() is not IStreamInfo sound)
+                    return null;
+                TimeSpan? start = sound.Container == Container.WebM ? await StartOfAsync(video, sound.Url) : null;
+                // A media fragment: the player starts there
+                return start is TimeSpan at ? $"{sound.Url}#t={at.TotalSeconds.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture)}" : sound.Url;
             }
             catch (Exception ex)
             {
                 // No network a moment: asked again next time
                 sounds.TryRemove(search, out _);
+                Log.Ignored(ex);
+                return null;
+            }
+        }
+
+        /// <summary>The sound's first bytes (some 25 seconds) read once by video: where it starts to be heard, kept with the videos.</summary>
+        internal static Func<string, Task<byte[]>>? BeginningInstead { get; set; }
+
+        private static async Task<TimeSpan?> StartOfAsync(string video, string url)
+        {
+            string key = "start:" + video;
+            lock (gate)
+            {
+                if (Known().TryGetValue(key, out string? kept) && double.TryParse(kept, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double seconds))
+                    return seconds > 0 ? TimeSpan.FromSeconds(seconds) : null;
+            }
+            try
+            {
+                byte[] beginning;
+                if (BeginningInstead != null)
+                    beginning = await BeginningInstead(url);
+                else
+                {
+                    using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
+                    request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 399_999);
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                    using var response = await HttpClients.Shared.SendAsync(request, timeout.Token);
+                    beginning = await response.Content.ReadAsByteArrayAsync(timeout.Token);
+                }
+                TimeSpan? start = GameVault.Core.Couch.QuietStart.Of(beginning);
+                lock (gate)
+                    Known()[key] = (start?.TotalSeconds ?? 0).ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture);
+                Save();
+                return start;
+            }
+            catch (Exception ex)
+            {
+                // Played from its start this time; measured again next time
                 Log.Ignored(ex);
                 return null;
             }

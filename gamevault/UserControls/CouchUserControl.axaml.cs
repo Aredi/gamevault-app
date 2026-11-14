@@ -31,6 +31,8 @@ namespace gamevault.UserControls
         public bool IsPc => Pc != null;
         public bool IsRetro => Retro != null;
         public bool IsTile => Tile != null;
+        /// <summary>A game without a cover at all: its name is written in its place (under a cover, it showed through its transparent parts).</summary>
+        public bool ShowsTitle => Tile == null && (Retro != null ? string.IsNullOrEmpty(Retro.Cover) : Pc?.Metadata?.Cover == null);
         public string Title => Tile?.Title ?? Retro?.Name ?? Pc?.Title ?? "";
         /// <summary>What the games are sorted by, and the letters of the triggers: the server's sort title ("Witcher" for "The Witcher").</summary>
         public string SortTitle => Pc?.SortTitle is { Length: > 0 } sort ? sort : Title;

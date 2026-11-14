@@ -409,7 +409,7 @@
                                                     <TextBlock Text="{Binding Tile.Title}" FontSize="19" FontWeight="Bold" TextWrapping="Wrap" />
                                                     <TextBlock Text="{Binding Tile.Subtitle}" FontSize="14" Opacity="0.85" TextWrapping="Wrap" MaxLines="5" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
-                                                <TextBlock Text="{Binding Title}" IsVisible="{Binding !IsTile}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
+                                                <TextBlock Text="{Binding Title}" IsVisible="{Binding ShowsTitle}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" Margin="12" Opacity="0.8" />
                                                 <local:CacheImage ImageCacheType="GameCover" Data="{Binding Pc}" Stretch="UniformToFill" IsVisible="{Binding IsPc}" />
                                                 <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding IsRetro}" />
