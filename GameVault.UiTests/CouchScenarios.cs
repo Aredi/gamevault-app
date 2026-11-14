@@ -263,6 +263,42 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheLetters_FollowTheSortTitle_WhenATitleStartsWithThe()
+        {
+            await TestSession.GetAsync();
+            // "The Witcher" is sorted at W by the server: the triggers find it there, not among the T
+            var games = new List<Game>
+            {
+                new() { ID = 9790, Title = "Alan Wake", SortTitle = "alan wake", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9791, Title = "The Talos Principle", SortTitle = "talos principle", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9792, Title = "Tunic", SortTitle = "tunic", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9793, Title = "The Witcher", SortTitle = "witcher", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9794, Title = "Wolfenstein", SortTitle = "wolfenstein", Type = GameType.WINDOWS_PORTABLE },
+            };
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, new List<RetroGame>());
+                couch.Navigator.SelectTab(couch.Tabs.FindIndex(t => t.Name == Loc.T("Library")));
+                Assert.Equal("Alan Wake", couch.Current!.Title);
+                couch.Handle(CouchCommand.NextLetter);
+                Assert.Equal("The Talos Principle", couch.Current!.Title);
+                couch.Handle(CouchCommand.NextLetter);
+                Assert.Equal("The Witcher", couch.Current!.Title);
+                couch.Handle(CouchCommand.PreviousLetter);
+                Assert.Equal("The Talos Principle", couch.Current!.Title);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheSearch_IsTypedOnTheScreen_AndTheClientsQuestions_AreAnsweredWithTheGamepad()
         {
             var session = await TestSession.GetAsync();

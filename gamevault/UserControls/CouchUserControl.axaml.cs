@@ -32,6 +32,8 @@ namespace gamevault.UserControls
         public bool IsRetro => Retro != null;
         public bool IsTile => Tile != null;
         public string Title => Tile?.Title ?? Retro?.Name ?? Pc?.Title ?? "";
+        /// <summary>What the games are sorted by, and the letters of the triggers: the server's sort title ("Witcher" for "The Witcher").</summary>
+        public string SortTitle => Pc?.SortTitle is { Length: > 0 } sort ? sort : Title;
         /// <summary>The same game in two tabs is the same game.</summary>
         public string Key => Tile != null ? $"tile:{Tile.Id}" : Retro != null ? $"retro:{Retro.Platform.Slug}:{Retro.Id}" : $"pc:{Pc!.ID}";
 
@@ -335,10 +337,10 @@ namespace gamevault.UserControls
                 .OrderByDescending(i => records[i.Pc!.ID].LastPlayedAt).Take(24).ToList();
             if (recent.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Recent"), Items = recent });
-            var here = ByTitle(pc.Concat(retro).Where(i => i.Installed), i => i.Title).ToList();
+            var here = ByTitle(pc.Concat(retro).Where(i => i.Installed), i => i.SortTitle).ToList();
             if (here.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Installed games"), Items = here });
-            var favorites = ByTitle(pc.Concat(retro).Where(IsFavorite), i => i.Title).ToList();
+            var favorites = ByTitle(pc.Concat(retro).Where(IsFavorite), i => i.SortTitle).ToList();
             if (favorites.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Favorites"), Items = favorites });
             tabs.Add(new CouchTab { Name = Loc.T("Library"), Items = Filtered(pc) });
@@ -375,7 +377,7 @@ namespace gamevault.UserControls
                 tabs.Add(new CouchTab { Name = Loc.F("Search: {0}", Query), Items = found });
             }
             Tabs = tabs;
-            Navigator.SetTabs(tabs.Select(t => (IReadOnlyList<string>)t.Items.Select(i => i.Title).ToList()).ToList());
+            Navigator.SetTabs(tabs.Select(t => (IReadOnlyList<string>)t.Items.Select(i => i.SortTitle).ToList()).ToList());
             uiTabs.ItemsSource = Tabs;
         }
 
