@@ -32,6 +32,8 @@ namespace gamevault.UserControls
         public bool IsRetro => Retro != null;
         public bool IsTile => Tile != null;
         public string Title => Tile?.Title ?? Retro?.Name ?? Pc?.Title ?? "";
+        /// <summary>What the games are sorted by, and the letters of the triggers: the server's sort title ("Witcher" for "The Witcher").</summary>
+        public string SortTitle => Pc?.SortTitle is { Length: > 0 } sort ? sort : Title;
         /// <summary>The same game in two tabs is the same game.</summary>
         public string Key => Tile != null ? $"tile:{Tile.Id}" : Retro != null ? $"retro:{Retro.Platform.Slug}:{Retro.Id}" : $"pc:{Pc!.ID}";
 
@@ -342,10 +344,10 @@ namespace gamevault.UserControls
                 .OrderByDescending(i => records[i.Pc!.ID].LastPlayedAt).Take(24).ToList();
             if (recent.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Recent"), Items = recent });
-            var here = ByTitle(pc.Concat(retro).Where(i => i.Installed), i => i.Title).ToList();
+            var here = ByTitle(pc.Concat(retro).Where(i => i.Installed), i => i.SortTitle).ToList();
             if (here.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Installed games"), Items = here });
-            var favorites = ByTitle(pc.Concat(retro).Where(IsFavorite), i => i.Title).ToList();
+            var favorites = ByTitle(pc.Concat(retro).Where(IsFavorite), i => i.SortTitle).ToList();
             if (favorites.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Favorites"), Items = favorites });
             tabs.Add(new CouchTab { Name = Loc.T("Library"), Items = Filtered(pc) });
@@ -359,9 +361,20 @@ namespace gamevault.UserControls
             // The same tab and the same game after the games were read again
             string? tabName = Navigator.Tab < Tabs.Count ? Tabs[Navigator.Tab].Name : null;
             string? selectedKey = Current?.Key;
+            // Every tab keeps its game by its name: a tab that comes or goes (the favorites, the installed games) does not shift the others'
+            var kept = new Dictionary<string, string>();
+            for (int t = 0; t < Tabs.Count; t++)
+                if (Navigator.SelectedIn(t) is int i and >= 0)
+                    kept[Tabs[t].Name] = Tabs[t].Items[i].Key;
             SetTabs();
+            for (int t = 0; t < Tabs.Count; t++)
+                Navigator.Select(t, kept.TryGetValue(Tabs[t].Name, out string? key) ? Math.Max(0, Tabs[t].Items.FindIndex(item => item.Key == key)) : 0);
             int tab = tabName == null ? 0 : Math.Max(0, Tabs.FindIndex(t => t.Name == tabName));
-            Navigator.Select(tab, selectedKey == null ? 0 : Math.Max(0, Tabs[tab].Items.FindIndex(i => i.Key == selectedKey)));
+            int index = selectedKey == null ? 0 : Tabs[tab].Items.FindIndex(i => i.Key == selectedKey);
+            Navigator.Select(tab, Math.Max(0, index));
+            // The game whose screen was shown left its tab (removed from the installed ones): not another game's screen
+            if (index < 0 && Navigator.Screen == CouchScreen.Details)
+                Navigator.BackToList();
             ShowClock();
             BuildMenu();
             ShowTab();
@@ -382,7 +395,7 @@ namespace gamevault.UserControls
                 tabs.Add(new CouchTab { Name = Loc.F("Search: {0}", Query), Items = found });
             }
             Tabs = tabs;
-            Navigator.SetTabs(tabs.Select(t => (IReadOnlyList<string>)t.Items.Select(i => i.Title).ToList()).ToList());
+            Navigator.SetTabs(tabs.Select(t => (IReadOnlyList<string>)t.Items.Select(i => i.SortTitle).ToList()).ToList());
             uiTabs.ItemsSource = Tabs;
         }
 
@@ -479,8 +492,7 @@ namespace gamevault.UserControls
                     return;
                 if (!await DialogService.ConfirmAsync(Loc.F("Delete '{0}' from this PC? Its saves are kept.", retro.Name)))
                     return;
-                System.IO.Directory.Delete(folder, true);
-                retro.Refresh();
+                await RetroService.DeleteAsync(retro, folder);
                 return;
             }
             // The game's settings ask what they need to (its saves, its shortcuts) and remove it
@@ -1271,6 +1283,7 @@ namespace gamevault.UserControls
             ShowClock();
             HashSet<int>? installed = null;
             RefreshMore();
+            bool changed = false;
             foreach (CouchItem item in Navigator.Tab < Tabs.Count ? Tabs[Navigator.Tab].Items : new())
             {
                 if (item.IsTile)
@@ -1280,13 +1293,11 @@ namespace gamevault.UserControls
                     continue;
                 item.Installed = now;
                 InstalledChanged(now);
-                if (ReferenceEquals(item, Current))
-                {
-                    ShowHero(item);
-                    if (Navigator.Screen == CouchScreen.Details)
-                        ShowScreen();
-                }
+                changed = true;
             }
+            // The tab of the installed games follows: a game installed comes in, a game removed goes
+            if (changed)
+                Reshow();
             if (Navigator.Screen == CouchScreen.Details && Current is CouchItem current)
             {
                 ShowStatus(current);

@@ -263,6 +263,124 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheLetters_FollowTheSortTitle_WhenATitleStartsWithThe()
+        {
+            await TestSession.GetAsync();
+            // "The Witcher" is sorted at W by the server: the triggers find it there, not among the T
+            var games = new List<Game>
+            {
+                new() { ID = 9790, Title = "Alan Wake", SortTitle = "alan wake", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9791, Title = "The Talos Principle", SortTitle = "talos principle", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9792, Title = "Tunic", SortTitle = "tunic", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9793, Title = "The Witcher", SortTitle = "witcher", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9794, Title = "Wolfenstein", SortTitle = "wolfenstein", Type = GameType.WINDOWS_PORTABLE },
+            };
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, new List<RetroGame>());
+                couch.Navigator.SelectTab(couch.Tabs.FindIndex(t => t.Name == Loc.T("Library")));
+                Assert.Equal("Alan Wake", couch.Current!.Title);
+                couch.Handle(CouchCommand.NextLetter);
+                Assert.Equal("The Talos Principle", couch.Current!.Title);
+                couch.Handle(CouchCommand.NextLetter);
+                Assert.Equal("The Witcher", couch.Current!.Title);
+                couch.Handle(CouchCommand.PreviousLetter);
+                Assert.Equal("The Talos Principle", couch.Current!.Title);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task TheInstalledTab_FollowsTheGamesInstalledAndRemoved_WhileTheModeIsShown()
+        {
+            var session = await TestSession.GetAsync();
+            var games = new List<Game>
+            {
+                new() { ID = 9795, Title = "Brass Orbit", SortTitle = "brass orbit", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9796, Title = "Cobalt Reach", SortTitle = "cobalt reach", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9797, Title = "Dune Lantern", SortTitle = "dune lantern", Type = GameType.WINDOWS_PORTABLE },
+            };
+            var installed = new KeyValuePair<Game, string>(games[1], Path.Combine(session.LibraryRoot, "couch-follows"));
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, new List<RetroGame>());
+                Assert.DoesNotContain(couch.Tabs, t => t.Name == Loc.T("Installed games"));
+                couch.Navigator.Select(couch.Tabs.FindIndex(t => t.Name == Loc.T("Library")), 1);
+
+                // Installed meanwhile (a download that ended): the tab comes, the same game stays selected
+                InstallViewModel.Instance.InstalledGames.Add(installed);
+                couch.Refresh();
+                CouchTab here = couch.Tabs.Single(t => t.Name == Loc.T("Installed games"));
+                Assert.Equal(new[] { "Cobalt Reach" }, here.Items.Select(i => i.Title));
+                Assert.Equal(Loc.T("Library"), couch.Tabs[couch.Navigator.Tab].Name);
+                Assert.Equal("Cobalt Reach", couch.Current!.Title);
+
+                // Removed while its screen is shown from that tab: back to the list, not another game's screen
+                couch.Navigator.Select(couch.Tabs.IndexOf(here), 0);
+                couch.Handle(CouchCommand.Accept);
+                Assert.True(couch.uiDetails.IsVisible);
+                InstallViewModel.Instance.InstalledGames.Remove(installed);
+                couch.Refresh();
+                Assert.DoesNotContain(couch.Tabs, t => t.Name == Loc.T("Installed games"));
+                Assert.Equal(CouchScreen.Home, couch.Navigator.Screen);
+                Assert.False(couch.uiDetails.IsVisible);
+            }
+            finally
+            {
+                InstallViewModel.Instance.InstalledGames.Remove(installed);
+                window.Close();
+            }
+        }
+
+        [AvaloniaFact]
+        public async Task EachTab_KeepsItsGame_WhenATabComesBeforeIt()
+        {
+            var session = await TestSession.GetAsync();
+            var games = new List<Game>
+            {
+                new() { ID = 9798, Title = "Ember Coast", SortTitle = "ember coast", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9799, Title = "Frost Gate", SortTitle = "frost gate", Type = GameType.WINDOWS_PORTABLE },
+                new() { ID = 9800, Title = "Glass Moor", SortTitle = "glass moor", Type = GameType.WINDOWS_PORTABLE },
+            };
+            var installed = new KeyValuePair<Game, string>(games[0], Path.Combine(session.LibraryRoot, "couch-keeps"));
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                couch.Show(games, new List<RetroGame>());
+                couch.Navigator.Select(couch.Tabs.FindIndex(t => t.Name == Loc.T("Library")), 2);
+                couch.Navigator.SelectTab(0);
+
+                // A first game installed: its tab comes before the library, which keeps "Glass Moor"
+                InstallViewModel.Instance.InstalledGames.Add(installed);
+                couch.Show(games, new List<RetroGame>());
+                couch.Navigator.SelectTab(couch.Tabs.FindIndex(t => t.Name == Loc.T("Library")));
+                Assert.Equal("Glass Moor", couch.Current!.Title);
+            }
+            finally
+            {
+                InstallViewModel.Instance.InstalledGames.Remove(installed);
+                window.Close();
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheSearch_IsTypedOnTheScreen_AndTheClientsQuestions_AreAnsweredWithTheGamepad()
         {
             var session = await TestSession.GetAsync();

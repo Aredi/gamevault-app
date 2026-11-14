@@ -217,9 +217,8 @@ namespace gamevault.UserControls
                 return;
             if (!await DialogService.ConfirmAsync(Loc.F("Delete '{0}' from this PC? Its saves are kept.", ViewModel.Game.Name)))
                 return;
-            try { Directory.Delete(folder, true); }
+            try { await RetroService.DeleteAsync(ViewModel.Game, folder); }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
-            ViewModel.Game.Refresh();
         }
 
         private async void Manual_Click(object? sender, RoutedEventArgs e)

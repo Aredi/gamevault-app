@@ -276,6 +276,16 @@ namespace GameVault.Core.Tests
                 read.Save(file);
                 Assert.Equal(CouchSettings.Xbox, CouchSettings.Load(file).Buttons);
                 Assert.Empty(read.Apps);
+                // Chosen on a PC that had no settings yet (or after "back to the usual settings"): it stays too
+                File.Delete(file);
+                read = CouchSettings.Load(file);
+                read.Buttons = CouchSettings.Xbox;
+                read.Save(file);
+                Assert.Equal(CouchSettings.Xbox, CouchSettings.Load(file).Buttons);
+                var fresh = new CouchSettings().Reset();
+                fresh.Buttons = CouchSettings.Xbox;
+                fresh.Save(file);
+                Assert.Equal(CouchSettings.Xbox, CouchSettings.Load(file).Buttons);
                 File.WriteAllText(file, "not json");
                 Assert.False(CouchSettings.Load(file).IsFiltered);
             }
