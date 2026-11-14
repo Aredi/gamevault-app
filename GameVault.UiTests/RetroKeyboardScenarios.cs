@@ -201,10 +201,20 @@ namespace GameVault.UiTests
             {
                 Preferences.Set(AppConfigKey.RommToken, "secret", profile.UserConfigFile, true);
                 Preferences.Set(AppConfigKey.RetroKeyboard, "{\"nes\":{}}", profile.UserConfigFile);
+                // Its collections, its saves' history and the time played offline go with it too
+                File.WriteAllText(profile.CollectionsFile, "[{\"name\":\"Co-op\"}]");
+                Directory.CreateDirectory(Path.Combine(profile.RootDir, "SaveHistory", "42"));
+                File.WriteAllText(Path.Combine(profile.RootDir, "SaveHistory", "42", "save.zip"), "a save");
+                Directory.CreateDirectory(profile.OfflineProgress);
+                File.WriteAllText(Path.Combine(profile.OfflineProgress, "42"), "90");
                 moved = ProfileManager.ChangeServer(profile, "https://gamevault.example.com");
                 Assert.False(Directory.Exists(profile.RootDir));
                 Assert.Equal("secret", Preferences.Get(AppConfigKey.RommToken, moved.UserConfigFile, true));
                 Assert.Equal("{\"nes\":{}}", Preferences.Get(AppConfigKey.RetroKeyboard, moved.UserConfigFile));
+                Assert.Equal("[{\"name\":\"Co-op\"}]", File.ReadAllText(moved.CollectionsFile));
+                Assert.Equal("a save", File.ReadAllText(Path.Combine(moved.RootDir, "SaveHistory", "42", "save.zip")));
+                Assert.Equal("90", File.ReadAllText(Path.Combine(moved.OfflineProgress, "42")));
+                Assert.True(Directory.Exists(moved.ThemesLoadDir));
             }
             finally
             {
