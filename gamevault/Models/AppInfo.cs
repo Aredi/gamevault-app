@@ -153,7 +153,9 @@ namespace gamevault.Models
         //The living-room mode's sounds ("0": off, profileconfig)
         CouchSounds,
         //Server news: when they were last opened (the newer ones are counted on the badge)
-        NewsLastSeen
+        NewsLastSeen,
+        //The retro page's sort, by its name in RetroViewModel.SortKeys
+        LastRetroSortBy
     }
     public static class Globals
     {

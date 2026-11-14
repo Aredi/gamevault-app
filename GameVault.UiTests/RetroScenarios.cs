@@ -189,6 +189,36 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheSortChosen_IsKept_ForTheNextStart()
+        {
+            await TestSession.GetAsync();
+            RetroUserControl page = MainWindowViewModel.Instance.Retro;
+            int sortBefore = page.ViewModel.SortBy;
+            string file = LoginManager.Instance.GetUserProfile().UserConfigFile;
+            try
+            {
+                page.ViewModel.SortBy = 0;
+                page.ViewModel.SortBy = 4;
+                Assert.Equal("playtime", Preferences.Get(gamevault.Models.AppConfigKey.LastRetroSortBy, file));
+                // The page of the next start sorts as chosen
+                Assert.Equal(4, new RetroViewModel().SortBy);
+                page.ViewModel.SortBy = 5;
+                Assert.Equal(5, new RetroViewModel().SortBy);
+                // A name not known (written by a newer version): the title
+                Preferences.Set(gamevault.Models.AppConfigKey.LastRetroSortBy, "someday", file);
+                Assert.Equal(0, new RetroViewModel().SortBy);
+                // The list emptying its choice changes nothing
+                page.ViewModel.SortBy = -1;
+                Assert.Equal(5, page.ViewModel.SortBy);
+            }
+            finally
+            {
+                page.ViewModel.SortBy = 0;
+                page.ViewModel.SortBy = sortBefore;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AnotherPlatform_ChosenFarDownTheGrid_LeavesNoCardDrawnOverTheOthers()
         {
             var session = await TestSession.GetAsync();
