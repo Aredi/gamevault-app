@@ -99,6 +99,38 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheTimePlayedOffline_IsKept_WhenAnotherGameEndsWhileItIsSent()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            var game = new RetroGame { Id = 4711, Name = "Offline", FileName = "Offline.nes", Platform = new RetroPlatform { Slug = "zz", Name = "ZZ" } };
+            try
+            {
+                // Offline: the first session waits in the file
+                session.Server.RetroPlaysFail = true;
+                await RetroLibrary.RecordPlayAsync(game, 5);
+                // It is sent again (slowly, and in vain) while a second session ends and is kept too
+                session.Server.RetroPlaysDelays.Enqueue(TimeSpan.FromSeconds(1.5));
+                Task sending = RetroLibrary.LoadAsync();
+                await Task.Delay(300);
+                await RetroLibrary.RecordPlayAsync(game, 7);
+                await sending;
+                // Back online: both are sent, none twice
+                session.Server.RetroPlaysFail = false;
+                await RetroLibrary.LoadAsync();
+                Assert.Equal(12, session.Server.RetroMinutes["zz:4711"]);
+                await RetroLibrary.LoadAsync();
+                Assert.Equal(12, session.Server.RetroMinutes["zz:4711"]);
+            }
+            finally
+            {
+                session.Server.RetroPlaysFail = false;
+                session.Server.RetroPlaysDelays.Clear();
+                CleanUp(session);
+            }
+        }
+
+        [AvaloniaFact]
         public async Task ARetroGame_HasItsTime_Favorite_Collections_AndShowsInSearchStorageAndActivity()
         {
             var (session, page, zelda) = await InstallZeldaAsync();
