@@ -854,14 +854,26 @@ namespace gamevault.UserControls
                 // Never the desktop itself
                 if (name.Equals("explorer", StringComparison.OrdinalIgnoreCase))
                     return;
-                OpenOverlay(name, () => CouchSystem.GiveFront(window), () =>
-                {
-                    using Process game = Process.GetProcessById((int)id);
-                    game.Kill(entireProcessTree: true);
-                });
+                OpenOverlay(name, () => CouchSystem.GiveFront(window), () => _ = QuitGameAsync((int)id));
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }
+
+        /// <summary>
+        /// Asked to close as its own window's cross does (RetroArch writes the game's save then), killed only when it is
+        /// still there a few seconds later.
+        /// </summary>
+        private static Task QuitGameAsync(int id) => Task.Run(() =>
+        {
+            try
+            {
+                using Process game = Process.GetProcessById(id);
+                if (game.CloseMainWindow() && game.WaitForExit(6000))
+                    return;
+                game.Kill(entireProcessTree: true);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        });
 
         internal CouchOverlay? Overlay => overlay;
 

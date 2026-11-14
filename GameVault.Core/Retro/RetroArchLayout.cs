@@ -158,7 +158,8 @@ namespace GameVault.Core.Retro
             $"shaders = \"1\"\nshader0 = \"{CrtShaderFile(extension)}\"\nfilter_linear0 = \"false\"\n" + (extension == "slang" ? "scale_type0 = \"viewport\"\n" : "");
 
         /// <param name="achievements">The player's RetroAchievements account (its token, never its password), or null.</param>
-        public string Config(string player, (string User, string Token)? achievements = null)
+        /// <param name="quitCombo">Select+Start quits; not when the living-room mode's menu over a game takes those buttons.</param>
+        public string Config(string player, (string User, string Token)? achievements = null, bool quitCombo = true)
         {
             var settings = new (string Key, string Value)[]
             {
@@ -174,8 +175,8 @@ namespace GameVault.Core.Retro
                 ("video_fullscreen", "true"),
                 // Borderless over the whole screen: no change of the screen's mode (black flashes) when it starts and quits
                 ("video_windowed_fullscreen", "true"),
-                // RetroPad combinations: 4 is Select+Start, 2 is L3+R3
-                ("input_quit_gamepad_combo", "4"),
+                // RetroPad combinations: 4 is Select+Start, 2 is L3+R3, 0 none
+                ("input_quit_gamepad_combo", quitCombo ? "4" : "0"),
                 ("input_menu_toggle_gamepad_combo", "2"),
                 ("quit_press_twice", "false"),
                 ("pause_nonactive", "false"),

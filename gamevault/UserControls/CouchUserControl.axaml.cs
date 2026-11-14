@@ -206,6 +206,13 @@ namespace gamevault.UserControls
 
         /// <summary>The mode is on the screen (read from any thread): the system's notifications stay quiet, the mode tells its own. Its window hidden or minimized, they come back.</summary>
         internal static volatile bool Shown;
+        private static volatile bool overlayOn;
+
+        /// <summary>
+        /// Start + Back over a game opens this mode's menu (Windows, the mode on the screen, the setting on): the games
+        /// started now must not quit on those buttons themselves.
+        /// </summary>
+        internal static bool OverlayTakesStartBack => OperatingSystem.IsWindows() && Shown && overlayOn;
 
         /// <summary>The living-room mode is shown: its games are read again, the gamepads listened to.</summary>
         internal async Task OpenAsync(bool welcome = false)

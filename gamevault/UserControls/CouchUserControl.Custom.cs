@@ -65,6 +65,7 @@ namespace gamevault.UserControls
                 grid.MinItemHeight = CardHeight;
             }
 
+            overlayOn = s.Overlay;
             Classes.Set("noGlow", !s.Glow);
             // The blurred shadows of the titles are drawn again with everything under them: none in the light mode
             foreach (Control shadowed in new Control[] { uiTitle, uiLogo, uiDetailTitle, uiDetailLogo, uiLoginTime })
@@ -478,7 +479,7 @@ namespace gamevault.UserControls
                 Toggle("Light mode for a small PC", s.Performance, v => { s.Performance = v; ShowAccent(shownBack); }, "No moving background, no screenshots, no trailer, no animation."),
             };
             if (OperatingSystem.IsWindows())
-                lines.Add(Toggle("Menu over a game (Start + Back)", s.Overlay, v => s.Overlay = v, "Start and Back together over a game show a menu to go back to it or quit it."));
+                lines.Add(Toggle("Menu over a game (Start + Back)", s.Overlay, v => { s.Overlay = v; overlayOn = v; }, "Start and Back together over a game show a menu to go back to it or quit it."));
             lines.Add(new CouchLine
             {
                 Text = Loc.T("Back to the usual settings"),

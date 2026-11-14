@@ -358,7 +358,8 @@ namespace gamevault.Helper
             Layout.AdoptSharedSaves(player);
             foreach (string folder in Layout.Folders(player))
                 Directory.CreateDirectory(folder);
-            File.WriteAllText(Layout.ConfigFile, Layout.Config(player, RetroAchievementsAccount.Account));
+            // Started from the living-room mode with its menu over a game, Select+Start opens that menu: RetroArch must not quit at once
+            File.WriteAllText(Layout.ConfigFile, Layout.Config(player, RetroAchievementsAccount.Account, quitCombo: !gamevault.UserControls.CouchUserControl.OverlayTakesStartBack));
         }
 
         /// <summary>The Mac's app out of its disk image, then its menus, controller profiles and core descriptions out of the app's assets.zip.</summary>
