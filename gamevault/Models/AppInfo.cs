@@ -146,7 +146,9 @@ namespace gamevault.Models
         //Navigation bar folded to its icons ("1", profileconfig)
         SidebarFolded,
         //Server news: when they were last opened (the newer ones are counted on the badge)
-        NewsLastSeen
+        NewsLastSeen,
+        //The retro page's sort, by its name in RetroViewModel.SortKeys
+        LastRetroSortBy
     }
     public static class Globals
     {
