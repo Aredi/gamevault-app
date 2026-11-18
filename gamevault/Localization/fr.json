@@ -1900,5 +1900,8 @@
   "Installing {0}: unpacking {1}%": "Installation de {0} : décompression {1} %",
   "The build of {0} has no program '{1}': an administrator names it in the admin console.": "Le fichier de {0} ne contient pas le programme « {1} » : un administrateur le nomme dans la console d'administration.",
   "Playing with {0}. The game's files are in {1}: this path is copied, paste it when {0} asks for the game.": "En jeu avec {0}. Les fichiers du jeu sont dans {1} : ce chemin est copié, collez-le quand {0} demande le jeu.",
-  "Playing with {0}: close its windows to quit": "En jeu avec {0} : fermez ses fenêtres pour quitter"
+  "Playing with {0}: close its windows to quit": "En jeu avec {0} : fermez ses fenêtres pour quitter",
+  "Archive password (administrator)": "Mot de passe de l'archive (administrateur)",
+  "The archive's password is saved": "Mot de passe de l'archive enregistré",
+  "The archive's password is removed": "Mot de passe de l'archive retiré"
 }

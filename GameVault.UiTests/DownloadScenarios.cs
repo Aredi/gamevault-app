@@ -32,6 +32,33 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AnArchiveWithAPassword_IsExtractedWithTheOneSetOnTheGamesPage_WithoutAsking()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            // A zip of game.exe, ciphered with "elamigos"
+            byte[] archive = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "locked.zip"));
+            Game game = session.Server.AddGame(9151, "Locked Game", GameType.WINDOWS_SETUP, archive, "Locked Game (W_S).zip");
+            bool autoExtract = SettingsViewModel.Instance.AutoExtract;
+            try
+            {
+                SettingsViewModel.Instance.AutoExtract = true;
+                // Set by an administrator, as the game's page does
+                await ArchivePasswordService.SetAsync(game.ID, "elamigos");
+                Assert.Equal("elamigos", await ArchivePasswordService.GetAsync(game.ID));
+
+                await MainWindowViewModel.Instance.Downloads.TryStartDownload(game);
+                string exe = Path.Combine(session.DownloadFolder(game), "Extract", "game.exe");
+                await TestSession.WaitUntil(() => File.Exists(exe), Timeout, "the archive to be extracted with the game's password");
+            }
+            finally
+            {
+                session.Server.ArchivePasswords.Clear();
+                SettingsViewModel.Instance.AutoExtract = autoExtract;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task AnArchiveThatWontFitOnTheDisk_IsNotExtracted_AndKept()
         {
             var session = await TestSession.GetAsync();

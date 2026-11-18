@@ -353,6 +353,28 @@ namespace GameVault.Uploader
                 return Results.NoContent();
             });
 
+            // The password of a game's archive: read by the players downloading it, set by an administrator
+            app.MapGet("/archive-passwords/games/{gameId:int}", async (int gameId, HttpRequest request, AdminCheck users, ArchivePasswordStore passwords, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return passwords.Enabled ? Results.Json(new { password = passwords.Get(gameId) }) : ArchivePasswordsOff();
+            });
+
+            app.MapPut("/archive-passwords/games/{gameId:int}", async (int gameId, ArchivePassword asked, HttpRequest request, AdminCheck admins, ArchivePasswordStore passwords, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!passwords.Enabled)
+                    return ArchivePasswordsOff();
+                if (asked.Password?.Length > ArchivePasswordStore.MaxLength)
+                    return Results.Json(new { error = $"The password is {ArchivePasswordStore.MaxLength} characters at most." }, statusCode: StatusCodes.Status400BadRequest);
+                passwords.Set(gameId, asked.Password);
+                return Results.NoContent();
+            });
+
             // The emulators given to some retro games instead of their console's, and the games they play
             app.MapGet("/retro/emulators", async (HttpRequest request, AdminCheck users, GameEmulatorStore emulators, CancellationToken ct) =>
             {
@@ -758,6 +780,8 @@ namespace GameVault.Uploader
 
         private static IResult EmulatorsOff() => Results.Json(new { error = "Emulators by game are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
+        private static IResult ArchivePasswordsOff() => Results.Json(new { error = "Archive passwords are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
         private static IResult HypervisorOff() => Results.Json(new { error = "Hypervisor notices are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
         private static IResult InvitesOff() => Results.Json(new { error = "Invitation codes are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
@@ -786,6 +810,8 @@ namespace GameVault.Uploader
     public sealed record LanGame(bool Lan);
     public sealed record HiddenPlay(int? GameId);
     public sealed record HypervisorGame(bool On);
+
+    public sealed record ArchivePassword(string? Password);
 
     public sealed record HypervisorText(string? Text);
 

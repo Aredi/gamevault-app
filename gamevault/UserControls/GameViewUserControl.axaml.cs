@@ -98,6 +98,7 @@ namespace gamevault.UserControls
                 }
                 _ = ShowLanAsync();
                 _ = ShowHypervisorAdminAsync();
+                _ = ShowArchivePasswordAdminAsync();
                 ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
                 ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
                 ViewModel.IsUpdateAvailable = HasUpdate(ViewModel.Game);
@@ -317,6 +318,35 @@ namespace gamevault.UserControls
                 uiHypervisorAdmin.IsChecked = notice?.Games.Contains(game.ID) == true;
             }
             catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>The administrators give a game its archive's password; without the service the field stays hidden.</summary>
+        private async Task ShowArchivePasswordAdminAsync()
+        {
+            if (ViewModel.Game is not Game game || LoginManager.Instance.GetCurrentUser()?.Role != PERMISSION_ROLE.ADMIN)
+                return;
+            try
+            {
+                string? password = await ArchivePasswordService.GetAsync(game.ID);
+                uiArchivePasswordAdmin.IsVisible = password != null;
+                uiArchivePassword.Text = password ?? "";
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private async void ArchivePasswordSave_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game is not Game game)
+                return;
+            uiArchivePasswordSave.IsEnabled = false;
+            try
+            {
+                string password = uiArchivePassword.Text?.Trim() ?? "";
+                await ArchivePasswordService.SetAsync(game.ID, password);
+                MainWindowViewModel.Instance.AppBarText = password.Length > 0 ? Loc.T("The archive's password is saved") : Loc.T("The archive's password is removed");
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+            uiArchivePasswordSave.IsEnabled = true;
         }
 
         private async void HypervisorAdmin_Click(object? sender, RoutedEventArgs e)

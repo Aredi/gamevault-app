@@ -188,6 +188,7 @@ namespace GameVault.UiTests
         public List<Dictionary<string, object?>> Invites { get; } = new();
         public ConcurrentDictionary<int, bool> HypervisorGames { get; } = new();
         public string HypervisorText { get; set; } = "";
+        public ConcurrentDictionary<int, string> ArchivePasswords { get; } = new();
         /// <summary>The service's emulators by game (GET /retro/emulators), as it answers them.</summary>
         public string EmulatorsJson { get; set; } = "{\"emulators\":[],\"games\":{}}";
 
@@ -698,6 +699,21 @@ namespace GameVault.UiTests
                     else
                         HypervisorGames.TryRemove(game, out _);
                     response.StatusCode = 204;
+                }
+                else if (path.StartsWith("/archive-passwords/games/"))
+                {
+                    int game = int.Parse(path.Split('/')[3]);
+                    if (request.HttpMethod == "PUT")
+                    {
+                        using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                        if (asked.RootElement.GetProperty("password").GetString() is { Length: > 0 } password)
+                            ArchivePasswords[game] = password;
+                        else
+                            ArchivePasswords.TryRemove(game, out _);
+                        response.StatusCode = 204;
+                    }
+                    else
+                        await Json(response, new { password = ArchivePasswords.TryGetValue(game, out string? password) ? password : null });
                 }
                 else if (path == "/hypervisor/text")
                 {

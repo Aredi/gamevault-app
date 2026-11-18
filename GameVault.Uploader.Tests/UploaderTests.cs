@@ -216,6 +216,7 @@ namespace GameVault.Uploader.Tests
         private readonly string reports = Path.Combine(Path.GetTempPath(), $"gv-reports-{Guid.NewGuid():N}");
         private readonly string invites = Path.Combine(Path.GetTempPath(), $"gv-invites-{Guid.NewGuid():N}");
         private readonly string hypervisor = Path.Combine(Path.GetTempPath(), $"gv-hypervisor-{Guid.NewGuid():N}");
+        private readonly string passwords = Path.Combine(Path.GetTempPath(), $"gv-passwords-{Guid.NewGuid():N}");
         private readonly string emulators = Path.Combine(Path.GetTempPath(), $"gv-emulators-{Guid.NewGuid():N}");
         private readonly string chat = Path.Combine(Path.GetTempPath(), $"gv-chat-{Guid.NewGuid():N}");
         private readonly string challenges = Path.Combine(Path.GetTempPath(), $"gv-challenges-{Guid.NewGuid():N}");
@@ -261,6 +262,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("REPORTS_DIRECTORY", reports);
                 host.UseSetting("INVITES_DIRECTORY", invites);
                 host.UseSetting("HYPERVISOR_DIRECTORY", hypervisor);
+                host.UseSetting("ARCHIVE_PASSWORDS_DIRECTORY", passwords);
                 host.UseSetting("EMULATORS_DIRECTORY", emulators);
                 host.UseSetting("CHAT_DIRECTORY", chat);
                 host.UseSetting("CHALLENGES_DIRECTORY", challenges);
@@ -290,6 +292,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(reports, true); } catch { }
             try { Directory.Delete(invites, true); } catch { }
             try { Directory.Delete(hypervisor, true); } catch { }
+            try { Directory.Delete(passwords, true); } catch { }
             try { Directory.Delete(emulators, true); } catch { }
             try { Directory.Delete(chat, true); } catch { }
             try { Directory.Delete(challenges, true); } catch { }
@@ -561,6 +564,25 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(8, Assert.Single(seen.RootElement.GetProperty("games").EnumerateArray()).GetInt32());
             Assert.Equal("Read this", seen.RootElement.GetProperty("text").GetString());
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/hypervisor")).StatusCode);
+        }
+
+        [Fact]
+        public async Task TheAdmins_SetAGamesArchivePassword_ThePlayersReadItGameByGame()
+        {
+            var admin = Client("admin");
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/archive-passwords/games/7", new { password = "mine" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/archive-passwords/games/7", new { password = new string('a', 501) })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/7", new { password = "elamigos" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/8", new { password = "other" })).StatusCode);
+
+            using JsonDocument seven = JsonDocument.Parse(await player.GetStringAsync("/archive-passwords/games/7"));
+            Assert.Equal("elamigos", seven.RootElement.GetProperty("password").GetString());
+            // Emptied: none any more
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/8", new { password = "" })).StatusCode);
+            using JsonDocument eight = JsonDocument.Parse(await player.GetStringAsync("/archive-passwords/games/8"));
+            Assert.Equal(JsonValueKind.Null, eight.RootElement.GetProperty("password").ValueKind);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/archive-passwords/games/7")).StatusCode);
         }
 
         [Fact]

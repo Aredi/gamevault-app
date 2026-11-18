@@ -302,6 +302,11 @@
                             </Border>
                             <CheckBox x:Name="uiLanAdmin" IsVisible="False" Click="LanAdmin_Click" Content="{l:T 'Playable in LAN (administrator)'}" />
                             <CheckBox x:Name="uiHypervisorAdmin" IsVisible="False" Click="HypervisorAdmin_Click" Content="{l:T 'Uses a hypervisor (administrator)'}" />
+                            <!-- The archive's password: the clients extract with it without asking -->
+                            <StackPanel x:Name="uiArchivePasswordAdmin" IsVisible="False" Orientation="Horizontal" Spacing="8">
+                                <TextBox x:Name="uiArchivePassword" Width="300" Watermark="{l:T 'Archive password (administrator)'}" />
+                                <Button x:Name="uiArchivePasswordSave" Classes="ghost small" Click="ArchivePasswordSave_Click" Content="{l:T 'Save'}" VerticalAlignment="Center" />
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
 

@@ -813,20 +813,19 @@ namespace gamevault.UserControls
             }
             else if (isEncrypted)
             {
-                string extractionPassword = Preferences.Get(AppConfigKey.ExtractionPassword, LoginManager.Instance.GetUserProfile().UserConfigFile, true);
-                if (string.IsNullOrEmpty(extractionPassword))
+                // The game's own password (its page), then the one of the settings; asked only when none opens it
+                const int WrongPassword = 69;
+                result = WrongPassword;
+                foreach (string known in await KnownPasswordsAsync())
                 {
-                    extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", Loc.T("This archive requires a password to extract"));
-                    result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
+                    result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), known);
+                    if (result != WrongPassword)
+                        break;
                 }
-                else
+                if (result == WrongPassword)
                 {
+                    string extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", Loc.T("This archive requires a password to extract"));
                     result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
-                    if (result == 69)//Error code for wrong password
-                    {
-                        extractionPassword = await App.Instance.MainWindow.ShowInputAsync("Extraction", Loc.T("This archive requires a password to extract"));
-                        result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"), extractionPassword);
-                    }
                 }
             }
             else
@@ -921,6 +920,23 @@ namespace gamevault.UserControls
                 ViewModel.ExtractionUIVisibility = false;
             }
         }
+
+        /// <summary>The passwords to try on an encrypted archive: the game's (set on its page), then the settings' one.</summary>
+        private async Task<List<string>> KnownPasswordsAsync()
+        {
+            var passwords = new List<string>();
+            try
+            {
+                if (ViewModel.Game?.ID is int id && await ArchivePasswordService.GetAsync(id) is { Length: > 0 } own)
+                    passwords.Add(own);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            string settings = Preferences.Get(AppConfigKey.ExtractionPassword, LoginManager.Instance.GetUserProfile().UserConfigFile, true);
+            if (!string.IsNullOrEmpty(settings) && !passwords.Contains(settings))
+                passwords.Add(settings);
+            return passwords;
+        }
+
         private void OpenInstallOptions_Click(object? sender, RoutedEventArgs e)
         {
             uiInstallOptions.IsVisible = true;
