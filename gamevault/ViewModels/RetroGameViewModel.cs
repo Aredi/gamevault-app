@@ -257,6 +257,16 @@ namespace gamevault.ViewModels
         public List<RetroStateRow> States { get => states; set { states = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasStates)); } }
         public bool HasStates => States.Count > 0;
 
+        private IReadOnlyList<GameVault.Core.Retro.RetroUpdates.RemoteFile> updates = Array.Empty<GameVault.Core.Retro.RetroUpdates.RemoteFile>();
+        /// <summary>The updates RomM has for the installed game that its folder here does not.</summary>
+        public IReadOnlyList<GameVault.Core.Retro.RetroUpdates.RemoteFile> Updates
+        {
+            get => updates;
+            set { updates = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasUpdates)); OnPropertyChanged(nameof(UpdatesSizeText)); }
+        }
+        public bool HasUpdates => Updates.Count > 0;
+        public string UpdatesSizeText => Converter.GameSizeConverter.Text(Updates.Sum(u => u.Size));
+
         /// <summary>The time played changed (a session ended): the strip shows it again.</summary>
         public void RefreshPlayer() => OnPropertyChanged(nameof(LastPlayedText));
     }

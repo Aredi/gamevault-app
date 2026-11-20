@@ -107,6 +107,9 @@ namespace GameVault.UiTests
         public TimeSpan PsxListDelay { get; set; } = TimeSpan.Zero;
         /// <summary>The NES games have one more, a file the emulator does not start (its preparation fails).</summary>
         public bool NesBrokenGame { get; set; }
+        /// <summary>RomM has an update in the Switch folder game's "update" folder (game 70), added after its install.</summary>
+        public bool SwitchUpdate { get; set; }
+        public static readonly byte[] SwitchUpdateFile = "update"u8.ToArray();
         /// <summary>The games the "igdb" provider knows: its search returns those sharing a word with the query.</summary>
         public ConcurrentBag<MinimalGame> ProviderCatalog { get; } = new();
         /// <summary>The SanctuaryVault service part: the players' profiles (JSON) it keeps.</summary>
@@ -418,6 +421,18 @@ namespace GameVault.UiTests
                         new { id = 71, name = "Assassin's Creed Brotherhood DLC", fileName = "Assassins Creed - Brotherhood [DLC][0100670014483001].nsp", size = 3L, multi = false },
                         new { id = 72, name = "Compressed Game", fileName = "Compressed Game.nsz", size = SwitchCompressedGame.LongLength, multi = false },
                     });
+                else if (path == "/retro/games/70/files" && SwitchUpdate)
+                    await Json(response, new object[]
+                    {
+                        new { id = 900, path = "1-2-Switch.xci", size = 3L, category = "game" },
+                        new { id = 901, path = "update/1-2-Switch [01000320000CC800][v393216].nsp", size = 467468771L, category = "update" },
+                    });
+                else if (path == "/retro/games/70/files/901/content" && SwitchUpdate)
+                {
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''1-2-Switch%20%5B01000320000CC800%5D%5Bv393216%5D.nsp");
+                    response.ContentLength64 = SwitchUpdateFile.LongLength;
+                    await response.OutputStream.WriteAsync(SwitchUpdateFile);
+                }
                 else if (path == "/retro/games/70/content")
                 {
                     response.ContentType = "application/zip";

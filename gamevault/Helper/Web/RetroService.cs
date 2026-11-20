@@ -395,6 +395,78 @@ namespace gamevault.Helper
             return start[..read];
         }
 
+        private sealed record GameFile(
+            [property: JsonPropertyName("id")] int Id, [property: JsonPropertyName("path")] string? Path,
+            [property: JsonPropertyName("size")] long Size, [property: JsonPropertyName("category")] string? Category);
+
+        /// <summary>
+        /// The updates RomM has for an installed game in a folder (a file in its "update" folder) that its folder here
+        /// does not: none for a game in one file, without network or from an older service.
+        /// </summary>
+        public static async Task<IReadOnlyList<RetroUpdates.RemoteFile>> MissingUpdatesAsync(RetroGame game)
+        {
+            if (!game.Multi || InstalledFolder(game) is not string folder)
+                return Array.Empty<RetroUpdates.RemoteFile>();
+            try
+            {
+                var files = await TryGetAsync<List<GameFile>>($"/retro/games/{game.Id}/files");
+                if (files == null || InstalledFolder(game) != folder)
+                    return Array.Empty<RetroUpdates.RemoteFile>();
+                var here = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(folder, f));
+                return RetroUpdates.Missing(files.Select(f => new RetroUpdates.RemoteFile(f.Id, f.Path ?? "", f.Size, f.Category)), here);
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return Array.Empty<RetroUpdates.RemoteFile>();
+            }
+        }
+
+        /// <summary>
+        /// The updates into the installed game's folder, each where RomM keeps it ("update/…"): downloaded beside the
+        /// folder first (the downloader's notes would make the game look half installed), then moved in.
+        /// </summary>
+        public static async Task DownloadUpdatesAsync(RetroGame game, IReadOnlyList<RetroUpdates.RemoteFile> updates, Action<string> progress)
+        {
+            if (InstalledFolder(game) is not string folder)
+                return;
+            string temporary = folder + ".update";
+            long total = Math.Max(1, updates.Sum(u => u.Size)), before = 0;
+            var headers = SettingsViewModel.Instance.DownloadLimit > 0
+                ? new Dictionary<string, string> { ["X-Download-Speed-Limit"] = SettingsViewModel.Instance.DownloadLimit.ToString() }
+                : null;
+            try
+            {
+                foreach (var update in updates)
+                {
+                    if (Directory.Exists(temporary))
+                        Directory.Delete(temporary, true);
+                    Directory.CreateDirectory(temporary);
+                    var client = new HttpClientDownloadWithProgress($"{Service}/retro/games/{game.Id}/files/{update.Id}/content", temporary, Path.GetFileName(update.Path), headers);
+                    long done = before;
+                    client.ProgressChanged += (_, _, downloaded, _, _) =>
+                        progress(Loc.F("Downloading the update... {0}%", (int)(Math.Min(total, done + downloaded) * 100 / total)));
+                    await client.StartDownload();
+                    string downloaded = Directory.EnumerateFiles(temporary).First(f => Path.GetFileName(f) != DownloadMetadata);
+                    if (game.Platform.System.IsEden && SwitchCompressed.IsCompressed(downloaded))
+                    {
+                        progress(Loc.F("Decompressing the Switch game... {0}%", 0));
+                        string compressed = downloaded;
+                        downloaded = await Task.Run(() => SwitchCompressed.Decompress(compressed, d => progress(Loc.F("Decompressing the Switch game... {0}%", (int)(d * 100)))));
+                    }
+                    string target = Path.Combine(folder, Path.GetDirectoryName(update.Path) ?? "", Path.GetFileName(downloaded));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Move(downloaded, target, overwrite: true);
+                    before += update.Size;
+                }
+            }
+            finally
+            {
+                try { if (Directory.Exists(temporary)) Directory.Delete(temporary, true); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+        }
+
         /// <summary>A game added to RomM lately.</summary>
         internal sealed class LatestGame
         {

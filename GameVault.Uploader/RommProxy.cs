@@ -284,6 +284,47 @@ namespace GameVault.Uploader
             await CopyAsync(file, response, cancellationToken, limit);
         }
 
+        /// <summary>
+        /// The files of a game in a folder, by their path in it as RomM zips them ("update/Zelda [0100F2C0115B6800][v65536].nsp"),
+        /// with what RomM says they are ("game", "update", "dlc"...); null when RomM has no such rom.
+        /// </summary>
+        public async Task<object?> FilesAsync(int id, CancellationToken cancellationToken)
+        {
+            if (await DetailsAsync($"api/roms/{id}", cancellationToken) is not JsonElement rom)
+                return null;
+            string folder = (Text(rom, "full_path") ?? "") + "/";
+            return Files(rom).Select(f => new
+            {
+                id = Number(f, "id"),
+                path = Text(f, "full_path") is string full && full.StartsWith(folder, StringComparison.Ordinal) ? full[folder.Length..] : Text(f, "file_name"),
+                size = Number(f, "file_size_bytes"),
+                category = Text(f, "category"),
+            }).ToList();
+        }
+
+        private static IEnumerable<JsonElement> Files(JsonElement rom) =>
+            rom.TryGetProperty("files", out JsonElement files) && files.ValueKind == JsonValueKind.Array ? files.EnumerateArray() : Enumerable.Empty<JsonElement>();
+
+        /// <summary>One file of a game in a folder (an update added after the game was installed), in parts when asked.</summary>
+        public async Task FileContentAsync(int id, int fileId, HttpRequest request, HttpResponse response, CancellationToken cancellationToken)
+        {
+            // A file of this rom only: its id alone would reach any of RomM's files
+            string? name = await DetailsAsync($"api/roms/{id}", cancellationToken) is JsonElement rom
+                ? Files(rom).Where(f => Number(f, "id") == fileId).Select(f => Text(f, "file_name")).FirstOrDefault() : null;
+            if (string.IsNullOrEmpty(name))
+            {
+                response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+            HttpRequestMessage content = Get($"api/roms/{fileId}/files/content/{Uri.EscapeDataString(name)}");
+            if (request.Headers.Range.Count > 0)
+                content.Headers.TryAddWithoutValidation("Range", request.Headers.Range.ToString());
+            using HttpResponseMessage file = await SendAsync(content, cancellationToken);
+            response.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") { FileNameStar = name }.ToString();
+            long limit = long.TryParse(request.Headers["X-Download-Speed-Limit"], out long kilobytes) && kilobytes > 0 ? kilobytes * 1000 : 0;
+            await CopyAsync(file, response, cancellationToken, limit);
+        }
+
         /// <param name="bytesPerSecond">0: as fast as it goes.</param>
         private static async Task CopyAsync(HttpResponseMessage from, HttpResponse to, CancellationToken cancellationToken, long bytesPerSecond = 0)
         {
