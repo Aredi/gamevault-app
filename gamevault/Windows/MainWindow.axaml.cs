@@ -439,8 +439,9 @@ namespace gamevault.Windows
         /// </summary>
         private void ShowCurrentSection()
         {
-            int selected = MainWindowViewModel.Instance.ActiveControlIndex;
-            int current = selected < 0 && MainWindowViewModel.Instance.ActiveControl != null ? (int)MainWindowViewModel.Instance.LastMainControl : -1;
+            var vm = MainWindowViewModel.Instance;
+            // A section's own page shown without the menu (the downloads from the tray): its own item, not the last one chosen
+            int current = vm.ActiveControlIndex >= 0 || vm.ActiveControl == null ? -1 : (int)(vm.SectionOf(vm.ActiveControl) ?? vm.LastMainControl);
             for (int i = 0; i < uiNavigation.ItemCount; i++)
                 if (uiNavigation.ContainerFromIndex(i) is ListBoxItem item)
                     item.Classes.Set("current", i == current);

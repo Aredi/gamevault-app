@@ -237,6 +237,11 @@ namespace gamevault.ViewModels
             ActiveControl = userControl;
             ActiveControlIndex = -1;
         }
+        /// <summary>The menu's section a page is, when it is one of them.</summary>
+        public MainControl? SectionOf(UserControl page) =>
+            page == m_Library ? MainControl.Library : page == m_Retro ? MainControl.Retro : page == m_Downloads ? MainControl.Downloads
+            : page == m_Community ? MainControl.Community : page == m_Activity ? MainControl.Activity : page == m_Rooms ? MainControl.Rooms
+            : page == m_Challenges ? MainControl.Challenges : page == m_Settings ? MainControl.Settings : page == m_AdminConsole ? MainControl.AdminConsole : null;
         public void UndoActiveControl()
         {
             ActiveControlIndex = (int)LastMainControl;
