@@ -428,7 +428,22 @@ namespace gamevault.Windows
             {
                 if (e.PropertyName == nameof(MainWindowViewModel.UserAvatar))
                     uiServerName.Text = ServerName();
+                else if (e.PropertyName is nameof(MainWindowViewModel.ActiveControlIndex) or nameof(MainWindowViewModel.ActiveControl))
+                    ShowCurrentSection();
             };
+        }
+
+        /// <summary>
+        /// A game's page (or another page opened from a section) is in no item of the menu: the section it was opened
+        /// from stays lit, so the player knows where they are. Clicking it goes back there, as it is not selected.
+        /// </summary>
+        private void ShowCurrentSection()
+        {
+            int selected = MainWindowViewModel.Instance.ActiveControlIndex;
+            int current = selected < 0 && MainWindowViewModel.Instance.ActiveControl != null ? (int)MainWindowViewModel.Instance.LastMainControl : -1;
+            for (int i = 0; i < uiNavigation.ItemCount; i++)
+                if (uiNavigation.ContainerFromIndex(i) is ListBoxItem item)
+                    item.Classes.Set("current", i == current);
         }
         private void QuickSearch_Click(object? sender, RoutedEventArgs e) => uiQuickSearch.Open();
 
