@@ -41,6 +41,9 @@ namespace gamevault.Helper
             watchers.Add(game);
         }
 
+        /// <summary>The download's numbers, for the living-room mode's screen of the downloads.</summary>
+        internal DownloadBytes Bytes { get; private set; }
+
         private int progress;
         public int Progress { get => progress; private set { progress = value; OnPropertyChanged(); } }
 
@@ -271,11 +274,9 @@ namespace gamevault.Helper
                 if (currentBytesDownloaded > 0)
                     speed.UpdateSpeed(currentBytesDownloaded);
                 double perSecond = speed.GetCurrentSpeed();
-                string left = GameVault.Core.Downloads.TimeLeft.Text(totalFileSize - totalBytesDownloaded, perSecond);
-                Info = currentBytesDownloaded > 0
-                    ? Loc.F("{0} - {1} of {2} | Time left: {3}", $"{Size(perSecond, 1000)}/s", Size(totalBytesDownloaded), Size(totalFileSize), left)
-                    : $"{Size(totalBytesDownloaded)} / {Size(totalFileSize)}";
+                Info = DownloadText.Line(totalBytesDownloaded, totalFileSize, currentBytesDownloaded > 0 ? perSecond : 0);
                 Progress = (int)(progressPercentage ?? 0);
+                Bytes = new DownloadBytes(totalBytesDownloaded, totalFileSize, currentBytesDownloaded > 0 ? perSecond : 0);
                 Notify();
             });
         }
@@ -327,6 +328,13 @@ namespace gamevault.Helper
                 }
             // xemu reads no full dump of an Xbox disc: its game's partition alone
             if (Game.Platform.System.IsXemu)
+            {
+                // A conversion stopped half way left an image that is neither a dump nor an XISO: the retry downloads it again
+                if (XboxDisc.DiscardInterrupted(Folder))
+                {
+                    this.downloaded = false;
+                    throw new IOException(Loc.F("The archive of '{0}' is damaged, it is downloaded again", Game.Name));
+                }
                 foreach (string disc in Directory.EnumerateFiles(Folder, "*", SearchOption.AllDirectories).Where(f => string.Equals(Path.GetExtension(f), ".iso", StringComparison.OrdinalIgnoreCase) && XboxDisc.IsRedump(f)).ToList())
                 {
                     int shown = -1;
@@ -337,6 +345,7 @@ namespace gamevault.Helper
                             Preparing(Loc.F("Preparing the Xbox disc... {0}%", shown = percent));
                     }));
                 }
+            }
             await RetroArchManager.EnsureReadyAsync(Game.Platform, Preparing);
             if (Game.RomFile == null)
                 throw new IOException(Loc.T("None of this game's files can be started by the emulator."));

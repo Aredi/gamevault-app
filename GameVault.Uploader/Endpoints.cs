@@ -42,6 +42,13 @@ namespace GameVault.Uploader
     /// </summary>
     public static class Endpoints
     {
+        /// <summary>What any request may send (Kestrel's limit, set in Program): a JSON body is read before the sign-in is checked.</summary>
+        public const long MaxBody = 1024 * 1024;
+
+        /// <summary>A route that takes more than <see cref="MaxBody"/>: the routing raises Kestrel's limit for its requests.</summary>
+        internal static RouteHandlerBuilder TakesUpTo(this RouteHandlerBuilder route, long bytes) =>
+            route.WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(bytes));
+
         public static void MapUploadEndpoints(this WebApplication app)
         {
             // The page sent to a new player: download and sign in
@@ -119,6 +126,8 @@ namespace GameVault.Uploader
                 var (refused, id) = await SaverAsync(set, context.Request, users, saves, ct);
                 if (refused != null)
                     return refused;
+                if (saves.NewSetRefusal(id, set) is string full)
+                    return Results.Json(new { error = full }, statusCode: StatusCodes.Status409Conflict);
                 return await saves.SaveAsync(id, set, context.Request.Body, ct) is long savedAt
                     ? Results.Json(new { savedAt })
                     : Results.Json(new { error = $"Saves can have at most {RetroSaveStore.MaxSize >> 20} MB." }, statusCode: StatusCodes.Status413PayloadTooLarge);
@@ -152,9 +161,11 @@ namespace GameVault.Uploader
                     game.Name = game.Name.Trim()[..Math.Min(game.Name.Trim().Length, 200)];
                     game.PlatformName = (game.PlatformName ?? "")[..Math.Min((game.PlatformName ?? "").Length, 80)];
                     game.Cover = RommProxy.IsMedia(game.Cover) ? game.Cover : null;
+                    // Earned in the future: now, so a made-up date does not stay on top of the activity
+                    DateTime now = DateTime.UtcNow;
                     game.Unlocks = (game.Unlocks ?? new()).Where(u => !string.IsNullOrWhiteSpace(u.Title))
+                        .Select(u => new RetroPlayerStore.Unlock { Title = u.Title.Trim()[..Math.Min(u.Title.Trim().Length, 200)], Badge = RetroPlayerStore.IsBadge(u.Badge) ? u.Badge : null, Date = u.Date.ToUniversalTime() > now ? now : u.Date })
                         .OrderByDescending(u => u.Date).Take(RetroPlayerStore.KeptUnlocks)
-                        .Select(u => new RetroPlayerStore.Unlock { Title = u.Title.Trim()[..Math.Min(u.Title.Trim().Length, 200)], Badge = RetroPlayerStore.IsBadge(u.Badge) ? u.Badge : null, Date = u.Date })
                         .ToList();
                     players.SetAchievements(check.Id, check.User, key, game);
                     return ChallengeEndpoints.Told(challenges.Enabled && challenges.SetUnlocks(check.Id, check.User, key, game.Unlocks.Select(u => u.Date)));
@@ -182,8 +193,11 @@ namespace GameVault.Uploader
                     played.Name = played.Name.Trim()[..Math.Min(played.Name.Trim().Length, 200)];
                     played.PlatformName = (played.PlatformName ?? "")[..Math.Min((played.PlatformName ?? "").Length, 80)];
                     played.Cover = RommProxy.IsMedia(played.Cover) ? played.Cover : null;
-                    players.AddPlay(check.Id, check.User, played);
-                    return ChallengeEndpoints.Told(challenges.Enabled && challenges.AddPlay(check.Id, check.User, played.Key, played.Minutes));
+                    // Minutes the clock says were not played are not counted, and not refused: the client would send them again
+                    int minutes = players.AddPlay(check.Id, check.User, played);
+                    if (minutes == 0)
+                        return Results.NoContent();
+                    return ChallengeEndpoints.Told(challenges.Enabled && challenges.AddPlay(check.Id, check.User, played.Key, minutes));
                 });
             });
             app.MapPut("/retro/players/me/favorites", (string[] favorites, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
@@ -329,7 +343,7 @@ namespace GameVault.Uploader
                 return added == null
                     ? Results.Json(new { error = "You already have many open reports: wait for some to be handled." }, statusCode: StatusCodes.Status409Conflict)
                     : Results.Json(added, statusCode: StatusCodes.Status201Created);
-            });
+            }).TakesUpTo(4 * ReportStore.MaxDiagnosticLength + MaxBody);// its diagnostic, escaped in the JSON
 
             app.MapGet("/reports", async (HttpRequest request, AdminCheck users, ReportStore reports, CancellationToken ct) =>
             {
@@ -374,6 +388,28 @@ namespace GameVault.Uploader
                 if (!hypervisor.Enabled)
                     return HypervisorOff();
                 hypervisor.SetGame(gameId, asked.On);
+                return Results.NoContent();
+            });
+
+            // The password of a game's archive: read by the players downloading it, set by an administrator
+            app.MapGet("/archive-passwords/games/{gameId:int}", async (int gameId, HttpRequest request, AdminCheck users, ArchivePasswordStore passwords, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return passwords.Enabled ? Results.Json(new { password = passwords.Get(gameId) }) : ArchivePasswordsOff();
+            });
+
+            app.MapPut("/archive-passwords/games/{gameId:int}", async (int gameId, ArchivePassword asked, HttpRequest request, AdminCheck admins, ArchivePasswordStore passwords, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!passwords.Enabled)
+                    return ArchivePasswordsOff();
+                if (asked.Password?.Length > ArchivePasswordStore.MaxLength)
+                    return Results.Json(new { error = $"The password is {ArchivePasswordStore.MaxLength} characters at most." }, statusCode: StatusCodes.Status400BadRequest);
+                passwords.Set(gameId, asked.Password);
                 return Results.NoContent();
             });
 
@@ -666,27 +702,27 @@ namespace GameVault.Uploader
                         UploadStore.AppendResult.NoSpace => Results.Json(new { received, error = "Not enough free space on the server." }, statusCode: StatusCodes.Status507InsufficientStorage),
                         _ => Results.Json(new { received, error = $"A chunk can have at most {UploadStore.MaxChunkSize} bytes." }, statusCode: StatusCodes.Status413PayloadTooLarge),
                     };
-                }));
+                })).TakesUpTo(UploadStore.MaxChunkSize + 1024);
 
             app.MapPost("/uploads/{name}/complete", async (string name, long size, bool? overwrite, HttpRequest request, AdminCheck admins, UploadStore store, ILoggerFactory logs, CancellationToken ct) =>
-                await GuardedAsync(name, request, admins, ct, user =>
+                await GuardedAsync(name, request, admins, ct, async user =>
                 {
-                    var result = store.Complete(name, size, overwrite == true);
+                    var result = await store.CompleteAsync(name, size, overwrite == true);
                     if (result == UploadStore.CompleteResult.Completed)
                         logs.CreateLogger("Uploads").LogInformation("{User} published {Name}", user, name);
-                    return Task.FromResult(result switch
+                    return result switch
                     {
                         UploadStore.CompleteResult.Completed => Results.Json(new { name }, statusCode: StatusCodes.Status201Created),
                         UploadStore.CompleteResult.Exists => Results.Json(new { error = "A file with this name already exists on the server." }, statusCode: StatusCodes.Status409Conflict),
                         UploadStore.CompleteResult.WrongSize => Results.Json(new { error = "The upload is not complete." }, statusCode: StatusCodes.Status409Conflict),
                         _ => Results.Json(new { error = "There is no upload with this name." }, statusCode: StatusCodes.Status404NotFound),
-                    });
+                    };
                 }));
 
             app.MapDelete("/uploads/{name}", async (string name, HttpRequest request, AdminCheck admins, UploadStore store, CancellationToken ct) =>
-                await Guarded(name, request, admins, ct, () =>
+                await GuardedAsync(name, request, admins, ct, async _ =>
                 {
-                    store.Cancel(name);
+                    await store.CancelAsync(name);
                     return Results.NoContent();
                 }));
         }
@@ -794,6 +830,8 @@ namespace GameVault.Uploader
 
         private static IResult EmulatorsOff() => Results.Json(new { error = "Emulators by game are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
+        private static IResult ArchivePasswordsOff() => Results.Json(new { error = "Archive passwords are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
         private static IResult HypervisorOff() => Results.Json(new { error = "Hypervisor notices are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
         private static IResult InvitesOff() => Results.Json(new { error = "Invitation codes are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
@@ -823,6 +861,8 @@ namespace GameVault.Uploader
     public sealed record LanGame(bool Lan);
     public sealed record HiddenPlay(int? GameId);
     public sealed record HypervisorGame(bool On);
+
+    public sealed record ArchivePassword(string? Password);
 
     public sealed record HypervisorText(string? Text);
 

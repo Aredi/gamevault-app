@@ -5,6 +5,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Threading;
 using GameVault.Core.Couch;
+using gamevault.Converter;
 using gamevault.Helper;
 using gamevault.Localization;
 using gamevault.Models;
@@ -1154,17 +1155,26 @@ namespace GameVault.UiTests
                 couch.Settings = new CouchSettings();
                 couch.Show(games, Retro());
 
-                // The downloads: each one, and what can be done with it; B goes back to the list, then to the home
+                // The downloads: a card each, on their own screen; what A and X do is the chosen card's; B goes to the home
+                download.Paused();
                 await OpenTile("tile:downloads", CouchMenu.Downloads);
-                Assert.Equal(Loc.T("Downloads"), couch.uiMenuTitle.Text);
-                CouchLine metroid = couch.MenuLines.Single(l => l.Text == "Metroid");
-                Assert.StartsWith("NES", metroid.Detail);
-                await metroid.Run();
-                Assert.Equal(CouchMenu.Download, couch.Menu);
-                Assert.Equal("Metroid", couch.MenuLines[0].Text);
-                Assert.Equal(Loc.T("Back"), couch.MenuLines[^1].Text);
-                couch.Handle(CouchCommand.Back);
-                Assert.Equal(CouchMenu.Downloads, couch.Menu);
+                Assert.True(couch.uiDownloadsBoard.IsVisible);
+                Assert.False(couch.uiMenuBox.IsVisible);
+                var metroid = Assert.IsType<CouchDownloadLine>(couch.MenuLines.Single(l => l.Text == "Metroid"));
+                Assert.Equal("NES", metroid.Platform);
+                Assert.Equal(CouchDownloadLine.Kind.Paused, metroid.State);
+                couch.Navigator.SelectLine(couch.MenuLines.IndexOf(metroid));
+                // Away and back: the retro downloads come last, after those other tests left in the list
+                couch.Handle(CouchCommand.Up);
+                couch.Handle(CouchCommand.Down);
+                Assert.Same(metroid, couch.MenuLines[couch.Navigator.MenuLine]);
+                Capture(window, "40-downloads");
+                Assert.Contains(couch.Hints, h => h.Value == Loc.T("Resume"));
+                Assert.Contains(couch.Hints, h => h.Value == Loc.T("Cancel"));
+                Assert.Equal(Loc.T("Nothing left to download"), couch.uiBoardTimeLabel.Text);
+                Assert.Equal("2 min 05", CouchDownloadLine.Duration(TimeSpan.FromSeconds(125)));
+                Assert.Equal("1 h 05", CouchDownloadLine.Duration(TimeSpan.FromMinutes(65)));
+                Assert.Equal("55 s", CouchDownloadLine.Duration(TimeSpan.FromSeconds(55)));
                 couch.Handle(CouchCommand.Back);
                 Assert.False(couch.uiMenu.IsVisible);
 
@@ -1238,9 +1248,30 @@ namespace GameVault.UiTests
                 var picker = new InstallLocationUserControl(1);
                 Assert.NotEmpty(picker.Rows);
                 Task<string> asked = picker.SelectInstallLocation();
-                couch.ChooseInstallLocation(picker, "Astral Drift");
+                Game astral = games.First();
+                couch.ChooseInstallLocation(picker, astral);
                 Assert.Equal(CouchMenu.InstallLocation, couch.Menu);
-                Assert.Contains(couch.MenuLines, l => l.Text == picker.Rows[0].Path);
+                Assert.True(couch.uiPlaceBoard.IsVisible);
+                Assert.Equal(astral.Title, couch.uiPlaceTitle.Text);
+                var disk = Assert.IsType<CouchDiskLine>(couch.MenuLines.First(l => l.Text == picker.Rows[0].Path));
+                Assert.True(disk.HasRoom);
+                Assert.True(disk.UsedWidth + disk.GameWidth <= CouchDiskLine.BarWidth);
+                // Half full, a tenth for the game: the bar says it; too full: not chosen, nothing striped
+                var half = CouchDiskLine.Of(new InstallLocationRow("D:", "", false, true, "") { Free = 50_000, Total = 100_000 }, 10_000, () => { });
+                Assert.Equal(CouchDiskLine.BarWidth / 2, half.UsedWidth);
+                Assert.Equal(CouchDiskLine.BarWidth / 10, half.GameWidth, 3);
+                Assert.Equal(GameSizeConverter.Text(40_000), half.After);
+                var full = CouchDiskLine.Of(new InstallLocationRow("E:", "", false, false, "") { Free = 9_000, Total = 100_000 }, 12_000, () => { });
+                Assert.Equal(Loc.T("Not enough room"), full.Warning);
+                Assert.Equal(0, full.GameWidth);
+                Assert.Equal("—", full.After);
+                Assert.Contains(couch.Hints, h => h.Value == Loc.T("Ask each time"));
+                Capture(window, "41-install-location");
+                // Y: asked each time, or not any more
+                Assert.True(couch.AsksLocationAgain);
+                couch.Handle(CouchCommand.Search);
+                Assert.False(couch.AsksLocationAgain);
+                couch.Handle(CouchCommand.Search);
                 Assert.Null(MainWindowViewModel.Instance.Popup);
                 couch.Handle(CouchCommand.Back);
                 Assert.Equal(string.Empty, await asked);
@@ -1248,7 +1279,7 @@ namespace GameVault.UiTests
                 // A folder chosen: its answer
                 picker = new InstallLocationUserControl(1);
                 asked = picker.SelectInstallLocation();
-                couch.ChooseInstallLocation(picker, "Astral Drift");
+                couch.ChooseInstallLocation(picker, astral);
                 await couch.MenuLines.First(l => l.Text == picker.Rows[0].Path).Run();
                 Assert.Equal(picker.Rows[0].Path, await asked);
 

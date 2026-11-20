@@ -1,8 +1,9 @@
 using GameVault.Uploader;
 
 var builder = WebApplication.CreateSlimBuilder(args);
-// Archives of several GB arrive in chunks; one chunk may still be big
-builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = UploadStore.MaxChunkSize + 1024);
+// 1 MB for any request, read before its sign-in is checked; the routes that take more (upload chunks, saves,
+// pictures, reports) raise it for themselves
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = Endpoints.MaxBody);
 var options = UploaderOptions.From(builder.Configuration);
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<UploadStore>();
@@ -16,6 +17,7 @@ builder.Services.AddSingleton<HiddenPlayStore>();
 builder.Services.AddSingleton<ReportStore>();
 builder.Services.AddSingleton<InviteStore>();
 builder.Services.AddSingleton<HypervisorStore>();
+builder.Services.AddSingleton<ArchivePasswordStore>();
 builder.Services.AddSingleton<GameEmulatorStore>();
 builder.Services.AddSingleton<ChatStore>();
 builder.Services.AddSingleton<ChatHub>();
@@ -98,6 +100,7 @@ _ = app.Services.GetRequiredService<RoomStore>();
 _ = app.Services.GetRequiredService<ReportStore>();
 _ = app.Services.GetRequiredService<InviteStore>();
 _ = app.Services.GetRequiredService<HypervisorStore>();
+_ = app.Services.GetRequiredService<ArchivePasswordStore>();
 _ = app.Services.GetRequiredService<GameEmulatorStore>();
 _ = app.Services.GetRequiredService<ChatStore>();
 _ = app.Services.GetRequiredService<ChallengeStore>();

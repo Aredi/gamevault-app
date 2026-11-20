@@ -19,6 +19,8 @@ namespace GameVault.Uploader
         public const int MaxGroupMembers = 20;
         public const long MaxPicture = 10 * 1024 * 1024;
         public const int MaxReactions = 20;
+        /// <summary>The pictures a player may send in a day (UTC): far more than chatting takes, not a disk filled by a token.</summary>
+        public long PicturesPerDay { get; set; } = 200L * 1024 * 1024;
         /// <summary>The administrators' announcements: every player reads them, only an administrator writes.</summary>
         public const string NewsId = "news";
         /// <summary>The pictures are kept with their own extension only: never served as a page.</summary>
@@ -33,6 +35,8 @@ namespace GameVault.Uploader
         private List<Conversation>? conversations;
         private readonly Dictionary<string, List<Message>> messages = new();
         private DateTime prunedAt;
+        /// <summary>The bytes of pictures each player sent today; forgotten with the process, fine for a daily cap.</summary>
+        private readonly Dictionary<int, (DateOnly Day, long Bytes)> pictureBytes = new();
         private readonly ChatCipher? cipher;
 
         public ChatStore(UploaderOptions options, ILogger<ChatStore> logger)
@@ -153,7 +157,8 @@ namespace GameVault.Uploader
             if (!IsValidId(id) || !id.StartsWith("d-", StringComparison.Ordinal))
                 return null;
             string[] parts = id.Split('-');
-            return int.TryParse(parts[1], out int a) && int.TryParse(parts[2], out int b) && a > 0 && b > 0 && a < b ? (a, b) : null;
+            // Written as DirectId writes it: "d-05-7" would be a second conversation of the same two
+            return int.TryParse(parts[1], out int a) && int.TryParse(parts[2], out int b) && a > 0 && b > 0 && a < b && id == DirectId(a, b) ? (a, b) : null;
         }
 
         /// <summary>Its type from its first bytes: a file named .png that is a page is no picture.</summary>
@@ -324,6 +329,22 @@ namespace GameVault.Uploader
         }
 
         /// <param name="pictureType">"png", ...: the type of <paramref name="picture"/>, kept sealed under the message's name.</param>
+        /// <summary>Counts a picture in the player's day; false (nothing counted) when it would go past <see cref="PicturesPerDay"/>.</summary>
+        public bool TakePictureBytes(int userId, long bytes)
+        {
+            lock (gate)
+            {
+                DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+                foreach (int gone in pictureBytes.Where(p => p.Value.Day != today).Select(p => p.Key).ToList())
+                    pictureBytes.Remove(gone);
+                long sent = pictureBytes.GetValueOrDefault(userId).Bytes;
+                if (sent + bytes > PicturesPerDay)
+                    return false;
+                pictureBytes[userId] = (today, sent + bytes);
+                return true;
+            }
+        }
+
         public Message Add(Conversation conversation, int userId, string userName, string? text, string? pictureType = null, byte[]? picture = null, string? replyTo = null, SharedGame? game = null)
         {
             lock (gate)
@@ -505,7 +526,8 @@ namespace GameVault.Uploader
             bool changed = false;
             foreach (Conversation conversation in All().ToList())
             {
-                if (conversation.ActiveAt < limit)
+                // The news stays: its list of the games posted says which ones not to post again
+                if (conversation.ActiveAt < limit && !conversation.IsNews)
                 {
                     Delete(conversation);
                     changed = true;

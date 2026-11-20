@@ -55,13 +55,11 @@ namespace gamevault.UserControls
                  {
                      try
                      {
-                         if (new DirectoryInfo(dir).GetFiles().Length == 0)
+                         // Files or folders: a paused update by pieces has only its Pieces folder
+                         if (!InstallUserControl.IsInstallation(dir))
                              continue;
 
-                         string dirName = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
-                         string gameId = dirName.Substring(1, dirName.IndexOf(')') - 1);
-
-                         if (int.TryParse(gameId, out int id))
+                         if (InstallUserControl.GameIdOf(dir) is int id and not -1)
                              foundPathsById.Add(id, SettingsViewModel.Instance.RootDirectories
                             .Where(x => dir.Contains(x.Uri))
                             .OrderByDescending(x => x.Uri.Length)
@@ -246,7 +244,7 @@ namespace gamevault.UserControls
                 var installLocationPicker = new InstallLocationUserControl(size);
                 // In the living-room mode: one of its screens, read with the gamepad, for the same answer
                 if (App.Instance.MainWindow is Windows.MainWindow { IsCouchShown: true } main && installLocationPicker.Rows.Count > 0)
-                    main.uiCouch.ChooseInstallLocation(installLocationPicker, game.Title);
+                    main.uiCouch.ChooseInstallLocation(installLocationPicker, game);
                 else
                     MainWindowViewModel.Instance.OpenPopup(installLocationPicker);
                 selectedDirectory = await installLocationPicker.SelectInstallLocation();
@@ -276,6 +274,11 @@ namespace gamevault.UserControls
             GameDownloadUserControl? oldDownloadEntry = DownloadsViewModel.Instance.DownloadedGames.Where(g => g.GetGameId() == game.ID).FirstOrDefault();
             if (oldDownloadEntry != null)
             {
+                if (oldDownloadEntry.IsBusy())
+                    return Fail(Loc.F("'{0}' is already being downloaded", game.Title));
+                // Its files go too (the user agreed to overwrite them): an archive of the previous build left
+                // beside the new one could be the one extracted
+                await oldDownloadEntry.DeleteFile(false);
                 DownloadQueue.Remove(oldDownloadEntry);
                 DownloadsViewModel.Instance.DownloadedGames.Remove(oldDownloadEntry);
             }
@@ -332,7 +335,10 @@ namespace gamevault.UserControls
 
         private static RetroDownload? RetroOf(object? sender) => (sender as Control)?.DataContext as RetroDownload;
 
+        private void BrowseLibrary_Click(object? sender, RoutedEventArgs e) => MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+
         private void RetroOpenFolder_Click(object? sender, RoutedEventArgs e)
+
         {
             if (RetroOf(sender) is RetroDownload download)
                 PlatformInfo.OpenFolder(download.Folder);

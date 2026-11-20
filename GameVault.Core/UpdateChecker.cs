@@ -27,19 +27,18 @@ namespace GameVault.Core
         }
 
         /// <summary>
-        /// Picks the newest published (not draft, not pre-release) release of a GitHub release list.
+        /// Picks the newest published (not draft, not pre-release) release of a GitHub release list: by version, as
+        /// the list is in creation order (a fix of an older line published later comes first).
         /// </summary>
         internal static ReleaseInfo? ParseReleaseList(string json, string currentVersion, string? assetNameContains)
         {
             if (JsonNode.Parse(json) is not JsonArray releases)
                 return null;
-            foreach (JsonNode? release in releases)
-            {
-                if (release == null || release["draft"]?.GetValue<bool>() == true || release["prerelease"]?.GetValue<bool>() == true)
-                    continue;
-                return ParseRelease(release.ToJsonString(), currentVersion, assetNameContains);
-            }
-            return null;
+            JsonNode? newest = releases
+                .Where(release => release != null && release["draft"]?.GetValue<bool>() != true && release["prerelease"]?.GetValue<bool>() != true)
+                .OrderByDescending(release => VersionHelper.Parse(release!["tag_name"]?.GetValue<string>()))
+                .FirstOrDefault();
+            return newest == null ? null : ParseRelease(newest.ToJsonString(), currentVersion, assetNameContains);
         }
 
         internal static ReleaseInfo? ParseRelease(string json, string currentVersion, string? assetNameContains)

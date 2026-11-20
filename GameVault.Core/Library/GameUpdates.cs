@@ -64,36 +64,45 @@ namespace GameVault.Core.Library
         /// </summary>
         /// <param name="allNewVersionFiles">Every file of the new version when <paramref name="newFiles"/> only has
         /// the ones that changed (an update by pieces); the others are already installed and stay.</param>
-        public static List<string> ApplyUpdate(string newFiles, string installedFiles, IReadOnlyCollection<string>? oldVersionFiles, IReadOnlyCollection<string>? allNewVersionFiles = null)
+        public static List<string> ApplyUpdate(string newFiles, string installedFiles, IReadOnlyCollection<string>? oldVersionFiles, IReadOnlyCollection<string>? allNewVersionFiles = null) =>
+            ApplyUpdate(newFiles, installedFiles, oldVersionFiles, allNewVersionFiles,
+                // Windows and macOS see "Data/Game.pak" and "data/game.pak" as one file: renamed in case only, it is kept
+                OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+        internal static List<string> ApplyUpdate(string newFiles, string installedFiles, IReadOnlyCollection<string>? oldVersionFiles, IReadOnlyCollection<string>? allNewVersionFiles, StringComparer sameFile)
         {
             List<string> arrived = List(newFiles);
             List<string> newVersionFiles = allNewVersionFiles?.OrderBy(path => path, StringComparer.Ordinal).ToList() ?? arrived;
-            var keep = new HashSet<string>(newVersionFiles, StringComparer.Ordinal);
+            var keep = new HashSet<string>(newVersionFiles, sameFile);
             Directory.CreateDirectory(installedFiles);
+            // Obsolete files go first: a new file where an old folder was (or the reverse) would stop the moves half way
+            if (oldVersionFiles != null)
+                DeleteObsolete(installedFiles, oldVersionFiles.Where(file => !keep.Contains(file)));
             foreach (string relative in arrived)
             {
                 string target = Path.Combine(installedFiles, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 File.Move(Path.Combine(newFiles, relative), target, true);
             }
-            if (oldVersionFiles != null)
-            {
-                foreach (string relative in oldVersionFiles.Where(file => !keep.Contains(file)))
-                {
-                    string obsolete = Path.GetFullPath(Path.Combine(installedFiles, relative));
-                    // Only inside the installation, whatever the list says
-                    if (!obsolete.StartsWith(Path.GetFullPath(installedFiles) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
-                        continue;
-                    try
-                    {
-                        if (File.Exists(obsolete))
-                            File.Delete(obsolete);
-                        RemoveEmptyParents(Path.GetDirectoryName(obsolete)!, installedFiles);
-                    }
-                    catch (Exception ex) { Log.Ignored(ex); }
-                }
-            }
             return newVersionFiles;
+        }
+
+        private static void DeleteObsolete(string installedFiles, IEnumerable<string> obsoleteFiles)
+        {
+            foreach (string relative in obsoleteFiles)
+            {
+                string obsolete = Path.GetFullPath(Path.Combine(installedFiles, relative));
+                // Only inside the installation, whatever the list says
+                if (!obsolete.StartsWith(Path.GetFullPath(installedFiles) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                    continue;
+                try
+                {
+                    if (File.Exists(obsolete))
+                        File.Delete(obsolete);
+                    RemoveEmptyParents(Path.GetDirectoryName(obsolete)!, installedFiles);
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
         }
 
         private static void RemoveEmptyParents(string directory, string root)

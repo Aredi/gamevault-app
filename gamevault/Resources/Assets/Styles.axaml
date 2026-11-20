@@ -457,6 +457,19 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.Background}" />
     </Style>
 
+    <!-- A download's bar: thin, and it glides to each new value (they come twice a second) instead of jumping -->
+    <Style Selector="ProgressBar.download">
+        <Setter Property="MinHeight" Value="6" />
+        <Setter Property="Height" Value="6" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Line}" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Value" Duration="0:0:0.45" Easing="CubicEaseOut" />
+            </Transitions>
+        </Setter>
+    </Style>
+
     <!-- Game cards: the cover lifts and glows in the game color while hovered -->
     <Style Selector="Button.gameCard">
         <Setter Property="Background" Value="Transparent" />

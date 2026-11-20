@@ -251,6 +251,14 @@ namespace GameVault.Core.Downloads
         /// <param name="progress">Called while the bytes arrive.</param>
         public static void Fetch(DeltaPlan plan, string staging, string filesDirectory, Action? progress = null, CancellationToken cancel = default)
         {
+            // A paused attempt may have staged files this plan does not change (the zip or the installation changed since): they would be installed too
+            if (Directory.Exists(staging))
+            {
+                var wanted = new HashSet<string>(plan.Changed.Select(entry => entry.FullName.Replace('\\', '/')), StringComparer.Ordinal);
+                foreach (string file in Directory.EnumerateFiles(staging, "*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 }).ToList())
+                    if (!wanted.Contains(Path.GetRelativePath(staging, file).Replace('\\', '/')))
+                        File.Delete(file);
+            }
             byte[] buffer = new byte[1 << 20];
             foreach (ZipArchiveEntry entry in plan.Changed)
             {

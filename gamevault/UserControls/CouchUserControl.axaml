@@ -74,6 +74,32 @@
             <Setter Property="BoxShadow" Value="0 0 24 1 #4DFFFFFF" />
         </Style>
         <!-- A game's actions: pills on its picture; the chosen one lit with the accent, a white edge and a glow -->
+        <!-- A card of the downloads, a disk of an installation: glass, the chosen one lit and ringed -->
+        <Style Selector="Border.couchCardLine">
+            <Setter Property="Padding" Value="16,14,30,14" />
+            <Setter Property="CornerRadius" Value="{DynamicResource Couch.Radius.Glass}" />
+            <Setter Property="Background" Value="#B80B1018" />
+            <Setter Property="BorderBrush" Value="#1FFFFFFF" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.14" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.couchCardLine.selected">
+            <Setter Property="BorderBrush" Value="#F4F6FA" />
+            <Setter Property="Background">
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                    <GradientStop Offset="0" Color="#477C6BFF" />
+                    <GradientStop Offset="0.6" Color="#D10B1018" />
+                </LinearGradientBrush>
+            </Setter>
+            <Setter Property="BoxShadow" Value="0 0 0 6 #407C6BFF" />
+        </Style>
+        <Style Selector=".noGlow Border.couchCardLine.selected">
+            <Setter Property="BoxShadow" Value="none" />
+        </Style>
         <Style Selector="Border.couchAction">
             <Setter Property="Padding" Value="26,14" />
             <Setter Property="CornerRadius" Value="{DynamicResource Couch.Radius}" />
@@ -561,27 +587,9 @@
                     </Border>
                 </Grid>
 
-                <!-- What the buttons do here -->
-                <ItemsControl Grid.Row="2" x:Name="uiHints" Margin="72,0,72,30" HorizontalAlignment="Center">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="34" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="local:CouchStat">
-                            <StackPanel Orientation="Horizontal" Spacing="11">
-                                <Border Classes="couchKey">
-                                    <TextBlock Text="{Binding Label}" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="{Binding Value}" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
                 <!-- The menu, over everything -->
                 <Border Grid.RowSpan="3" x:Name="uiMenu" Background="#CC05070B" IsVisible="False">
+                    <Panel>
                     <Border x:Name="uiMenuBox" Classes="couchGlass" Width="560" Padding="34,30" HorizontalAlignment="Center" VerticalAlignment="Center" BoxShadow="0 24 60 0 #A6000000">
                         <Border.RenderTransform>
                             <TranslateTransform />
@@ -616,7 +624,268 @@
                             <TextBlock x:Name="uiPadState" FontSize="15" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                         </StackPanel>
                     </Border>
+                    <!-- The downloads: what all of them do together, then a card each -->
+                    <Grid x:Name="uiDownloadsBoard" IsVisible="False" Margin="96,128,96,104" RowDefinitions="Auto,*">
+                        <Grid.RenderTransform>
+                            <TranslateTransform />
+                        </Grid.RenderTransform>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,28">
+                            <StackPanel VerticalAlignment="Bottom" Spacing="2">
+                                <TextBlock Text="{l:T 'Home'}" FontSize="17" FontWeight="Bold" Opacity="0.6" LetterSpacing="2" />
+                                <TextBlock Text="{l:T 'Downloads'}" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="56" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="18" VerticalAlignment="Bottom">
+                                <Border Classes="couchGlass" Padding="28,20" MinWidth="230">
+                                    <StackPanel Orientation="Horizontal" Spacing="20">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock x:Name="uiBoardSpeed" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="40" />
+                                                <TextBlock x:Name="uiBoardSpeedUnit" FontSize="22" FontWeight="Bold" Opacity="0.8" VerticalAlignment="Bottom" Margin="0,0,0,4" />
+                                            </StackPanel>
+                                            <TextBlock Text="{l:T 'Total speed'}" FontSize="17" Opacity="0.6" Margin="0,6,0,0" />
+                                        </StackPanel>
+                                        <Canvas Width="170" Height="56" VerticalAlignment="Center" ClipToBounds="True">
+                                            <Polygon x:Name="uiBoardCurveFill">
+                                                <Polygon.Fill>
+                                                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                                        <GradientStop Offset="0" Color="#8C7C6BFF" />
+                                                        <GradientStop Offset="1" Color="#007C6BFF" />
+                                                    </LinearGradientBrush>
+                                                </Polygon.Fill>
+                                            </Polygon>
+                                            <Polyline x:Name="uiBoardCurve" Stroke="#A99BFF" StrokeThickness="2.5" StrokeJoin="Round" />
+                                        </Canvas>
+                                    </StackPanel>
+                                </Border>
+                                <Border Classes="couchGlass" Padding="28,20" MinWidth="230">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock x:Name="uiBoardLeft" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="40" />
+                                            <TextBlock x:Name="uiBoardLeftUnit" FontSize="22" FontWeight="Bold" Opacity="0.8" VerticalAlignment="Bottom" Margin="0,0,0,4" />
+                                        </StackPanel>
+                                        <TextBlock Text="{l:T 'Left to download'}" FontSize="17" Opacity="0.6" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Classes="couchGlass" Padding="28,20" MinWidth="230">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock x:Name="uiBoardTime" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="40" />
+                                        <TextBlock x:Name="uiBoardTimeLabel" FontSize="17" Opacity="0.6" Margin="0,6,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Padding="0,8,0,8">
+                            <ItemsControl x:Name="uiDownloadLines">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="14" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.DataTemplates>
+                                    <DataTemplate DataType="local:CouchDownloadLine">
+                                        <Border Classes="couchCardLine" Classes.selected="{Binding IsSelected}">
+                                            <Grid ColumnDefinitions="78,*,300" Opacity="{Binding Opacity}">
+                                                <Border Width="78" Height="104" CornerRadius="11" ClipToBounds="True" Background="#1AFFFFFF">
+                                                    <Panel>
+                                                        <local:CacheImage ImageCacheType="GameCover" Data="{Binding Pc}" Stretch="UniformToFill" IsVisible="{Binding IsPc}" />
+                                                        <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding IsRetro}" />
+                                                    </Panel>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Margin="28,0" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                                        <TextBlock Text="{Binding Text}" FontFamily="{DynamicResource Couch.Font}" FontWeight="Bold" FontSize="26" TextTrimming="CharacterEllipsis" MaxWidth="760" VerticalAlignment="Center" />
+                                                        <Border Background="#1AFFFFFF" CornerRadius="999" Padding="11,4" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Platform}" FontSize="14" FontWeight="Bold" LetterSpacing="1" />
+                                                        </Border>
+                                                        <Border Background="{Binding StateBack}" CornerRadius="999" Padding="12,5" VerticalAlignment="Center">
+                                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                <Ellipse Width="9" Height="9" Fill="{Binding StateBrush}" VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding StateText}" Foreground="{Binding StateBrush}" FontSize="16" FontWeight="Bold" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding Progress}" Height="12" MinHeight="12" CornerRadius="6" Margin="0,12,0,10"
+                                                                 Background="#1AFFFFFF" Foreground="{Binding BarBrush}" />
+                                                    <ItemsControl ItemsSource="{Binding Facts}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" Spacing="30" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="local:CouchFact">
+                                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                    <TextBlock Text="{Binding Before}" FontSize="19" Opacity="0.65" />
+                                                                    <TextBlock Text="{Binding Bold}" FontSize="19" FontWeight="Bold" />
+                                                                    <TextBlock Text="{Binding After}" FontSize="19" Opacity="0.65" />
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Percent}" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="42" HorizontalAlignment="Right"
+                                                               Opacity="{Binding PercentOpacity}" Foreground="{Binding PercentBrush}" />
+                                                    <TextBlock Text="{Binding Eta}" FontSize="19" Opacity="0.7" HorizontalAlignment="Right" Margin="0,6,0,0" />
+                                                    <ItemsControl ItemsSource="{Binding Buttons}" IsVisible="{Binding IsSelected}" HorizontalAlignment="Right" Margin="0,10,0,0">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" Spacing="16" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="local:CouchStat">
+                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                    <Border Classes="couchKey" MinWidth="30" Height="30">
+                                                                        <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                    </Border>
+                                                                    <TextBlock Text="{Binding Value}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                    <DataTemplate DataType="local:CouchLine">
+                                        <Border Classes="couchLine" Classes.selected="{Binding IsSelected}">
+                                            <TextBlock Classes="couchLineText" Text="{Binding Text}" FontSize="21" FontWeight="SemiBold" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.DataTemplates>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <!-- Where a game is installed: the game at the left, its disks at the right -->
+                    <Grid x:Name="uiPlaceBoard" IsVisible="False" Margin="96,0,96,40" ColumnDefinitions="*,1000" VerticalAlignment="Center">
+                        <Grid.RenderTransform>
+                            <TranslateTransform />
+                        </Grid.RenderTransform>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,40,0">
+                            <Border Width="300" Height="420" CornerRadius="18" ClipToBounds="True" Background="#1AFFFFFF" HorizontalAlignment="Left" Margin="0,0,0,34"
+                                    BoxShadow="0 24 60 0 #A6000000">
+                                <local:CacheImage x:Name="uiPlaceCover" ImageCacheType="GameCover" Stretch="UniformToFill" />
+                            </Border>
+                            <TextBlock Text="{l:T 'Install'}" FontSize="17" FontWeight="Bold" Opacity="0.6" LetterSpacing="2" />
+                            <TextBlock x:Name="uiPlaceTitle" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="52" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                            <Border x:Name="uiPlaceSizeChip" Background="#14FFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="999" Padding="18,10"
+                                    HorizontalAlignment="Left" Margin="0,22,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{l:T 'Size'}" FontSize="20" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="uiPlaceSize" FontFamily="{DynamicResource Couch.Font}" FontSize="20" FontWeight="Bold" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                        <Border Grid.Column="1" Classes="couchGlass" Padding="40,38,40,30" VerticalAlignment="Center" BoxShadow="0 24 60 0 #A6000000">
+                            <StackPanel>
+                                <TextBlock Text="{l:T 'Where should the game be installed?'}" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="36" />
+                                <TextBlock Text="{l:T 'The striped part is the room the game will take (the size of its download).'}" FontSize="20" Opacity="0.6" Margin="0,8,0,26" TextWrapping="Wrap" />
+                                <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl x:Name="uiPlaceLines">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="16" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.DataTemplates>
+                                            <DataTemplate DataType="local:CouchDiskLine">
+                                                <Border Classes="couchCardLine" Classes.selected="{Binding IsSelected}" Padding="28,24">
+                                                    <Grid ColumnDefinitions="76,*,Auto" Opacity="{Binding Opacity}">
+                                                        <Border Width="76" Height="76" CornerRadius="20" Background="#12FFFFFF" VerticalAlignment="Center">
+                                                            <Path Data="M5 6h14a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3zM6.5 12h5M16.5 12h.01" Stroke="#F4F6FA" StrokeThickness="1.6"
+                                                                  StrokeLineCap="Round" Width="44" Height="44" Stretch="Uniform" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="26,0" VerticalAlignment="Center">
+                                                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                                                <TextBlock Text="{Binding Text}" FontFamily="{DynamicResource Couch.Font}" FontWeight="Bold" FontSize="26" TextTrimming="CharacterEllipsis" MaxWidth="420" VerticalAlignment="Center" />
+                                                                <Border Background="#597C6BFF" CornerRadius="999" Padding="10,4" IsVisible="{Binding IsLast}" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{l:T 'Last used'}" FontSize="14" FontWeight="Bold" LetterSpacing="1" />
+                                                                </Border>
+                                                                <Border Background="#40FF6B6B" CornerRadius="999" Padding="10,4" IsVisible="{Binding HasWarning}" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding Warning}" Foreground="#FFB3B3" FontSize="14" FontWeight="Bold" LetterSpacing="1" />
+                                                                </Border>
+                                                            </StackPanel>
+                                                            <Border Width="600" Height="16" CornerRadius="8" Background="#1FFFFFFF" HorizontalAlignment="Left" Margin="0,16,0,10" ClipToBounds="True">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Border Width="{Binding UsedWidth}" Background="{Binding UsedBrush}" />
+                                                                    <Border Width="{Binding GameWidth}">
+                                                                        <Border.Background>
+                                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="11,11" SpreadMethod="Repeat">
+                                                                                <GradientStop Offset="0" Color="#A99BFF" />
+                                                                                <GradientStop Offset="0.5" Color="#A99BFF" />
+                                                                                <GradientStop Offset="0.5" Color="#7C6BFF" />
+                                                                                <GradientStop Offset="1" Color="#7C6BFF" />
+                                                                            </LinearGradientBrush>
+                                                                        </Border.Background>
+                                                                    </Border>
+                                                                </StackPanel>
+                                                            </Border>
+                                                            <ItemsControl ItemsSource="{Binding Legend}">
+                                                                <ItemsControl.ItemsPanel>
+                                                                    <ItemsPanelTemplate>
+                                                                        <StackPanel Orientation="Horizontal" Spacing="26" />
+                                                                    </ItemsPanelTemplate>
+                                                                </ItemsControl.ItemsPanel>
+                                                                <ItemsControl.ItemTemplate>
+                                                                    <DataTemplate x:DataType="local:CouchFact">
+                                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                            <TextBlock Text="{Binding Before}" FontSize="18" Opacity="0.65" />
+                                                                            <TextBlock Text="{Binding Bold}" FontSize="18" FontWeight="SemiBold" Opacity="0.9" />
+                                                                            <TextBlock Text="{Binding After}" FontSize="18" Opacity="0.65" />
+                                                                        </StackPanel>
+                                                                    </DataTemplate>
+                                                                </ItemsControl.ItemTemplate>
+                                                            </ItemsControl>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                            <TextBlock Text="{Binding After}" FontFamily="{DynamicResource Couch.Font}" FontWeight="ExtraBold" FontSize="34" HorizontalAlignment="Right" />
+                                                            <TextBlock Text="{Binding AfterLabel}" FontSize="16" Opacity="0.6" HorizontalAlignment="Right" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                            <DataTemplate DataType="local:CouchLine">
+                                                <Border Classes="couchLine" Classes.selected="{Binding IsSelected}">
+                                                    <TextBlock Classes="couchLineText" Text="{Binding Text}" FontSize="21" FontWeight="SemiBold" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.DataTemplates>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <Border Background="#0AFFFFFF" CornerRadius="18" Padding="28,18" Margin="0,20,0,0">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="{l:T 'Ask each time'}" FontSize="21" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <Border Grid.Column="1" x:Name="uiPlaceAskSwitch" Width="66" Height="36" CornerRadius="18" Padding="4">
+                                            <Ellipse x:Name="uiPlaceAsk" Width="28" Height="28" Fill="White" HorizontalAlignment="Right" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    </Panel>
                 </Border>
+
+                <!-- What the buttons do here, over the menus too -->
+                <ItemsControl Grid.Row="2" x:Name="uiHints" Margin="72,0,72,30" HorizontalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="34" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:CouchStat">
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Border Classes="couchKey">
+                                    <TextBlock Text="{Binding Label}" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="{Binding Value}" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <!-- Over everything: the screensaver, a game that starts, the welcome -->
                 <Panel Grid.RowSpan="3" x:Name="uiCurtain" Background="#05070B" IsVisible="False">

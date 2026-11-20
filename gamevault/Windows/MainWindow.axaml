@@ -59,8 +59,21 @@
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+        <!-- Hovered or chosen, the item's background fades in rather than switching on -->
         <Style Selector="ListBox#uiNavigation ListBoxItem /template/ ContentPresenter">
             <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.16" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.navItem /template/ Border#PART_Bg">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.16" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.navItem">
             <Setter Property="BorderThickness" Value="0" />

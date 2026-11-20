@@ -78,6 +78,21 @@ namespace GameVault.Core.Tests
             Assert.Equal(0x42, main[^1]);
         }
 
+        [Fact]
+        public async Task AnEncryptedCia_IsNotExtracted_AndStays()
+        {
+            byte[] encrypted = Cia(titleKeyEncrypted: false, noCrypto: false);
+            CiaReader.Content content = CiaReader.Inspect(encrypted, encrypted.Length);
+            Directory.CreateDirectory(root);
+            string cia = Path.Combine(root, "Game.cia");
+            File.WriteAllBytes(cia, encrypted);
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => CiaReader.ExtractAsync(cia, content));
+
+            Assert.True(File.Exists(cia));
+            Assert.False(File.Exists(Path.Combine(root, "Game.cxi")));
+        }
+
         private RetroGameSaves Saves(string pc, string set = "nes-40", string stem = "Zelda (E)") =>
             new(Path.Combine(root, pc, "saves"), Path.Combine(root, pc, "states"), Path.Combine(root, pc, "backups"), set, stem);
 

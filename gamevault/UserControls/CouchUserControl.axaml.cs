@@ -68,7 +68,7 @@ namespace gamevault.UserControls
     internal sealed record CouchStat(string Label, string Value);
 
     /// <summary>An action of a game's screen or a line of the menu.</summary>
-    internal sealed class CouchLine : ViewModelBase
+    internal class CouchLine : ViewModelBase
     {
         public string Text { get; init; } = "";
         /// <summary>A second line under the text (an achievement's description); none for most lines.</summary>
@@ -677,6 +677,9 @@ namespace gamevault.UserControls
                 InSearch(command);
                 return;
             }
+            // The downloads' X, the installation's Y
+            if (HandleDownloadsButtons(command) || HandleInstallLocationButtons(command))
+                return;
             if (command == CouchCommand.Search)
             {
                 if (Navigator.Screen == CouchScreen.Home)
@@ -1060,8 +1063,10 @@ namespace gamevault.UserControls
             bool details = screen == CouchScreen.Details && item != null;
             // A menu opened over a game's screen keeps it behind
             bool detailsBehind = details || (screen == CouchScreen.Menu && Navigator.BeforeMenu == CouchScreen.Details && item != null);
-            uiHome.IsVisible = !detailsBehind;
-            uiDetails.IsVisible = detailsBehind;
+            // The downloads and the installation are screens of their own: only the picture behind them
+            bool board = screen == CouchScreen.Menu && MenuPanel != uiMenuBox;
+            uiHome.IsVisible = !detailsBehind && !board;
+            uiDetails.IsVisible = detailsBehind && !board;
             uiMenu.IsVisible = screen == CouchScreen.Menu;
             // The keyboard takes the place of the selected game's name, over the strip of the games found
             bool grid = Navigator.IsGrid && !Searching;
@@ -1082,7 +1087,9 @@ namespace gamevault.UserControls
             // Coming in: a game's screen from the left (from below when centered), a menu from below
             if (detailsBehind && shownScreen == CouchScreen.Home && screen == CouchScreen.Details)
                 Enter(uiDetailPanel, Settings.Layout == "showcase" ? 0 : -48, Settings.Layout == "showcase" ? 36 : 0);
-            if (screen == CouchScreen.Menu && shownScreen != CouchScreen.Menu)
+            if (screen == CouchScreen.Menu && (shownScreen != CouchScreen.Menu || enteredMenu != menu) && MenuPanel != uiMenuBox)
+                Enter(MenuPanel, 0, 28);
+            else if (screen == CouchScreen.Menu && shownScreen != CouchScreen.Menu)
                 Enter(uiMenuBox, menu is CouchMenu.Settings or CouchMenu.Custom ? -40 : 0, menu is CouchMenu.Settings or CouchMenu.Custom ? 0 : 28);
             if (!detailsBehind && shotShown)
                 HideShots();
@@ -1090,18 +1097,19 @@ namespace gamevault.UserControls
             if (details && rebuild && !(shownScreen == CouchScreen.Menu && ReferenceEquals(item, detailsItem)))
                 ShowDetails(item!);
             shownScreen = screen;
+            enteredMenu = menu;
             for (int i = 0; i < Actions.Count; i++)
                 Actions[i].IsSelected = i == Navigator.Action;
             for (int i = 0; i < MenuLines.Count; i++)
                 MenuLines[i].IsSelected = i == Navigator.MenuLine;
             uiMenuHelp.Text = Navigator.MenuLine < MenuLines.Count ? MenuLines[Navigator.MenuLine].Help ?? "" : "";
             if (screen == CouchScreen.Menu)
-                Dispatcher.UIThread.Post(() => (uiMenuLines.ContainerFromIndex(Navigator.MenuLine) as Control)?.BringIntoView(), DispatcherPriority.Background);
+                Dispatcher.UIThread.Post(() => (MenuItems.ContainerFromIndex(Navigator.MenuLine) as Control)?.BringIntoView(), DispatcherPriority.Background);
             uiPadState.Text = gamepad is { CanRead: true } ? "" : Loc.T("No gamepad can be read on this PC: the arrows, Enter and Escape do the same.");
 
             Hints = Searching ? new[] { new CouchStat("A", Loc.T("Type")), new CouchStat("X", Loc.T("Erase")), new CouchStat("Y", Loc.T("Space")), new CouchStat("B", Loc.T("Close")) } : screen switch
             {
-                CouchScreen.Menu => new[] { new CouchStat("A", Loc.T("Choose")), new CouchStat("B", Loc.T("Back")) },
+                CouchScreen.Menu => MenuHints(),
                 CouchScreen.Details => new[] { new CouchStat("A", Loc.T("Choose")), new CouchStat("B", Loc.T("Back")), new CouchStat("LB RB", Loc.T("Other games")), new CouchStat("START", Loc.T("Menu")) },
                 _ => new[]
                 {
@@ -1124,6 +1132,7 @@ namespace gamevault.UserControls
         }
 
         private CouchScreen shownScreen = CouchScreen.Home;
+        private CouchMenu enteredMenu;
         private CouchItem? detailsItem;
 
         private void ShowDetails(CouchItem item)

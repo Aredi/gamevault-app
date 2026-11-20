@@ -435,6 +435,9 @@ namespace gamevault.Helper.Integrations
         {
             if (!SettingsViewModel.Instance.CloudSaves || !LoginManager.Instance.IsLoggedIn() || !File.Exists(PendingBackupsFile))
                 return;
+            // Read on the UI thread, where the list changes
+            HashSet<int> installedIds = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                InstallViewModel.Instance?.InstalledGames?.Where(g => g.Key != null).Select(g => g.Key.ID).ToHashSet() ?? new HashSet<int>());
             foreach (string line in File.ReadAllLines(PendingBackupsFile))
             {
                 string key = line.Split('=')[0];
@@ -442,6 +445,10 @@ namespace gamevault.Helper.Integrations
                     continue;
                 if (runningGameIds.Contains(gameId))
                     continue;// still running: backed up when it closes
+                // Not among the installed games yet (they are still read from the disks and the server): kept for the
+                // next time, its save would be dropped as failed without being sent
+                if (!installedIds.Contains(gameId))
+                    continue;
                 try
                 {
                     MainWindowViewModel.Instance.AppBarText = Loc.T("Uploading savegames made offline...");

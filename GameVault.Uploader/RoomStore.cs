@@ -75,13 +75,16 @@ namespace GameVault.Uploader
             finally { writing.Release(); }
         }
 
-        /// <summary>The rooms nobody came to in <see cref="IdleLifetime"/> deleted with their network, when rooms are listed or made.</summary>
-        private static async Task ExpireAsync(State state, ZeroTierController controller, CancellationToken ct)
+        /// <summary>
+        /// The rooms nobody came to in <see cref="IdleLifetime"/> deleted with their network, when rooms are listed or made.
+        /// Not cut short by the request: a network deleted with its room still in rooms.json would fail every later list.
+        /// </summary>
+        private static async Task ExpireAsync(State state, ZeroTierController controller)
         {
             var idle = state.Rooms.Where(r => r.Members.Count <= 1 && DateTime.UtcNow - (r.ActiveAt > r.CreatedAt ? r.ActiveAt : r.CreatedAt) > IdleLifetime).ToList();
             foreach (Room room in idle)
             {
-                await controller.DeleteNetworkAsync(room.Id, ct);
+                await controller.DeleteNetworkAsync(room.Id, CancellationToken.None);
                 state.Rooms.Remove(room);
             }
         }
@@ -91,7 +94,7 @@ namespace GameVault.Uploader
             WithStateAsync(async state =>
             {
                 int before = state.Rooms.Count;
-                await ExpireAsync(state, controller, ct);
+                await ExpireAsync(state, controller);
                 if (state.Rooms.Count != before)
                     Write(state);
                 return state.Rooms.Where(r => r.Public || r.Members.Any(m => m.UserId == userId)).OrderByDescending(r => r.Members.Any(m => m.UserId == userId)).ThenByDescending(r => r.CreatedAt).ToList();
@@ -102,7 +105,7 @@ namespace GameVault.Uploader
         public Task<(Outcome, Room?)> CreateAsync(ZeroTierController controller, int userId, string userName, string nodeId, string name, int? gameId, string? gameTitle, bool isPublic, CancellationToken ct) =>
             WithStateAsync<(Outcome, Room?)>(async state =>
             {
-                await ExpireAsync(state, controller, ct);
+                await ExpireAsync(state, controller);
                 if (state.Rooms.Count(r => r.OwnerId == userId) >= MaxRoomsPerOwner)
                     return (Outcome.TooMany, null);
                 // Each room its own subnet: a PC in two rooms keeps both

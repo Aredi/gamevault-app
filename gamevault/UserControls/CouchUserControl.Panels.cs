@@ -22,105 +22,200 @@ namespace gamevault.UserControls
     {
         // --- The downloads ---
 
-        /// <summary>The download whose actions are shown (a library game's or a retro game's).</summary>
-        private object? shownDownload;
+        /// <summary>The speeds of the last minute, a sample at each refresh: the curve beside the total speed.</summary>
+        private readonly List<double> speeds = new();
+        private const int SpeedSamples = 60;
 
-        private static string Percent(int progress) => progress > 0 ? $" · {progress} %" : "";
+        private IEnumerable<(object Download, string Title)> Downloads() =>
+            DownloadsViewModel.Instance.DownloadedGames.ToList().Select(d => ((object)d, d.GameTitle))
+                .Concat(DownloadsViewModel.Instance.RetroDownloads.ToList().Select(d => ((object)d, d.Game.Name)));
 
+        /// <summary>A card a download: A does what it needs most (pause, resume, start, retry, open the game), X cancels or removes it.</summary>
         private List<CouchLine> DownloadsLines()
         {
             var lines = new List<CouchLine>();
-            foreach (GameDownloadUserControl download in DownloadsViewModel.Instance.DownloadedGames.ToList())
+            foreach (var (download, title) in Downloads())
             {
-                string state = Loc.T(download.StateText);
-                lines.Add(new CouchLine
-                {
-                    Text = download.GameTitle,
-                    Detail = state + (download.IsDownloading() || download.IsPaused() ? Percent(download.GetDownloadProgress()) : ""),
-                    Run = () => { OpenDownload(download); return Task.CompletedTask; },
-                });
-            }
-            foreach (RetroDownload download in DownloadsViewModel.Instance.RetroDownloads.ToList())
-            {
-                lines.Add(new CouchLine
-                {
-                    Text = download.Game.Name,
-                    Detail = $"{download.Game.Platform.Name} · {download.State}" + (download.IsRunning || download.IsPaused ? Percent(download.Progress) : ""),
-                    Run = () => { OpenDownload(download); return Task.CompletedTask; },
-                });
+                var line = new CouchDownloadLine(download, title) { Run = () => DownloadAction(download, cancel: false) };
+                lines.Add(line);
             }
             if (lines.Count == 0)
                 lines.Add(Line(Loc.T("None in progress"), () => { }));
-            lines.Add(Line(Loc.T("Back"), CloseMenu));
+            foreach (CouchLine line in lines)
+                if (line is CouchDownloadLine card)
+                    card.Buttons = DownloadButtons(card);
+            ShowDownloadsSummary(lines);
             return lines;
         }
 
-        private void OpenDownload(object download)
+        /// <summary>What A and X do on a download, as it is now; none for what can not be done.</summary>
+        private static (string? Main, string? Second) DownloadActions(object download) => download switch
         {
-            shownDownload = download;
-            ShowMenu(CouchMenu.Download);
+            GameDownloadUserControl pc when pc.ViewModel.DownloadFailedVisibility => (Loc.T("Retry"), null),
+            GameDownloadUserControl pc when pc.IsPaused() => (Loc.T("Resume"), Loc.T("Cancel")),
+            GameDownloadUserControl pc when DownloadQueue.IsWaiting(pc) => (Loc.T("Start now"), Loc.T("Cancel")),
+            GameDownloadUserControl pc when pc.IsDownloading() => (Loc.T("Pause"), Loc.T("Cancel")),
+            GameDownloadUserControl pc when pc.ViewModel.ExtractionUIVisibility => (null, null),
+            GameDownloadUserControl => (Loc.T("Open"), null),
+            RetroDownload retro when retro.IsFailed => (Loc.T("Retry"), Loc.T("Remove from the list")),
+            RetroDownload retro when retro.IsDone => (Loc.T("Open"), Loc.T("Remove from the list")),
+            RetroDownload retro when retro.IsPaused => (Loc.T("Resume"), Loc.T("Cancel")),
+            RetroDownload retro when retro.IsQueued => (Loc.T("Start now"), Loc.T("Cancel")),
+            RetroDownload retro when retro.IsActive => (Loc.T("Pause"), Loc.T("Cancel")),
+            RetroDownload retro when retro.IsPreparing => (null, Loc.T("Cancel")),
+            _ => (null, null),
+        };
+
+        private IReadOnlyList<CouchStat> DownloadButtons(CouchDownloadLine card)
+        {
+            var (main, second) = DownloadActions(card.Download);
+            var buttons = new List<CouchStat>();
+            if (main != null)
+                buttons.Add(new CouchStat(CouchGlyphs.Label(ButtonStyle, "A"), main));
+            if (second != null)
+                buttons.Add(new CouchStat(CouchGlyphs.Label(ButtonStyle, "X"), second));
+            return buttons;
         }
 
-        /// <summary>What can be done with the download chosen: pause or resume it, try it again, cancel it.</summary>
-        private List<CouchLine> DownloadLines()
+        /// <summary>A or X on a download: what its card says it does.</summary>
+        private async Task DownloadAction(object download, bool cancel)
         {
-            var lines = new List<CouchLine>();
-            void Back() => ShowMenu(CouchMenu.Downloads);
-            void Then(Action action)
+            var (main, second) = DownloadActions(download);
+            string? action = cancel ? second : main;
+            if (action == null)
+                return;
+            string title = download is RetroDownload r ? r.Game.Name : ((GameDownloadUserControl)download).GameTitle;
+            try
             {
-                try { action(); }
-                catch (Exception ex) { Log.Ignored(ex); }
-                Back();
-            }
-            CouchLine Cancel(string title, Action cancel) => new()
-            {
-                Text = Loc.T("Cancel the download"),
-                Run = async () =>
+                if (action == Loc.T("Cancel"))
                 {
-                    if (await DialogService.ConfirmAsync(Loc.F("Cancel the download of {0}?", title)))
-                        Then(cancel);
+                    if (!await DialogService.ConfirmAsync(Loc.F("Cancel the download of {0}?", title)))
+                        return;
+                    if (download is RetroDownload retro)
+                        retro.Cancel();
                     else
-                        ShowMenu(CouchMenu.Download);
-                },
-            };
-            switch (shownDownload)
-            {
-                case GameDownloadUserControl pc when DownloadsViewModel.Instance.DownloadedGames.Contains(pc):
-                    lines.Add(new CouchLine { Text = pc.GameTitle, Detail = Loc.T(pc.StateText) + Percent(pc.GetDownloadProgress()), Run = () => Task.CompletedTask });
-                    if (pc.IsPaused())
-                        lines.Add(Line(Loc.T("Resume"), () => Then(pc.TogglePause)));
-                    else if (pc.IsDownloading())
-                        lines.Add(Line(Loc.T("Pause"), () => Then(pc.TogglePause)));
-                    if (pc.IsDownloading() || pc.IsPaused())
-                        lines.Add(Cancel(pc.GameTitle, pc.CancelDownload));
-                    break;
-                case RetroDownload retro when DownloadsViewModel.Instance.RetroDownloads.Contains(retro):
-                    lines.Add(new CouchLine { Text = retro.Game.Name, Detail = retro.State + Percent(retro.Progress), Run = () => Task.CompletedTask });
-                    if (retro.IsPaused)
-                        lines.Add(Line(Loc.T("Resume"), () => Then(retro.Resume)));
-                    else if (retro.IsActive)
-                        lines.Add(Line(Loc.T("Pause"), () => Then(() => retro.Pause())));
-                    if (retro.IsFailed)
-                        lines.Add(Line(Loc.T("Retry"), () => Then(retro.Retry)));
-                    if (retro.IsRunning || retro.IsPaused || retro.IsQueued)
-                        lines.Add(Cancel(retro.Game.Name, retro.Cancel));
-                    if (retro.IsDone || retro.IsFailed)
-                        lines.Add(Line(Loc.T("Remove from the list"), () => Then(retro.Dismiss)));
-                    break;
-                default:
-                    // Gone meanwhile (finished and removed)
-                    lines.Add(Line(Loc.T("None in progress"), () => { }));
-                    break;
+                        ((GameDownloadUserControl)download).CancelDownload();
+                }
+                else if (action == Loc.T("Open"))
+                {
+                    string key = download is RetroDownload done ? $"retro:{done.Game.Platform.Slug}:{done.Game.Id}" : $"pc:{((GameDownloadUserControl)download).GetGameId()}";
+                    if (all.Any(i => i.Key == key))
+                    {
+                        CloseMenu();
+                        OpenGame(key);
+                        return;
+                    }
+                }
+                else
+                {
+                    switch (download)
+                    {
+                        case GameDownloadUserControl pc when action == Loc.T("Retry"): pc.Retry(); break;
+                        case GameDownloadUserControl pc when action == Loc.T("Start now"): pc.StartNow(); break;
+                        case GameDownloadUserControl pc: pc.TogglePause(); break;
+                        case RetroDownload retro when action == Loc.T("Retry"): retro.Retry(); break;
+                        case RetroDownload retro when action == Loc.T("Remove from the list"): retro.Dismiss(); break;
+                        case RetroDownload retro when action == Loc.T("Start now"): retro.StartNow(); break;
+                        case RetroDownload retro when retro.IsPaused: retro.Resume(); break;
+                        case RetroDownload retro: retro.Pause(); break;
+                    }
+                }
             }
-            lines.Add(Line(Loc.T("Back"), Back));
-            return lines;
+            catch (Exception ex) { Log.Ignored(ex); }
+            if (menu == CouchMenu.Downloads && Navigator.Screen == CouchScreen.Menu)
+                RefreshDownloads(rebuild: true);
         }
 
-        /// <summary>Twice a second, the downloads shown move on: their lines are written again, on the same one.</summary>
+        /// <summary>X in the downloads: the second action of the chosen card (cancel, remove).</summary>
+        private bool HandleDownloadsButtons(CouchCommand command)
+        {
+            if (Navigator.Screen != CouchScreen.Menu || menu != CouchMenu.Downloads || command != CouchCommand.View)
+                return false;
+            if (Navigator.MenuLine < MenuLines.Count && MenuLines[Navigator.MenuLine] is CouchDownloadLine card && DownloadActions(card.Download).Second != null)
+            {
+                Play(CouchSound.Accept);
+                _ = DownloadAction(card.Download, cancel: true);
+            }
+            return true;
+        }
+
+        /// <summary>The total speed and its curve, what is left of all of them, and when all are done.</summary>
+        private void ShowDownloadsSummary(IEnumerable<CouchLine> lines)
+        {
+            var cards = lines.OfType<CouchDownloadLine>().ToList();
+            double speed = cards.Sum(c => c.PerSecond);
+            long left = cards.Sum(c => c.BytesLeft);
+            // Nothing: "0 Mo/s", "0 Go", not bytes
+            (uiBoardSpeed.Text, uiBoardSpeedUnit.Text) = speed >= 1 ? Split(GameSizeConverter.Text(speed, 1000), "/s") : ("0", Loc.T("MB") + "/s");
+            (uiBoardLeft.Text, uiBoardLeftUnit.Text) = left > 0 ? Split(GameSizeConverter.Text(left), "") : ("0", Loc.T("GB"));
+            if (GameVault.Core.Downloads.TimeLeft.Of(left, speed) is TimeSpan time && left > 0)
+            {
+                uiBoardTime.Text = CouchDownloadLine.Duration(time);
+                uiBoardTimeLabel.Text = Loc.F("All done around {0}", DateTime.Now.Add(time).ToString("HH:mm", CultureInfo.CurrentCulture));
+            }
+            else
+            {
+                uiBoardTime.Text = "—";
+                uiBoardTimeLabel.Text = left > 0 ? Loc.T("Nothing downloads now") : Loc.T("Nothing left to download");
+            }
+            DrawSpeeds();
+        }
+
+        /// <summary>"48,2 Mo/s" as "48,2" large and "Mo/s" small.</summary>
+        private static (string Number, string Unit) Split(string size, string after)
+        {
+            int space = size.LastIndexOf(' ');
+            return space < 0 ? (size, after) : (size[..space], size[(space + 1)..] + after);
+        }
+
+        /// <summary>The curve of the last speeds, the highest at the top.</summary>
+        private void DrawSpeeds()
+        {
+            const double width = 170, height = 56;
+            double top = Math.Max(1, speeds.DefaultIfEmpty(0).Max());
+            var points = new List<Avalonia.Point>();
+            for (int i = 0; i < speeds.Count; i++)
+            {
+                double x = speeds.Count == 1 ? width : i * width / (speeds.Count - 1);
+                points.Add(new Avalonia.Point(x, height - 4 - speeds[i] / top * (height - 10)));
+            }
+            uiBoardCurve.Points = points;
+            uiBoardCurveFill.Points = points.Count == 0 ? new List<Avalonia.Point>()
+                : points.Prepend(new Avalonia.Point(points[0].X, height)).Append(new Avalonia.Point(points[^1].X, height)).ToList();
+        }
+
+        /// <summary>
+        /// Twice a second the downloads shown move on: their cards are written again, on the same ones; a download
+        /// added or gone gives the list again, on the same line.
+        /// </summary>
         private void RefreshDownloads()
         {
-            if (Navigator.Screen != CouchScreen.Menu || menu is not (CouchMenu.Downloads or CouchMenu.Download))
+            // Sampled always: the curve has the last half minute as soon as the screen opens
+            double speed = DownloadsViewModel.Instance.DownloadedGames.ToList().Where(d => d.IsDownloading() && !d.IsPaused()).Sum(d => d.Bytes.PerSecond)
+                + DownloadsViewModel.Instance.RetroDownloads.ToList().Where(d => d.IsActive).Sum(d => d.Bytes.PerSecond);
+            speeds.Add(speed);
+            if (speeds.Count > SpeedSamples)
+                speeds.RemoveRange(0, speeds.Count - SpeedSamples);
+            RefreshDownloads(rebuild: false);
+        }
+
+        private void RefreshDownloads(bool rebuild)
+        {
+            if (Navigator.Screen != CouchScreen.Menu || menu != CouchMenu.Downloads)
                 return;
+            var now = Downloads().Select(d => d.Download).ToList();
+            var shown = MenuLines.OfType<CouchDownloadLine>().Select(l => l.Download).ToList();
+            if (!rebuild && now.SequenceEqual(shown) && (now.Count > 0 || MenuLines.Count == 1))
+            {
+                foreach (CouchDownloadLine card in MenuLines.OfType<CouchDownloadLine>())
+                {
+                    card.Update();
+                    card.Buttons = DownloadButtons(card);
+                }
+                ShowDownloadsSummary(MenuLines);
+                ShowScreen(false);
+                return;
+            }
             int line = Navigator.MenuLine;
             BuildMenu();
             Navigator.SelectLine(Math.Min(line, MenuLines.Count - 1));
@@ -324,19 +419,27 @@ namespace gamevault.UserControls
         // --- Where a game is installed ---
 
         private InstallLocationUserControl? locationPicker;
-        private string locationGame = "";
         private bool askLocationAgain = true;
 
-        /// <summary>The desktop's question as a screen of the mode: the game folders with their free room, chosen with A; B: none.</summary>
-        internal void ChooseInstallLocation(InstallLocationUserControl picker, string game)
+        /// <summary>
+        /// The desktop's question as a screen of the mode: the game at the left, the game folders at the right as
+        /// their disks, filled, the game's room striped; A installs, Y asks again or not, B installs nothing.
+        /// </summary>
+        internal void ChooseInstallLocation(InstallLocationUserControl picker, Game game)
         {
             locationPicker?.Choose(string.Empty);
             locationPicker = picker;
-            locationGame = game;
             askLocationAgain = true;
+            uiPlaceCover.Data = game;
+            uiPlaceTitle.Text = game.Title ?? "";
+            uiPlaceSize.Text = picker.RequiredBytes > 0 ? GameSizeConverter.Text(picker.RequiredBytes) : "";
+            uiPlaceSizeChip.IsVisible = picker.RequiredBytes > 0;
+            ShowAskAgain();
             ShowMenu(CouchMenu.InstallLocation);
-            // The folder used last is under the finger
-            int line = MenuLines.FindIndex(l => picker.Rows.Any(r => r.IsLast && r.HasRoom && r.Path == l.Text));
+            // The folder used last is under the finger, else the first one with room
+            int line = MenuLines.FindIndex(l => l is CouchDiskLine { IsLast: true, HasRoom: true });
+            if (line < 0)
+                line = MenuLines.FindIndex(l => l is CouchDiskLine { HasRoom: true });
             if (line >= 0)
             {
                 Navigator.SelectLine(line);
@@ -346,39 +449,44 @@ namespace gamevault.UserControls
 
         private List<CouchLine> InstallLocationLines()
         {
-            var lines = new List<CouchLine>();
             if (locationPicker == null)
                 return new List<CouchLine> { Line(Loc.T("Back"), CloseMenu) };
-            if (locationPicker.uiNeeded.IsVisible)
-                lines.Add(new CouchLine { Text = locationGame, Detail = locationPicker.uiNeeded.Text, Opacity = 0.7, Run = () => Task.CompletedTask });
+            var lines = new List<CouchLine>();
             foreach (InstallLocationRow row in locationPicker.Rows)
             {
-                string detail = row.IsLast && row.Details.Length > 0 ? $"{Loc.T("Last used")} · {row.Details}" : row.IsLast ? Loc.T("Last used") : row.Details;
-                lines.Add(new CouchLine
+                // Not enough room, or a disk unplugged: shown, not chosen
+                lines.Add(CouchDiskLine.Of(row, locationPicker.RequiredBytes, () =>
                 {
-                    Text = row.Path,
-                    Detail = detail,
-                    // Not enough room, or a disk unplugged: shown, not chosen
-                    Opacity = row.HasRoom ? 1 : 0.45,
-                    Run = () =>
-                    {
-                        if (row.HasRoom)
-                            AnswerInstallLocation(row.Path);
-                        return Task.CompletedTask;
-                    },
-                });
+                    if (row.HasRoom)
+                        AnswerInstallLocation(row.Path);
+                }));
             }
-            lines.Add(Line(Loc.F("Ask each time: {0}", askLocationAgain ? Loc.T("Yes") : Loc.T("No")), () =>
-            {
-                askLocationAgain = !askLocationAgain;
-                int line = Navigator.MenuLine;
-                BuildMenu();
-                Navigator.SelectLine(line);
-                ShowScreen(false);
-            }));
-            lines.Add(Line(Loc.T("Cancel"), () => AnswerInstallLocation(string.Empty)));
+            if (lines.Count == 0)
+                lines.Add(Line(Loc.T("Cancel"), () => AnswerInstallLocation(string.Empty)));
             return lines;
         }
+
+        /// <summary>Y on the question: asked each time, or not any more.</summary>
+        private bool HandleInstallLocationButtons(CouchCommand command)
+        {
+            if (Navigator.Screen != CouchScreen.Menu || menu != CouchMenu.InstallLocation || command != CouchCommand.Search)
+                return false;
+            Play(CouchSound.Accept);
+            askLocationAgain = !askLocationAgain;
+            ShowAskAgain();
+            return true;
+        }
+
+        private void ShowAskAgain()
+        {
+            uiPlaceAsk.HorizontalAlignment = askLocationAgain ? Avalonia.Layout.HorizontalAlignment.Right : Avalonia.Layout.HorizontalAlignment.Left;
+            Avalonia.Media.IBrush on = Avalonia.Controls.ResourceNodeExtensions.TryFindResource(this, "Brush.Accent", out object? accent) && accent is Avalonia.Media.IBrush brush
+                ? brush : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#7C6BFF"));
+            uiPlaceAskSwitch.Background = askLocationAgain ? on : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#33FFFFFF"));
+        }
+
+        /// <summary>Asked again at the next installation (the tests read it).</summary>
+        internal bool AsksLocationAgain => askLocationAgain;
 
         private void AnswerInstallLocation(string directory)
         {

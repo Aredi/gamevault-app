@@ -16,13 +16,16 @@ namespace GameVault.Uploader
 
         private string? address;
 
-        private async Task<JsonElement> SendAsync(HttpMethod method, string path, object? body, CancellationToken ct)
+        /// <param name="goneIsDone">A delete: what is already gone (404) is what was asked.</param>
+        private async Task<JsonElement> SendAsync(HttpMethod method, string path, object? body, CancellationToken ct, bool goneIsDone = false)
         {
             using var request = new HttpRequestMessage(method, path) { Content = body == null ? null : JsonContent.Create(body) };
             request.Headers.Add("X-ZT1-Auth", options.ZeroTierApiSecret);
             try
             {
                 using HttpResponseMessage response = await controller.SendAsync(request, ct);
+                if (goneIsDone && response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    return default;
                 if (!response.IsSuccessStatusCode)
                     throw new ControllerException($"The ZeroTier controller answered {(int)response.StatusCode} to {method} {path}.");
                 string text = await response.Content.ReadAsStringAsync(ct);
@@ -56,10 +59,10 @@ namespace GameVault.Uploader
         /// <summary>Shut out at once (a deleted member alone would keep its certificate until it expires), then forgotten.</summary>
         public async Task RemoveAsync(string networkId, string nodeId, CancellationToken ct)
         {
-            await SendAsync(HttpMethod.Post, $"controller/network/{networkId}/member/{nodeId}", new { authorized = false }, ct);
-            await SendAsync(HttpMethod.Delete, $"controller/network/{networkId}/member/{nodeId}", null, ct);
+            await SendAsync(HttpMethod.Post, $"controller/network/{networkId}/member/{nodeId}", new { authorized = false }, ct, goneIsDone: true);
+            await SendAsync(HttpMethod.Delete, $"controller/network/{networkId}/member/{nodeId}", null, ct, goneIsDone: true);
         }
 
-        public Task DeleteNetworkAsync(string networkId, CancellationToken ct) => SendAsync(HttpMethod.Delete, $"controller/network/{networkId}", null, ct);
+        public Task DeleteNetworkAsync(string networkId, CancellationToken ct) => SendAsync(HttpMethod.Delete, $"controller/network/{networkId}", null, ct, goneIsDone: true);
     }
 }

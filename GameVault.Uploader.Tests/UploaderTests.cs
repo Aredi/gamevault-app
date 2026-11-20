@@ -15,6 +15,9 @@ namespace GameVault.Uploader.Tests
         public int Calls;
         /// <summary>The accounts activated by the service, with the administrator's API key "admin-key".</summary>
         public readonly List<int> Activated = new();
+        /// <summary>The players' progresses asked for; answered 500 while <see cref="ProgressesDown"/>.</summary>
+        public int ProgressCalls;
+        public bool ProgressesDown;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -49,6 +52,8 @@ namespace GameVault.Uploader.Tests
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { }) });
             }
             // The player 2 played the game 5 before; the game 6 was only opened
+            if (path.EndsWith("/api/progresses") && Interlocked.Increment(ref ProgressCalls) is var _ && ProgressesDown)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
             if (path.EndsWith("/api/progresses"))
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -120,6 +125,8 @@ namespace GameVault.Uploader.Tests
     internal sealed class FakeZeroTier : HttpMessageHandler
     {
         public readonly List<string> Calls = new();
+        /// <summary>"DELETE /controller/network/..." calls answered 404: deleted on the controller already.</summary>
+        public readonly HashSet<string> Gone = new();
         private int networks;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -130,6 +137,8 @@ namespace GameVault.Uploader.Tests
             string call = $"{request.Method} {path} {(request.Content == null ? "" : await request.Content.ReadAsStringAsync(cancellationToken))}".TrimEnd();
             lock (Calls)
                 Calls.Add(call);
+            if (Gone.Contains($"{request.Method} {path}"))
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
             if (path == "/status")
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { address = "c4576f0616" }) };
             if (request.Method == HttpMethod.Post && path == "/controller/network/c4576f0616______")
@@ -267,6 +276,7 @@ namespace GameVault.Uploader.Tests
         private readonly string reports = Path.Combine(Path.GetTempPath(), $"gv-reports-{Guid.NewGuid():N}");
         private readonly string invites = Path.Combine(Path.GetTempPath(), $"gv-invites-{Guid.NewGuid():N}");
         private readonly string hypervisor = Path.Combine(Path.GetTempPath(), $"gv-hypervisor-{Guid.NewGuid():N}");
+        private readonly string passwords = Path.Combine(Path.GetTempPath(), $"gv-passwords-{Guid.NewGuid():N}");
         private readonly string emulators = Path.Combine(Path.GetTempPath(), $"gv-emulators-{Guid.NewGuid():N}");
         private readonly string chat = Path.Combine(Path.GetTempPath(), $"gv-chat-{Guid.NewGuid():N}");
         private readonly string challenges = Path.Combine(Path.GetTempPath(), $"gv-challenges-{Guid.NewGuid():N}");
@@ -314,6 +324,7 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("REPORTS_DIRECTORY", reports);
                 host.UseSetting("INVITES_DIRECTORY", invites);
                 host.UseSetting("HYPERVISOR_DIRECTORY", hypervisor);
+                host.UseSetting("ARCHIVE_PASSWORDS_DIRECTORY", passwords);
                 host.UseSetting("EMULATORS_DIRECTORY", emulators);
                 host.UseSetting("CHAT_DIRECTORY", chat);
                 host.UseSetting("CHALLENGES_DIRECTORY", challenges);
@@ -346,6 +357,7 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(reports, true); } catch { }
             try { Directory.Delete(invites, true); } catch { }
             try { Directory.Delete(hypervisor, true); } catch { }
+            try { Directory.Delete(passwords, true); } catch { }
             try { Directory.Delete(emulators, true); } catch { }
             try { Directory.Delete(chat, true); } catch { }
             try { Directory.Delete(challenges, true); } catch { }
@@ -618,6 +630,25 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(8, Assert.Single(seen.RootElement.GetProperty("games").EnumerateArray()).GetInt32());
             Assert.Equal("Read this", seen.RootElement.GetProperty("text").GetString());
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/hypervisor")).StatusCode);
+        }
+
+        [Fact]
+        public async Task TheAdmins_SetAGamesArchivePassword_ThePlayersReadItGameByGame()
+        {
+            var admin = Client("admin");
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/archive-passwords/games/7", new { password = "mine" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/archive-passwords/games/7", new { password = new string('a', 501) })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/7", new { password = "elamigos" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/8", new { password = "other" })).StatusCode);
+
+            using JsonDocument seven = JsonDocument.Parse(await player.GetStringAsync("/archive-passwords/games/7"));
+            Assert.Equal("elamigos", seven.RootElement.GetProperty("password").GetString());
+            // Emptied: none any more
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/8", new { password = "" })).StatusCode);
+            using JsonDocument eight = JsonDocument.Parse(await player.GetStringAsync("/archive-passwords/games/8"));
+            Assert.Equal(JsonValueKind.Null, eight.RootElement.GetProperty("password").ValueKind);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/archive-passwords/games/7")).StatusCode);
         }
 
         [Fact]
@@ -966,6 +997,43 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task TheNews_StaysAfter90DaysSilent_AndDoesNotPostAGameAgain()
+        {
+            var admin = Client("admin");
+            var hades = new { kind = "pc", id = 12, title = "Hades" };
+            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/chat/news/games", hades)).StatusCode);
+            var store = factory.Services.GetRequiredService<ChatStore>();
+            store.Backdate("news", TimeSpan.FromDays(91));
+            store.PruneNow();
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync("/chat/news/games", hades)).StatusCode);
+        }
+
+        [Fact]
+        public async Task AConversationBetweenTwo_HasOneIdOnly()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.NotFound, (await player.PostAsJsonAsync("/chat/conversations/d-02-5/messages", new { text = "bis" })).StatusCode);
+            Assert.Null(ChatStore.DirectMembers("d-02-5"));
+            Assert.Equal((2, 5), ChatStore.DirectMembers("d-2-5"));
+        }
+
+        [Fact]
+        public async Task ThePicturesOfAPlayer_HaveADailyCap()
+        {
+            var store = factory.Services.GetRequiredService<ChatStore>();
+            store.PicturesPerDay = Png.Length * 2;
+            var player = Client("user");
+            for (int n = 0; n < 2; n++)
+                using (var png = new ByteArrayContent(Png))
+                    Assert.Equal(HttpStatusCode.OK, (await player.PostAsync("/chat/conversations/d-2-5/pictures", png)).StatusCode);
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.TooManyRequests, (await player.PostAsync("/chat/conversations/d-2-5/pictures", png)).StatusCode);
+            // Another player has their own
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.OK, (await Client("p5").PostAsync("/chat/conversations/d-2-5/pictures", png)).StatusCode);
+        }
+
+        [Fact]
         public async Task TheChat_IsSealedOnTheDisk_AndOpensWithItsKeyOnly()
         {
             var player = Client("user");
@@ -1204,6 +1272,39 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task RetroPlays_CountNoMoreThanTheClock_AndAchievementsAreNotEarnedInTheFuture()
+        {
+            var player = Client("user");
+            object Play(int minutes) => new { romId = 40, platform = "nes", platformName = "NES", name = "Zelda", minutes };
+            // A day said twice at once: the second one could not have been played
+            Assert.True((await player.PostAsJsonAsync("/retro/players/me/plays", Play(1440))).IsSuccessStatusCode);
+            Assert.True((await player.PostAsJsonAsync("/retro/players/me/plays", Play(1440))).IsSuccessStatusCode);
+            using (JsonDocument me = JsonDocument.Parse(await player.GetStringAsync("/retro/players/me")))
+                Assert.InRange(Assert.Single(me.RootElement.GetProperty("plays").EnumerateArray()).GetProperty("minutes").GetInt32(), 1440, 1442);
+
+            var future = new { title = "Forever first", date = new DateTime(9999, 12, 31, 0, 0, 0, DateTimeKind.Utc) };
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/retro/players/me/achievements/nes/40", new { name = "Zelda", earned = 1, total = 5, unlocks = new[] { future } })).StatusCode);
+            using JsonDocument activity = JsonDocument.Parse(await player.GetStringAsync("/retro/activity/achievements"));
+            Assert.True(Assert.Single(activity.RootElement.EnumerateArray()).GetProperty("date").GetDateTime().ToUniversalTime() <= DateTime.UtcNow);
+        }
+
+        [Fact]
+        public async Task RetroPlays_KeepThe500LastGames()
+        {
+            Directory.CreateDirectory(retroPlayers);
+            var old = Enumerable.Range(1, 600).Select(n => new { key = $"nes:{n}", romId = n, platform = "nes", platformName = "NES", name = $"Jeu {n}", minutes = 1, lastPlayed = DateTime.UtcNow.AddDays(-30).AddMinutes(n) });
+            File.WriteAllText(Path.Combine(retroPlayers, "2.json"), JsonSerializer.Serialize(new { username = "player", plays = old }));
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/retro/players/me/plays", new { romId = 9000, platform = "nes", platformName = "NES", name = "Zelda", minutes = 5 })).StatusCode);
+            using JsonDocument me = JsonDocument.Parse(await player.GetStringAsync("/retro/players/me"));
+            var keys = me.RootElement.GetProperty("plays").EnumerateArray().Select(p => p.GetProperty("key").GetString()).ToList();
+            Assert.Equal(RetroPlayerStore.KeptPlays, keys.Count);
+            Assert.Contains("nes:9000", keys);
+            Assert.Contains("nes:600", keys);
+            Assert.DoesNotContain("nes:1", keys);
+        }
+
+        [Fact]
         public async Task RetroAchievements_OfEachPlayer_ShowOnTheirProfileAndInTheActivity()
         {
             var player = Client("user");
@@ -1278,6 +1379,30 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/retro/saves/retroarch")).StatusCode);
             Assert.Equal(HttpStatusCode.BadRequest, (await player.GetAsync("/retro/saves/..%2Fprofiles")).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/saves/retroarch")).StatusCode);
+        }
+
+        [Fact]
+        public async Task RetroSaves_SavedTwiceAtOnce_BothSucceed()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.OK, (await player.PutAsync("/retro/saves/retroarch", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4, 0 }))).StatusCode);
+            var puts = await Task.WhenAll(Enumerable.Range(1, 30).Select(n => player.PutAsync("/retro/saves/retroarch", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4, (byte)n }))));
+            Assert.All(puts, p => Assert.Equal(HttpStatusCode.OK, p.StatusCode));
+        }
+
+        [Fact]
+        public async Task RetroSaves_ANewSetIsRefused_WhenThePlayerHasManyAlready()
+        {
+            string mine = Path.Combine(retroSaves, "2");
+            Directory.CreateDirectory(mine);
+            for (int n = 0; n < RetroSaveStore.MaxSets; n++)
+                File.WriteAllText(Path.Combine(mine, $"set-{n}.zip"), "old");
+            var player = Client("user");
+            HttpResponseMessage refused = await player.PutAsync("/retro/saves/one-more", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4 }));
+            Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+            Assert.Contains("sets", await refused.Content.ReadAsStringAsync());
+            // The sets the player has can still be saved
+            Assert.Equal(HttpStatusCode.OK, (await player.PutAsync("/retro/saves/set-3", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4 }))).StatusCode);
         }
 
         [Fact]
@@ -1436,6 +1561,23 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(together, Assert.Single(left.RootElement.EnumerateArray()).GetProperty("id").GetString());
             Assert.Contains($"DELETE /controller/network/{alone}", zeroTier.Calls);
             Assert.DoesNotContain($"DELETE /controller/network/{together}", zeroTier.Calls);
+        }
+
+        [Fact]
+        public async Task ARoomWhoseNetworkIsGoneAlready_StillGoes()
+        {
+            HttpClient owner = Client("user");
+            string id = JsonDocument.Parse(await (await owner.PostAsJsonAsync("/rooms", new { name = "Seul", nodeId = "aaaaaaaa01" })).Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetString()!;
+            string file = Path.Combine(rooms, "rooms.json");
+            var state = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(file))!;
+            foreach (var room in state["Rooms"]!.AsArray())
+                (room!["CreatedAt"], room["ActiveAt"]) = (DateTime.UtcNow.AddHours(-2), DateTime.UtcNow.AddHours(-2));
+            File.WriteAllText(file, state.ToJsonString());
+            // Deleted by hand on the controller: its 404 is what the service wanted
+            zeroTier.Gone.Add($"DELETE /controller/network/{id}");
+
+            Assert.Equal("[]", await owner.GetStringAsync("/rooms"));
+            Assert.DoesNotContain(id, File.ReadAllText(file));
         }
 
         [Fact]

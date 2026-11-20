@@ -165,6 +165,9 @@ namespace GameVault.UiTests
             foreach (Panel lift in card.GetVisualDescendants().OfType<Panel>().Where(p => p.Classes.Contains("lift")).ToList())
                 lift.Children.RemoveAll(lift.Children.Where(c => c.Classes.Contains("hoverOnly")).ToList());
             Assert.DoesNotContain(card.GetVisualDescendants(), v => v is Panel p && p.Classes.Contains("hoverOnly"));
+            // From outside the card: a pointer left there by the tests before would enter nothing
+            session.Window.MouseMove(new Avalonia.Point(1, 1));
+            Dispatcher.UIThread.RunJobs();
             var center = card.TranslatePoint(new Avalonia.Point(card.Bounds.Width / 2, 60), session.Window)!.Value;
             session.Window.MouseMove(center);
             Dispatcher.UIThread.RunJobs();

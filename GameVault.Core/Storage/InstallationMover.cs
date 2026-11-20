@@ -39,6 +39,9 @@ namespace GameVault.Core.Storage
         /// Another disk: copied under a work name, then the old folder is renamed away (fails at once if a file is in use,
         /// and the copy is removed), the copy gets its real name and the old folder is deleted.
         /// </summary>
+        /// <summary>In a copy while it is not whole yet.</summary>
+        internal const string PartialMarker = ".gamevault-partial-copy";
+
         internal static async Task CopyThenSwapAsync(string installation, string installations, string name, IProgress<double>? progress, CancellationToken cancellationToken, Func<string, long?>? freeSpace = null)
         {
             string copy = Path.Combine(installations, WorkPrefix + name);
@@ -58,6 +61,8 @@ namespace GameVault.Core.Storage
                 foreach (string dir in Directory.GetDirectories(installation, "*", SearchOption.AllDirectories))
                     Directory.CreateDirectory(Path.Combine(copy, Path.GetRelativePath(installation, dir)));
                 Directory.CreateDirectory(copy);
+                // Until the copy is whole: RemoveLeftovers tells it from the original, which has the same work name
+                File.WriteAllText(Path.Combine(copy, PartialMarker), "");
                 var buffer = new byte[1 << 20];
                 foreach (string file in files)
                 {
@@ -77,6 +82,7 @@ namespace GameVault.Core.Storage
                     if (!OperatingSystem.IsWindows())
                         File.SetUnixFileMode(destination, File.GetUnixFileMode(file));
                 }
+                File.Delete(Path.Combine(copy, PartialMarker));
                 Directory.Move(installation, old);
             }
             catch
@@ -84,7 +90,13 @@ namespace GameVault.Core.Storage
                 try { Directory.Delete(copy, true); } catch { }
                 throw;
             }
-            Directory.Move(copy, Path.Combine(installations, name));
+            try { Directory.Move(copy, Path.Combine(installations, name)); }
+            catch
+            {
+                // The game stays where it was rather than only under a work name that RemoveLeftovers deletes
+                Directory.Move(old, installation);
+                throw;
+            }
             progress?.Report(1);
             try { Directory.Delete(old, true); }
             catch { }// the game is moved; the folder left over is removed by RemoveLeftovers
@@ -97,21 +109,30 @@ namespace GameVault.Core.Storage
         }
 
         /// <summary>
-        /// Deletes the work folders of moves that could not finish their cleanup (a file was in use, the app was closed).
-        /// Not while a game is being moved: its copy is one of them.
+        /// Deletes the work folders of moves that could not finish their cleanup (a file was in use, the app was closed);
+        /// one whose game is under its real name in no root is renamed back instead. Not while a game is being moved: its copy is one of them.
         /// </summary>
         public static void RemoveLeftovers(IEnumerable<string> rootDirectories)
         {
-            foreach (string root in rootDirectories)
+            List<string> allInstallations = rootDirectories.Select(root => Path.Combine(root, "GameVault", "Installations")).ToList();
+            foreach (string installations in allInstallations)
             {
-                string installations = Path.Combine(root, "GameVault", "Installations");
                 try
                 {
                     if (!Directory.Exists(installations))
                         continue;
                     foreach (string dir in Directory.GetDirectories(installations, WorkPrefix + "*"))
                     {
-                        try { Directory.Delete(dir, true); }
+                        try
+                        {
+                            // The game under its real name nowhere: the move stopped between its renames, this may be the only copy
+                            string name = Path.GetFileName(dir)[WorkPrefix.Length..];
+                            // A copy stopped half way is never the game: deleted (its original may be on a disk unplugged now)
+                            if (!File.Exists(Path.Combine(dir, PartialMarker)) && !allInstallations.Any(other => Directory.Exists(Path.Combine(other, name))))
+                                Directory.Move(dir, Path.Combine(installations, name));
+                            else
+                                Directory.Delete(dir, true);
+                        }
                         catch { }// still in use: next time
                     }
                 }

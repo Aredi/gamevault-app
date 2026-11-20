@@ -172,6 +172,21 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void AFileStagedByAPausedAttempt_ThatThePlanNoLongerChanges_IsNotInstalled()
+        {
+            Install(("a.pak", Noise(10_000, 1)), ("b.pak", Noise(10_000, 2)));
+            // Left by an attempt for another build: b.pak no longer changes
+            Directory.CreateDirectory(Path.Combine(Staging, "data"));
+            File.WriteAllBytes(Path.Combine(Staging, "b.pak"), Noise(10_000, 7));
+            File.WriteAllBytes(Path.Combine(Staging, "data", "gone.pak"), Noise(100, 8));
+            byte[] zip = Zip(("a.pak", Noise(10_000, 3)), ("b.pak", Noise(10_000, 2)));
+
+            Assert.Equal(new[] { "a.pak" }, Update(zip, Served(zip)));
+            Assert.Equal(Noise(10_000, 2), File.ReadAllBytes(Path.Combine(Files, "b.pak")));
+            Assert.False(File.Exists(Path.Combine(Files, "data", "gone.pak")));
+        }
+
+        [Fact]
         public void ADamagedFile_IsRefused()
         {
             Install(("a.pak", Noise(10_000, 1)));

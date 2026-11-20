@@ -70,9 +70,9 @@ namespace gamevault.UserControls
             piecesCancel = null;
             IsDownloadActive = false;
 
-            if (failure is NotEnoughSpaceException)
+            if (failure is GameVault.Core.Storage.NotEnoughSpaceException space)
             {
-                ViewModel.State = failure.Message;
+                ViewModel.State = Loc.F("Not enough space to update: {0} needed, {1} free.", GameSizeConverter.Text(space.Needed), GameSizeConverter.Text(space.Free));
                 ViewModel.DownloadUIVisibility = false;
                 ViewModel.DownloadFailedVisibility = true;
                 DownloadQueue.Advance();
@@ -138,7 +138,7 @@ namespace gamevault.UserControls
                 if (plan == null || plan.DownloadSize > size * PiecesWorthIt)
                     return null;
                 if (FreeSpace(m_DownloadPath) is long free && free < plan.ExtractedSize)
-                    throw new NotEnoughSpaceException(Loc.F("Not enough space to update: {0} needed, {1} free.", GameSizeConverter.Text(plan.ExtractedSize), GameSizeConverter.Text(free)));
+                    throw new GameVault.Core.Storage.NotEnoughSpaceException(plan.ExtractedSize, free);
 
                 long toFetch = Math.Max(1, plan.DownloadSize);
                 long before = served.Fetched;
@@ -166,8 +166,7 @@ namespace gamevault.UserControls
                         if (cancel.IsCancellationRequested)
                             return;
                         downloadSpeedCalc.UpdateSpeed(step);
-                        ViewModel.DownloadInfo = Loc.F("{0} - {1} of {2} | Time left: {3}", $"{FormatBytesHumanReadable(downloadSpeedCalc.GetCurrentSpeed(), 1, 1000)}/s",
-                            FormatBytesHumanReadable(fetched), FormatBytesHumanReadable(toFetch), CalculateTimeLeft(toFetch, fetched, (DateTime.Now - startTime).TotalMilliseconds));
+                        ViewModel.DownloadInfo = DownloadText.Line(fetched, toFetch, downloadSpeedCalc.GetCurrentSpeed());
                         ViewModel.GameDownloadProgress = (int)Math.Min(99, fetched * 100 / toFetch);
                     });
                 }, cancel);
@@ -217,11 +216,6 @@ namespace gamevault.UserControls
                     Directory.Delete(m_DownloadPath);
             }
             catch (Exception ex) { Log.Ignored(ex); }
-        }
-
-        private sealed class NotEnoughSpaceException : IOException
-        {
-            public NotEnoughSpaceException(string message) : base(message) { }
         }
     }
 }

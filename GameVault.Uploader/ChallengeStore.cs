@@ -67,6 +67,10 @@ namespace GameVault.Uploader
         private List<Week>? past;
         /// <summary>When each player's last minute on a library game was counted: a minute is a minute.</summary>
         private readonly Dictionary<(int, string), DateTime> lastMinute = new();
+        /// <summary>The games of a player counted in the same minute at most, as many as the client sends: made-up ids do not add up.</summary>
+        public const int MaxGamesAtOnce = 8;
+        /// <summary>When asking the GameVault server for a player's past games last failed: not asked again for an hour.</summary>
+        private readonly Dictionary<int, DateTime> seedFailedAt = new();
 
         public ChallengeStore(UploaderOptions options, ILogger<ChallengeStore> logger)
         {
@@ -185,6 +189,19 @@ namespace GameVault.Uploader
                 return Read<Known>(KnownFile(userId))?.Seeded == true;
         }
 
+        /// <summary>Whether the player's past games may be asked for now: not within an hour of a failure.</summary>
+        public bool SeedDue(int userId)
+        {
+            lock (gate)
+                return !seedFailedAt.TryGetValue(userId, out DateTime failed) || DateTime.UtcNow - failed > TimeSpan.FromHours(1);
+        }
+
+        public void SeedFailed(int userId)
+        {
+            lock (gate)
+                seedFailedAt[userId] = DateTime.UtcNow;
+        }
+
         /// <summary>The games the player played before: none of them is a discovery.</summary>
         public void Seed(int userId, IEnumerable<string> keys)
         {
@@ -204,11 +221,17 @@ namespace GameVault.Uploader
             lock (gate)
             {
                 DateTime now = Clock();
+                bool Recent(DateTime last) => now - last < TimeSpan.FromSeconds(45) && now >= last;
+                // The minutes gone by are of no use any more
+                foreach (var old in lastMinute.Where(e => now - e.Value > TimeSpan.FromMinutes(1) || e.Value > now).Select(e => e.Key).ToList())
+                    lastMinute.Remove(old);
+                int counted = lastMinute.Count(e => e.Key.Item1 == userId && Recent(e.Value));
                 bool done = false;
                 foreach (string key in gameIds.Distinct().Select(LibraryKey))
                 {
-                    if (lastMinute.TryGetValue((userId, key), out DateTime last) && now - last < TimeSpan.FromSeconds(45) && now >= last)
+                    if (lastMinute.TryGetValue((userId, key), out DateTime last) && Recent(last) || counted >= MaxGamesAtOnce)
                         continue;
+                    counted++;
                     lastMinute[(userId, key)] = now;
                     done |= AddPlay(userId, username, key, 1);
                 }
@@ -267,10 +290,15 @@ namespace GameVault.Uploader
             lock (gate)
             {
                 Week week = Current();
+                // The same challenge saved again (its goal changed at most): who still reaches it keeps when they did.
+                // Another kind or game: what was done for the old one dates nothing
+                bool same = week.Challenge is Challenge before && before.Kind == challenge.Kind
+                    && before.Game?.Kind == challenge.Game?.Kind && before.Game?.Id == challenge.Game?.Id;
                 week.Challenge = challenge;
                 foreach (Entry entry in week.Players.Values)
                 {
-                    entry.DoneAt = null;
+                    if (!same || Progress(challenge, entry) < challenge.Goal)
+                        entry.DoneAt = null;
                     Settle(week, entry);
                 }
                 Write(WeekFile(week.Id), week);

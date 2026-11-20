@@ -55,6 +55,7 @@ namespace gamevault.UserControls
                         break;
                     case nameof(LibraryViewModel.CurrentHero):
                         Dispatcher.UIThread.Post(() => ApplyHeroColor(uiHeroCover.AccentColor));
+                        AnimateHero();
                         break;
                     case nameof(LibraryViewModel.SelectedGame):
                         if (ViewModel.IsShelfMode)
@@ -273,6 +274,25 @@ namespace gamevault.UserControls
             int index = items.FindIndex(i => i.Game.ID == currentId);
             ViewModel.HeroIndex = index >= 0 ? index : 0;
             ViewModel.HeroItemsChanged();
+        }
+
+        private int? animatedHeroId;
+        /// <summary>
+        /// Another featured game: its art settles in, its cover and words slide up after it. Not when the same one is
+        /// shown again (a library refresh), nor while the banner is off screen.
+        /// </summary>
+        private void AnimateHero()
+        {
+            int? id = ViewModel.CurrentHero?.Game.ID;
+            if (id == null || id == animatedHeroId)
+                return;
+            bool first = animatedHeroId == null;
+            animatedHeroId = id;
+            if (!uiHero.IsEffectivelyVisible || first && !IsLoaded)
+                return;
+            Motion.Settle(uiHeroArt);
+            Motion.Enter(uiHeroCoverFrame, 40);
+            Motion.Enter(uiHeroText, 110);
         }
 
         private static string FormatTime(int minutes) => (string)new GameTimeConverter().Convert(minutes, typeof(string), null, CultureInfo.CurrentCulture)!;

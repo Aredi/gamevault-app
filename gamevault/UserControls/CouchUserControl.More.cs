@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace gamevault.UserControls
 {
     /// <summary>The menus of the living-room mode.</summary>
-    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Download, Challenge, Friends, News, InstallLocation }
+    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Challenge, Friends, News, InstallLocation }
 
     /// <summary>
     /// The menu shown over a game (Start + Back, Windows): a small window always in front, moved through with the
@@ -272,7 +272,7 @@ namespace gamevault.UserControls
             CouchMenu.Stats => Loc.T("Statistics"),
             CouchMenu.Achievements => Loc.T("Achievements"),
             CouchMenu.Custom => PageName,
-            CouchMenu.Downloads or CouchMenu.Download => Loc.T("Downloads"),
+            CouchMenu.Downloads => Loc.T("Downloads"),
             CouchMenu.Challenge => Loc.T("Challenge of the week"),
             CouchMenu.Friends => Loc.T("Friends"),
             CouchMenu.News => Loc.T("News"),
@@ -323,13 +323,6 @@ namespace gamevault.UserControls
                 AnswerInstallLocation(string.Empty);
                 return true;
             }
-            // A download's actions go back to the downloads
-            if (inMenu && command == CouchCommand.Back && menu == CouchMenu.Download)
-            {
-                Play(CouchSound.Back);
-                ShowMenu(CouchMenu.Downloads);
-                return true;
-            }
             if (inMenu && command == CouchCommand.Back && menu is CouchMenu.Settings or CouchMenu.Stats or CouchMenu.Custom)
             {
                 Play(CouchSound.Back);
@@ -364,7 +357,6 @@ namespace gamevault.UserControls
                 CouchMenu.Stats => StatsLines(),
                 CouchMenu.Achievements => AchievementLines(),
                 CouchMenu.Downloads => DownloadsLines(),
-                CouchMenu.Download => DownloadLines(),
                 CouchMenu.Challenge => ChallengeLines(),
                 CouchMenu.Friends => FriendsLines(),
                 CouchMenu.News => NewsLines(),
@@ -372,10 +364,52 @@ namespace gamevault.UserControls
                 _ => MainLines(),
             };
             Navigator.MenuCount = MenuLines.Count;
-            uiMenuLines.ItemsSource = MenuLines;
+            // The downloads and the installation have their own screens; the others are a list of lines
+            foreach (ItemsControl lines in new ItemsControl[] { uiMenuLines, uiDownloadLines, uiPlaceLines })
+                lines.ItemsSource = lines == MenuItems ? MenuLines : null;
+            uiMenuBox.IsVisible = MenuPanel == uiMenuBox;
+            uiDownloadsBoard.IsVisible = MenuPanel == uiDownloadsBoard;
+            uiPlaceBoard.IsVisible = MenuPanel == uiPlaceBoard;
             // A list of achievements needs the width of their descriptions
             PlaceMenu();
             uiMenuScroll.Offset = default;
+        }
+
+        /// <summary>Where the menu shown is drawn: its own screen, or the box of lines.</summary>
+        private Control MenuPanel => menu switch
+        {
+            CouchMenu.Downloads => uiDownloadsBoard,
+            CouchMenu.InstallLocation => uiPlaceBoard,
+            _ => uiMenuBox,
+        };
+
+        internal ItemsControl MenuItems => menu switch
+        {
+            CouchMenu.Downloads => uiDownloadLines,
+            CouchMenu.InstallLocation => uiPlaceLines,
+            _ => uiMenuLines,
+        };
+
+        /// <summary>What the buttons do in the menu shown: the chosen download's own actions, the installation's switch.</summary>
+        private CouchStat[] MenuHints()
+        {
+            if (menu == CouchMenu.InstallLocation)
+                return new[] { new CouchStat("A", Loc.T("Install here")), new CouchStat("Y", Loc.T("Ask each time")), new CouchStat("B", Loc.T("Cancel")) };
+            if (menu == CouchMenu.Downloads)
+            {
+                var hints = new List<CouchStat>();
+                if (Navigator.MenuLine < MenuLines.Count && MenuLines[Navigator.MenuLine] is CouchDownloadLine card)
+                {
+                    var (main, second) = DownloadActions(card.Download);
+                    if (main != null)
+                        hints.Add(new CouchStat("A", main));
+                    if (second != null)
+                        hints.Add(new CouchStat("X", second));
+                }
+                hints.Add(new CouchStat("B", Loc.T("Back")));
+                return hints.ToArray();
+            }
+            return new[] { new CouchStat("A", Loc.T("Choose")), new CouchStat("B", Loc.T("Back")) };
         }
 
         private static CouchLine Line(string text, Action run) => new() { Text = text, Run = () => { run(); return Task.CompletedTask; } };

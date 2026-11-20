@@ -511,7 +511,7 @@ namespace gamevault.UserControls
             uiMenuBox.HorizontalAlignment = settings ? HorizontalAlignment.Left : HorizontalAlignment.Center;
             uiMenuBox.Margin = settings ? new Thickness(72, 0, 0, 0) : default;
             uiMenuBox.Width = menu == CouchMenu.Achievements ? 900 : settings ? 680 : 560;
-            uiMenu.Background = new SolidColorBrush(Color.Parse(settings ? "#3305070B" : "#CC05070B"));
+            uiMenu.Background = new SolidColorBrush(Color.Parse(settings ? "#3305070B" : menu is CouchMenu.Downloads or CouchMenu.InstallLocation ? "#DE05070B" : "#CC05070B"));
             // Docked over the lists: nothing seen through it
             uiMenuBox.Background = settings ? new SolidColorBrush(Color.Parse("#F20B1018")) : null;
             if (!settings)

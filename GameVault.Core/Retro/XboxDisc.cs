@@ -20,6 +20,26 @@ namespace GameVault.Core.Retro
             return read.AsSpan().SequenceEqual(Magic);
         }
 
+        /// <summary>Beside an image while <see cref="ToXiso"/> rewrites it: stopped half way, the image is neither a dump nor an XISO.</summary>
+        public const string ConvertingSuffix = ".converting";
+
+        /// <summary>A conversion of this image did not finish: only a new download repairs it.</summary>
+        public static bool IsInterrupted(string path) => File.Exists(path + ConvertingSuffix);
+
+        /// <summary>Deletes the images of <paramref name="folder"/> whose conversion did not finish, and their markers.</summary>
+        /// <returns>Whether there was one.</returns>
+        public static bool DiscardInterrupted(string folder)
+        {
+            bool any = false;
+            foreach (string marker in Directory.EnumerateFiles(folder, "*" + ConvertingSuffix, SearchOption.AllDirectories).ToList())
+            {
+                File.Delete(marker[..^ConvertingSuffix.Length]);
+                File.Delete(marker);
+                any = true;
+            }
+            return any;
+        }
+
         /// <summary>A full dump, to make an XISO; an XISO, or any other file, is not one.</summary>
         public static bool IsRedump(string path)
         {
@@ -34,6 +54,7 @@ namespace GameVault.Core.Retro
         public static void ToXiso(string path, Action<double> progress)
         {
             using var disc = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.SequentialScan);
+            File.WriteAllBytes(path + ConvertingSuffix, Array.Empty<byte>());
             long length = disc.Length - VideoPartition;
             var block = new byte[8 * 1024 * 1024];
             for (long done = 0; done < length;)
@@ -48,6 +69,8 @@ namespace GameVault.Core.Retro
                 progress((double)done / length);
             }
             disc.SetLength(length);
+            disc.Flush(true);
+            File.Delete(path + ConvertingSuffix);
         }
     }
 }
