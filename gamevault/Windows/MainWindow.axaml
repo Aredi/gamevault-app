@@ -100,6 +100,16 @@
         <Style Selector="ListBox#uiNavigation ListBoxItem:selected">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
         </Style>
+        <!-- The section a game's page was opened from: lit as if chosen, though it is not selected -->
+        <Style Selector="ListBox#uiNavigation ListBoxItem.current /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent3}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem.current">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem.current:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent2}" />
+        </Style>
         <Style Selector="ListBox#uiNavigation ListBoxItem:selected:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Brush.Accent2}" />
         </Style>
