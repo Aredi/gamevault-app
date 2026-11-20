@@ -405,7 +405,8 @@ namespace gamevault.Helper
         /// </summary>
         public static async Task<IReadOnlyList<RetroUpdates.RemoteFile>> MissingUpdatesAsync(RetroGame game)
         {
-            if (!game.Multi || InstalledFolder(game) is not string folder)
+            // Eden's alone reads an update from the game's folder; a PS3 game's thousand files are not listed for nothing
+            if (!game.Multi || !game.Platform.System.IsEden || InstalledFolder(game) is not string folder)
                 return Array.Empty<RetroUpdates.RemoteFile>();
             try
             {

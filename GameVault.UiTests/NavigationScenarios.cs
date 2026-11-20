@@ -43,6 +43,12 @@ namespace GameVault.UiTests
                 Dispatcher.UIThread.RunJobs();
                 Assert.Contains("current", Item(session, MainControl.Library).Classes);
                 Assert.DoesNotContain("current", Item(session, MainControl.Retro).Classes);
+
+                // A section's page opened without the menu (the downloads from the tray): its own item, not the library's
+                vm.SetActiveControl(vm.Downloads);
+                Dispatcher.UIThread.RunJobs();
+                Assert.Contains("current", Item(session, MainControl.Downloads).Classes);
+                Assert.DoesNotContain("current", Item(session, MainControl.Library).Classes);
             }
             finally
             {
