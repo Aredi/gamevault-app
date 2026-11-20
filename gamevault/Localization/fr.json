@@ -2169,5 +2169,8 @@
   "Extracting the disc image {0}...": "Extraction de l'image disque {0}...",
   "Archive password (administrator)": "Mot de passe de l'archive (administrateur)",
   "The archive's password is saved": "Mot de passe de l'archive enregistré",
-  "The archive's password is removed": "Mot de passe de l'archive retiré"
+  "The archive's password is removed": "Mot de passe de l'archive retiré",
+  "Downloading the update... {0}%": "Téléchargement de la mise à jour... {0} %",
+  "RomM has an update of this game that this PC does not: it is added to the installed game": "RomM a une mise à jour de ce jeu que ce PC n'a pas : elle s'ajoute au jeu installé",
+  "The update is installed: it is applied when the game starts.": "Mise à jour installée : elle s'applique au lancement du jeu."
 }

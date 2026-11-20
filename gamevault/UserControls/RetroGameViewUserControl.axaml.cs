@@ -68,7 +68,43 @@ namespace gamevault.UserControls
                 {
                     RefreshSaves();
                     LoadStates();
+                    if (e.PropertyName == nameof(RetroGame.Installed))
+                        _ = LoadUpdatesAsync();
                 });
+        }
+
+        /// <summary>The updates added to RomM after the game was installed here (its folder's "update" files).</summary>
+        private async Task LoadUpdatesAsync() => ViewModel.Updates = await RetroService.MissingUpdatesAsync(ViewModel.Game);
+
+        private async void Update_Click(object? sender, RoutedEventArgs e)
+        {
+            RetroGame game = ViewModel.Game;
+            if (game.Busy || !ViewModel.HasUpdates)
+                return;
+            game.Busy = true;
+            // The download's last progress may come after its end: the outcome stays
+            bool ended = false;
+            try
+            {
+                await RetroService.DownloadUpdatesAsync(game, ViewModel.Updates, text => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (!ended)
+                        game.Status = text;
+                }));
+                ended = true;
+                game.Status = Loc.T("The update is installed: it is applied when the game starts.");
+            }
+            catch (Exception ex)
+            {
+                ended = true;
+                Log.Ignored(ex);
+                game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
+            }
+            finally
+            {
+                game.Busy = false;
+                await LoadUpdatesAsync();
+            }
         }
 
         internal async Task LoadAsync()
@@ -78,6 +114,7 @@ namespace gamevault.UserControls
             _ = RetroLibrary.LoadAsync();
             Task romm = LoadRommAsync();
             _ = LoadEmulatorAsync();
+            _ = LoadUpdatesAsync();
             await ViewModel.Game.LoadScreenshotsAsync();
             ViewModel.SelectedScreenshot ??= ViewModel.Game.ScreenshotImages?.FirstOrDefault();
             await LoadPlayersAsync();

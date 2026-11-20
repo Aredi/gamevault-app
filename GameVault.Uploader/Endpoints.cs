@@ -29,6 +29,8 @@ namespace GameVault.Uploader
     /// POST /reports, GET /reports                a player reports a problem on a game / the reports (all for an administrator, else the player's)
     /// GET  /reports/{id}/diagnostic              what an administrator reads of a report's diagnostic
     /// POST /reports/{id}/resolve                 an administrator says a report is handled
+    /// GET  /retro/games/{romId}/files            a retro game's files in RomM (path in its folder, size, category: "update"...)
+    /// GET  /retro/games/{romId}/files/{fileId}/content   one of them, in parts when asked
     /// GET  /retro/emulators                      the emulators given to retro games instead of their console's, and their games
     /// PUT|DELETE /retro/emulators/{id}           an administrator adds, changes or drops one (its builds' https links by system, its program's name; kind "recomp": a program that reads the game's files, with its arguments)
     /// PUT  /retro/emulators/games/{romId}        an administrator gives a RomM game one ({ emulator: null }: its console's again)
@@ -200,6 +202,11 @@ namespace GameVault.Uploader
 
             app.MapGet("/retro/games/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => { await romm.ContentAsync(id, context.Request, context.Response, ct); return Results.Empty; }));
+            // A game in a folder: its files, and one of them (an update added after it was installed)
+            app.MapGet("/retro/games/{id:int}/files", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => await romm.FilesAsync(id, ct) is object files ? Results.Json(files) : (IResult)Results.NotFound()));
+            app.MapGet("/retro/games/{id:int}/files/{fileId:int}/content", (int id, int fileId, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => { await romm.FileContentAsync(id, fileId, context.Request, context.Response, ct); return Results.Empty; }));
 
             // "Install on my PC": the player's clients say they are open, the web page asks one of them for a game,
             // that client takes it and says what became of it (each player sees only their own PCs and requests)
