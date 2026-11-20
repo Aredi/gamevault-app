@@ -107,11 +107,9 @@ namespace gamevault.UserControls
         }
         public async Task RestoreInstalledGames(bool fromCLI = false)
         {
-            if (gamesRestored)
-            {
-                InstallViewModel.Instance.InstalledGames.Clear();// Clear here because the double entry code won't allow to refresh
-                //File watchers are already protected against double entries and dont care, if the same code runs again
-            }
+            // The list stays as it is while the disks and the server are read: cleared, every game would show
+            // "Install & Play" meanwhile, and one registered meanwhile would be lost
+            var shownBefore = InstallViewModel.Instance.InstalledGames.ToList();
             Dictionary<int, string> foundGames = new Dictionary<int, string>();
             InstallViewModel.Instance.InstalledGamesDuplicates.Clear();
             Game[]? games = await Task<Game[]>.Run(async () =>
@@ -131,30 +129,26 @@ namespace gamevault.UserControls
 
                     foreach (string dir in allDirectoriesFromRootDirectories)
                     {
-                        var dirInf = new DirectoryInfo(dir);
-                        if (dirInf.GetFiles().Length == 0 && dirInf.GetDirectories().Length == 0)
+                        // One folder gone meanwhile or not readable must not hide all the others
+                        try
                         {
-                            if (GetGameIdByDirectory(dir) == -1) continue;
-                            AddSystemFileWatcher(dir);
-                        }
-                        else
-                        {
-                            int id = GetGameIdByDirectory(dir);
-                            if (id == -1) continue;
-                            //if (InstallViewModel.Instance.InstalledGames.Where(x => x.Key.ID == id).Count() > 0)
-                            //    continue;
-                            if (!foundGames.ContainsKey(id))
+                            int id = GameIdOf(dir);
+                            if (id == -1)
+                                continue;
+                            if (!Directory.EnumerateFileSystemEntries(dir).Any())
+                            {
+                                AddSystemFileWatcher(dir);
+                            }
+                            else if (!foundGames.ContainsKey(id))
                             {
                                 foundGames.Add(id, dir);
                             }
-                            else
+                            else if (!InstallViewModel.Instance.InstalledGamesDuplicates.ContainsKey(id))
                             {
-                                if (!InstallViewModel.Instance.InstalledGamesDuplicates.ContainsKey(id))
-                                {
-                                    InstallViewModel.Instance.InstalledGamesDuplicates.Add(id, dir);
-                                }
+                                InstallViewModel.Instance.InstalledGamesDuplicates.Add(id, dir);
                             }
                         }
+                        catch (Exception ex) { Log.Ignored(ex); }
                     }
                     try
                     {
@@ -198,8 +192,10 @@ namespace gamevault.UserControls
                 }
                 return null;
             });
-            if (games != null)
+            // None found (no game folder left, nothing installed): the list is emptied, as it was cleared before
+            if (games != null || gamesRestored)
             {
+                games ??= Array.Empty<Game>();
                 ObservableCollection<KeyValuePair<Game, string>> TempInstalledGames = new ObservableCollection<KeyValuePair<Game, string>>();
                 for (int count = 0; count < foundGames.Count; count++)
                 {
@@ -229,6 +225,12 @@ namespace gamevault.UserControls
                         }
                     }
                     catch (Exception ignored) { Log.Ignored(ignored); }
+                }
+                // Registered while the disks were read (an installation that just finished): kept
+                foreach (KeyValuePair<Game, string> registered in InstallViewModel.Instance.InstalledGames.Except(shownBefore).ToList())
+                {
+                    if (!TempInstalledGames.Any(g => g.Key.ID == registered.Key.ID) && IsInstallation(registered.Value))
+                        TempInstalledGames.Add(registered);
                 }
                 InstallViewModel.Instance.InstalledGames = await SortInstalledGamesByLastPlayed(TempInstalledGames);
                 SetFilteredView();
@@ -293,8 +295,13 @@ namespace gamevault.UserControls
             // Called from the UI and from the restore running in the background
             lock (m_FileWatcherList)
             {
-                if (m_FileWatcherList.Any(x => x.Path == path))
-                    return;
+                // One left from a folder deleted since (a download deleted, a setup cancelled) sees nothing any
+                // more: replaced, else the game installed there again would never be registered
+                foreach (FileSystemWatcher old in m_FileWatcherList.Where(x => x.Path == path).ToList())
+                {
+                    m_FileWatcherList.Remove(old);
+                    old.Dispose();
+                }
                 var watcher = new FileSystemWatcher();
                 watcher.Path = path;
                 watcher.Filter = "*.*";
@@ -312,54 +319,52 @@ namespace gamevault.UserControls
             lock (m_FileWatcherList)
                 m_FileWatcherList.Remove(watcher);
             watcher.Dispose();
-            int id = GetGameIdByDirectory(dir);
-            if (id == -1)
-                return;
-
-            if (InstallViewModel.Instance.InstalledGames.Where(x => x.Key.ID == id).Count() > 0)
-                return;
-
-            try
-            {
-                Game? game = null;
-                if (LoginManager.Instance.IsLoggedIn())
-                {
-                    string result = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games/{id}");
-                    game = JsonSerializer.Deserialize<Game>(result);
-                }
-                else
-                {
-                    string compressedStringObject = Preferences.Get(id.ToString(), LoginManager.Instance.GetUserProfile().OfflineCache);
-                    if (compressedStringObject != string.Empty)
-                    {
-                        string decompressedObject = GameVault.Core.StringCompressor.Decompress(compressedStringObject);
-                        Game? deserializedObject = JsonSerializer.Deserialize<Game>(decompressedObject);
-                        game = deserializedObject;
-                    }
-                }
-
-                if (game != null)
-                {
-                    Dispatcher.UIThread.Invoke(delegate
-                    {
-                        InstallViewModel.Instance.InstalledGames.Insert(0, new KeyValuePair<Game, string>(game, dir));
-                        SetLastPlayedGame(game.ID);
-                    });
-                }
-            }
-            catch (Exception ignored) { Log.Ignored(ignored); }
+            try { await RegisterInstallationAsync(dir); }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
-        private int GetGameIdByDirectory(string dir)
+
+        /// <summary>
+        /// A game just installed in <paramref name="dir"/> joins the installed games (Play instead of Install &amp; Play):
+        /// the server's game, else the one cached for offline play, else its title from the folder's name.
+        /// </summary>
+        /// <param name="known">The game as the installation has it: the server is not asked again.</param>
+        public async Task RegisterInstallationAsync(string dir, Game? known = null)
         {
-            try
+            int id = GameIdOf(dir);
+            if (id == -1 || Dispatcher.UIThread.Invoke(() => InstallViewModel.Instance.InstalledGames.Any(x => x.Key.ID == id)))
+                return;
+            Game? game = known?.ID == id ? known : null;
+            if (game == null && LoginManager.Instance.IsLoggedIn())
             {
-                string dirName = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
-                string gameId = dirName.Substring(1, dirName.IndexOf(')') - 1);
-                int id = int.Parse(gameId);
-                return id;
+                try { game = JsonSerializer.Deserialize<Game>(await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/games/{id}")); }
+                catch (Exception ex) { Log.Ignored(ex); }// the server is busy: the game still counts as installed
             }
-            catch (Exception ignored) { Log.Ignored(ignored); }
-            return -1;
+            game ??= GetGamesFromOfflineCache(new Dictionary<int, string> { [id] = dir }).FirstOrDefault();
+            if (game == null)
+                return;
+            Dispatcher.UIThread.Invoke(delegate
+            {
+                // Checked again on the UI thread, where the list changes
+                if (InstallViewModel.Instance.InstalledGames.Any(x => x.Key.ID == id))
+                    return;
+                InstallViewModel.Instance.InstalledGames.Insert(0, new KeyValuePair<Game, string>(game, dir));
+                SetLastPlayedGame(game.ID);
+            });
+        }
+
+        /// <summary>A game's folder with something in it: an installation, not one waiting for it.</summary>
+        internal static bool IsInstallation(string dir)
+        {
+            try { return Directory.Exists(dir) && Directory.EnumerateFileSystemEntries(dir).Any(); }
+            catch (Exception ex) { Log.Ignored(ex); return false; }
+        }
+
+        /// <summary>The game's id from its folder's name, "(42)Title"; -1 when it is no game's folder.</summary>
+        internal static int GameIdOf(string dir)
+        {
+            string name = Path.GetFileName(Path.TrimEndingDirectorySeparator(dir));
+            int end = name.IndexOf(')');
+            return name.StartsWith('(') && end > 1 && int.TryParse(name.AsSpan(1, end - 1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int id) ? id : -1;
         }
         private void Hyperlink_RequestNavigate(object? sender, RoutedEventArgs e)
         {

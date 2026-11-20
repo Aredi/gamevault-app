@@ -28,7 +28,7 @@ namespace gamevault.UserControls
     public partial class GameDownloadUserControl : UserControl, IQueuedDownload
     {
         private DownloadSpeedCalculator downloadSpeedCalc { get; set; }
-        private GameDownloadViewModel ViewModel { get; set; }
+        internal GameDownloadViewModel ViewModel { get; private set; }
         private bool IsDownloadActive = false;
 
         private string m_DownloadPath { get; set; }
@@ -151,6 +151,8 @@ namespace gamevault.UserControls
             && ViewModel.InstallationStepperProgress is 0 or 1;
         /// <summary>The state shown in the download list (problem reports).</summary>
         public string StateText => ViewModel.State ?? "";
+        /// <summary>The download's numbers, for the living-room mode's screen of the downloads.</summary>
+        internal DownloadBytes Bytes { get; private set; }
         public string GameTitle => ViewModel.Game?.Title ?? "";
         /// <summary>Downloading, extracting or installing: its files must not be touched.</summary>
         public bool IsBusy() => IsDownloadActive || ViewModel.ExtractionUIVisibility || uiProgressRingInstall.IsActive;
@@ -180,10 +182,83 @@ namespace gamevault.UserControls
                 await Extract();// continues with the installation when it is done
                 return;
             }
+            await OpenExtractedDiscImages();
             if (ViewModel.Game?.Type == GameType.WINDOWS_SETUP)
                 await InstallSetupForPlay();
             else
                 await Install();
+        }
+
+        /// <summary>
+        /// An archive of disc images only (a .rar of an .iso): their files instead, so the setup inside them is
+        /// found. 0 when done, else 7-Zip's code.
+        /// </summary>
+        private async Task<int> OpenDiscImages(string directory)
+        {
+            foreach (string image in GameVault.Core.Library.DiscImages.ToOpen(Directory.GetFiles(directory, "*", SearchOption.AllDirectories)))
+            {
+                ViewModel.ExtractionInfo = Loc.F("Extracting the disc image {0}...", Path.GetFileName(image));
+                int code = await sevenZipHelper.ExtractArchive(image, Path.GetDirectoryName(image)!);
+                if (code != 0)
+                {
+                    Log.Info($"{ViewModel.Game?.Title}: the disc image {image} could not be extracted ({code}) {sevenZipHelper.LastError}");
+                    return code;
+                }
+                try { File.Delete(image); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+            return 0;
+        }
+
+        /// <summary>The passwords to try on an encrypted archive: the game's (set on its page), then the settings' one.</summary>
+        private async Task<List<string>> KnownPasswordsAsync()
+        {
+            var passwords = new List<string>();
+            try
+            {
+                if (ViewModel.Game?.ID is int id && await ArchivePasswordService.GetAsync(id) is { Length: > 0 } own)
+                    passwords.Add(own);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+            string settings = Preferences.Get(AppConfigKey.ExtractionPassword, LoginManager.Instance.GetUserProfile().UserConfigFile, true);
+            if (!string.IsNullOrEmpty(settings) && !passwords.Contains(settings))
+                passwords.Add(settings);
+            return passwords;
+        }
+
+        /// <summary>Extracted before the disc images were opened: opened now, before the installation.</summary>
+        private async Task OpenExtractedDiscImages()
+        {
+            string directory = Path.Combine(m_DownloadPath, "Extract");
+            if (Directory.Exists(directory) && GameVault.Core.Library.DiscImages.ToOpen(Directory.GetFiles(directory, "*", SearchOption.AllDirectories)).Count > 0)
+            {
+                string state = ViewModel.State;
+                ViewModel.State = "Extracting...";
+                ViewModel.ExtractionUIVisibility = true;
+                int code = await OpenDiscImages(directory);
+                ViewModel.ExtractionUIVisibility = false;
+                ViewModel.State = code == 0 ? state : "Extraction Failed";
+            }
+            GuessUndetectedType();
+        }
+
+        /// <summary>
+        /// A game the server could not type (its setup was inside a disc image): a setup when one is found among
+        /// its extracted files, as if the player had forced it.
+        /// </summary>
+        private void GuessUndetectedType()
+        {
+            string directory = Path.Combine(m_DownloadPath, "Extract");
+            if (ViewModel.Game?.Type != GameType.UNDETECTABLE || !Directory.Exists(directory))
+                return;
+            if (GameVault.Core.Library.DiscImages.Setup(Directory.GetFiles(directory, "*", SearchOption.AllDirectories)) is not string setup)
+                return;
+            Log.Info($"{ViewModel.Game.Title}: undetectable on the server, installed with its setup {setup}");
+            var game = ViewModel.Game;
+            game.Type = GameType.WINDOWS_SETUP;
+            ViewModel.Game = null;
+            ViewModel.Game = game;
+            isGameTypeForced = true;
         }
 
         /// <summary>
@@ -279,7 +354,10 @@ namespace gamevault.UserControls
             pausedBySchedule = true;
         }
 
-        private void StartQueuedNow_Click(object sender, RoutedEventArgs e)
+        private void StartQueuedNow_Click(object sender, RoutedEventArgs e) => StartNow();
+
+        /// <summary>Waiting in the queue: started now, past the limits (the button, the living-room mode).</summary>
+        internal void StartNow()
         {
             DownloadQueue.Remove(this);
             BypassesQueue = true;
@@ -384,7 +462,10 @@ namespace gamevault.UserControls
             downloadRetryTimer.Data = "error";
             RetryDownload();
         }
-        private void RetryDownload_Click(object sender, RoutedEventArgs e)
+        private void RetryDownload_Click(object sender, RoutedEventArgs e) => Retry();
+
+        /// <summary>Failed: tried again (the button, the living-room mode).</summary>
+        internal void Retry()
         {
             downloadRetryTimer?.Stop();
             downloadRetryTimer.Data = "";
@@ -456,23 +537,20 @@ namespace gamevault.UserControls
             Dispatcher.UIThread.Invoke(delegate
             {
                 bool isResume = resumePosition != -1;
-                var numerator = isResume ? currentBytesDownloaded : totalBytesDownloaded;
-                var denumirator = isResume ? totalFileSize - resumePosition : totalFileSize;
                 if (isResume)
                 {
                     ViewModel.IsDownloadResumed = true;
                 }
                 if (currentBytesDownloaded == 0)
                 {
-                    ViewModel.DownloadInfo = $"{FormatBytesHumanReadable(totalBytesDownloaded)}" + $" of {FormatBytesHumanReadable((double)totalFileSize)}";
+                    ViewModel.DownloadInfo = DownloadText.Line(totalBytesDownloaded, totalFileSize, 0);
                 }
                 else
                 {
                     downloadSpeedCalc.UpdateSpeed(currentBytesDownloaded);
-                    ViewModel.DownloadInfo = Loc.F("{0} - {1} of {2} | Time left: {3}", $"{FormatBytesHumanReadable(downloadSpeedCalc.GetCurrentSpeed(), 1, 1000)}/s",
-                        FormatBytesHumanReadable(totalBytesDownloaded), FormatBytesHumanReadable((double)totalFileSize),
-                        CalculateTimeLeft(denumirator, numerator, (DateTime.Now - startTime).TotalMilliseconds));
+                    ViewModel.DownloadInfo = DownloadText.Line(totalBytesDownloaded, totalFileSize, downloadSpeedCalc.GetCurrentSpeed());
                 }
+                Bytes = new DownloadBytes(totalBytesDownloaded, totalFileSize, currentBytesDownloaded == 0 ? 0 : downloadSpeedCalc.GetCurrentSpeed());
 
                 if (ViewModel.GameDownloadProgress == (int)progressPercentage)
                 {
@@ -538,9 +616,6 @@ namespace gamevault.UserControls
         private static string FormatBytesHumanReadable(double size, double tspan = 1, int baseVal = 1024) => GameSizeConverter.Text(size / tspan, baseVal);
 
         /// <summary>A speed near zero once gave seconds no TimeSpan holds: the download failed on it.</summary>
-        private string CalculateTimeLeft(long? totalFileSize, long totalBytesRead, double tspanMilliseconds) =>
-            GameVault.Core.Downloads.TimeLeft.Text((totalFileSize ?? 0) - totalBytesRead, downloadSpeedCalc.GetCurrentSpeed());
-
         private async void DeleteFile_Click(object sender, RoutedEventArgs e)
         {
             await DeleteFile(confirm: true);
@@ -604,7 +679,7 @@ namespace gamevault.UserControls
                 ViewModel.GameExtractionProgress = e.PercentageDone;
                 long totalBytesDownloaded = (Convert.ToInt64(ViewModel.Game.Size) / 100) * e.PercentageDone;
                 downloadSpeedCalc.UpdateSpeed(totalBytesDownloaded);
-                ViewModel.ExtractionInfo = Loc.F("{0} - {1} of {2} | Time left: {3}", $"{FormatBytesHumanReadable(totalBytesDownloaded, (DateTime.Now - startTime).TotalSeconds, 1000)}/s", FormatBytesHumanReadable(totalBytesDownloaded), FormatBytesHumanReadable(Convert.ToInt64(ViewModel.Game.Size)), CalculateTimeLeft(Convert.ToInt64(ViewModel.Game.Size), totalBytesDownloaded, (DateTime.Now - startTime).TotalMilliseconds));
+                ViewModel.ExtractionInfo = DownloadText.Line(totalBytesDownloaded, Convert.ToInt64(ViewModel.Game.Size), downloadSpeedCalc.GetCurrentSpeed());
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
@@ -833,7 +908,10 @@ namespace gamevault.UserControls
                 result = await sevenZipHelper.ExtractArchive(Path.Combine(m_DownloadPath, files[0].Name), Path.Combine(m_DownloadPath, "Extract"));
             }
             if (result == 0)
+                result = await OpenDiscImages(extractDirectory);
+            if (result == 0)
             {
+                GuessUndetectedType();
                 if (!File.Exists(Path.Combine(m_DownloadPath, "Extract", "gamevault-metadata")))
                 {
                     File.Create(Path.Combine(m_DownloadPath, "Extract", "gamevault-metadata")).Close();
@@ -921,24 +999,9 @@ namespace gamevault.UserControls
             }
         }
 
-        /// <summary>The passwords to try on an encrypted archive: the game's (set on its page), then the settings' one.</summary>
-        private async Task<List<string>> KnownPasswordsAsync()
+        private async void OpenInstallOptions_Click(object? sender, RoutedEventArgs e)
         {
-            var passwords = new List<string>();
-            try
-            {
-                if (ViewModel.Game?.ID is int id && await ArchivePasswordService.GetAsync(id) is { Length: > 0 } own)
-                    passwords.Add(own);
-            }
-            catch (Exception ex) { Log.Ignored(ex); }
-            string settings = Preferences.Get(AppConfigKey.ExtractionPassword, LoginManager.Instance.GetUserProfile().UserConfigFile, true);
-            if (!string.IsNullOrEmpty(settings) && !passwords.Contains(settings))
-                passwords.Add(settings);
-            return passwords;
-        }
-
-        private void OpenInstallOptions_Click(object? sender, RoutedEventArgs e)
-        {
+            await OpenExtractedDiscImages();
             uiInstallOptions.IsVisible = true;
             LoadSetupExecutables();
         }
@@ -996,6 +1059,11 @@ namespace gamevault.UserControls
                         ?? candidates.FirstOrDefault(kv => kv.Value.Replace('\\', '/').Contains(wanted, StringComparison.OrdinalIgnoreCase));
                     if (entry != null)
                         uiCbSetupExecutable.SelectedIndex = entry.Index;
+                }
+                // The one that looks like the installer ("setup.exe"), else the only one
+                else if (GameVault.Core.Library.DiscImages.Setup(allExecutables.Values) is string setup)
+                {
+                    uiCbSetupExecutable.SelectedIndex = allExecutables.Values.ToList().IndexOf(setup);
                 }
                 else if (allExecutables.Count == 1)
                 {
@@ -1061,7 +1129,11 @@ namespace gamevault.UserControls
                             Directory.Move(targedDir, Path.Combine(ViewModel.InstallPath, "Files"));
                         }
                     }
-                    catch { error = true; }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, $"Installing {ViewModel.Game?.Title} into {ViewModel.InstallPath}");
+                        error = true;
+                    }
                 });
                 uiBtnInstall.IsEnabled = false;
                 uiProgressRingInstall.IsActive = false;
@@ -1074,12 +1146,18 @@ namespace gamevault.UserControls
                 if (error)
                 {
                     MainWindowViewModel.Instance.AppBarText = Loc.T("Something wen't wrong during installation");
+                    // Not recorded as installed: an update stays offered, and the cause is in the log
+                    PlayWhenInstalled = false;
+                    uiBtnExtract.IsEnabled = true;
+                    return;
                 }
                 else
                 {
                     MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully installed '{0}'", ViewModel.Game.Title);
                     ViewModel.InstallationStepperProgress = 2;
                     ViewModel.State = "Installed";
+                    // Registered now, not only when the folder's watcher sees it (it may never)
+                    await MainWindowViewModel.Instance.Library.GetGameInstalls().RegisterInstallationAsync(ViewModel.InstallPath, ViewModel.Game);
                     // The files of this version: an update replaces them and keeps everything else (saves)
                     try { GameVault.Core.Library.InstallManifest.Write(ViewModel.InstallPath, GameVault.Core.Library.InstallManifest.List(Path.Combine(ViewModel.InstallPath, "Files"))); }
                     catch (Exception ex) { Log.Ignored(ex); }
@@ -1153,6 +1231,7 @@ namespace gamevault.UserControls
                             return;
                         }
                         ViewModel.InstallationStepperProgress = 2;
+                        await MainWindowViewModel.Instance.Library.GetGameInstalls().RegisterInstallationAsync(ViewModel.InstallPath, ViewModel.Game);
                         if (InstallViewModel.Instance.InstalledGames.Any(g => g.Key.ID == ViewModel.Game.ID))
                         {
                             ViewModel.InstallationStepperProgress = 2;

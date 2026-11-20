@@ -85,6 +85,12 @@ namespace gamevault.UserControls
             if (!loaded)
             {
                 loaded = true;
+                // The page arrives: its art settles, then the cover, the words and the rest come up one after another
+                Motion.Settle(uiBackground);
+                Motion.Enter(uiCoverFrame, 30);
+                Motion.Enter(uiHeaderText, 90);
+                Motion.Enter(uiStats, 140);
+                Motion.Enter(uiBody, 190, fromY: 24);
 
                 if (ViewModel.Game == null)
                 {
@@ -259,6 +265,18 @@ namespace gamevault.UserControls
                     ViewModel.SetAccent(uiCover.AccentColor);
             };
             SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width);
+            uiHeroArt.RenderTransform = heroDepth;
+            uiPageScroll.ScrollChanged += (_, _) => FollowScroll();
+        }
+        /// <summary>Moved by the scroll: the art scrolls slower than the page, as if it were further away.</summary>
+        private readonly TranslateTransform heroDepth = new();
+        private void FollowScroll()
+        {
+            double offset = uiPageScroll.Offset.Y;
+            // Past the art it is out of sight: nothing to move
+            double depth = Math.Min(offset, uiHeroArt.Bounds.Height) * 0.4;
+            if (Math.Abs(heroDepth.Y - depth) >= 0.5)
+                heroDepth.Y = depth;
         }
         private bool? narrowLayout;
         private void ApplyWidth(double width)

@@ -1,8 +1,9 @@
 using GameVault.Uploader;
 
 var builder = WebApplication.CreateSlimBuilder(args);
-// Archives of several GB arrive in chunks; one chunk may still be big
-builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = UploadStore.MaxChunkSize + 1024);
+// 1 MB for any request, read before its sign-in is checked; the routes that take more (upload chunks, saves,
+// pictures, reports) raise it for themselves
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = Endpoints.MaxBody);
 var options = UploaderOptions.From(builder.Configuration);
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<UploadStore>();

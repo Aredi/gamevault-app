@@ -81,6 +81,33 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void ApplyUpdate_AFileRenamedInCaseOnly_IsNotDeletedWhereNamesIgnoreCase()
+        {
+            // On Linux the two names are two files: the old one stays only because the comparison ignores case, as on Windows and macOS
+            Write("installed/Data/Game.pak", "old");
+            Write("new/data/game.pak", "new");
+
+            InstallManifest.ApplyUpdate(Path.Combine(root, "new"), Path.Combine(root, "installed"), new[] { "Data/Game.pak" }, null, StringComparer.OrdinalIgnoreCase);
+
+            Assert.True(File.Exists(Path.Combine(root, "installed/Data/Game.pak")));
+        }
+
+        [Fact]
+        public void ApplyUpdate_ANewFileWhereAnOldFolderWas_AndTheReverse()
+        {
+            Write("installed/data/level.pak", "old");
+            Write("installed/music", "old");
+            Write("new/data", "now a file");
+            Write("new/music/theme.ogg", "now a folder");
+
+            var files = InstallManifest.ApplyUpdate(Path.Combine(root, "new"), Path.Combine(root, "installed"), new[] { "data/level.pak", "music" });
+
+            Assert.Equal(new[] { "data", "music/theme.ogg" }, files);
+            Assert.Equal("now a file", File.ReadAllText(Path.Combine(root, "installed/data")));
+            Assert.Equal("now a folder", File.ReadAllText(Path.Combine(root, "installed/music/theme.ogg")));
+        }
+
+        [Fact]
         public void Manifest_RoundTrips()
         {
             Write("inst/Files/a/b.txt");

@@ -244,12 +244,23 @@ namespace gamevault.Windows
 
 
         #region Popups
+        private bool popupShown;
         private void InitPopupLayer()
         {
             MainWindowViewModel.Instance.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(MainWindowViewModel.Popup))
+                {
                     LayoutPopup();
+                    // Opened (not one replacing another): the page darkens and the panel grows to its size
+                    bool open = MainWindowViewModel.Instance.Popup != null;
+                    if (open && !popupShown)
+                    {
+                        Motion.FadeIn(uiPopupLayer);
+                        Motion.Settle(uiPopupFrame, fromScale: 0.96, durationMs: 260);
+                    }
+                    popupShown = open;
+                }
             };
             SizeChanged += (_, _) => LayoutPopup();
         }

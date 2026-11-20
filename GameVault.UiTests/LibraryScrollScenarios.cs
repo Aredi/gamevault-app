@@ -162,6 +162,9 @@ namespace GameVault.UiTests
 
             var card = grid.Children.First(c => c.DataContext is Game && c.TranslatePoint(new Avalonia.Point(0, 0), scroll) is { } p && p.Y > 0 && p.Y < scroll.Viewport.Height - 300);
             Assert.DoesNotContain(card.GetVisualDescendants(), v => v is Panel p && p.Classes.Contains("hoverOnly"));
+            // From outside the card: a pointer left there by the tests before would enter nothing
+            session.Window.MouseMove(new Avalonia.Point(1, 1));
+            Dispatcher.UIThread.RunJobs();
             var center = card.TranslatePoint(new Avalonia.Point(card.Bounds.Width / 2, 60), session.Window)!.Value;
             session.Window.MouseMove(center);
             Dispatcher.UIThread.RunJobs();

@@ -24,11 +24,14 @@ namespace GameVault.Uploader
         /// </summary>
         internal static async Task SeedAsync(int userId, HttpRequest request, ChallengeStore challenges, GameVaultProxy gameVault, RetroPlayerStore players, CancellationToken ct)
         {
-            if (!challenges.Enabled || challenges.IsSeeded(userId))
+            if (!challenges.Enabled || challenges.IsSeeded(userId) || !challenges.SeedDue(userId))
                 return;
             List<int>? played = await gameVault.PlayedGamesAsync(request.Headers.Authorization.ToString(), userId, ct);
             if (played != null)
                 challenges.Seed(userId, played.Select(ChallengeStore.LibraryKey).Concat(players.Get(userId).Plays.Select(play => play.Key)));
+            else if (!ct.IsCancellationRequested)
+                // Not asked again at each minute played while the server does not answer
+                challenges.SeedFailed(userId);
         }
 
         private static object? Shown(ChallengeStore.Rank? rank) => rank == null ? null : new { userId = rank.UserId, username = rank.Username, value = rank.Value, doneAt = rank.DoneAt };

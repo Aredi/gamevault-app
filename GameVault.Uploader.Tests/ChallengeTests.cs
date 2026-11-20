@@ -173,6 +173,58 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task TheChallengeSavedAgain_KeepsWhoFinishedFirst()
+        {
+            Challenges();
+            var admin = Client("admin");
+            var player = Client("user");
+            var other = Client("p10");
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/challenges/week", new { kind = "hours", goal = 15 })).StatusCode);
+            await PlayAsync(player, 9, 15);
+            await PlayAsync(other, 9, 15);
+            JsonElement before = (await ChallengesAsync(player)).GetProperty("board");
+
+            challengeTime = challengeTime.AddHours(2);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/challenges/week", new { kind = "hours", goal = 15 })).StatusCode);
+            JsonElement after = (await ChallengesAsync(player)).GetProperty("board");
+            Assert.Equal(before.EnumerateArray().Select(r => (r.GetProperty("userId").GetInt32(), r.GetProperty("doneAt").GetDateTime())),
+                after.EnumerateArray().Select(r => (r.GetProperty("userId").GetInt32(), r.GetProperty("doneAt").GetDateTime())));
+            // Another challenge: done now, not when the old one was
+            challengeTime = challengeTime.AddHours(1);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/challenges/week", new { kind = "games", goal = 1 })).StatusCode);
+            Assert.All((await ChallengesAsync(player)).GetProperty("board").EnumerateArray(), r => Assert.Equal(challengeTime, r.GetProperty("doneAt").GetDateTime()));
+            // A goal they no longer reach takes it back
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/challenges/week", new { kind = "games", goal = 5 })).StatusCode);
+            Assert.All((await ChallengesAsync(player)).GetProperty("board").EnumerateArray(), r => Assert.Equal(JsonValueKind.Null, r.GetProperty("doneAt").ValueKind));
+        }
+
+        [Fact]
+        public async Task OneMinute_CountsAtMost8GamesOfAPlayer()
+        {
+            Challenges();
+            var admin = Client("admin");
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/challenges/week", new { kind = "hours", goal = 300 })).StatusCode);
+            challengeTime = challengeTime.AddMinutes(1);
+            Assert.True((await player.PostAsJsonAsync("/challenges/me/plays", new { gameIds = Enumerable.Range(100, 8) })).IsSuccessStatusCode);
+            Assert.True((await player.PostAsJsonAsync("/challenges/me/plays", new { gameIds = Enumerable.Range(200, 8) })).IsSuccessStatusCode);
+            Assert.Equal(8, (await ChallengesAsync(player)).GetProperty("board")[0].GetProperty("value").GetInt32());
+            // The next minute counts again
+            challengeTime = challengeTime.AddMinutes(1);
+            Assert.True((await player.PostAsJsonAsync("/challenges/me/plays", new { gameIds = Enumerable.Range(200, 8) })).IsSuccessStatusCode);
+            Assert.Equal(16, (await ChallengesAsync(player)).GetProperty("board")[0].GetProperty("value").GetInt32());
+        }
+
+        [Fact]
+        public async Task ThePastGamesOfAPlayer_AreNotAskedAgainAtEachMinute_WhenTheServerFails()
+        {
+            Challenges();
+            gameVault.ProgressesDown = true;
+            await PlayAsync(Client("p20"), 9, 3);
+            Assert.Equal(1, gameVault.ProgressCalls);
+        }
+
+        [Fact]
         public void EachKindOfChallenge_CountsItsOwnWay()
         {
             var entry = new ChallengeStore.Entry

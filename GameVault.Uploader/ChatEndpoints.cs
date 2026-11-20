@@ -255,10 +255,12 @@ namespace GameVault.Uploader
                 byte[] data = picture.ToArray();
                 if (ChatStore.PictureType(data) is not string type)
                     return Results.Json(new { error = "Only PNG, JPEG, GIF and WebP pictures can be sent." }, statusCode: StatusCodes.Status415UnsupportedMediaType);
+                if (!chat.TakePictureBytes(player.Id, data.Length))
+                    return Results.Json(new { error = $"At most {chat.PicturesPerDay >> 20} MB of pictures a day: send more tomorrow." }, statusCode: StatusCodes.Status429TooManyRequests);
                 ChatStore.Message message = chat.Add(conversation, player.Id, player.User, caption, type, data, replyTo);
                 await TellAsync(hub, conversation, new { type = "message", message = Shown(message) });
                 return Results.Json(Shown(message));
-            });
+            }).TakesUpTo(ChatStore.MaxPicture + 1024);
 
             app.MapGet("/chat/conversations/{id}/pictures/{name}", async (string id, string name, HttpRequest request, AdminCheck users, ChatStore chat, CancellationToken ct) =>
             {

@@ -56,12 +56,6 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Margin" Value="8,0" />
         </Style>
-        <Style Selector="ProgressBar.download">
-            <Setter Property="MinHeight" Value="6" />
-            <Setter Property="Height" Value="6" />
-            <Setter Property="CornerRadius" Value="3" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Line}" />
-        </Style>
         <Style Selector="TextBlock.info">
             <Setter Property="FontSize" Value="12.5" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />

@@ -62,10 +62,9 @@ namespace gamevault.Helper
 
             foreach (string dir in allDirectoriesFromRootDirectories)
             {
-                var dirInf = new DirectoryInfo(dir);
-                if (dirInf.GetFiles().Length != 0 || dirInf.GetDirectories().Length != 0)
+                if (gamevault.UserControls.InstallUserControl.IsInstallation(dir))
                 {
-                    int id = GetGameIdByDirectory(dir);
+                    int id = gamevault.UserControls.InstallUserControl.GameIdOf(dir);
                     if (id == -1) continue;
                     if (foundGames.Where(x => x.Key == id).Count() > 0)
                         continue;
@@ -157,7 +156,7 @@ namespace gamevault.Helper
                     if (gamesToCountUp.Contains(game.Key))
                         continue;
                     bool belongs = path != null
-                        ? path.Contains(game.Value)
+                        ? IsInside(path, game.Value)
                         : ExecutablesOf(game).Contains(process.ProcessName);
                     if (belongs && !ContainsValueFromIgnoreList(path != null ? Path.GetFileNameWithoutExtension(path) : process.ProcessName))
                         gamesToCountUp.Add(game.Key);
@@ -293,18 +292,13 @@ namespace gamevault.Helper
                 sendingOffline.Release();
             }
         }
-        private int GetGameIdByDirectory(string dir)
-        {
-            try
-            {
-                string dirName = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
-                string gameId = dirName.Substring(1, dirName.IndexOf(')') - 1);
-                int id = int.Parse(gameId);
-                return id;
-            }
-            catch (Exception ignored) { Log.Ignored(ignored); }
-            return -1;
-        }
+        /// <summary>
+        /// A program of the game's folder: its path starts with the folder, whatever the case on Windows and macOS
+        /// ("c:\test" set in the settings, "C:\test\..." run), and not a folder of the same name with more after it.
+        /// </summary>
+        internal static bool IsInside(string program, string folder) =>
+            program.StartsWith(Path.TrimEndingDirectorySeparator(folder) + Path.DirectorySeparatorChar,
+                OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
         private string[] GetAllOfflineCacheKeys()
         {
             if (File.Exists(LoginManager.Instance.GetUserProfile().OfflineProgress))

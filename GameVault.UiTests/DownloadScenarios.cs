@@ -32,6 +32,47 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AGameInstalledAgain_AfterItsDownloadWasDeleted_IsPlayable_NotDownloadedOnceMore()
+        {
+            if (!OperatingSystem.IsLinux())
+                return;// the game is a shell script
+            var session = await TestSession.GetAsync();
+            Game game = session.Server.AddGame(118, "Survivors Again", GameType.LINUX_PORTABLE, TestSession.LinuxGameArchive(200_000), "Survivors Again (L_P).tar.gz");
+            // A first download, deleted: its empty installation folder went, its watcher stayed and sees nothing any more
+            string folder = session.InstallFolder(game);
+            Directory.CreateDirectory(folder);
+            MainWindowViewModel.Instance.Library.GetGameInstalls().AddSystemFileWatcher(folder);
+            Directory.Delete(folder);
+
+            await MainWindowViewModel.Instance.Downloads.InstallAndPlay(game);
+
+            string started = Path.Combine(folder, "Files", "started");
+            await TestSession.WaitUntil(() => File.Exists(started), Timeout, "the game to start");
+            Assert.Contains(InstallViewModel.Instance.InstalledGames, g => g.Key.ID == game.ID);
+        }
+
+        [AvaloniaFact]
+        public async Task AnArchiveOfADiscImage_IsOpened_AndItsSetupOffered_ThoughTheServerCouldNotTypeIt()
+        {
+            if (!OperatingSystem.IsLinux())
+                return;// extracted with tar, then 7-Zip
+            var session = await TestSession.GetAsync();
+            // As Queens Domain: a .tar.gz of "Disc Game/Disc Game.iso", the iso holding setup.exe, autorun.inf and data
+            byte[] archive = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "disc-game.tar.gz"));
+            Game game = session.Server.AddGame(9150, "Disc Game", GameType.UNDETECTABLE, archive, "Disc Game.tar.gz");
+
+            await MainWindowViewModel.Instance.Downloads.InstallAndPlay(game);
+
+            string extracted = Path.Combine(session.DownloadFolder(game), "Extract", "Disc Game");
+            await TestSession.WaitUntil(() => File.Exists(Path.Combine(extracted, "setup.exe")), Timeout, "the disc image to be opened");
+            Assert.False(File.Exists(Path.Combine(extracted, "Disc Game.iso")));
+            GameDownloadUserControl download = Download(game.ID);
+            await TestSession.WaitUntil(() => download.ViewModel.Game.Type == GameType.WINDOWS_SETUP && download.uiInstallOptions.IsVisible, Timeout, "the setup to be offered");
+            var chosen = (KeyValuePair<string, string>)download.uiCbSetupExecutable.SelectedItem!;
+            Assert.Equal("setup.exe", Path.GetFileName(chosen.Value));
+        }
+
+        [AvaloniaFact]
         public async Task AnArchiveWithAPassword_IsExtractedWithTheOneSetOnTheGamesPage_WithoutAsking()
         {
             var session = await TestSession.GetAsync();

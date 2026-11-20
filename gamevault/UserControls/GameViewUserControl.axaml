@@ -311,7 +311,7 @@
                     </Grid>
 
                     <!-- Play data -->
-                    <Border BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1">
+                    <Border x:Name="uiStats" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1">
                         <WrapPanel>
                             <StackPanel Classes="stat">
                                 <TextBlock Classes="label" Text="{l:T 'PLAYTIME'}" />

@@ -99,7 +99,51 @@ namespace gamevault.UserControls
             // After the first search: it clears the image queue, the rows below must not lose their covers
             await LoadShowcase();
             _ = PrepareCardsAhead();
+            if (!cascaded && IsEffectivelyVisible && ViewModel.GameCards.Count > 0)
+            {
+                cascaded = true;
+                // Once the rows have their cards
+                Dispatcher.UIThread.Post(CascadeIn, DispatcherPriority.Background);
+            }
         }
+
+        private bool cascaded;
+
+        /// <summary>
+        /// The first time the library is shown: each row's first cards rise one after another, from the top. Once per
+        /// start of the launcher, only the cards in sight, and they only slide: a fading card is drawn apart at each
+        /// frame, which measured 3 ms a frame more on a CPU renderer, sliding costs nothing measurable.
+        /// </summary>
+        private void CascadeIn()
+        {
+            // The banner fades its own art in as it loads; faded whole it would be drawn apart, the largest thing of the page
+            int rowDelay = 60;
+            var rows = new[]
+            {
+                uiGameInstalls.FindControl<ScrollViewer>("uiInstalledGamesScroll")?.Content as ItemsControl,
+                uiRecentScroll.Content as ItemsControl,
+            };
+            foreach (ItemsControl? row in rows)
+            {
+                if (row == null || !row.IsEffectivelyVisible || row.ItemCount == 0)
+                    continue;
+                // Few at once and short: each fading card is drawn apart while it fades
+                for (int i = 0; i < Math.Min(row.ItemCount, 6); i++)
+                    if (InSight(row.ContainerFromIndex(i)))
+                        Motion.Enter(row.ContainerFromIndex(i), rowDelay + i * 50, fromY: 16, durationMs: 300, fade: false);
+                rowDelay += 160;
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                if (uiServerGamesItemsControl.TryGetElement(i) is Control card && InSight(card))
+                    Motion.Enter(card, rowDelay + i * 40, fromY: 16, durationMs: 300, fade: false);
+            }
+        }
+
+        /// <summary>On the screen now: below the fold nobody sees it come, it is not animated.</summary>
+        private bool InSight(Control? control) =>
+            control is { IsEffectivelyVisible: true } && control.TranslatePoint(default, uiMainScrollBar) is Point at
+            && at.Y < uiMainScrollBar.Viewport.Height && at.X < uiMainScrollBar.Viewport.Width;
 
         private bool cardsPrepared;
 

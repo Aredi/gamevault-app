@@ -159,6 +159,23 @@ namespace GameVault.UiTests
             await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();
             await MainWindowViewModel.Instance.Library.LoadLibrary();
             Step("library loaded");
+            if (Environment.GetEnvironmentVariable("MOTION_FILM") == "1")
+            {
+                // The rows coming in as at the launcher's start, once the covers are there
+                await Settle(3000);
+                typeof(LibraryUserControl).GetField("cascaded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(MainWindowViewModel.Instance.Library, false);
+                await MainWindowViewModel.Instance.Library.LoadLibrary();
+                await Film(session, output, "film-library", 14);
+                // The cost of a frame: still, then while the rows come in
+                await Settle(1500);
+                await MeasureFrames(session, output, "library still");
+                typeof(LibraryUserControl).GetField("cascaded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(MainWindowViewModel.Instance.Library, false);
+                await MainWindowViewModel.Instance.Library.LoadLibrary();
+                await MeasureFrames(session, output, "library cascade");
+                var bannerLibrary = MainWindowViewModel.Instance.Library;
+                bannerLibrary.Model.HeroIndex = (bannerLibrary.Model.HeroIndex + 1) % bannerLibrary.Model.HeroItems.Count;
+                await MeasureFrames(session, output, "banner change");
+            }
             await Settle(4000);
             Capture(session, output, "01-library");
             if (Environment.GetEnvironmentVariable("SHOWCASE_GALLERY_ONLY") == "1")
@@ -206,6 +223,23 @@ namespace GameVault.UiTests
             MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(games[0]));
             await Settle(4000);
             Capture(session, output, "04-game-page");
+            if (Environment.GetEnvironmentVariable("MOTION_FILM") == "1")
+            {
+                // The page coming in, frame by frame (its images already loaded once)
+                await MeasureFrames(session, output, "game page still");
+                MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(games[0]));
+                await MeasureFrames(session, output, "game page coming in");
+                MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(games[0]));
+                await Film(session, output, "film-game-page");
+                // The featured game changing in the library
+                MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+                await Settle(1500);
+                var filmed = MainWindowViewModel.Instance.Library;
+                filmed.Model.HeroIndex = (filmed.Model.HeroIndex + 1) % filmed.Model.HeroItems.Count;
+                await Film(session, output, "film-hero");
+                MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(games[0]));
+                await Settle(2000);
+            }
             var page = (Control)MainWindowViewModel.Instance.ActiveControl!;
             var pageScroll = page.FindControl<ScrollViewer>("uiPageScroll");
             if (pageScroll != null)
@@ -259,6 +293,20 @@ namespace GameVault.UiTests
             MainWindowViewModel.Instance.OpenPopup(new NewsPopup());
             await Settle(4000);
             Capture(session, output, "16-news", (Control)MainWindowViewModel.Instance.Popup!);
+            if (Environment.GetEnvironmentVariable("MOTION_FILM") == "1")
+            {
+                // Opened again: the page darkens, the panel grows to its size (its content already loaded once)
+                MainWindowViewModel.Instance.ClosePopup();
+                await Settle(500);
+                await MeasureFrames(session, output, "popup still");
+                MainWindowViewModel.Instance.OpenPopup(new NewsPopup());
+                await MeasureFrames(session, output, "popup opening");
+                MainWindowViewModel.Instance.ClosePopup();
+                await Settle(500);
+                MainWindowViewModel.Instance.OpenPopup(new NewsPopup());
+                await Film(session, output, "film-popup", 6);
+                await Settle(2000);
+            }
             MainWindowViewModel.Instance.ClosePopup();
 
             // Community: the profile of the signed in player, customized like a Steam profile
@@ -531,6 +579,40 @@ namespace GameVault.UiTests
         {
             session.Window.Width = width;
             session.Window.Height = height;
+        }
+
+        /// <summary>
+        /// What a frame costs to draw (Skia on the CPU, the slowest case), at 60 frames a second for
+        /// <paramref name="frames"/> frames: written to perf.log as the average and the slowest, in milliseconds.
+        /// </summary>
+        private static async Task MeasureFrames(TestSession session, string folder, string name, int frames = 60)
+        {
+            var times = new List<double>();
+            for (int i = 0; i < frames; i++)
+            {
+                Dispatcher.UIThread.RunJobs();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                // A whole frame drawn now, synchronously
+                long start = System.Diagnostics.Stopwatch.GetTimestamp();
+                using (session.Window.CaptureRenderedFrame()) { }
+                times.Add(System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+                await Task.Delay(16);
+            }
+            times.Sort();
+            File.AppendAllText(Path.Combine(folder, "perf.log"), FormattableString.Invariant($"{name}: average {times.Average():0.0} ms, median {times[times.Count / 2]:0.0} ms, slowest {times[^1]:0.0} ms\n"));
+        }
+
+        /// <summary>Frames of an animation, every 70 ms: film-xx-0.png, film-xx-1.png...</summary>
+        private static async Task Film(TestSession session, string folder, string name, int frames = 10)
+        {
+            for (int i = 0; i < frames; i++)
+            {
+                Dispatcher.UIThread.RunJobs();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                session.Window.CaptureRenderedFrame()!.Save(Path.Combine(folder, $"{name}-{i}.png"));
+                await Task.Delay(70);
+            }
         }
 
         /// <summary>Lets images download, decode and fade in.</summary>

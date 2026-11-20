@@ -77,5 +77,43 @@ namespace GameVault.Core.Tests
             Assert.Equal(new[] { 4 }, StorageCleanup.FindInstallations(new[] { Path.Combine(root, "lib") }).Select(i => i.Id));
         }
 
+        [Fact]
+        public void Scan_WithALibraryFolderUnplugged_SelectsNoPrefixNorTool()
+        {
+            MakeFile("lib/GameVault/Installations/(4)Hades/Files/Hades.exe", 10);
+            MakeFile("prefixes/9/drive_c/save", 100);
+            MakeFile("tools/wine-11.19/bin/wine", 60);
+            var inputs = new CleanupInputs
+            {
+                RootDirectories = new[] { Path.Combine(root, "lib") },
+                PrefixesDirectory = Path.Combine(root, "prefixes"),
+                ManagedToolsDirectory = Path.Combine(root, "tools"),
+            };
+            Assert.All(StorageCleanup.Scan(inputs), c => Assert.True(c.SelectedByDefault));
+
+            // Game 9 may be installed on the other disk
+            var unplugged = StorageCleanup.Scan(new CleanupInputs
+            {
+                RootDirectories = new[] { Path.Combine(root, "lib"), Path.Combine(root, "usb") },
+                PrefixesDirectory = inputs.PrefixesDirectory,
+                ManagedToolsDirectory = inputs.ManagedToolsDirectory,
+            });
+            Assert.Equal(2, unplugged.Count);
+            Assert.All(unplugged, c => Assert.False(c.SelectedByDefault));
+        }
+
+        [Fact]
+        public void Scan_AFolderWhoseIdIsNoNumber_IsSkipped()
+        {
+            MakeFile("lib/GameVault/Downloads/(99999999999)Old/a.zip", 10);
+            MakeFile("lib/GameVault/Downloads/(١٢)Arabic digits/a.zip", 10);
+            MakeFile("lib/GameVault/Downloads/(2)Celeste/a.zip", 10);
+            MakeFile("lib/GameVault/Installations/(99999999999)Old/a.exe", 10);
+
+            var candidates = StorageCleanup.Scan(new CleanupInputs { RootDirectories = new[] { Path.Combine(root, "lib") } });
+
+            Assert.Equal("Celeste", Assert.Single(candidates).Title);
+        }
+
     }
 }

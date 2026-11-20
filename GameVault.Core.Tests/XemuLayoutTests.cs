@@ -106,6 +106,37 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void AConversionStoppedAfterTheFirstBlock_IsKnownDamaged_AndDiscarded()
+        {
+            string folder = Path.Combine(Path.GetTempPath(), $"xbox-disc-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(Path.Combine(folder, "disc"));
+            try
+            {
+                string redump = Path.Combine(folder, "disc", "Halo.iso");
+                using (var file = new FileStream(redump, FileMode.CreateNew))
+                {
+                    file.SetLength(XboxDisc.VideoPartition + 9 * 1024 * 1024);
+                    file.Position = XboxDisc.VideoPartition + 32 * 2048;
+                    file.Write("MICROSOFT*XBOX*MEDIA"u8);
+                }
+                string other = Path.Combine(folder, "notes.txt");
+                File.WriteAllText(other, "kept");
+
+                // The app closed (here: an error) once the game's first block was written over the video partition
+                Assert.Throws<IOException>(() => XboxDisc.ToXiso(redump, _ => throw new IOException("stopped")));
+
+                Assert.False(XboxDisc.IsRedump(redump));// looks converted, but is not
+                Assert.True(XboxDisc.IsInterrupted(redump));
+                Assert.True(XboxDisc.DiscardInterrupted(folder));
+                Assert.False(File.Exists(redump));
+                Assert.False(XboxDisc.IsInterrupted(redump));
+                Assert.True(File.Exists(other));
+                Assert.False(XboxDisc.DiscardInterrupted(folder));
+            }
+            finally { Directory.Delete(folder, true); }
+        }
+
+        [Fact]
         public void AFullDump_BecomesItsGamesPartition_AnXisoStays()
         {
             string folder = Path.Combine(Path.GetTempPath(), $"xbox-disc-{Guid.NewGuid():N}");
@@ -134,6 +165,7 @@ namespace GameVault.Core.Tests
                 Assert.Equal(end, xiso[^end.Length..]);
                 Assert.Equal(1.0, progress[^1]);
                 Assert.False(XboxDisc.IsRedump(redump));
+                Assert.False(XboxDisc.IsInterrupted(redump));
 
                 // A small file is no dump
                 string other = Path.Combine(folder, "notes.iso");

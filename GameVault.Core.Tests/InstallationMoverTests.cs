@@ -96,11 +96,55 @@ namespace GameVault.Core.Tests
             string leftover = Path.Combine(Path.GetDirectoryName(game)!, InstallationMover.WorkPrefix + "(7)Old");
             Directory.CreateDirectory(Path.Combine(leftover, "data"));
             File.WriteAllText(Path.Combine(leftover, "data", "big.pak"), "x");
+            // The move finished on the other disk
+            Directory.CreateDirectory(Path.Combine(root, "b", "GameVault", "Installations", "(7)Old"));
 
-            InstallationMover.RemoveLeftovers(new[] { Path.Combine(root, "a"), Path.Combine(root, "unplugged") });
+            InstallationMover.RemoveLeftovers(new[] { Path.Combine(root, "a"), Path.Combine(root, "b"), Path.Combine(root, "unplugged") });
 
             Assert.False(Directory.Exists(leftover));
             AssertGameAt(game);
+        }
+
+        [Fact]
+        public void RemoveLeftovers_AMoveStoppedBetweenItsRenames_GetsTheGameBack()
+        {
+            string game = MakeGame();
+            string away = Path.Combine(Path.GetDirectoryName(game)!, InstallationMover.WorkPrefix + "(42)Celeste");
+            Directory.Move(game, away);
+
+            InstallationMover.RemoveLeftovers(new[] { Path.Combine(root, "a"), Path.Combine(root, "unplugged") });
+
+            AssertGameAt(game);
+            Assert.False(Directory.Exists(away));
+        }
+
+        [Fact]
+        public void RemoveLeftovers_ACopyStoppedHalfWay_IsDeleted_EvenWithItsOriginalOnADiskUnpluggedNow()
+        {
+            string copy = Path.Combine(root, "b", "GameVault", "Installations", InstallationMover.WorkPrefix + "(42)Celeste");
+            Directory.CreateDirectory(copy);
+            File.WriteAllText(Path.Combine(copy, "half.bin"), "x");
+            File.WriteAllText(Path.Combine(copy, InstallationMover.PartialMarker), "");
+
+            InstallationMover.RemoveLeftovers(new[] { Path.Combine(root, "b") });
+
+            Assert.False(Directory.Exists(copy));
+            Assert.False(Directory.Exists(Path.Combine(root, "b", "GameVault", "Installations", "(42)Celeste")));
+        }
+
+        [Fact]
+        public async Task CopyThenSwap_TheCopyCannotTakeItsName_TheGameStaysWhereItWas()
+        {
+            string game = MakeGame();
+            string installations = Path.Combine(root, "b", "GameVault", "Installations");
+            // Appeared during the copy: the last rename fails
+            Directory.CreateDirectory(Path.Combine(installations, "(42)Celeste", "other"));
+
+            await Assert.ThrowsAnyAsync<IOException>(() =>
+                InstallationMover.CopyThenSwapAsync(game, installations, "(42)Celeste", null, CancellationToken.None));
+
+            AssertGameAt(game);
+            Assert.False(Directory.Exists(Path.Combine(Path.GetDirectoryName(game)!, InstallationMover.WorkPrefix + "(42)Celeste")));
         }
 
         [Fact]

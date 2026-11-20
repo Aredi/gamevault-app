@@ -11,9 +11,21 @@ namespace GameVault.Uploader
     public sealed partial class RetroPlayerStore
     {
         private const int MaxFavorites = 2000;
+        /// <summary>The games kept per player, the last played: a profile and the activity never show older ones.</summary>
+        public const int KeptPlays = 500;
+        /// <summary>What a player's first play since the service started may say: one part of a long session.</summary>
+        public const int FirstPlayMinutes = 1440;
 
         private readonly string directory;
         private readonly object writing = new();
+        /// <summary>
+        /// Per player, the time their plays so far fill up to: a play counts no more minutes than went by since then
+        /// (and one more), so a long session sent in parts still counts whole, but no one plays more than the clock.
+        /// </summary>
+        private readonly Dictionary<int, DateTime> playedUpTo = new();
+        /// <summary>All the players' files, read again at most every 30 s (or after a write) for the activity of all.</summary>
+        private List<(int Id, Player Player)>? everyone;
+        private DateTime everyoneAt;
 
         public RetroPlayerStore(UploaderOptions options, ILogger<RetroPlayerStore> logger)
         {
@@ -95,14 +107,45 @@ namespace GameVault.Uploader
             string file = FileOf(userId), part = file + ".part";
             File.WriteAllText(part, JsonSerializer.Serialize(player));
             File.Move(part, file, overwrite: true);
+            everyone = null;
+        }
+
+        private List<(int Id, Player Player)> Everyone()
+        {
+            lock (writing)
+            {
+                if (everyone == null || DateTime.UtcNow - everyoneAt > TimeSpan.FromSeconds(30))
+                {
+                    everyone = Directory.EnumerateFiles(directory, "*.json")
+                        .Select(file => int.TryParse(Path.GetFileNameWithoutExtension(file), out int userId) ? userId : (int?)null)
+                        .OfType<int>().Select(userId => (userId, Get(userId))).ToList();
+                    everyoneAt = DateTime.UtcNow;
+                }
+                return everyone;
+            }
         }
 
         /// <summary>A game was played for some minutes: added to its total, and it becomes the last played.</summary>
-        public void AddPlay(int userId, string username, Play played)
+        /// <returns>The minutes counted: fewer than said when the clock says they could not have been played.</returns>
+        public int AddPlay(int userId, string username, Play played)
         {
             lock (writing)
             {
                 Player player = Get(userId);
+                DateTime now = DateTime.UtcNow;
+                if (!playedUpTo.TryGetValue(userId, out DateTime upTo))
+                {
+                    // Since the service started: a session kept by the client while it was away may predate the last play
+                    upTo = now.AddMinutes(-FirstPlayMinutes);
+                    if (player.Plays.Count > 0 && player.Plays.Max(p => p.LastPlayed) < upTo)
+                        upTo = player.Plays.Max(p => p.LastPlayed);
+                }
+                // A week offline may come at once, not the months before
+                upTo = upTo < now.AddDays(-7) ? now.AddDays(-7) : upTo;
+                played.Minutes = Math.Clamp((int)(now - upTo).TotalMinutes + 1, 0, played.Minutes);
+                playedUpTo[userId] = upTo.AddMinutes(played.Minutes);
+                if (played.Minutes == 0)
+                    return 0;
                 player.Username = username;
                 Play? known = player.Plays.FirstOrDefault(p => p.Key == played.Key);
                 if (known == null)
@@ -114,8 +157,11 @@ namespace GameVault.Uploader
                     known.Cover = played.Cover;
                     known.Minutes += played.Minutes;
                 }
-                known.LastPlayed = DateTime.UtcNow;
+                known.LastPlayed = now;
+                if (player.Plays.Count > KeptPlays)
+                    player.Plays = player.Plays.OrderByDescending(p => p.LastPlayed).Take(KeptPlays).ToList();
                 Write(userId, player);
+                return played.Minutes;
             }
         }
 
@@ -141,6 +187,9 @@ namespace GameVault.Uploader
                     player.Achievements.Remove(key);
                 else
                     player.Achievements[key] = game;
+                // As many games as the plays kept, the ones earned in last
+                if (player.Achievements.Count > KeptPlays)
+                    player.Achievements = player.Achievements.OrderByDescending(a => a.Value.Unlocks.Select(u => u.Date).DefaultIfEmpty().Max()).Take(KeptPlays).ToDictionary();
                 Write(userId, player);
             }
         }
@@ -150,15 +199,8 @@ namespace GameVault.Uploader
         {
             if (!Enabled)
                 return new();
-            var all = new List<UnlockActivity>();
-            foreach (string file in Directory.EnumerateFiles(directory, "*.json"))
-            {
-                if (!int.TryParse(Path.GetFileNameWithoutExtension(file), out int userId))
-                    continue;
-                Player player = Get(userId);
-                all.AddRange(player.Achievements.SelectMany(a => a.Value.Unlocks.Select(u => new UnlockActivity(userId, player.Username, a.Key, a.Value, u))));
-            }
-            return all.OrderByDescending(a => a.Unlock.Date).Take(count).ToList();
+            return Everyone().SelectMany(one => one.Player.Achievements.SelectMany(a => a.Value.Unlocks.Select(u => new UnlockActivity(one.Id, one.Player.Username, a.Key, a.Value, u))))
+                .OrderByDescending(a => a.Unlock.Date).Take(count).ToList();
         }
 
         /// <summary>Who played a game, the last one first (the game's page shows the friends who played it).</summary>
@@ -169,15 +211,8 @@ namespace GameVault.Uploader
         {
             if (!Enabled)
                 return new();
-            var all = new List<Activity>();
-            foreach (string file in Directory.EnumerateFiles(directory, "*.json"))
-            {
-                if (!int.TryParse(Path.GetFileNameWithoutExtension(file), out int userId))
-                    continue;
-                Player player = Get(userId);
-                all.AddRange(player.Plays.Select(p => new Activity(userId, player.Username, p)));
-            }
-            return all.OrderByDescending(a => a.Play.LastPlayed).Take(count).ToList();
+            return Everyone().SelectMany(one => one.Player.Plays.Select(p => new Activity(one.Id, one.Player.Username, p)))
+                .OrderByDescending(a => a.Play.LastPlayed).Take(count).ToList();
         }
     }
 }
