@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using GameVault.Core;
 using gamevault.Helper;
 using gamevault.Localization;
@@ -16,13 +17,19 @@ namespace gamevault.UserControls
     public partial class ActivityUserControl : UserControl
     {
         internal List<ActivityFeedItem> Items { get; private set; } = new();
+        internal List<SocialRecommendation> Recommendations { get; private set; } = new();
 
         public ActivityUserControl()
         {
             InitializeComponent();
             // Fresh each time the page is opened (the page host attaches the page it shows)
+            // A friend's recommendation, or a reaction on the player's line: shown at once
+            SocialService.RecommendationReceived += received => { if (IsAttached) _ = LoadAsync(); };
+            SocialService.ReactionReceived += (_, _, _) => { if (IsAttached) _ = LoadAsync(); };
+            DetachedFromVisualTree += (_, _) => IsAttached = false;
             AttachedToVisualTree += (_, _) =>
             {
+                IsAttached = true;
                 Focus();
                 uiLoading.IsActive = uiLoading.IsVisible = Items.Count == 0;
                 _ = LoadAsync();
@@ -30,8 +37,13 @@ namespace gamevault.UserControls
         }
 
         /// <summary>The games played lately by all the players.</summary>
+        private int loading;
+
         internal async Task LoadAsync()
         {
+            // Each load makes its own list; a newer load wins (the page opened, then a reaction told)
+            int mine = ++loading;
+            var items = new List<ActivityFeedItem>();
             try
             {
                 string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/progresses?sortBy=updated_at:DESC&limit=30");
@@ -54,7 +66,7 @@ namespace gamevault.UserControls
                     }
                     catch (Exception ex) { Log.Ignored(ex); }
                 }
-                Items = recent
+                items = recent
                     .Select(p =>
                     {
                         if (games.TryGetValue(p.Game!.ID, out Game? whole))
@@ -63,7 +75,11 @@ namespace gamevault.UserControls
                         string text = string.Equals(p.State, "COMPLETED", StringComparison.OrdinalIgnoreCase)
                             ? Loc.F("{0} completed {1}", p.User!.Username, game)
                             : Loc.F("{0} played {1}", p.User!.Username, game);
-                        return new ActivityFeedItem(p.User, p.Game, text, Converter.RelativeDate.FormatMoment(p.LastPlayedAt!.Value), p.LastPlayedAt!.Value.ToUniversalTime());
+                        return new ActivityFeedItem(p.User, p.Game, text, Converter.RelativeDate.FormatMoment(p.LastPlayedAt!.Value), p.LastPlayedAt!.Value.ToUniversalTime())
+                        {
+                            Key = SocialService.ItemKey("pc", p.User.ID, p.Game.ID.ToString(), p.LastPlayedAt!.Value),
+                            Owner = p.User.ID,
+                        };
                     })
                     .ToList();
                 // The retro games played lately (kept by the SanctuaryVault service), among them by date
@@ -71,32 +87,118 @@ namespace gamevault.UserControls
                 {
                     var retro = (await RetroLibrary.ActivityAsync()).Select(a => new ActivityFeedItem(null, null,
                         Loc.F("{0} played {1}", a.Username, $"{a.Name} ({a.PlatformName})"), Converter.RelativeDate.FormatMoment(a.LastPlayed), a.LastPlayed.ToUniversalTime(),
-                        RetroLibrary.GameOf(a.RomId, a.Platform, a.PlatformName, a.Name, a.Cover)));
-                    Items = Items.Concat(retro).OrderByDescending(i => i.At).Take(30).ToList();
+                        RetroLibrary.GameOf(a.RomId, a.Platform, a.PlatformName, a.Name, a.Cover))
+                    {
+                        Key = SocialService.ItemKey("retro", a.UserId, $"{a.Platform}:{a.RomId}", a.LastPlayed),
+                        Owner = a.UserId,
+                    });
+                    items = items.Concat(retro).OrderByDescending(i => i.At).Take(30).ToList();
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
                 // The achievements earned: one line per player, game and day (a session can earn a dozen)
                 try
                 {
                     var unlocks = (await RetroLibrary.UnlocksAsync())
-                        .GroupBy(u => (u.UserId, u.Platform, u.RomId, u.Date.ToLocalTime().Date))
+                        .GroupBy(u => (u.UserId, u.Platform, u.RomId, u.Date.ToUniversalTime().Date))
                         .Select(g =>
                         {
                             var last = g.MaxBy(u => u.Date)!;
+                            // The day of the line is a UTC one, as its key: the same on every PC, whatever its time zone
                             string game = $"{last.Name} ({last.PlatformName})";
                             string text = g.Count() == 1 ? Loc.F("{0} earned \"{1}\" in {2}", last.Username, last.Title, game)
                                 : Loc.F("{0} earned {1} achievements in {2}", last.Username, g.Count(), game);
                             return new ActivityFeedItem(null, null, text, Converter.RelativeDate.FormatMoment(last.Date), last.Date.ToUniversalTime(),
-                                RetroLibrary.GameOf(last.RomId, last.Platform, last.PlatformName, last.Name, last.Cover));
+                                RetroLibrary.GameOf(last.RomId, last.Platform, last.PlatformName, last.Name, last.Cover))
+                            {
+                                Key = SocialService.ItemKey("ach", last.UserId, $"{last.Platform}:{last.RomId}", last.Date),
+                                Owner = last.UserId,
+                            };
                         });
-                    Items = Items.Concat(unlocks).OrderByDescending(i => i.At).Take(30).ToList();
+                    items = items.Concat(unlocks).OrderByDescending(i => i.At).Take(30).ToList();
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
             }
             catch (Exception ex) { Log.Ignored(ex); }
+            // The reactions on these lines, and the games the friends recommend
+            var reactions = await SocialService.ReactionsAsync(items.Where(i => i.Key != null).Select(i => i.Key!));
+            int me = LoginManager.Instance.GetCurrentUser()?.ID ?? 0;
+            foreach (ActivityFeedItem item in items)
+                if (item.Key != null && reactions.TryGetValue(item.Key, out var on))
+                    item.SetReactions(on, me);
+            var recommendations = await SocialService.MyRecommendationsAsync();
+            if (mine != loading)
+                return;
+            Items = items;
+            Recommendations = recommendations;
+            uiRecommendations.ItemsSource = Recommendations;
+            uiRecommendationsSection.IsVisible = Recommendations.Count > 0;
             uiItems.ItemsSource = Items;
             uiEmpty.IsVisible = Items.Count == 0;
             uiLoading.IsActive = uiLoading.IsVisible = false;
+        }
+
+        private bool IsAttached;
+
+        /// <summary>A chip "🔥 2": the player's reaction changed to it, or taken away when it was theirs.</summary>
+        private async void Reaction_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is Control control && control.DataContext is ReactionChip chip && LineOf(control) is ActivityFeedItem item)
+                await ReactAsync(item, chip.Emoji);
+        }
+
+        /// <summary>"+": the reactions offered.</summary>
+        private void AddReaction_Click(object? sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || LineOf(button) is not ActivityFeedItem item)
+                return;
+            var menu = new MenuFlyout();
+            foreach (string emoji in SocialService.Emojis)
+            {
+                var choice = new MenuItem { Header = emoji };
+                choice.Click += async (_, _) => await ReactAsync(item, emoji);
+                menu.Items.Add(choice);
+            }
+            menu.ShowAt(button);
+        }
+
+        internal static async Task ReactAsync(ActivityFeedItem item, string emoji)
+        {
+            if (!item.CanReact)
+                return;
+            try { item.SetReactions(await SocialService.ReactAsync(item.Key!, item.MyEmoji == emoji ? null : emoji), LoginManager.Instance.GetCurrentUser()?.ID ?? 0); }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        private static ActivityFeedItem? LineOf(Control control) =>
+            control.GetVisualAncestors().OfType<Control>().Prepend(control).Select(c => c.DataContext).OfType<ActivityFeedItem>().FirstOrDefault();
+
+        private async void Recommendation_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is SocialRecommendation recommendation)
+                await OpenAsync(recommendation.Game);
+        }
+
+        private async void Dismiss_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not SocialRecommendation recommendation)
+                return;
+            try
+            {
+                await SocialService.DismissAsync(recommendation);
+                Recommendations = Recommendations.Where(r => r != recommendation).ToList();
+                uiRecommendations.ItemsSource = Recommendations;
+                uiRecommendationsSection.IsVisible = Recommendations.Count > 0;
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        /// <summary>The game's page: to play it, or to install it.</summary>
+        internal static async Task OpenAsync(ChatGame game)
+        {
+            if (game.IsRetro)
+                await MainWindowViewModel.Instance.Retro.ShowGameAsync(game.Platform ?? "", game.Id);
+            else
+                MainWindowViewModel.Instance.SetActiveControl(new GameViewUserControl(new Game { ID = game.Id }));
         }
 
         private void Item_Click(object? sender, RoutedEventArgs e)

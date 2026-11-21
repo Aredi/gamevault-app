@@ -108,6 +108,10 @@ namespace gamevault.Helper
         public string PlaytimeText => MinutesPlayed > 0
             ? (string)new Converter.GameTimeConverter().Convert(MinutesPlayed, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture)!
             : "—";
+        /// <summary>Under its card in the library's "Continue playing": "PlayStation · 3 h · yesterday".</summary>
+        [JsonIgnore]
+        public string ContinueInfo => string.Join(" · ", new[] { Platform?.Name, MinutesPlayed > 0 ? PlaytimeText : null,
+            RetroLibrary.LastPlayedOf(this) is DateTime last ? Converter.RelativeDate.Format(last) : null }.Where(p => !string.IsNullOrEmpty(p)));
         [JsonIgnore]
         public bool IsFavorite
         {
@@ -121,6 +125,7 @@ namespace gamevault.Helper
             OnPropertyChanged(nameof(MinutesPlayed));
             OnPropertyChanged(nameof(PlaytimeText));
             OnPropertyChanged(nameof(IsFavorite));
+            OnPropertyChanged(nameof(ContinueInfo));
         }
 
         [JsonIgnore]

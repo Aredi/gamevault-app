@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.ReviewsPanel" IsVisible="False">
+    <UserControl.Styles>
+        <Style Selector="ToggleButton.star">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="2,0" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="Content" Value="☆" />
+        </Style>
+        <Style Selector="ToggleButton.star:checked">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
+            <Setter Property="Content" Value="★" />
+        </Style>
+        <Style Selector="ToggleButton.star:checked /template/ ContentPresenter, ToggleButton.star:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+    </UserControl.Styles>
+    <!-- "Players' reviews": the player's own (stars and a word), then the others' -->
+    <StackPanel Spacing="12">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="sectionTitle" Text="{l:T 'Reviews of the players'}" VerticalAlignment="Center" />
+            <TextBlock x:Name="uiSummary" Classes="muted" FontSize="13" VerticalAlignment="Center" />
+        </StackPanel>
+        <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" Padding="16,12">
+            <StackPanel Spacing="8">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Text="{l:T 'Your review'}" />
+                <StackPanel x:Name="uiStars" Orientation="Horizontal">
+                    <ToggleButton Classes="star" Tag="1" Click="Star_Click" />
+                    <ToggleButton Classes="star" Tag="2" Click="Star_Click" />
+                    <ToggleButton Classes="star" Tag="3" Click="Star_Click" />
+                    <ToggleButton Classes="star" Tag="4" Click="Star_Click" />
+                    <ToggleButton Classes="star" Tag="5" Click="Star_Click" />
+                </StackPanel>
+                <TextBox x:Name="uiText" MaxLength="800" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60" Watermark="{l:T 'What you thought of it (optional)'}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="uiPublish" Classes="action small" Click="Publish_Click" Content="{l:T 'Publish'}" />
+                    <Button x:Name="uiRemove" Classes="ghost small" Click="Remove_Click" Content="{l:T 'Remove my review'}" IsVisible="False" />
+                    <TextBlock x:Name="uiStatus" Classes="muted" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <ItemsControl x:Name="uiReviews">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Spacing="10" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="local:ReviewRow">
+                    <StackPanel Spacing="3">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Text="{Binding Name}" />
+                            <TextBlock Foreground="{DynamicResource Brush.Warning}" FontSize="14" VerticalAlignment="Center" Text="{Binding Stars}" />
+                            <TextBlock Classes="muted" FontSize="12" VerticalAlignment="Center" Text="{Binding When}" />
+                            <Button Classes="link" VerticalAlignment="Center" FontSize="12" Content="{l:T 'Remove'}" IsVisible="{Binding CanRemove}" Click="RemoveOther_Click" />
+                        </StackPanel>
+                        <TextBlock FontSize="14" TextWrapping="Wrap" Text="{Binding Text}" IsVisible="{Binding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

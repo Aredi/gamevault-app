@@ -254,12 +254,15 @@ namespace gamevault.ViewModels
                     // Sorted by GameVault from the user's own play records, not by the server
                     {"Last Played", LastPlayedSort },
                     {"My Playtime", MyPlaytimeSort },
+                    // The reviews the players wrote on the games' pages, kept by the SanctuaryVault service
+                    {"Players' rating", PlayersRatingSort },
                 };
                 return dict;
             }
         }
         public const string LastPlayedSort = "gv:last_played";
         public const string MyPlaytimeSort = "gv:my_playtime";
+        public const string PlayersRatingSort = "gv:players_rating";
 
         public Dictionary<string, PlayStatusFilter> PlayStatusValues { get; } = new()
         {

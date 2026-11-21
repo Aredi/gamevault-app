@@ -242,5 +242,37 @@ namespace gamevault.ViewModels
     }
 
     /// <param name="Retro">A retro game (from RomM) instead of a game of the library.</param>
-    internal sealed record ActivityFeedItem(User? User, Game? Game, string Text, string When, DateTime At = default, Helper.RetroGame? Retro = null);
+    internal sealed class ActivityFeedItem(User? User, Game? Game, string Text, string When, DateTime At = default, Helper.RetroGame? Retro = null) : ViewModelBase
+    {
+        public User? User { get; } = User;
+        public Game? Game { get; } = Game;
+        public string Text { get; } = Text;
+        public string When { get; } = When;
+        public DateTime At { get; } = At;
+        public Helper.RetroGame? Retro { get; } = Retro;
+
+        /// <summary>The line as every PC names it (see <see cref="Helper.SocialService.ItemKey"/>); null: no reactions on it.</summary>
+        public string? Key { get; init; }
+        /// <summary>The player the line is about: no reaction from them on it.</summary>
+        public int Owner { get; init; }
+        public bool CanReact => Key != null && Owner != (Helper.LoginManager.Instance.GetCurrentUser()?.ID ?? 0);
+
+        private List<ReactionChip> reactions = new();
+        public List<ReactionChip> Reactions { get => reactions; private set { reactions = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasReactions)); OnPropertyChanged(nameof(MyEmoji)); } }
+        public bool HasReactions => reactions.Count > 0;
+        public string? MyEmoji => reactions.FirstOrDefault(r => r.Mine)?.Emoji;
+
+        /// <summary>The reactions grouped by emoji, in the order offered.</summary>
+        public void SetReactions(IEnumerable<Helper.SocialReaction> all, int me) =>
+            Reactions = all.GroupBy(r => r.Emoji)
+                .OrderBy(g => Helper.SocialService.Emojis.ToList().IndexOf(g.Key))
+                .Select(g => new ReactionChip(g.Key, g.Count(), g.Any(r => r.UserId == me), string.Join(", ", g.Select(r => r.Username))))
+                .ToList();
+    }
+
+    /// <summary>"🔥 3" under a line of the activity; its tooltip says who.</summary>
+    internal sealed record ReactionChip(string Emoji, int Count, bool Mine, string Names)
+    {
+        public string Text => $"{Emoji} {Count}";
+    }
 }

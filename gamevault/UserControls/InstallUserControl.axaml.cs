@@ -45,9 +45,16 @@ namespace gamevault.UserControls
             InstallViewModel.Instance.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(InstallViewModel.InstalledGames))
+                {
                     ObserveInstalledGames();
+                    // The games found again after a sign-in: the retro ones too, with their sessions
+                    _ = LookForRetroGamesAsync(loadPlays: true);
+                }
+                else if (e.PropertyName == nameof(InstallViewModel.PlayRecordsVersion))
+                    ScheduleContinue();
             };
             ObserveInstalledGames();
+            WatchRetroGames();
             Loaded += UserControl_Loaded;
         }
 
@@ -396,7 +403,7 @@ namespace gamevault.UserControls
         private void SetFilteredView()
         {
             var view = new FilteredCollectionView<KeyValuePair<Game, string>>(InstallViewModel.Instance.InstalledGames);
-            ((System.Collections.Specialized.INotifyCollectionChanged)view).CollectionChanged += (_, _) => InstallViewModel.Instance.VisibleInstalledCount = view.Count;
+            ((System.Collections.Specialized.INotifyCollectionChanged)view).CollectionChanged += (_, _) => ScheduleContinue();
             InstallViewModel.Instance.InstalledGamesFilter = view;
             ApplyFilter();
         }
@@ -405,10 +412,14 @@ namespace gamevault.UserControls
         {
             var view = InstallViewModel.Instance.InstalledGamesFilter;
             if (view == null)
+            {
+                // No PC game yet: the retro ones still follow the search
+                RebuildContinue();
                 return;
+            }
             string text = searchText;
             view.Filter = string.IsNullOrEmpty(text) ? null : item => ((KeyValuePair<Game, string>)item).Key?.Title?.Contains(text, StringComparison.OrdinalIgnoreCase) == true;
-            InstallViewModel.Instance.VisibleInstalledCount = view.Count;
+            RebuildContinue();
         }
 
         private void ScrollPrevious_Click(object? sender, RoutedEventArgs e) => ScrollRow(-1);

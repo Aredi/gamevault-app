@@ -47,33 +47,13 @@ namespace gamevault.Helper
         }
         private async Task TrackRunningGamesAsync()
         {
-            //string installationPath = Path.Combine(SettingsViewModel.Instance.RootPath, "GameVault\\Installations");
-
             if (SettingsViewModel.Instance.RootDirectories.Count == 0)
                 return;
-
-            List<string> allDirectoriesFromRootDirectories = new List<string>();
-            foreach (DirectoryEntry dirEntry in SettingsViewModel.Instance.RootDirectories)
-            {
-                if (Directory.Exists(Path.Combine(dirEntry.Uri, "GameVault", "Installations")))
-                    allDirectoriesFromRootDirectories.AddRange(Directory.GetDirectories(Path.Combine(dirEntry.Uri, "GameVault", "Installations")));
-            }
-            Dictionary<int, string> foundGames = new Dictionary<int, string>();
-
-            foreach (string dir in allDirectoriesFromRootDirectories)
-            {
-                if (gamevault.UserControls.InstallUserControl.IsInstallation(dir))
-                {
-                    int id = gamevault.UserControls.InstallUserControl.GameIdOf(dir);
-                    if (id == -1) continue;
-                    if (foundGames.Where(x => x.Key == id).Count() > 0)
-                        continue;
-                    foundGames.Add(id, dir);
-                }
-            }
-            List<int> gamesToCountUp = OperatingSystem.IsWindows()
-                ? FindRunningGamesWindows(foundGames)
-                : FindRunningGamesLinux(foundGames);
+            Dictionary<int, string> foundGames = InstalledFolders();
+            List<int> gamesToCountUp = Running(foundGames);
+            if (gamesToCountUp.Count > 0)
+                GameCaptures.PcSeen(gamesToCountUp[0]);
+            GameCaptures.PcRunning(gamesToCountUp.Count > 0);
             // Online or not, Discord shows the game being played
             Avalonia.Threading.Dispatcher.UIThread.Post(() => DiscordHelper.Instance.SyncGameWithDiscordPresence(gamesToCountUp, foundGames));
             // The other players see what is played
@@ -119,6 +99,33 @@ namespace gamevault.Helper
                 catch (Exception ex) { Log.Ignored(ex); }
             }
         }
+        /// <summary>The installed games by id, in their folder.</summary>
+        private static Dictionary<int, string> InstalledFolders()
+        {
+            var foundGames = new Dictionary<int, string>();
+            foreach (DirectoryEntry dirEntry in SettingsViewModel.Instance.RootDirectories.ToList())
+            {
+                string installations = Path.Combine(dirEntry.Uri, "GameVault", "Installations");
+                if (!Directory.Exists(installations))
+                    continue;
+                foreach (string dir in Directory.GetDirectories(installations))
+                {
+                    if (!gamevault.UserControls.InstallUserControl.IsInstallation(dir))
+                        continue;
+                    int id = gamevault.UserControls.InstallUserControl.GameIdOf(dir);
+                    if (id != -1)
+                        foundGames.TryAdd(id, dir);
+                }
+            }
+            return foundGames;
+        }
+
+        private static List<int> Running(Dictionary<int, string> foundGames) =>
+            OperatingSystem.IsWindows() ? FindRunningGamesWindows(foundGames) : FindRunningGamesLinux(foundGames);
+
+        /// <summary>The installed PC games running now (a capture is taken: whose is it).</summary>
+        internal static List<int> RunningGames() => Running(InstalledFolders());
+
         /// <summary>A program of the game installed in <paramref name="installation"/> is running.</summary>
         internal static bool IsRunning(int gameId, string installation)
         {

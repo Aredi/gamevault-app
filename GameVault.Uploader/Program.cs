@@ -24,6 +24,7 @@ builder.Services.AddSingleton<ChatHub>();
 builder.Services.AddSingleton<ChallengeStore>();
 builder.Services.AddSingleton<RetroPresenceStore>();
 builder.Services.AddSingleton<PlayerStatusStore>();
+builder.Services.AddSingleton<SocialStore>();
 builder.Services.AddHttpClient<AdminCheck>(client =>
 {
     client.BaseAddress = new Uri(options.GameVaultUrl.TrimEnd('/') + "/");
@@ -85,6 +86,7 @@ app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSecond
 app.MapUploadEndpoints();
 app.MapChatEndpoints();
 app.MapChallengeEndpoints();
+app.MapSocialEndpoints();
 app.Logger.LogInformation("GameVault Uploader {Version}: files in {Files}, profiles in {Profiles}, users checked by {Server}", UploaderOptions.Version, options.FilesDirectory, options.ProfilesDirectory, options.GameVaultUrl);
 _ = app.Services.GetRequiredService<ProfileStore>();// says at once whether profiles are kept
 _ = app.Services.GetRequiredService<SaveStore>();

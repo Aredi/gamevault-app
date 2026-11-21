@@ -160,18 +160,31 @@ namespace GameVault.UiTests
             }
             Assert.Equal(prepared, grid.Children.Count);
 
-            var card = grid.Children.First(c => c.DataContext is Game && c.TranslatePoint(new Avalonia.Point(0, 0), scroll) is { } p && p.Y > 0 && p.Y < scroll.Viewport.Height - 300);
-            // The cards are used again, with their actions, after the tests before pointed at them: as one never pointed at
-            foreach (Panel lift in card.GetVisualDescendants().OfType<Panel>().Where(p => p.Classes.Contains("lift")).ToList())
-                lift.Children.RemoveAll(lift.Children.Where(c => c.Classes.Contains("hoverOnly")).ToList());
-            Assert.DoesNotContain(card.GetVisualDescendants(), v => v is Panel p && p.Classes.Contains("hoverOnly"));
-            // From outside the card: a pointer left there by the tests before would enter nothing
-            session.Window.MouseMove(new Avalonia.Point(1, 1));
-            Dispatcher.UIThread.RunJobs();
-            var center = card.TranslatePoint(new Avalonia.Point(card.Bounds.Width / 2, 60), session.Window)!.Value;
-            session.Window.MouseMove(center);
-            Dispatcher.UIThread.RunJobs();
-            var actions = card.GetVisualDescendants().OfType<Panel>().Single(p => p.Classes.Contains("hoverOnly"));
+            // The row "Continue playing" above can come meanwhile (the retro games played by the tests before): the
+            // page moves down, the pointer is then on another card; pointed at again
+            Panel? actions = null;
+            for (int attempt = 0; attempt < 3 && actions == null; attempt++)
+            {
+                // The rows above the grid (Continue playing, Recently added) change its place: the page is scrolled to it
+                var top = grid.Children.Where(c => c.DataContext is Game).Select(c => c.TranslatePoint(new Avalonia.Point(0, 0), scroll)?.Y ?? double.MaxValue).Min();
+                scroll.Offset = new Avalonia.Vector(0, Math.Max(0, scroll.Offset.Y + top - 100));
+                Dispatcher.UIThread.RunJobs();
+                var card = grid.Children.FirstOrDefault(c => c.DataContext is Game && c.TranslatePoint(new Avalonia.Point(0, 0), scroll) is { } p && p.Y > 0 && p.Y < scroll.Viewport.Height - 300);
+                Assert.True(card != null, $"no card in sight: offset {scroll.Offset.Y}, extent {scroll.Extent.Height}, viewport {scroll.Viewport.Height}, cards at "
+                    + string.Join(" ", grid.Children.Where(c => c.DataContext is Game).Select(c => c.TranslatePoint(new Avalonia.Point(0, 0), scroll)?.Y.ToString("0") ?? "?").Take(30)));
+                // The cards are used again, with their actions, after the tests before pointed at them: as one never pointed at
+                foreach (Panel lift in card.GetVisualDescendants().OfType<Panel>().Where(p => p.Classes.Contains("lift")).ToList())
+                    lift.Children.RemoveAll(lift.Children.Where(c => c.Classes.Contains("hoverOnly")).ToList());
+                Assert.DoesNotContain(card.GetVisualDescendants(), v => v is Panel p && p.Classes.Contains("hoverOnly"));
+                // From outside the card: a pointer left there by the tests before would enter nothing
+                session.Window.MouseMove(new Avalonia.Point(1, 1));
+                Dispatcher.UIThread.RunJobs();
+                var center = card.TranslatePoint(new Avalonia.Point(card.Bounds.Width / 2, 60), session.Window)!.Value;
+                session.Window.MouseMove(center);
+                Dispatcher.UIThread.RunJobs();
+                actions = card.GetVisualDescendants().OfType<Panel>().SingleOrDefault(p => p.Classes.Contains("hoverOnly"));
+            }
+            Assert.NotNull(actions);
             Assert.Contains(actions.GetVisualDescendants(), v => v is Avalonia.Controls.Primitives.ToggleButton t && t.Classes.Contains("bookmark") && t.IsChecked == false);
             Assert.Contains(actions.GetVisualDescendants(), v => v is Button b && b.Width == 46 && b.Background is Avalonia.Media.ISolidColorBrush);
             session.Window.MouseMove(new Avalonia.Point(1, 1));

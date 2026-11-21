@@ -34,6 +34,7 @@ namespace GameVault.Core.Retro
         }
         private string Nand => Path.Combine(UserDirectory, "nand");
         public string KeysDirectory => Path.Combine(UserDirectory, "keys");
+        public override string ScreenshotsDirectory => Path.Combine(UserDirectory, "screenshots");
         public const string KeysFile = "prod.keys", TitleKeysFile = "title.keys";
         public string FirmwareDirectory => Path.Combine(Nand, "system", "Contents", "registered");
         public override bool HasFirmware => File.Exists(Path.Combine(KeysDirectory, KeysFile))

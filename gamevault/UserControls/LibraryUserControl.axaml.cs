@@ -262,8 +262,12 @@ namespace gamevault.UserControls
             {
                 idFilter = LibraryQuery.IdFilter(collectionIds, playStatus, playedIds);
             }
-            string serverSort = sortByPlay ? "sort_title:ASC" : $"{gameSortByFilter}:{gameOrderByFilter}";
-            string filterUrl = @$"{SettingsViewModel.Instance.ServerUrl}/api/games?search={Uri.EscapeDataString(inputTimer.Data ?? "")}&sortBy={serverSort}&limit={(sortByPlay ? -1 : 50)}";
+            // By the players' reviews: the whole list, ordered here (the GameVault server does not know them)
+            bool sortByReviews = gameSortByFilter == LibraryViewModel.PlayersRatingSort;
+            Task<Dictionary<string, SocialRating>>? ratings = sortByReviews ? SocialService.RatingsAsync() : null;
+            bool ordersHere = sortByPlay || sortByReviews;
+            string serverSort = ordersHere ? "sort_title:ASC" : $"{gameSortByFilter}:{gameOrderByFilter}";
+            string filterUrl = @$"{SettingsViewModel.Instance.ServerUrl}/api/games?search={Uri.EscapeDataString(inputTimer.Data ?? "")}&sortBy={serverSort}&limit={(ordersHere ? -1 : 50)}";
             filterUrl = ApplyFilter(filterUrl) + idFilter;
 
             PaginatedData<Game>? gameResult = await GetGamesData(filterUrl);
@@ -273,6 +277,15 @@ namespace gamevault.UserControls
             {
                 var position = playOrder.Select((id, index) => (id, index)).ToDictionary(p => p.id, p => p.index);
                 gameResult.Data = gameResult.Data.OrderBy(g => position.TryGetValue(g.ID, out int index) ? index : int.MaxValue).ToArray();
+                gameResult.Links.Next = null;
+            }
+            if (gameResult?.Data != null && ratings != null)
+            {
+                Dictionary<string, SocialRating> all = await ratings;
+                if (currentSearchToken != searchCancellationToken)
+                    return;
+                gameResult.Data = LibraryQuery.OrderByPlayersRating(gameResult.Data,
+                    g => all.TryGetValue(SocialService.GameKey(g), out SocialRating? r) ? (r.Stars, r.Count) : null, ascending: gameOrderByFilter == "ASC").ToArray();
                 gameResult.Links.Next = null;
             }
 

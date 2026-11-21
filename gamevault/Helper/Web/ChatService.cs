@@ -234,6 +234,11 @@ namespace gamevault.Helper
             [JsonPropertyName("conversationId")] public string? ConversationId { get; set; }
             [JsonPropertyName("userName")] public string? UserName { get; set; }
             [JsonPropertyName("readAt")] public DateTime ReadAt { get; set; }
+            /// <summary>"reaction": the line of the player's activity reacted on, and the emoji.</summary>
+            [JsonPropertyName("item")] public string? Item { get; set; }
+            [JsonPropertyName("emoji")] public string? Emoji { get; set; }
+            /// <summary>"recommendation": a game a friend recommends to the player.</summary>
+            [JsonPropertyName("recommendation")] public SocialRecommendation? Recommendation { get; set; }
         }
 
         /// <summary>What the live link brought (also used by the tests).</summary>
@@ -255,7 +260,11 @@ namespace gamevault.Helper
             }
             Post(() =>
             {
-                if (live?.Type == "changed" && live.Message is ChatMessage changedMessage)
+                if (live?.Type == "reaction" && live.Item != null && live.Emoji != null)
+                    SocialService.RaiseReaction(live.UserName ?? "", live.Emoji, live.Item);
+                else if (live?.Type == "recommendation" && live.Recommendation != null)
+                    SocialService.RaiseRecommendation(live.Recommendation);
+                else if (live?.Type == "changed" && live.Message is ChatMessage changedMessage)
                     Changed_(changedMessage);
                 else if (live?.Type == "typing" && live.ConversationId != null && live.UserId != Me)
                     Typing?.Invoke(live.ConversationId, live.UserId, live.UserName ?? "");

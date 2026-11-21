@@ -63,6 +63,8 @@ namespace gamevault.UserControls
             }
             gameID = game.ID;
             this.DataContext = ViewModel;
+            uiCaptures.Game = GameCaptures.PcKey(game.ID);
+            uiReviews.Game = SocialService.GameKey(game);
             Loaded += UserControl_Loaded;
             Loaded += (_, _) => ObserveInstallState(true);
             InitLayout();
@@ -573,6 +575,12 @@ namespace gamevault.UserControls
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
+        private void Recommend_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game is Game game)
+                MainWindowViewModel.Instance.OpenPopup(new RecommendPopup(ChatGame.Of(game, invite: false)));
+        }
+
         private void Share_Click(object sender, RoutedEventArgs e)
         {
             try

@@ -31,6 +31,9 @@ namespace gamevault.UserControls
             InitializeComponent();
             ViewModel = new RetroGameViewModel(game);
             DataContext = ViewModel;
+            uiCaptures.Game = GameCaptures.RetroKey(game);
+            uiReviews.Game = SocialService.GameKey(game);
+            uiMods.Game = game;
             _ = game.CoverImage;// asks for it when the page opens from elsewhere
             uiFixMatch.IsVisible = LoginManager.Instance.GetCurrentUser()?.Role == PERMISSION_ROLE.ADMIN;
             KeyDown += (_, e) =>
@@ -248,6 +251,9 @@ namespace gamevault.UserControls
 
         private async void InstallAndPlay_Click(object? sender, RoutedEventArgs e) => await RetroPlay.InstallAsync(ViewModel.Game, playWhenDone: true);
         private async void Install_Click(object? sender, RoutedEventArgs e) => await RetroPlay.InstallAsync(ViewModel.Game);
+        private void Recommend_Click(object? sender, RoutedEventArgs e) =>
+            MainWindowViewModel.Instance.OpenPopup(new RecommendPopup(ChatGame.Of(ViewModel.Game, invite: false)));
+
         private async void Play_Click(object? sender, RoutedEventArgs e) => await RetroPlay.PlayAsync(ViewModel.Game);
 
         private void Collections_Click(object? sender, RoutedEventArgs e)

@@ -62,6 +62,13 @@ namespace gamevault.Windows
                 PipeServiceHandler.Instance.IsReadyForCommands = true;
             NewGamesNotifier.Start();
             RetroNewGamesNotifier.Start();
+            // The screenshots and videos taken in a game, kept with it (not in the tests: they would watch the real folders)
+            if (PipeServiceHandler.Instance != null)
+            {
+                GameCaptures.Start();
+                if (OperatingSystem.IsWindows())
+                    ScreenCapture.Attach(this);
+            }
             // Games asked from the web page ("Install on my PC")
             if (PipeServiceHandler.Instance != null && !PlatformInfo.IsMac)
                 RemoteInstalls.Start();

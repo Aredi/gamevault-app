@@ -41,6 +41,7 @@ namespace GameVault.Core.Retro
 
         /// <summary>A console user per GameVault player ("00000005"): RPCS3 starts the game as that user.</summary>
         public static string UserId(string player) => int.TryParse(player, out int id) && id is > 0 and <= 99999999 ? id.ToString("D8") : "00000001";
+        public override string ScreenshotsDirectory => Path.Combine(ConfigDirectory, "screenshots");
         public string UserDirectory(string player) => Path.Combine(ConfigDirectory, "dev_hdd0", "home", UserId(player));
         public override string SavesDirectory(string player) => Path.Combine(UserDirectory(player), "savedata");
         public override string StatesDirectory => Path.Combine(ConfigDirectory, "savestates");

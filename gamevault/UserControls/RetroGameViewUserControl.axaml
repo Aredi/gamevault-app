@@ -212,6 +212,9 @@
                                 <Button Classes="round" Width="48" Height="48" Margin="0,0,8,10" Click="Collections_Click" ToolTip.Tip="{l:T 'Collections'}">
                                     <Path Data="{StaticResource IconCollection}" Width="18" Height="18" />
                                 </Button>
+                                <Button x:Name="uiRecommend" Classes="round" Width="48" Height="48" Margin="0,0,8,10" Click="Recommend_Click" ToolTip.Tip="{l:T 'Recommend to a friend'}">
+                                    <Path Data="{StaticResource IconSend}" Width="18" Height="18" />
+                                </Button>
                                 <Button Classes="round" Width="48" Height="48" Margin="0,0,8,10" Click="Delete_Click" IsVisible="{Binding Game.Installed}"
                                         ToolTip.Tip="{l:T 'Delete from this PC (the saves are kept)'}">
                                     <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource Brush.Danger}" Width="18" Height="18" />
@@ -471,6 +474,9 @@
                                     </ItemsControl>
                                 </TabItem>
                             </TabControl>
+                            <local:CapturesStrip x:Name="uiCaptures" Margin="0,14,0,0" />
+                            <local:SwitchModsPanel x:Name="uiMods" Margin="0,18,0,0" />
+                            <local:ReviewsPanel x:Name="uiReviews" Margin="0,18,0,0" />
                         </StackPanel>
 
                         <StackPanel x:Name="uiSide" Grid.Column="2" Spacing="26">

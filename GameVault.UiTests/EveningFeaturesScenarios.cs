@@ -114,9 +114,9 @@ namespace GameVault.UiTests
             var model = (CommunityViewModel)community.DataContext!;
             // Its own page under Community, loaded when it is opened
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Activity);
-            await TestSession.WaitUntil(() => MainWindowViewModel.Instance.Activity.Items.Any(a => a.Game.ID == 9731), TimeSpan.FromSeconds(10), "the recent activity page");
+            await TestSession.WaitUntil(() => MainWindowViewModel.Instance.Activity.Items.Any(a => a.Game?.ID == 9731), TimeSpan.FromSeconds(10), "the recent activity page");
             MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
-            var line = Assert.Single(MainWindowViewModel.Instance.Activity.Items, a => a.Game.ID == 9731);
+            var line = Assert.Single(MainWindowViewModel.Instance.Activity.Items, a => a.Game?.ID == 9731);
             Assert.Contains("Zoé", line.Text);
             Assert.Contains("Activity Arena", line.Text);
             Assert.Equal(97311, line.Game.Metadata?.Cover?.ID);// the cover of the feed

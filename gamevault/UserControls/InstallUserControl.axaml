@@ -4,6 +4,7 @@
              xmlns:vm="clr-namespace:gamevault.ViewModels"
              xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
+             xmlns:helper="clr-namespace:gamevault.Helper"
              x:Class="gamevault.UserControls.InstallUserControl">
     <UserControl.Resources>
         <conv:CountConverter x:Key="countConv" />
@@ -24,7 +25,7 @@
                 </ToggleButton.Template>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <TextBlock Classes="sectionTitle" Text="{l:T 'Continue playing'}" VerticalAlignment="Center" />
-                    <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding InstalledGamesFilter.Count, Converter={StaticResource countConv}, ConverterParameter='{}{0} installed game|{0} installed'}" />
+                    <TextBlock Classes="muted" FontSize="13" VerticalAlignment="Center" Text="{Binding ContinueItems.Count, Converter={StaticResource countConv}, ConverterParameter='{}{0} installed game|{0} installed'}" />
                     <Path Data="{StaticResource IconChevronDown}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="11" Height="11" VerticalAlignment="Center"
                           RenderTransform="{Binding #uiInstalledGames.IsChecked, Converter={x:Static conv:LibraryStatic.FlipWhenFalse}}" />
                 </StackPanel>
@@ -35,13 +36,47 @@
             </StackPanel>
         </Grid>
         <ScrollViewer x:Name="uiInstalledGamesScroll" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden" IsVisible="{Binding #uiInstalledGames.IsChecked}">
-            <ItemsControl ItemsSource="{Binding InstalledGamesFilter}" Margin="28,8,28,4">
+            <ItemsControl ItemsSource="{Binding ContinueItems}" Margin="28,8,28,4">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Orientation="Horizontal" Spacing="16" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
+                    <local:ContinueCardTemplate>
+                    <!-- A retro game played here: its cover beside its name, as the console's box -->
+                    <local:ContinueCardTemplate.Retro>
+                    <DataTemplate DataType="helper:RetroGame">
+                        <Button Classes="gameCard" Width="300" Click="RetroCard_Click">
+                            <StackPanel Spacing="8">
+                                <Panel Classes="lift" Height="169">
+                                    <Border Classes="glow" CornerRadius="12" Background="{DynamicResource Brush.Surface}"
+                                            BoxShadow="{Binding Accent, Converter={StaticResource accentShadowConv}, ConverterParameter='14 34 -10 0.75'}" />
+                                    <Border CornerRadius="12" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Image Source="{Binding CoverImage}" Stretch="Uniform" Margin="12" MaxWidth="130" HorizontalAlignment="Left" />
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Bottom" Margin="4,0,64,13" Spacing="3">
+                                                <TextBlock Classes="eyebrow muted" FontSize="10.5" Text="{Binding Platform.Name}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock FontFamily="{StaticResource Font.Display}" FontWeight="Bold" FontSize="17" TextWrapping="Wrap" MaxLines="3"
+                                                           TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                    <Button Classes="round" Width="44" Height="44" CornerRadius="22" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10"
+                                            Foreground="White" Background="{Binding Accent, Converter={StaticResource accentBrushConv}}"
+                                            Click="RetroPlay_Click" ToolTip.Tip="{l:T 'Play'}" IsEnabled="{Binding !Busy}">
+                                        <Path Data="{StaticResource IconPlay}" Width="19" Height="19" Margin="2,0,0,0" />
+                                    </Button>
+                                </Panel>
+                                <Panel Margin="2,0">
+                                    <TextBlock Classes="cardInfo" Text="{Binding ContinueInfo}" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                                    <TextBlock Classes="cardInfo" Text="{Binding Status}" TextTrimming="CharacterEllipsis" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </Panel>
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                    </local:ContinueCardTemplate.Retro>
+                    <local:ContinueCardTemplate.Pc>
                     <DataTemplate>
                         <Button Classes="gameCard" Width="300" Click="GameCard_Clicked">
                             <StackPanel Spacing="8">
@@ -97,6 +132,8 @@
                             </StackPanel>
                         </Button>
                     </DataTemplate>
+                    </local:ContinueCardTemplate.Pc>
+                    </local:ContinueCardTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>

@@ -160,6 +160,17 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<string, (long SavedAt, byte[] Zip)> RetroSavesHistory { get; } = new();
         /// <summary>The retro plays sent (JSON), and the time kept per game key ("nes:40").</summary>
         public ConcurrentQueue<string> RetroPlaysSent { get; } = new();
+        /// <summary>The social routes of the service: reactions (by line: who, their name, the emoji), recommendations, reviews (by game).</summary>
+        public ConcurrentDictionary<string, List<(int UserId, string Name, string Emoji)>> SocialReactions { get; } = new();
+        public ConcurrentQueue<string> SocialRecommendationsSent { get; } = new();
+        /// <summary>The recommendations to the player (user 1), as the service sends them.</summary>
+        public List<Dictionary<string, object?>> SocialRecommendations { get; } = new();
+        public ConcurrentDictionary<string, List<Dictionary<string, object?>>> SocialReviews { get; } = new();
+        /// <summary>The file every GameBanana download gives: a mod Eden reads.</summary>
+        public byte[] GameBananaZip { get; set; } = Zip(("Cool Mod/romfs/cool.txt", "cool"), ("Cool Mod/exefs/main.npdm", "npdm"));
+        public ConcurrentQueue<string> GameBananaDownloads { get; } = new();
+        /// <summary>Real mods' names and pictures in the list, for the screenshots.</summary>
+        public bool GameBananaShowcase { get; set; }
         public ConcurrentDictionary<string, int> RetroMinutes { get; } = new();
         /// <summary>The service can not take the plays (offline); each play sent waits the next of these delays first.</summary>
         public bool RetroPlaysFail { get; set; }
@@ -891,6 +902,131 @@ namespace GameVault.UiTests
                 {
                     ChatReadAt[match.Groups[1].Value] = DateTime.UtcNow;
                     response.StatusCode = 204;
+                }
+                else if (path == "/social/reactions" && request.HttpMethod == "GET")
+                {
+                    var items = (request.QueryString["items"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
+                    await Json(response, SocialReactions.Where(r => items.Contains(r.Key))
+                        .ToDictionary(r => r.Key, r => r.Value.Select(x => new { userId = x.UserId, username = x.Name, emoji = x.Emoji }).ToList()));
+                }
+                else if (path == "/social/reactions" && request.HttpMethod == "PUT")
+                {
+                    using var body = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string item = body.RootElement.GetProperty("item").GetString()!;
+                    string? emoji = body.RootElement.GetProperty("emoji").GetString();
+                    var on = SocialReactions.GetOrAdd(item, _ => new());
+                    lock (on)
+                    {
+                        on.RemoveAll(x => x.UserId == 1);
+                        if (emoji != null)
+                            on.Add((1, "admin", emoji));
+                    }
+                    await Json(response, on.Select(x => new { userId = x.UserId, username = x.Name, emoji = x.Emoji }).ToList());
+                }
+                else if (path == "/social/recommendations" && request.HttpMethod == "POST")
+                {
+                    SocialRecommendationsSent.Enqueue(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    response.StatusCode = 201;
+                    await Json(response, new { id = "sent" });
+                }
+                else if (path == "/social/recommendations/me")
+                {
+                    List<Dictionary<string, object?>> mine;
+                    lock (SocialRecommendations)
+                        mine = SocialRecommendations.ToList();
+                    await Json(response, mine);
+                }
+                else if ((match = Regex.Match(path, @"^/social/recommendations/([a-z0-9]+)$")).Success && request.HttpMethod == "DELETE")
+                {
+                    lock (SocialRecommendations)
+                        response.StatusCode = SocialRecommendations.RemoveAll(r => (string?)r["id"] == match.Groups[1].Value) > 0 ? 204 : 404;
+                }
+                // GameBanana (GameBanana.Api = Url + "/gb"): one game, a mod and an adult one, the mod's files by version
+                else if (path == "/gb/Util/Search/Results")
+                    await Json(response, new { _aMetadata = new { _bIsComplete = true }, _aRecords = new object[] { new { _idRow = 42, _sName = "1-2-Switch" } } });
+                else if (path == "/gb/Mod/Index")
+                    await Json(response, new
+                    {
+                        _aMetadata = new { _bIsComplete = true },
+                        _aRecords = new object[]
+                        {
+                            new { _idRow = 7, _sName = "Cool Mod", _sModelName = "Mod", _nLikeCount = 5, _aRootCategory = new { _sName = "Visual" } },
+                            new { _idRow = 8, _sName = "Adult Mod", _sModelName = "Mod", _bHasContentRatings = true },
+                        }.Concat(!GameBananaShowcase ? Array.Empty<object>() : new (int Id, string Name, string Category, int Likes, string Image)[]
+                        {
+                            (480138, "UltraCam (Resolution, FPS, FreeCam)", "Visual Overhaul", 161, "65f22151ad0d3.jpg"),
+                            (446995, "Serfrost's Defogger (Native)", "Visual Overhaul", 224, "6480e18e1737c.jpg"),
+                            (443336, "Xbox UI v2 (+ PE, western, 60fpsfix)", "UI", 68, "646225ee3d0d8.jpg"),
+                            (537404, "Challenge Mode Complete Version", "Gameplay", 183, "66c8e6ae9df89.jpg"),
+                        }.Select(m => (object)new
+                        {
+                            _idRow = m.Id, _sName = m.Name, _sModelName = "Mod", _nLikeCount = m.Likes, _aRootCategory = new { _sName = m.Category },
+                            _aPreviewMedia = new { _aImages = new[] { new { _sBaseUrl = "https://images.gamebanana.com/img/ss/mods", _sFile = m.Image, _sFile220 = "220-90_" + m.Image } } },
+                        })).ToArray(),
+                    });
+                else if (path == "/gb/Mod/7/ProfilePage")
+                {
+                    string md5 = Convert.ToHexString(System.Security.Cryptography.MD5.HashData(GameBananaZip));
+                    string dl = $"{Url}/gb/dl/";
+                    await Json(response, new
+                    {
+                        _idRow = 7, _sName = "Cool Mod", _sDescription = "Makes it cool", _sProfileUrl = "https://gamebanana.com/mods/7",
+                        _aFiles = new object[]
+                        {
+                            new { _idRow = 70, _sFile = "cool_v100.zip", _nFilesize = 10L, _sDescription = "For v1.0.0", _tsDateAdded = 300L, _sDownloadUrl = dl + "70", _sAvResult = "clean" },
+                            new { _idRow = 71, _sFile = "cool_v110.zip", _nFilesize = 10L, _sDescription = "For v1.1.0", _tsDateAdded = 100L, _sDownloadUrl = dl + "71", _sMd5Checksum = md5, _sAvResult = "clean" },
+                            new { _idRow = 72, _sFile = "cool_bad.zip", _nFilesize = 10L, _sDescription = "v1.1.0", _tsDateAdded = 500L, _sDownloadUrl = dl + "72", _sAvResult = "infected" },
+                        },
+                    });
+                }
+                else if (path.StartsWith("/gb/dl/"))
+                {
+                    GameBananaDownloads.Enqueue(path);
+                    response.ContentType = "application/zip";
+                    response.ContentLength64 = GameBananaZip.Length;
+                    await response.OutputStream.WriteAsync(GameBananaZip);
+                }
+                else if (path == "/social/reviews" && request.HttpMethod == "GET")
+                {
+                    var ratings = new Dictionary<string, object>();
+                    foreach (var (game, list) in SocialReviews)
+                        lock (list)
+                            if (list.Count > 0)
+                                ratings[game] = new { stars = list.Average(r => (int)r["stars"]!), count = list.Count };
+                    await Json(response, ratings);
+                }
+                else if ((match = Regex.Match(path, @"^/social/reviews/([^/]+)(/me|/\d+)?$")).Success)
+                {
+                    string game = Uri.UnescapeDataString(match.Groups[1].Value);
+                    var reviews = SocialReviews.GetOrAdd(game, _ => new());
+                    if (request.HttpMethod == "GET")
+                    {
+                        List<Dictionary<string, object?>> all;
+                        lock (reviews)
+                            all = reviews.ToList();
+                        await Json(response, all);
+                    }
+                    else if (request.HttpMethod == "PUT")
+                    {
+                        using var body = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                        var review = new Dictionary<string, object?>
+                        {
+                            ["game"] = game, ["userId"] = 1, ["username"] = "admin", ["stars"] = body.RootElement.GetProperty("stars").GetInt32(),
+                            ["text"] = body.RootElement.GetProperty("text").GetString(), ["at"] = DateTime.UtcNow,
+                        };
+                        lock (reviews)
+                        {
+                            reviews.RemoveAll(r => (int)r["userId"]! == 1);
+                            reviews.Add(review);
+                        }
+                        await Json(response, review);
+                    }
+                    else
+                    {
+                        int reviewer = match.Groups[2].Value == "/me" ? 1 : int.Parse(match.Groups[2].Value.TrimStart('/'));
+                        lock (reviews)
+                            response.StatusCode = reviews.RemoveAll(r => (int)r["userId"]! == reviewer) > 0 ? 204 : 404;
+                    }
                 }
                 else if (path.StartsWith("/challenges") && ChallengeState == null)
                 {

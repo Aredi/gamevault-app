@@ -57,5 +57,19 @@ namespace GameVault.Core.Library
                 ids.Reverse();
             return ids;
         }
+
+        /// <summary>
+        /// By the players' reviews: best average first (most reviews first on a tie), or worst first when ascending.
+        /// The games nobody reviewed stay last both ways, in the order they came.
+        /// </summary>
+        public static List<T> OrderByPlayersRating<T>(IEnumerable<T> games, Func<T, (double Stars, int Count)?> rating, bool ascending)
+        {
+            var rated = games.Select(g => (Game: g, Rating: rating(g))).ToList();
+            var reviewed = rated.Where(r => r.Rating is { Count: > 0 });
+            var ordered = ascending
+                ? reviewed.OrderBy(r => r.Rating!.Value.Stars).ThenByDescending(r => r.Rating!.Value.Count)
+                : reviewed.OrderByDescending(r => r.Rating!.Value.Stars).ThenByDescending(r => r.Rating!.Value.Count);
+            return ordered.Concat(rated.Where(r => r.Rating is not { Count: > 0 })).Select(r => r.Game).ToList();
+        }
     }
 }

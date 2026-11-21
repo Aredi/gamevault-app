@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             xmlns:h="clr-namespace:gamevault.Helper"
+             x:Class="gamevault.UserControls.ModsPopup"
+             Width="900" Height="640" Focusable="True">
+    <!-- The game's mods on GameBanana: the most downloaded first; the file for the game's version chosen -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <Grid Margin="26,20,26,22" RowDefinitions="Auto,Auto,Auto,*" ColumnDefinitions="400,*">
+            <Grid Grid.ColumnSpan="2" ColumnDefinitions="*,Auto">
+                <TextBlock x:Name="uiTitle" Classes="sectionTitle" FontSize="22" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="muted" FontSize="13" TextWrapping="Wrap" Margin="0,6,0,12"
+                       Text="{l:T 'These mods come from GameBanana: players made them, SanctuaryVault did not test them. If the game no longer starts, turn the mod off on the game page.'}" />
+            <TextBox Grid.Row="2" x:Name="uiSearch" Watermark="{l:T 'Search a mod'}" Margin="0,0,0,10" />
+
+            <Grid Grid.Row="3" RowDefinitions="*,Auto">
+                <ListBox x:Name="uiList" Background="Transparent">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="h:GameBananaMod">
+                            <Grid ColumnDefinitions="100,*" Margin="0,2">
+                                <Border CornerRadius="6" ClipToBounds="True" Width="100" Height="56" Background="{DynamicResource Brush.Surface}">
+                                    <local:CacheImage UseUriSource="True" DoNotCache="True" Data="{Binding Image}" Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" Text="{Binding Name}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Classes="muted" FontSize="12" Text="{Binding CategoryName}" />
+                                        <TextBlock Classes="muted" FontSize="12" Text="{Binding Likes, StringFormat='♥ {0}'}" />
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource Brush.Accent}" Text="{l:T 'Installed'}" IsVisible="{Binding Installed}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <Button Grid.Row="1" x:Name="uiMore" Classes="ghost small" HorizontalAlignment="Center" Margin="0,6,0,0" Click="More_Click" Content="{l:T 'More mods'}" IsVisible="False" />
+            </Grid>
+
+            <ScrollViewer Grid.Row="2" Grid.RowSpan="2" Grid.Column="1" Margin="22,0,0,0">
+                <StackPanel Spacing="12">
+                    <TextBlock x:Name="uiHint" Classes="muted" FontSize="13" TextWrapping="Wrap" Text="{l:T 'Choose a mod in the list.'}" />
+                    <StackPanel x:Name="uiDetail" Spacing="12" IsVisible="False">
+                        <TextBlock x:Name="uiName" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock x:Name="uiDescription" FontSize="14" TextWrapping="Wrap" />
+                        <Button x:Name="uiPage" Classes="link" FontSize="12" Content="{l:T 'See it on GameBanana'}" Click="Page_Click" />
+                        <TextBlock FontSize="13" FontWeight="SemiBold" Text="{l:T 'File'}" />
+                        <ComboBox x:Name="uiFiles" HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="h:GameBananaFile">
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock x:Name="uiFileNote" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                        <ProgressBar x:Name="uiProgress" Minimum="0" Maximum="1" IsVisible="False" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button x:Name="uiInstall" Classes="action" Click="Install_Click" Content="{l:T 'Install'}" />
+                            <TextBlock x:Name="uiStatus" Classes="muted" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="320" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>
