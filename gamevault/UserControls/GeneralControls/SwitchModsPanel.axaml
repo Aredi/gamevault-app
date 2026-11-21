@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:local="clr-namespace:gamevault.UserControls"
+             x:Class="gamevault.UserControls.SwitchModsPanel" IsVisible="False">
+    <!-- A Switch game's mods for Eden: found on GameBanana, turned on and off with a switch -->
+    <StackPanel Spacing="10">
+        <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="sectionTitle" Text="{l:T 'Mods'}" VerticalAlignment="Center" />
+            <TextBlock x:Name="uiCount" Classes="muted" FontSize="13" VerticalAlignment="Center" />
+        </StackPanel>
+        <Border CornerRadius="12" Background="{DynamicResource Brush.Surface}" Padding="16,12">
+            <StackPanel Spacing="10">
+                <TextBlock x:Name="uiEmpty" Classes="muted" FontSize="13" TextWrapping="Wrap"
+                           Text="{l:T 'No mod yet. Find some made by the players: a better picture, more frames per second, new outfits...'}" />
+                <ItemsControl x:Name="uiMods">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:ModRow">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <ToggleSwitch IsChecked="{Binding Enabled, Mode=OneTime}" OnContent="" OffContent="" MinWidth="0" VerticalAlignment="Center"
+                                              Click="Toggle_Click" ToolTip.Tip="{l:T 'On when the game starts'}" />
+                                <TextBlock Grid.Column="1" Margin="10,0" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                                <Button Grid.Column="2" Classes="link" FontSize="12" VerticalAlignment="Center" Content="{l:T 'Remove'}" Click="Remove_Click" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="uiFind" Classes="action small" Click="Find_Click" Content="{l:T 'Find mods'}" />
+                    <Button x:Name="uiAllOff" Classes="ghost small" Click="AllOff_Click" Content="{l:T 'Turn them all off'}" IsVisible="False" />
+                    <TextBlock x:Name="uiStatus" Classes="muted" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

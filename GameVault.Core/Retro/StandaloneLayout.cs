@@ -26,6 +26,8 @@ namespace GameVault.Core.Retro
         public virtual bool IsInstalled => File.Exists(Executable) && File.Exists(VersionFile) && File.ReadAllText(VersionFile).Trim() == Version;
         /// <summary>The file it writes its last start's log to, when it has one.</summary>
         public virtual string? LogFile => null;
+        /// <summary>Where it saves its screenshots by itself, when it does.</summary>
+        public virtual string? ScreenshotsDirectory => null;
         public virtual IReadOnlyDictionary<string, string> Environment => new Dictionary<string, string>();
         /// <summary>Folders linked where the emulator looks for them, made again after each installation.</summary>
         public virtual IReadOnlyList<(string Link, string Target)> Links => Array.Empty<(string, string)>();

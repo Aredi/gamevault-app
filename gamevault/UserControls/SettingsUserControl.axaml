@@ -127,6 +127,10 @@
                                 <local:SettingRow Title="{l:T 'Notify me when new games are added to the server'}">
                                     <ToggleSwitch IsChecked="{Binding NotifyNewGames}" />
                                 </local:SettingRow>
+                                <!-- Windows: the client's shortcut; elsewhere the system's tool, whose captures are the game's too -->
+                                <local:SettingRow Title="{l:T 'Ctrl + PrtScn takes a screenshot of the game'}" IsVisible="{Binding IsWindows}">
+                                    <ToggleSwitch IsChecked="{Binding CaptureShortcut}" />
+                                </local:SettingRow>
                             </StackPanel>
                         </Border>
                         <TextBlock Classes="h1" Text="{l:T 'Theme'}" />

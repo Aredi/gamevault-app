@@ -89,6 +89,7 @@ namespace gamevault.ViewModels
             //Setting the private members to avoid writing to the user config file over and over again
             m_BackgroundStart = (Preferences.Get(AppConfigKey.BackgroundStart, userConfigFile) == "1"); OnPropertyChanged(nameof(BackgroundStart));
             notifyNewGames = Preferences.Get(AppConfigKey.NotifyNewGames, userConfigFile) != "0"; OnPropertyChanged(nameof(NotifyNewGames));
+            captureShortcut = Preferences.Get(AppConfigKey.CaptureShortcut, userConfigFile) != "0"; OnPropertyChanged(nameof(CaptureShortcut));
             askInstallLocation = Preferences.Get(AppConfigKey.AskInstallLocation, userConfigFile) != "0"; OnPropertyChanged(nameof(AskInstallLocation));
             maxConcurrentDownloads = int.TryParse(Preferences.Get(AppConfigKey.MaxConcurrentDownloads, userConfigFile), out int maxDownloads) ? Math.Clamp(maxDownloads, 0, 10) : 0;
             downloadConnections = int.TryParse(Preferences.Get(AppConfigKey.DownloadConnections, userConfigFile), out int connections) ? Math.Clamp(connections, 1, 8) : 4;
@@ -298,6 +299,13 @@ namespace gamevault.ViewModels
                 : GameVault.Core.Downloads.DownloadSchedule.Always;
         #endregion
         private bool notifyNewGames = true;
+        private bool captureShortcut = true;
+        /// <summary>Ctrl+PrtScn takes a screenshot of the game (Windows), taken while a game runs only.</summary>
+        public bool CaptureShortcut
+        {
+            get => captureShortcut;
+            set { captureShortcut = value; Preferences.Set(AppConfigKey.CaptureShortcut, value ? "1" : "0", userConfigFile); OnPropertyChanged(); }
+        }
         /// <summary>Desktop notification when games are added to the server (checked every 15 minutes).</summary>
         public bool NotifyNewGames
         {
@@ -574,6 +582,7 @@ namespace gamevault.ViewModels
         public bool PlaysPcGames => !PlatformInfo.IsMac;
         #region Linux
         public bool IsLinux => OperatingSystem.IsLinux();
+        public bool IsWindows => OperatingSystem.IsWindows();
 
         /// <summary>
         /// Default tool of this profile. Profiles of older versions stored a runner (Auto/Proton/Wine/Custom)

@@ -189,6 +189,43 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task ThePlayersRating_ListsTheBestReviewedFirst_AndTheUnreviewedLast()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            RetroUserControl page = MainWindowViewModel.Instance.Retro;
+            int sortBefore = page.ViewModel.SortBy;
+            var keys = new List<string>();
+            try
+            {
+                await page.LoadPlatformsAsync();
+                await page.SelectAllAsync();
+                RetroGame zelda = page.ViewModel.AllGames.First(g => g.Name == "Zelda"), castlevania = page.ViewModel.AllGames.First(g => g.Name == "Castlevania");
+                void Review(RetroGame game, params int[] stars)
+                {
+                    string key = SocialService.GameKey(game);
+                    keys.Add(key);
+                    session.Server.SocialReviews[key] = stars.Select((s, i) => new Dictionary<string, object?> { ["game"] = key, ["userId"] = 10 + i, ["username"] = "P" + i, ["stars"] = s }).ToList();
+                }
+                Review(zelda, 3, 4);
+                Review(castlevania, 5);
+
+                page.ViewModel.SortBy = Array.IndexOf(page.ViewModel.SortOptions, gamevault.Localization.Loc.T("Players' rating"));
+                Assert.Equal(6, page.ViewModel.SortBy);
+                await TestSession.WaitUntil(() => { Dispatcher.UIThread.RunJobs(); return page.Shown.FirstOrDefault()?.Name == "Castlevania"; }, TimeSpan.FromSeconds(5), "sorted by the reviews");
+                Assert.Equal(new[] { "Castlevania", "Zelda" }, page.Shown.Take(2).Select(g => g.Name));
+                Assert.True(page.Shown.Count() >= 3);
+            }
+            finally
+            {
+                page.ViewModel.SortBy = sortBefore;
+                foreach (string key in keys)
+                    session.Server.SocialReviews.TryRemove(key, out _);
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheSortChosen_IsKept_ForTheNextStart()
         {
             await TestSession.GetAsync();

@@ -17,6 +17,8 @@ namespace GameVault.Core.Tests
             Assert.Contains($"joypad_autoconfig_dir = \"{home}/autoconfig\"\n", config);
             Assert.Contains($"libretro_info_path = \"{home}/cores\"\n", config);
             Assert.Contains("savefile_directory = \"/data/retroarch/saves/12\"\n", config);
+            // Its screenshots in a folder the client watches, not beside the game's file
+            Assert.Contains($"screenshot_directory = \"{home}/screenshots\"\n", config);
             Assert.Contains("input_quit_gamepad_combo = \"4\"\n", config);
             // The living-room mode's menu over a game takes Select+Start
             Assert.Contains("input_quit_gamepad_combo = \"0\"\n", layout.Config("12", quitCombo: false));

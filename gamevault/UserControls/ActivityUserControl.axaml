@@ -2,15 +2,52 @@
              xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:gamevault.UserControls"
+             xmlns:vm="clr-namespace:gamevault.ViewModels"
+             xmlns:helper="clr-namespace:gamevault.Helper"
              x:Class="gamevault.UserControls.ActivityUserControl"
              Focusable="True">
+    <UserControl.Styles>
+        <!-- The player's own reaction stands out -->
+        <Style Selector="Button.reaction.mine">
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+        </Style>
+    </UserControl.Styles>
     <!-- What the players of the server played lately: a page of its own, under Community -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
-            <TextBlock Classes="pageTitle" Text="{l:T 'Recent activity'}" Margin="0,0,0,16" />
+            <!-- The games the friends recommend to the player: put away with the cross -->
+            <StackPanel x:Name="uiRecommendationsSection" IsVisible="False" Spacing="8" Margin="0,0,0,24">
+                <TextBlock Classes="sectionTitle" Text="{l:T 'Recommended by your friends'}" />
+                <ItemsControl x:Name="uiRecommendations">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="helper:SocialRecommendation">
+                            <Border CornerRadius="10" Background="{DynamicResource Brush.Surface}" Padding="14,10">
+                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Text}" />
+                                        <TextBlock Text="{Binding Note}" Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                                   IsVisible="{Binding Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="ghost small" Margin="12,0,6,0" VerticalAlignment="Center" Content="{l:T 'See the game'}" Click="Recommendation_Click" />
+                                    <Button Grid.Column="2" Classes="round small" VerticalAlignment="Center" Click="Dismiss_Click" ToolTip.Tip="{l:T 'Put it away'}">
+                                        <Path Data="{StaticResource IconClose}" Width="10" Height="10" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
             <ItemsControl x:Name="uiItems">
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate>
+                    <DataTemplate x:DataType="vm:ActivityFeedItem">
+                        <StackPanel>
                         <Button Classes="wrapper" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,6" Cursor="Hand" Click="Item_Click">
                             <Grid ColumnDefinitions="Auto,*">
                                 <Border Width="40" Height="60" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
@@ -26,6 +63,24 @@
                                 </StackPanel>
                             </Grid>
                         </Button>
+                        <!-- The reactions of the others: "🔥 2", their names in the tooltip; "+" to put one -->
+                        <WrapPanel Margin="64,0,0,6" IsVisible="{Binding Key, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <ItemsControl ItemsSource="{Binding Reactions}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ReactionChip">
+                                        <Button Classes="chip reaction" Classes.mine="{Binding Mine}" Margin="0,0,6,0" Padding="8,2" Content="{Binding Text}"
+                                                ToolTip.Tip="{Binding Names}" Click="Reaction_Click" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Classes="chip reaction" Padding="8,2" Content="+" IsVisible="{Binding CanReact}" Click="AddReaction_Click" ToolTip.Tip="{l:T 'React'}" />
+                        </WrapPanel>
+                        </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

@@ -39,6 +39,8 @@ namespace GameVault.Core.Retro
         }
         /// <summary>What the player changed in RetroArch's menu: core options, controls remapped, overrides.</summary>
         public string MenuSettingsDirectory => Path.Combine(DataDirectory, "config");
+        /// <summary>Its screenshots (F8): kept here, not beside the game's file; the game's page shows them.</summary>
+        public string ScreenshotsDirectory => Path.Combine(DataDirectory, "screenshots");
         public string CoresDirectory => Path.Combine(directory, "cores");
         /// <summary>Outside the package (an update of RetroArch keeps them), one folder per GameVault player of this PC.</summary>
         public string SavesDirectory(string player) => Path.Combine(directory, "saves", player);
@@ -184,6 +186,7 @@ namespace GameVault.Core.Retro
                 ("config_save_on_exit", "false"),
                 // A picture of the game with each save state: the game's page shows them
                 ("savestate_thumbnail_enable", "true"),
+                ("screenshot_directory", ScreenshotsDirectory),
                 ("video_shader_dir", ShadersDirectory),
                 ("video_shader_enable", "true"),
                 // Not hardcore: the save states stay allowed

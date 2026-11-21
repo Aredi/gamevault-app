@@ -60,6 +60,11 @@ namespace gamevault.ViewModels
                     InstalledGames[index] = new KeyValuePair<Game, string>(game, InstalledGames[index].Value);
             });
         }
+        /// <summary>
+        /// The row "Continue playing": the installed PC games matching the search (<see cref="KeyValuePair{Game, String}"/>)
+        /// and the retro games installed and played here (<see cref="Helper.RetroGame"/>), the last played first.
+        /// </summary>
+        public ObservableCollection<object> ContinueItems { get; } = new();
         public Dictionary<int,string> InstalledGamesDuplicates= new Dictionary<int, string>();
         public FilteredCollectionView<KeyValuePair<Game, string>>? InstalledGamesFilter
         {

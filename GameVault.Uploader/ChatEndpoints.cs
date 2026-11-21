@@ -57,7 +57,7 @@ namespace GameVault.Uploader
         private static IResult OnlyAdmins() => Results.Json(new { error = "Only an administrator writes in the announcements." }, statusCode: StatusCodes.Status403Forbidden);
 
         /// <summary>A game as a message may show it: a library game by its id, a retro game by its platform and RomM id.</summary>
-        private static string? Checked(ChatStore.SharedGame game)
+        internal static string? Checked(ChatStore.SharedGame game)
         {
             game.Title = (game.Title ?? "").Trim();
             if (game.Title.Length is 0 or > 200 || game.Id <= 0)

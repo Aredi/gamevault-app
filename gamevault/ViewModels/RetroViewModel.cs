@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using GameVault.Core.Library;
 
 namespace gamevault.ViewModels
 {
@@ -14,7 +15,7 @@ namespace gamevault.ViewModels
     {
         public RetroViewModel()
         {
-            SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating"), Loc.T("Last played"), Loc.T("Playtime"), Loc.T("Shortest first") };
+            SortOptions = new[] { Loc.T("Title"), Loc.T("Release date"), Loc.T("Rating"), Loc.T("Last played"), Loc.T("Playtime"), Loc.T("Shortest first"), Loc.T("Players' rating") };
             sortBy = SavedSort();
             collections = new() { Loc.T("All collections") };
             recent = RetroLibrary.Recent(12);
@@ -197,6 +198,8 @@ namespace gamevault.ViewModels
                 if (value < 0 || value >= SortOptions.Length)
                     return;
                 bool changed = value != sortBy;
+                if (changed && value == ByPlayersRating)
+                    ratings = null;
                 sortBy = value;
                 OnPropertyChanged();
                 ApplyFilter();
@@ -206,7 +209,23 @@ namespace gamevault.ViewModels
         }
 
         /// <summary>The sorts as saved: by name, so a sort added to the list does not change the one kept.</summary>
-        internal static readonly string[] SortKeys = { "title", "released", "rating", "lastPlayed", "playtime", "shortest" };
+        internal static readonly string[] SortKeys = { "title", "released", "rating", "lastPlayed", "playtime", "shortest", "players" };
+        private const int ByPlayersRating = 6;
+
+        /// <summary>The players' reviews of every game, asked for when sorting by them.</summary>
+        private Dictionary<string, SocialRating>? ratings;
+        private bool loadingRatings;
+
+        private async void LoadRatings()
+        {
+            if (loadingRatings)
+                return;
+            loadingRatings = true;
+            try { ratings = await SocialService.RatingsAsync(); }
+            finally { loadingRatings = false; }
+            if (SortBy == ByPlayersRating)
+                ApplyFilter();
+        }
 
         /// <summary>The sort chosen last time, kept for the next start; the title when none.</summary>
         private static int SavedSort()
@@ -260,6 +279,9 @@ namespace gamevault.ViewModels
                 shown = shown.Where(g => DecadeOf(g) is int d && Loc.F("{0}s", d) == Decades[Decade]);
             if (Rating > 0)
                 shown = shown.Where(g => g.Rating >= 60 + 10 * Rating);
+            // Asked again each time this sort is chosen: the reviews change while the page is open
+            if (SortBy == ByPlayersRating && ratings == null)
+                LoadRatings();
             shown = SortBy switch
             {
                 1 => shown.OrderByDescending(g => g.Released ?? long.MinValue),
@@ -268,6 +290,8 @@ namespace gamevault.ViewModels
                 4 => shown.OrderByDescending(g => g.MinutesPlayed),
                 // The time to finish its story: the ones without it last
                 5 => shown.OrderBy(g => g.MainStory ?? long.MaxValue).ThenBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase),
+                ByPlayersRating => LibraryQuery.OrderByPlayersRating(shown.OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase),
+                    g => ratings != null && ratings.TryGetValue(SocialService.GameKey(g), out SocialRating? r) ? (r.Stars, r.Count) : null, ascending: false),
                 _ => shown.OrderBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase),
             };
             Games = shown.ToList();
