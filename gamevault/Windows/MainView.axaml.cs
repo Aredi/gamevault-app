@@ -186,8 +186,15 @@ namespace gamevault.Windows
         private void Back_Requested(object? sender, RoutedEventArgs e)
         {
             // A game over the pages has its own menu
-            if (DialogLayer.Children.Count > 0 || App.Instance.OverScreen != null)
+            if (App.Instance.OverScreen != null)
                 return;
+            // A question: Back answers it as "No" (the app is not left under it)
+            if (DialogLayer.Children.Count > 0)
+            {
+                DialogService.Current?.Cancel();
+                e.Handled = true;
+                return;
+            }
             // The living-room mode: B (its own way back, then its menu to leave it)
             if (uiCouch.IsVisible)
             {
@@ -214,6 +221,9 @@ namespace gamevault.Windows
                 if (!MobileBack())
                     return;
             }
+            // A phone: any other page (the settings, the downloads, a game's...) back to the tab it was opened from
+            else if (IsMobile)
+                MainWindowViewModel.Instance.UndoActiveControl();
             else if (MainWindowViewModel.Instance.ActiveControlIndex < 0)
                 MainWindowViewModel.Instance.UndoActiveControl();
             else
