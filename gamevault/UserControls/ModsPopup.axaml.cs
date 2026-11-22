@@ -134,7 +134,7 @@ namespace gamevault.UserControls
                     uiFiles.SelectedItem = files.First(f => f.Id == best);
                 }
                 uiInstall.Content = Loc.T(mod.Installed ? "Install again" : "Install");
-                uiInstall.IsEnabled = files.Count > 0 && !game.Busy;
+                uiInstall.IsEnabled = Installable;
                 if (game.Busy)
                     uiStatus.Text = Loc.T("The mods change once the game is closed.");
             }
@@ -154,6 +154,12 @@ namespace gamevault.UserControls
                 return;
             }
             string? version = SwitchModsService.VersionOf(game);
+            uiInstall.IsEnabled = Installable;
+            if (SwitchMods.MadeForAnother(file.AsModFile, version) is string other)
+            {
+                uiFileNote.Text = Loc.F("This file is made for version {0} of the game and yours is in {1}: the game would no longer start. Look on the mod's page for a file for {1}.", other, version!);
+                return;
+            }
             var notes = new List<string>();
             if (version != null)
                 notes.Add(SwitchMods.Names(file.Name + " " + file.Description, version)
@@ -164,11 +170,15 @@ namespace gamevault.UserControls
             uiFileNote.Text = string.Join(" ", notes);
         }
 
+        /// <summary>A file chosen, the game closed, and the file not made for another version of the game.</summary>
+        private bool Installable => shown != null && uiFiles.SelectedItem is GameBananaFile file && !game.Busy
+            && SwitchMods.MadeForAnother(file.AsModFile, SwitchModsService.VersionOf(game)) == null;
+
         private async void Install_Click(object? sender, RoutedEventArgs e) => await InstallAsync();
 
         internal async Task InstallAsync()
         {
-            if (shown == null || uiFiles.SelectedItem is not GameBananaFile file || game.Busy)
+            if (!Installable || uiFiles.SelectedItem is not GameBananaFile file)
                 return;
             uiInstall.IsEnabled = uiFiles.IsEnabled = false;
             uiProgress.IsVisible = true;
@@ -192,7 +202,8 @@ namespace gamevault.UserControls
             finally
             {
                 uiProgress.IsVisible = false;
-                uiInstall.IsEnabled = uiFiles.IsEnabled = true;
+                uiFiles.IsEnabled = true;
+                uiInstall.IsEnabled = Installable;
             }
         }
 

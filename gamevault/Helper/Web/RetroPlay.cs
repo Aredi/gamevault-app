@@ -6,6 +6,8 @@ using gamevault.ViewModels;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace gamevault.Helper
@@ -74,7 +76,8 @@ namespace gamevault.Helper
                 // The emulator an administrator gave it, else its console's (offered its newer release)
                 if (game.Platform.System.IsSwitch || GameEmulators.OfConsole(game.Platform.Slug).Any())
                     await GameEmulators.LoadAsync();
-                if (GameEmulators.RecompOf(game) is RecompProgram recomp)
+                if (GameEmulators.RecompOf(game) is RecompProgram recomp
+                    && await ReadyOrSetAsideAsync(game, recomp.Name, () => recomp.Layout.IsInstalled, () => recomp.EnsureReadyAsync(text => game.Status = text)))
                 {
                     await PlayRecompAsync(game, recomp, rom);
                     return;
@@ -83,9 +86,8 @@ namespace gamevault.Helper
                     await StandaloneEmulator.Eden.OfferUpdateAsync();
                 else if (StandaloneEmulator.Of(game) == StandaloneEmulator.Eglantine)
                     await StandaloneEmulator.Eglantine.OfferUpdateAsync();
-                if (StandaloneEmulator.Of(game) is CustomSwitchEmulator own)
-                    await own.EnsureReadyAsync(game.Platform, text => game.Status = text);
-                else
+                if (StandaloneEmulator.Of(game) is not CustomSwitchEmulator own
+                    || !await ReadyOrSetAsideAsync(game, own.Name, () => own.Layout.IsInstalled, () => own.EnsureReadyAsync(game.Platform, text => game.Status = text)))
                     await RetroArchManager.EnsureReadyAsync(game.Platform, text => game.Status = text);
                 if (await RetroCloudSaves.TakeAsync(game, text => game.Status = text) is string kept)
                     MainWindowViewModel.Instance.AppBarText = Loc.F("The saves of another PC were newer and were taken; the ones of this PC are kept in {0}", kept);
@@ -115,6 +117,37 @@ namespace gamevault.Helper
                 game.Failure = new GameFailure(Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex)), null, 0, DateTime.UtcNow);
                 game.Status = "";
                 game.Busy = false;
+            }
+        }
+
+        /// <summary>Asked whether to play with the console's emulator (its name given) when the game's own can no longer be downloaded; the tests answer.</summary>
+        internal static Func<string, string, Task<bool>> AskConsoleInstead = async (own, console) =>
+            await App.Instance.MainWindow.ShowMessageAsync(Loc.F("The link of {0} no longer works", own),
+                Loc.F("{0}, the emulator the administrator chose for this game, can no longer be downloaded: its link no longer works. Tell the administrator. Play with {1} instead? The game may not work with it.", own, console),
+                MessageDialogStyle.AffirmativeAndNegative,
+                new MetroDialogSettings { AffirmativeButtonText = Loc.F("Play with {0}", console), NegativeButtonText = Loc.T("Cancel") }) == MessageDialogResult.Affirmative;
+
+        /// <summary>
+        /// The game's own emulator or recomp installed (then the console's files); when its link is gone (the project removed), the player is told and
+        /// offered the console's emulator.
+        /// </summary>
+        /// <returns>False when it was set aside: the console's emulator plays the game.</returns>
+        internal static async Task<bool> ReadyOrSetAsideAsync(RetroGame game, string own, Func<bool> installed, Func<Task> ensureReady)
+        {
+            try
+            {
+                await ensureReady();
+                return true;
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode is (HttpStatusCode.NotFound or HttpStatusCode.Gone or HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized) && !installed())
+            {
+                // Not the console's keys or firmware, installed after it: its own download
+                Log.Info($"{game.Name}: {own}'s link answered {(int)ex.StatusCode!}");
+                string console = StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch";
+                if (!await AskConsoleInstead(own, console))
+                    throw new System.IO.IOException(Loc.F("The link of {0} no longer works: tell the administrator.", own));
+                GameEmulators.SetAside(game);
+                return false;
             }
         }
 

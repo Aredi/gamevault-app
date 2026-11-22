@@ -83,6 +83,12 @@ namespace GameVault.UiTests
                 Assert.Equal(new[] { 70, 71 }, ((IEnumerable<GameBananaFile>)files.ItemsSource!).Select(f => f.Id));
                 Assert.Equal(71, ((GameBananaFile)files.SelectedItem!).Id);
                 Assert.Contains("1.1.0", popup.FindControl<TextBlock>("uiFileNote")!.Text);
+                // The file for the game's 1.0.0: not installed on its 1.1.0, it would not start
+                files.SelectedItem = ((IEnumerable<GameBananaFile>)files.ItemsSource!).Single(f => f.Id == 70);
+                Assert.False(popup.FindControl<Button>("uiInstall")!.IsEnabled);
+                Assert.Contains("1.0.0", popup.FindControl<TextBlock>("uiFileNote")!.Text);
+                files.SelectedItem = ((IEnumerable<GameBananaFile>)files.ItemsSource!).Single(f => f.Id == 71);
+                Assert.True(popup.FindControl<Button>("uiInstall")!.IsEnabled);
                 await Shot(window, "1-find");
 
                 await popup.InstallAsync();

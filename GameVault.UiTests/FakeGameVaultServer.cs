@@ -973,7 +973,7 @@ namespace GameVault.UiTests
                         _idRow = 7, _sName = "Cool Mod", _sDescription = "Makes it cool", _sProfileUrl = "https://gamebanana.com/mods/7",
                         _aFiles = new object[]
                         {
-                            new { _idRow = 70, _sFile = "cool_v100.zip", _nFilesize = 10L, _sDescription = "For v1.0.0", _tsDateAdded = 300L, _sDownloadUrl = dl + "70", _sAvResult = "clean" },
+                            new { _idRow = 70, _sFile = "cool_v100.zip", _nFilesize = 10L, _sDescription = "For game version 1.0.0", _tsDateAdded = 300L, _sDownloadUrl = dl + "70", _sAvResult = "clean" },
                             new { _idRow = 71, _sFile = "cool_v110.zip", _nFilesize = 10L, _sDescription = "For v1.1.0", _tsDateAdded = 100L, _sDownloadUrl = dl + "71", _sMd5Checksum = md5, _sAvResult = "clean" },
                             new { _idRow = 72, _sFile = "cool_bad.zip", _nFilesize = 10L, _sDescription = "v1.1.0", _tsDateAdded = 500L, _sDownloadUrl = dl + "72", _sAvResult = "infected" },
                         },

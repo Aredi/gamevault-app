@@ -169,9 +169,28 @@ namespace GameVault.Core.Retro
                 score += 4;
             else if (Regex.IsMatch(text, @"(?i)\ball\b.*\b(versions?|updates?)\b"))
                 score += 2;
+            if (MadeForAnother(file, version) != null)
+                score -= 4;
             if (NeedsAnotherManager(file))
                 score -= 8;
             return score;
+        }
+
+        [GeneratedRegex(@"(?i)\b(?:game|update)\s+(?:version\s+)?v?(\d+\.\d+\.\d+)|\bversion\s+v?(\d+\.\d+\.\d+)\s+of\s+the\s+game")]
+        private static partial Regex GameVersionInText();
+
+        /// <summary>
+        /// The game's version a file says it is made for ("for game version 1.4.2"), when it is not this one: its data
+        /// does not fit this version and the game stops as it starts. Null when it names no game's version, or this one too;
+        /// a mod's own version ("v1.8.0") is not the game's.
+        /// </summary>
+        public static string? MadeForAnother(ModFile file, string? version)
+        {
+            string text = file.Name + " " + file.Description;
+            if (version == null || Names(text, version))
+                return null;
+            Match named = GameVersionInText().Match(text);
+            return !named.Success ? null : named.Groups[1].Success ? named.Groups[1].Value : named.Groups[2].Value;
         }
 
         /// <summary>A file made for a mod manager of its own (TKMM's .tkcl), which Eden can not read as it is.</summary>

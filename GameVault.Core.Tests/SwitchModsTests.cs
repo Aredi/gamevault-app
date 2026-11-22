@@ -70,6 +70,22 @@ namespace GameVault.Core.Tests
                 new ModFile(2, "challenge_mode_180_recommended.rar", 1, "Recommended version of the mod", 100),
             };
             Assert.Equal(2, BestFile(challenge, "1.2.1")!.Id);
+            // Challenge Mode's files for Eden: its data is the game's 1.4.2, the game in 1.2.1 stops as it starts
+            var forAnother = new[]
+            {
+                new ModFile(1, "challenge_mode_180_only_for_tkmm_86a6a.rar", 1, "ONLY USE WITH TKMM, AND ONLY USE THIS FILE WITH TKMM, NOT THE TWO BELOW!!!!!", 300),
+                new ModFile(2, "challenge_mode_180_recommended.rar", 1, "Recommended version (all recommended options enabled) of the mod, for game version 1.4.2", 100),
+                new ModFile(3, "cool_v110.zip", 1, "For v1.1.0", 50),
+            };
+            Assert.Equal("1.4.2", MadeForAnother(forAnother[1], "1.2.1"));
+            Assert.Null(MadeForAnother(forAnother[1], "1.4.2"));
+            Assert.Null(MadeForAnother(forAnother[1], null));
+            // The mod's own version (1.8.0, v1.1.0) is not the game's
+            Assert.Null(MadeForAnother(forAnother[0], "1.2.1"));
+            Assert.Null(MadeForAnother(forAnother[2], "1.2.1"));
+            Assert.Null(MadeForAnother(new ModFile(4, "x.zip", 1, "For game version 1.2.1 and 1.4.2", 1), "1.2.1"));
+            Assert.Equal("1.4.2", MadeForAnother(new ModFile(5, "x.zip", 1, "Works on version 1.4.2 of the game", 1), "1.1.0"));
+            Assert.Equal(3, BestFile(forAnother, "1.2.1")!.Id);
             var defogger = new[]
             {
                 new ModFile(1, "interior_addon.zip", 1, "Only affects Interiors", 300),
