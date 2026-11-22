@@ -37,7 +37,7 @@ namespace GameVault.UiTests
                     added.Add(id);
             session.Server.Users.TryAdd(1, FakeGameVaultServer.Admin);
             string png = Path.Combine(Path.GetTempPath(), $"gv-chat-{Guid.NewGuid():N}.png");
-            var panel = session.Window.FindControl<ChatPanel>("uiChat")!;
+            var panel = session.Window.View.FindControl<ChatPanel>("uiChat")!;
             // The fake server is the service too
             SanctuaryService.Current = session.Server.Url;
             try
@@ -158,7 +158,7 @@ namespace GameVault.UiTests
             var session = await TestSession.GetAsync();
             bool added = session.Server.Users.TryAdd(2, new User { ID = 2, Username = "Zoé", Role = PERMISSION_ROLE.USER, Activated = true, Progresses = Array.Empty<Progress>() });
             session.Server.Users.TryAdd(1, FakeGameVaultServer.Admin);
-            var panel = session.Window.FindControl<ChatPanel>("uiChat")!;
+            var panel = session.Window.View.FindControl<ChatPanel>("uiChat")!;
             SanctuaryService.Current = session.Server.Url;
             try
             {
@@ -248,7 +248,7 @@ namespace GameVault.UiTests
                 if (session.Server.Users.TryAdd(id, new User { ID = id, Username = name, Role = PERMISSION_ROLE.USER, Activated = true, Progresses = Array.Empty<Progress>() }))
                     ids.Add(id);
             session.Server.Users.TryAdd(1, FakeGameVaultServer.Admin);
-            var panel = session.Window.FindControl<ChatPanel>("uiChat")!;
+            var panel = session.Window.View.FindControl<ChatPanel>("uiChat")!;
             SanctuaryService.Current = session.Server.Url;
             try
             {
@@ -325,7 +325,7 @@ namespace GameVault.UiTests
                 Assert.False(ChatService.Instance.IsAvailable);
                 Assert.False(MainWindowViewModel.Instance.IsChatAvailable);
                 MainWindowViewModel.Instance.IsChatOpen = true;
-                Assert.False(session.Window.FindControl<ChatPanel>("uiChat")!.IsEffectivelyVisible);
+                Assert.False(session.Window.View.FindControl<ChatPanel>("uiChat")!.IsEffectivelyVisible);
             }
             finally
             {

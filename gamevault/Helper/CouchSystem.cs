@@ -89,6 +89,11 @@ namespace gamevault.Helper
         {
             try
             {
+                if (Platform.MobilePlatform.Current is Platform.IMobilePlatform mobile)
+                {
+                    mobile.Volume(direction);
+                    return;
+                }
                 if (VolumeCommand(direction, PlatformInfo.IsWindows, PlatformInfo.IsMac) is var (file, arguments))
                 {
                     Start(file, arguments);

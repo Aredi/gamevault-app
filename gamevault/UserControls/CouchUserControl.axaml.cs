@@ -320,17 +320,21 @@ namespace gamevault.UserControls
             var pc = new Dictionary<int, Game>();
             foreach (var install in InstallViewModel.Instance.InstalledGames.Where(g => g.Key != null))
                 pc[install.Key.ID] = install.Key;
-            try
+            // The Mac and Android play no PC game: the consoles and retro games alone
+            if (Helper.Platform.PlatformInfo.PlaysPcGames)
             {
-                string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?limit=-1");
-                foreach (Game game in JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>())
-                    if (game.DeletedAt == null)
-                        pc.TryAdd(game.ID, game);
-            }
-            catch (Exception ex)
-            {
-                // Offline: the installed games are enough
-                Log.Ignored(ex);
+                try
+                {
+                    string json = await WebHelper.GetAsync($"{SettingsViewModel.Instance.ServerUrl}/api/games?limit=-1");
+                    foreach (Game game in JsonSerializer.Deserialize<PaginatedData<Game>>(json)?.Data ?? Array.Empty<Game>())
+                        if (game.DeletedAt == null)
+                            pc.TryAdd(game.ID, game);
+                }
+                catch (Exception ex)
+                {
+                    // Offline: the installed games are enough
+                    Log.Ignored(ex);
+                }
             }
             List<RetroGame> retro = new();
             try { retro = await MainWindowViewModel.Instance.Retro.AllGamesAsync(); }
@@ -359,7 +363,8 @@ namespace gamevault.UserControls
             var favorites = ByTitle(pc.Concat(retro).Where(IsFavorite), i => i.SortTitle).ToList();
             if (favorites.Count > 0)
                 tabs.Add(new CouchTab { Name = Loc.T("Favorites"), Items = favorites });
-            tabs.Add(new CouchTab { Name = Loc.T("Library"), Items = Filtered(pc) });
+            if (Helper.Platform.PlatformInfo.PlaysPcGames)
+                tabs.Add(new CouchTab { Name = Loc.T("Library"), Items = Filtered(pc) });
             foreach (var platform in retro.GroupBy(i => i.Retro!.Platform.Name).OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
                 tabs.Add(new CouchTab { Name = platform.Key, Items = Filtered(platform.ToList()) });
             genres = CouchFilter.Genres(pc.Concat(retro).Select(EntryOf));
@@ -545,7 +550,7 @@ namespace gamevault.UserControls
                 Refresh();
             }
             // A game is played, or another window is in front: its gamepad is not ours
-            bool listen = TopLevel.GetTopLevel(this) is Window { IsActive: true } && IsVisible;
+            bool listen = InFront && IsVisible;
             // Read 60 times a second for the menus; 30 times behind a game (only Start + Back is looked for there: at 10, a
             // quick press of both was missed)
             // No way to read a gamepad here (the keyboard only): twice a second, for the clock and the refresh
@@ -570,6 +575,14 @@ namespace gamevault.UserControls
             foreach (CouchCommand command in repeater.Next(held, clock.Elapsed))
                 Handle(command);
         }
+
+        /// <summary>Its window is the active one; on Android, the app is on the screen.</summary>
+        private bool InFront => TopLevel.GetTopLevel(this) switch
+        {
+            Window window => window.IsActive,
+            null => false,
+            _ => Helper.Platform.MobilePlatform.InFront,
+        };
 
         /// <summary>The keyboard does what the gamepad does.</summary>
         internal bool HandleKey(Key key)
@@ -1051,7 +1064,7 @@ namespace gamevault.UserControls
                 : long.TryParse(item.Pc!.Size, out long bytes) && bytes > 0 ? Converter.GameSizeConverter.Text(bytes) : null;
             if (!string.IsNullOrEmpty(size))
                 stats.Add(new CouchStat(Loc.T("Size"), size));
-            stats.Add(new CouchStat(Loc.T("On this PC"), item.Installed ? Loc.T("Installed") : Loc.T("Not installed")));
+            stats.Add(new CouchStat(Helper.Platform.PlatformInfo.IsAndroid ? Loc.T("On this device") : Loc.T("On this PC"), item.Installed ? Loc.T("Installed") : Loc.T("Not installed")));
             return stats;
         }
 
@@ -1331,7 +1344,7 @@ namespace gamevault.UserControls
                 ShowStatus(current);
                 // A screenshot after 3 seconds, then one every 6; nothing while a game is played over the window
                 if (++refreshes % 12 == 6 && MainWindowViewModel.Instance.Popup == null && !Settings.Performance && Settings.Shots && playing == null
-                    && TopLevel.GetTopLevel(this) is Window { IsActive: true })
+                    && InFront)
                     _ = NextShotAsync(current);
             }
             WatchGame();
@@ -1339,7 +1352,7 @@ namespace gamevault.UserControls
             KeepTheme();
             if (LoginShown)
                 ShowLoginClock();
-            bool active = IsVisible && TopLevel.GetTopLevel(this) is Window { IsActive: true };
+            bool active = IsVisible && InFront;
             KeepDrift(active);
             // The music: in the menus only, never over a game, a trailer or a game that starts
             audio?.Music(SoundsOn && Settings.Music && active && playing == null && !TrailerHeard && !ThemeHeard && curtain != Curtain.Splash);

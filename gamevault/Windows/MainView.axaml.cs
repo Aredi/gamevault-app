@@ -137,6 +137,7 @@ namespace gamevault.Windows
                 beforeCouch = window.WindowState == WindowState.FullScreen ? WindowState.Normal : window.WindowState;
                 window.WindowState = WindowState.FullScreen;
             }
+            MobilePlatform.Current?.SetCouch(true);
             ZoomForCouch();
             _ = uiCouch.OpenAsync(welcome);
         }
@@ -159,6 +160,7 @@ namespace gamevault.Windows
             uiDesktop.IsVisible = true;
             if (Window is Window window)
                 window.WindowState = beforeCouch;
+            MobilePlatform.Current?.SetCouch(false);
             ZoomForCouch();
         }
 
@@ -185,6 +187,16 @@ namespace gamevault.Windows
             // A game over the pages has its own menu
             if (DialogLayer.Children.Count > 0 || App.Instance.OverScreen != null)
                 return;
+            // The living-room mode: B (its own way back, then its menu to leave it)
+            if (uiCouch.IsVisible)
+            {
+                if (MainWindowViewModel.Instance.Popup != null)
+                    MainWindowViewModel.Instance.ClosePopup();
+                else
+                    uiCouch.Handle(GameVault.Core.Couch.CouchCommand.Back);
+                e.Handled = true;
+                return;
+            }
             if (uiQuickSearch.IsVisible)
                 uiQuickSearch.Close();
             else if (MainWindowViewModel.Instance.Popup != null)

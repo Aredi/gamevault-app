@@ -131,7 +131,7 @@ namespace GameVault.UiTests
             Capture(session, output, "34-settings-search");
             ((Control)vm.ActiveControl!).FindControl<TextBox>("uiSearch")!.Text = "";
 
-            var quickSearch = session.Window.FindControl<QuickSearchUserControl>("uiQuickSearch")!;
+            var quickSearch = session.Window.View.FindControl<QuickSearchUserControl>("uiQuickSearch")!;
             vm.SetActiveControl(MainControl.Library);
             await Settle(800);
             quickSearch.Open();
@@ -264,7 +264,7 @@ namespace GameVault.UiTests
             {
                 await Settle(700);
                 Capture(session, output, name);
-                var layer = session.Window.FindControl<Panel>("DialogLayer")!;
+                var layer = session.Window.View.FindControl<Panel>("DialogLayer")!;
                 layer.GetVisualDescendants().OfType<IconButton>().Last().RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await Settle(200);
             }

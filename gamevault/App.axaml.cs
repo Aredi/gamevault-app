@@ -192,12 +192,13 @@ namespace gamevault
         }
 
         /// <summary>Back to the profiles (sign-out, another profile): the main view is disposed.</summary>
-        public void OpenLoginView()
+        /// <param name="signInAgain">Android: the profile chosen last signs in by itself (the living-room mode's change of profile).</param>
+        public void OpenLoginView(bool signInAgain = false)
         {
             if (SingleView != null)
             {
                 (singleViewShell.Content as MainView)?.Dispose();
-                singleViewShell.Content = FitLogin(new LoginView(true));
+                singleViewShell.Content = FitLogin(new LoginView(skipBootTasks: !signInAgain));
                 return;
             }
             var mainWindow = (MainWindow)MainWindow!;

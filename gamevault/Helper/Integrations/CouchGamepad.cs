@@ -99,7 +99,7 @@ namespace gamevault.Helper
         }
 
         /// <summary>A way to read gamepads was found (none: the keyboard only).</summary>
-        public bool CanRead => library != IntPtr.Zero || xinput;
+        public bool CanRead => library != IntPtr.Zero || xinput || PlatformInfo.IsAndroid;
 
         /// <summary>Where the right stick points, from -1 to 1 each way (down is positive): the mouse's move.</summary>
         public (double X, double Y) RightStick { get; private set; }
@@ -117,6 +117,15 @@ namespace gamevault.Helper
         {
             RightStick = default;
             CouchButtons held = CouchButtons.None;
+            // Android: its controllers as the activity saw them
+            if (PlatformInfo.IsAndroid)
+            {
+                held = MobileGamepad.TakeHeld();
+                RightStick = MobileGamepad.RightStick;
+                if (held != CouchButtons.None)
+                    LastUsed = MobileGamepad.Kind;
+                return held;
+            }
             if (library != IntPtr.Zero)
             {
                 try { held |= ReadSdl(); }

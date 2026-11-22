@@ -51,6 +51,12 @@ namespace gamevault.UserControls
             // The mode opens again with the other profile, without asking it to log in a second time
             skipLoginOnce = true;
             comeBack = true;
+            // Android: one screen, the login view in it, signing in with the profile chosen
+            if (App.Instance.IsSingleView)
+            {
+                App.Instance.OpenLoginView(signInAgain: true);
+                return;
+            }
             // The screen stays the mode's: a dark curtain while the client signs in, the login window only if it asks something
             switchCurtain = SwitchCurtain(name);
             switchCurtain.Show();

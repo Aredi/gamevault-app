@@ -50,8 +50,8 @@ namespace GameVault.UiTests
         public async Task APopup_OpensSoftly_ThenIsFullyShown()
         {
             var session = await TestSession.GetAsync();
-            var layer = session.Window.FindControl<Control>("uiPopupLayer")!;
-            var frame = session.Window.FindControl<Control>("uiPopupFrame")!;
+            var layer = session.Window.View.FindControl<Control>("uiPopupLayer")!;
+            var frame = session.Window.View.FindControl<Control>("uiPopupFrame")!;
             MainWindowViewModel.Instance.ClosePopup();
             // What they are at rest (a style may give the panel its own transform): given back after
             var layerAtRest = layer.RenderTransform;

@@ -111,7 +111,7 @@ namespace gamevault.UserControls
         {
             if (playing == null)
                 return;
-            bool active = TopLevel.GetTopLevel(this) is Window { IsActive: true };
+            bool active = InFront;
             if (active && playingFor.Elapsed > TimeSpan.FromSeconds(15) && (playing.Retro != null || playingSeen))
             {
                 GameClosed(bringBack: false);

@@ -177,7 +177,7 @@ namespace GameVault.UiTests
             Task shown = session.Window.ShowMessageAsync("Title", "Message", MessageDialogStyle.AffirmativeAndNegative);
             Dispatcher.UIThread.RunJobs();
             session.Window.UpdateLayout();
-            var layer = session.Window.FindControl<Panel>("DialogLayer")!;
+            var layer = session.Window.View.FindControl<Panel>("DialogLayer")!;
             var buttons = layer.GetVisualDescendants().OfType<IconButton>().ToList();
             Assert.Equal(new[] { ButtonKind.Skeleton, ButtonKind.Primary }, buttons.Select(b => b.Kind));
             var card = buttons[0].GetVisualAncestors().OfType<Border>().Last(b => b.GetVisualParent() is Panel panel && panel.GetVisualParent() == layer);

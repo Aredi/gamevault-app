@@ -214,6 +214,24 @@ namespace gamevault.Android.Retro
             return data == IntPtr.Zero || size == 0 ? Span<byte>.Empty : new Span<byte>((void*)data, (int)size);
         }
 
+        /// <summary>The whole state of the game (a save state, as RetroArch's), or null when the core has none.</summary>
+        public byte[]? SaveState()
+        {
+            nuint size = ((delegate* unmanaged[Cdecl]<nuint>)Export("retro_serialize_size"))();
+            if (size == 0)
+                return null;
+            byte[] state = new byte[(int)size];
+            fixed (byte* data = state)
+                return ((delegate* unmanaged[Cdecl]<IntPtr, nuint, byte>)Export("retro_serialize"))((IntPtr)data, size) != 0 ? state : null;
+        }
+
+        /// <summary>The game back where a save state was made.</summary>
+        public bool LoadState(byte[] state)
+        {
+            fixed (byte* data = state)
+                return ((delegate* unmanaged[Cdecl]<IntPtr, nuint, byte>)Export("retro_unserialize"))((IntPtr)data, (nuint)state.Length) != 0;
+        }
+
         private bool gameLoaded;
 
         /// <summary>The game unloaded: only a loaded one (unloading after a failed load crashes some cores).</summary>

@@ -36,7 +36,7 @@ namespace GameVault.UiTests
                 model.PendingUser = new LoginUser { Username = "newbie", InviteCode = "WRONG" };
                 model.LoginStepIndex = (int)LoginStep.PendingActivation;
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                var activate = window.FindControl<IconButton>("uiActivate")!;
+                var activate = window.View.FindControl<IconButton>("uiActivate")!;
                 activate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 await TestSession.WaitUntil(() => activate.IsEnabled && model.AppBarText != null, TimeSpan.FromSeconds(10), "the refusal");
                 Assert.Equal("Ce code d'invitation n'est pas valable ou a déjà été utilisé.", model.AppBarText);

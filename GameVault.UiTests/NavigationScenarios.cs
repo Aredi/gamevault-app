@@ -12,7 +12,7 @@ namespace GameVault.UiTests
     {
         /// <summary>The menu's items, as ListBoxItems in their order (MainControl's).</summary>
         private static ListBoxItem Item(TestSession session, MainControl control) =>
-            (ListBoxItem)session.Window.FindControl<ListBox>("uiNavigation")!.ContainerFromIndex((int)control)!;
+            (ListBoxItem)session.Window.View.FindControl<ListBox>("uiNavigation")!.ContainerFromIndex((int)control)!;
 
         [AvaloniaFact]
         public async Task AGamesPage_KeepsTheSectionItCameFrom_LitInTheMenu()

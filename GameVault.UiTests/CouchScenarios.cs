@@ -512,8 +512,8 @@ namespace GameVault.UiTests
             try
             {
                 window.EnterCouch();
-                var couch = window.FindControl<CouchUserControl>("uiCouch")!;
-                var keyboard = window.FindControl<CouchKeyboard>("uiCouchKeys")!;
+                var couch = window.View.FindControl<CouchUserControl>("uiCouch")!;
+                var keyboard = window.View.FindControl<CouchKeyboard>("uiCouchKeys")!;
                 Assert.Same(keyboard, couch.TextKeyboard);
 
                 // A window of the client: a name, a box to check, a choice, a slider and two buttons
@@ -962,15 +962,15 @@ namespace GameVault.UiTests
                 window.EnterCouch();
                 Assert.True(window.IsCouchShown);
                 Assert.Equal(WindowState.FullScreen, window.WindowState);
-                Assert.False(window.FindControl<Grid>("uiDesktop")!.IsVisible);
+                Assert.False(window.View.FindControl<Grid>("uiDesktop")!.IsVisible);
                 // The client's windows are larger there, as much as the screen is taller than them; at their size on the desktop
-                var zoom = window.FindControl<LayoutTransformControl>("uiPopupZoom")!;
+                var zoom = window.View.FindControl<LayoutTransformControl>("uiPopupZoom")!;
                 double expected = Math.Clamp(window.Bounds.Height / 820, 1, 1.7);
                 Assert.Equal(expected > 1.01, zoom.LayoutTransform != null);
                 window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
                 Assert.False(window.IsCouchShown);
                 Assert.Null(zoom.LayoutTransform);
-                Assert.True(window.FindControl<Grid>("uiDesktop")!.IsVisible);
+                Assert.True(window.View.FindControl<Grid>("uiDesktop")!.IsVisible);
                 Assert.Equal(before, window.WindowState);
                 window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
                 Assert.True(window.IsCouchShown);
@@ -978,7 +978,7 @@ namespace GameVault.UiTests
                 // Opened at the client's start: the login screen, with the profile signed in, until A comes in
                 window.LeaveCouch();
                 window.EnterCouch(welcome: true);
-                var couch = window.FindControl<CouchUserControl>("uiCouch")!;
+                var couch = window.View.FindControl<CouchUserControl>("uiCouch")!;
                 Assert.True(couch.LoginShown);
                 Assert.Equal("admin", couch.LoginProfiles[0].Name);
                 Assert.True(couch.LoginProfiles[0].IsCurrent && couch.LoginProfiles[0].IsSelected);

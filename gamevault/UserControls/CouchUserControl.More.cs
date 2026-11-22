@@ -460,9 +460,13 @@ namespace gamevault.UserControls
             };
             if (OperatingSystem.IsWindows())
                 lines.Add(Setting(Loc.F("Mouse with the right stick: {0}", YesNo(Settings.Mouse)), () => Settings.Mouse = !Settings.Mouse));
-            lines.Add(Power(Loc.T("Sleep"), Loc.T("Put this PC to sleep?"), CouchPower.Sleep));
-            lines.Add(Power(Loc.T("Restart"), Loc.T("Restart this PC?"), CouchPower.Restart));
-            lines.Add(Power(Loc.T("Shut down"), Loc.T("Shut this PC down?"), CouchPower.ShutDown));
+            // A PC's power; Android's is its own button
+            if (!Helper.Platform.PlatformInfo.IsAndroid)
+            {
+                lines.Add(Power(Loc.T("Sleep"), Loc.T("Put this PC to sleep?"), CouchPower.Sleep));
+                lines.Add(Power(Loc.T("Restart"), Loc.T("Restart this PC?"), CouchPower.Restart));
+                lines.Add(Power(Loc.T("Shut down"), Loc.T("Shut this PC down?"), CouchPower.ShutDown));
+            }
             lines.Add(Line(Loc.T("Close"), CloseMenu));
             return lines;
         }
@@ -599,7 +603,7 @@ namespace gamevault.UserControls
         /// </summary>
         private bool TrailerMayPlay => IsVisible && trailerVideo != null && trailerGeneration == detailGeneration
             && Navigator.Screen == CouchScreen.Details && MainWindowViewModel.Instance.Popup == null && DialogService.Current == null
-            && curtain == Curtain.None && Editing == null && playing == null && TopLevel.GetTopLevel(this) is Window { IsActive: true };
+            && curtain == Curtain.None && Editing == null && playing == null && InFront;
 
         /// <summary>
         /// Twice a second: started after two seconds on the screen, stopped when something comes over it. Played to its
@@ -884,7 +888,7 @@ namespace gamevault.UserControls
         private void RefreshMore()
         {
             RefreshDownloads();
-            bool front = TopLevel.GetTopLevel(this) is Window { IsActive: true };
+            bool front = InFront;
             if (front && !ActivityService.Instance.IsPlayingHere)
                 CheckIdle(idle.Elapsed);
             else if (curtain != Curtain.Saver)

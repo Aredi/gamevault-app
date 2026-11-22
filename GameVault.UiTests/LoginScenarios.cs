@@ -117,7 +117,7 @@ namespace GameVault.UiTests
                 model.UserProfiles.Add(profile);
                 window.OpenProfileEdit(profile);
                 Layout(window);
-                var sso = window.FindControl<CheckBox>("uiEditSso")!;
+                var sso = window.View.FindControl<CheckBox>("uiEditSso")!;
                 Assert.True(sso.IsChecked);
                 sso.IsChecked = false;
                 model.EditUser.Password = "admin-password";

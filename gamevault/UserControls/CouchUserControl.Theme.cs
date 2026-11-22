@@ -72,7 +72,7 @@ namespace gamevault.UserControls
 
         private bool ThemeMayPlay => themeItem != null && Settings.Themes && !Settings.Performance && SoundsOn && IsVisible
             && !LoginShown && playing == null && curtain == Curtain.None && MainWindowViewModel.Instance.Popup == null
-            && !TrailerHeard && TopLevel.GetTopLevel(this) is Window { IsActive: true };
+            && !TrailerHeard && InFront;
 
         /// <summary>Twice a second: started after a moment on a game, stopped when a game is played, a trailer heard, the window left.</summary>
         internal void KeepTheme()

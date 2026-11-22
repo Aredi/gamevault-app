@@ -253,9 +253,27 @@ namespace gamevault.Android
             return created;
         }
 
-        /// <summary>The game takes the whole screen (no status or navigation bar), the screen stays on.</summary>
+        private bool couch;
+
+        public void Volume(int direction)
+        {
+            if (activity.GetSystemService(Context.AudioService) is global::Android.Media.AudioManager audio)
+                audio.AdjustStreamVolume(global::Android.Media.Stream.Music,
+                    direction > 0 ? global::Android.Media.Adjust.Raise : direction < 0 ? global::Android.Media.Adjust.Lower : global::Android.Media.Adjust.ToggleMute,
+                    global::Android.Media.VolumeNotificationFlags.ShowUi);
+        }
+
+        public void SetCouch(bool on)
+        {
+            couch = on;
+            Immersive(on);
+        }
+
+        /// <summary>The game takes the whole screen (no status or navigation bar), the screen stays on; the living-room mode too.</summary>
         private void Immersive(bool on)
         {
+            // A game closed in the living-room mode: back to it, still on the whole screen
+            on |= couch;
             try
             {
                 // A phone: landscape while a game is played. A large screen (a foldable open, a tablet) stays as it is, the

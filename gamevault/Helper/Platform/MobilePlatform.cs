@@ -47,6 +47,12 @@ namespace gamevault.Helper.Platform
         /// <summary>The app plays this core's games itself (its pictures are drawn without the GPU): no RetroArch.</summary>
         bool PlaysBuiltIn(string core);
 
+        /// <summary>The living-room mode opened or closed: the whole screen (in landscape on a phone) while it is.</summary>
+        void SetCouch(bool on);
+
+        /// <summary>The device's sound: louder (1), lower (-1), on or off (0), with Android's own volume panel.</summary>
+        void Volume(int direction);
+
         /// <summary>The core of the app's own player, downloaded once from libretro.</summary>
         Task EnsureCoreAsync(string core, Action<string> status);
 
@@ -59,10 +65,16 @@ namespace gamevault.Helper.Platform
     /// <param name="SystemDirectory">The BIOS and the cores' files.</param>
     /// <param name="SaveFile">The cartridge's or memory card's save, read before and written after.</param>
     /// <param name="Language">RetroArch's name of the console's language ("French"...).</param>
-    internal sealed record BuiltInGame(string Name, string Platform, string Core, string Rom, string SystemDirectory, string SaveFile, string Language);
+    /// <param name="StateFile">Where the game's state is kept when it is quit (RetroArch's first slot), for "Resume".</param>
+    /// <param name="StartState">A save state the game starts from, or none.</param>
+    internal sealed record BuiltInGame(string Name, string Platform, string Core, string Rom, string SystemDirectory, string SaveFile, string Language,
+        string? StateFile = null, string? StartState = null);
 
     internal static class MobilePlatform
     {
         public static IMobilePlatform? Current { get; set; }
+
+        /// <summary>The app is on the screen (not behind another app): Android's own "window is active".</summary>
+        public static bool InFront { get; set; } = true;
     }
 }

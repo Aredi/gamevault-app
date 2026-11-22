@@ -125,6 +125,13 @@ namespace gamevault.Android.Retro
                     ApplyOptions();
                     core.Run();
                     UpdateGeometry();
+                    // "Resume": the state is put back once the game ran a frame, as RetroArch does
+                    if (frame == 0 && startState != null)
+                    {
+                        if (!core.LoadState(startState))
+                            GameVault.Core.Log.Info($"{game.Name}: its save state could not be loaded");
+                        startState = null;
+                    }
                     if ((Buttons.Any(b => (b & (1 << Select)) != 0 && (b & (1 << Start)) != 0)))
                     {
                         QuitRequested?.Invoke();
@@ -151,6 +158,7 @@ namespace gamevault.Android.Retro
                     }
                 }
                 WriteSave();
+                WriteState();
             }
             catch (Exception ex)
             {
@@ -198,6 +206,8 @@ namespace gamevault.Android.Retro
             }
             UpdateGeometry();
             ReadSave();
+            if (game.StartState is string from && File.Exists(from))
+                startState = File.ReadAllBytes(from);
             return true;
         }
 
@@ -380,6 +390,42 @@ namespace gamevault.Android.Retro
                 resume.Set();
             }
         }
+        private byte[]? startState;
+
+        /// <summary>Quit: where the game is, in RetroArch's first slot, with its picture (its page offers to resume from it).</summary>
+        private void WriteState()
+        {
+            if (game.StateFile == null || core == null)
+                return;
+            try
+            {
+                if (core.SaveState() is not byte[] state)
+                    return;
+                Directory.CreateDirectory(Path.GetDirectoryName(game.StateFile)!);
+                File.WriteAllBytes(game.StateFile, state);
+                int width, height;
+                int[] pixels;
+                lock (Frame)
+                {
+                    width = Frame.Width;
+                    height = Frame.Height;
+                    pixels = Frame.Pixels[..(width * height)];
+                }
+                if (width == 0 || height == 0)
+                    return;
+                // RGBA bytes are 0xAABBGGRR; Android's pictures 0xAARRGGBB
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    int p = pixels[i];
+                    pixels[i] = (p & unchecked((int)0xFF00FF00)) | ((p >> 16) & 0xFF) | ((p & 0xFF) << 16);
+                }
+                using var picture = global::Android.Graphics.Bitmap.CreateBitmap(pixels, width, height, global::Android.Graphics.Bitmap.Config.Argb8888!);
+                using var file = File.Create(game.StateFile + ".png");
+                picture!.Compress(global::Android.Graphics.Bitmap.CompressFormat.Png!, 100, file);
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
         private void WriteSaveWhilePaused()
         {
             if (paused && running)

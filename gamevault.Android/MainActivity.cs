@@ -1,9 +1,11 @@
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
+using Android.Views;
 using Avalonia;
 using Avalonia.Android;
 using gamevault.Helper.Platform;
+using GameVault.Core.Couch;
 
 namespace gamevault.Android
 {
@@ -30,6 +32,7 @@ namespace gamevault.Android
             Window!.DecorView.ViewTreeObserver!.GlobalLayout += (_, _) => ApplySafeArea();
         }
 
+
         private Avalonia.Thickness safeArea;
         private void ApplySafeArea()
         {
@@ -52,6 +55,14 @@ namespace gamevault.Android
         {
             if (e != null && platform?.OnKey(e) == true)
                 return true;
+            // Outside a game, a controller's buttons are the living-room mode's (it reads them as a PC's gamepad)
+            if (e != null && FromController(e.Source, e.Device) && CouchButtonOf(e.KeyCode) is CouchButtons button)
+            {
+                if (e.Action is KeyEventActions.Down or KeyEventActions.Up)
+                    MobileGamepad.Key(button, e.Action == KeyEventActions.Down, e.Device?.Name);
+                if (gamevault.Windows.MainView.Current?.IsCouchShown == true)
+                    return true;
+            }
             return base.DispatchKeyEvent(e);
         }
 
@@ -59,18 +70,52 @@ namespace gamevault.Android
         {
             if (e != null && platform?.OnMotion(e) == true)
                 return true;
+            if (e != null && e.Action == MotionEventActions.Move && FromController(e.Source, e.Device))
+            {
+                MobileGamepad.Axes(e.GetAxisValue(Axis.X), e.GetAxisValue(Axis.Y), e.GetAxisValue(Axis.HatX), e.GetAxisValue(Axis.HatY),
+                    e.GetAxisValue(Axis.Z), e.GetAxisValue(Axis.Rz));
+                if (gamevault.Windows.MainView.Current?.IsCouchShown == true)
+                    return true;
+            }
             return base.DispatchGenericMotionEvent(e);
         }
+
+        private static bool FromController(InputSourceType source, InputDevice? device) =>
+            (source & InputSourceType.Gamepad) == InputSourceType.Gamepad || (source & InputSourceType.Joystick) == InputSourceType.Joystick
+            || (source & InputSourceType.Dpad) == InputSourceType.Dpad && device is { IsVirtual: false } && ((device.Sources & InputSourceType.Gamepad) == InputSourceType.Gamepad);
+
+        private static CouchButtons? CouchButtonOf(Keycode key) => key switch
+        {
+            Keycode.ButtonA => CouchButtons.A,
+            Keycode.ButtonB => CouchButtons.B,
+            Keycode.ButtonX => CouchButtons.X,
+            Keycode.ButtonY => CouchButtons.Y,
+            Keycode.ButtonL1 => CouchButtons.LeftShoulder,
+            Keycode.ButtonR1 => CouchButtons.RightShoulder,
+            Keycode.ButtonL2 => CouchButtons.LeftTrigger,
+            Keycode.ButtonR2 => CouchButtons.RightTrigger,
+            Keycode.ButtonStart => CouchButtons.Start,
+            Keycode.ButtonSelect => CouchButtons.Back,
+            Keycode.ButtonThumbl => CouchButtons.LeftStick,
+            Keycode.ButtonThumbr => CouchButtons.RightStick,
+            Keycode.DpadUp => CouchButtons.Up,
+            Keycode.DpadDown => CouchButtons.Down,
+            Keycode.DpadLeft => CouchButtons.Left,
+            Keycode.DpadRight => CouchButtons.Right,
+            _ => null,
+        };
 
         protected override void OnPause()
         {
             base.OnPause();
+            MobilePlatform.InFront = false;
             platform?.Paused();
         }
 
         protected override void OnResume()
         {
             base.OnResume();
+            MobilePlatform.InFront = true;
             platform?.Resumed();
         }
     }
