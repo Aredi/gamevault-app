@@ -14,9 +14,13 @@ namespace GameVault.Core.Retro
         public bool IsRpcs3 => Core == "rpcs3";
         /// <summary>Played with Eden, not RetroArch.</summary>
         public bool IsEden => Core == "eden";
+        /// <summary>Played with Eglantine (the Switch 2), not RetroArch.</summary>
+        public bool IsEglantine => Core == "eglantine";
+        /// <summary>Played with Eden or its fork Eglantine: a Switch game with its updates and DLC beside it.</summary>
+        public bool IsSwitch => IsEden || IsEglantine;
         /// <summary>Played with xemu, not RetroArch.</summary>
         public bool IsXemu => Core == "xemu";
-        public bool IsStandalone => IsRpcs3 || IsEden || IsXemu;
+        public bool IsStandalone => IsRpcs3 || IsEden || IsEglantine || IsXemu;
     }
 
     public static class RetroSystems
@@ -39,6 +43,8 @@ namespace GameVault.Core.Retro
             new RetroSystem("ps3", "PlayStation 3", "rpcs3", new[] { "iso", "EBOOT.BIN" }),
             // Eden, not RetroArch: a game card (.xci) or an eShop package (.nsp), compressed ones (.nsz, .xcz) made .nsp at their download; its updates and DLC are read from the games' folders
             new RetroSystem("switch", "Nintendo Switch", "eden", new[] { "xci", "nsp" }),
+            // Eglantine, an Eden for the Switch 2: a decrypted dump in a NUP (with its updates and DLC), a Switch 2 NSP, or its folder (zipped in RomM)
+            new RetroSystem("switch-2", "Nintendo Switch 2", "eglantine", new[] { "nup", "nsp", "main.npdm" }),
             // xemu, not RetroArch: an XISO (a full dump is made one at its download, see XboxDisc)
             new RetroSystem("xbox", "Xbox", "xemu", new[] { "iso", "xiso" }),
             new RetroSystem("3ds", "Nintendo 3DS", "azahar", new[] { "cxi", "zcxi", "3ds", "cci", "zcci", "3dsx", "z3dsx", "app", "elf", "cia" }, CoverRatio: 0.89),
@@ -53,12 +59,33 @@ namespace GameVault.Core.Retro
                 : $"{rommUrl.TrimEnd('/')}/assets/romm/resources/{cover.Replace("/cover/big.", "/cover/small.")}";
 
         /// <summary>
-        /// A Switch update or DLC: by its title id in the name ("[0100670014483001]": a game's own ends in 000), or in
+        /// A Switch update or DLC: by its title id in the name ("[0100670014483001]", a Switch 2 one's starts with 04: a game's own ends in 000), or in
         /// the "update" or "dlc" folder of a game in RomM.
         /// </summary>
         public static bool IsSwitchAddOn(string path) =>
-            System.Text.RegularExpressions.Regex.Match(Path.GetFileName(path), @"\[(0100[0-9A-Fa-f]{12})\]") is { Success: true } id && !id.Groups[1].Value.EndsWith("000")
+            System.Text.RegularExpressions.Regex.Match(Path.GetFileName(path), @"\[(0[14]00[0-9A-Fa-f]{12})\]") is { Success: true } id && !id.Groups[1].Value.EndsWith("000")
             || Path.GetFileName(Path.GetDirectoryName(path)) is "update" or "dlc";
+
+        /// <summary>
+        /// A Switch 2 dump's program (&lt;game&gt;/base/exefs/main.npdm, &lt;game&gt;/updates/655360/exefs/main.npdm) with the
+        /// romfs folder beside its exefs: a dump's base often has none, its update holds the whole game.
+        /// </summary>
+        private static bool HasRomFs(string npdm, IEnumerable<string> files)
+        {
+            string? program = Path.GetDirectoryName(Path.GetDirectoryName(npdm));
+            if (program == null)
+                return false;
+            string romfs = Path.Combine(program, "romfs");
+            return files.Any(f => f.StartsWith(romfs + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || f.StartsWith(romfs + '/', StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>The version of an update's program (its folder under "updates"), 0 for the base.</summary>
+        private static long UpdateVersion(string npdm)
+        {
+            string? program = Path.GetDirectoryName(Path.GetDirectoryName(npdm));
+            return Path.GetFileName(Path.GetDirectoryName(program)) is string parent && parent.Equals("updates", StringComparison.OrdinalIgnoreCase)
+                && long.TryParse(Path.GetFileName(program), out long version) ? version : 0;
+        }
 
         /// <summary>The file to start in a game's folder; null when none has an extension the emulator knows.</summary>
         public static string? LaunchFile(RetroSystem system, IEnumerable<string> files)
@@ -67,11 +94,12 @@ namespace GameVault.Core.Retro
             foreach (string extension in system.Extensions)
             {
                 string? match = extension.Contains('.')
-                    // The one nearest the top (a game's other EBOOT.BIN are deeper)
-                    ? list.Where(f => string.Equals(Path.GetFileName(f), extension, StringComparison.OrdinalIgnoreCase)).OrderBy(f => f.Length).FirstOrDefault()
+                    // The one nearest the top (a game's other EBOOT.BIN are deeper); a Switch 2 dump's newest program with its romfs
+                    ? list.Where(f => string.Equals(Path.GetFileName(f), extension, StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(f => system.IsEglantine && HasRomFs(f, list)).ThenByDescending(f => system.IsEglantine ? UpdateVersion(f) : 0).ThenBy(f => f.Length).FirstOrDefault()
                     // A Switch game before its updates and DLC, which are not started (alone, the add-on is the game's file: it is installed)
                     : list.Where(f => string.Equals(Path.GetExtension(f).TrimStart('.'), extension, StringComparison.OrdinalIgnoreCase))
-                        .OrderBy(f => system.IsEden && IsSwitchAddOn(f)).ThenBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+                        .OrderBy(f => system.IsSwitch && IsSwitchAddOn(f)).ThenBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
                 if (match != null)
                     return match;
             }

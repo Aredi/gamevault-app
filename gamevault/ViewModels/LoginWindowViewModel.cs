@@ -68,6 +68,9 @@ namespace gamevault.ViewModels
             }
             set { signupUser = value; OnPropertyChanged(); }
         }
+        private LoginUser pendingUser = new();
+        /// <summary>The account waiting for its activation: its name and the invitation code that activates it.</summary>
+        public LoginUser PendingUser { get => pendingUser; set { pendingUser = value; OnPropertyChanged(); } }
         private LoginUser editUser { get; set; }
         public LoginUser EditUser
         {

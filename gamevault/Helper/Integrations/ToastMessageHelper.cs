@@ -52,10 +52,14 @@ namespace gamevault.Helper
             return manager;
         }
 
-        public static void CreateToastMessage(string title, string message, string imageUri = "")
+        public static void CreateToastMessage(string title, string message, string imageUri = "") => ShowAsIs(Loc.T(title), Loc.T(message), imageUri);
+
+        /// <summary>Texts shown as they are (a player's message is not a text to translate).</summary>
+        public static void ShowAsIs(string title, string message, string imageUri = "")
         {
-            title = Loc.T(title);
-            message = Loc.T(message);
+            // On the TV, a notification of the system covers the mode or the game started from it
+            if (gamevault.UserControls.CouchUserControl.Shown)
+                return;
             _ = Task.Run(async () =>
             {
                 try

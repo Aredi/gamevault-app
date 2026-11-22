@@ -39,6 +39,8 @@ namespace GameVault.Core.Retro
         }
         /// <summary>What the player changed in RetroArch's menu: core options, controls remapped, overrides.</summary>
         public string MenuSettingsDirectory => Path.Combine(DataDirectory, "config");
+        /// <summary>Its screenshots (F8): kept here, not beside the game's file; the game's page shows them.</summary>
+        public string ScreenshotsDirectory => Path.Combine(DataDirectory, "screenshots");
         public string CoresDirectory => Path.Combine(directory, "cores");
         /// <summary>Outside the package (an update of RetroArch keeps them), one folder per GameVault player of this PC.</summary>
         public string SavesDirectory(string player) => Path.Combine(directory, "saves", player);
@@ -65,6 +67,8 @@ namespace GameVault.Core.Retro
         }
         public string ConfigFile => Path.Combine(directory, "sanctuaryvault.cfg");
         public string VersionFile => Path.Combine(directory, "version");
+        /// <summary>The last game's log, written again at each start, for a problem report.</summary>
+        public string LogFile => Path.Combine(directory, "retroarch.log");
 
         /// <summary>
         /// Left in the package: 13 000 of its 15 000 files (other menu themes, shaders, touch overlays, the game
@@ -156,7 +160,8 @@ namespace GameVault.Core.Retro
             $"shaders = \"1\"\nshader0 = \"{CrtShaderFile(extension)}\"\nfilter_linear0 = \"false\"\n" + (extension == "slang" ? "scale_type0 = \"viewport\"\n" : "");
 
         /// <param name="achievements">The player's RetroAchievements account (its token, never its password), or null.</param>
-        public string Config(string player, (string User, string Token)? achievements = null)
+        /// <param name="quitCombo">Select+Start quits; not when the living-room mode's menu over a game takes those buttons.</param>
+        public string Config(string player, (string User, string Token)? achievements = null, bool quitCombo = true)
         {
             var settings = new (string Key, string Value)[]
             {
@@ -170,8 +175,10 @@ namespace GameVault.Core.Retro
                 // The menu theme kept in the package (the others are not unpacked)
                 ("menu_driver", "ozone"),
                 ("video_fullscreen", "true"),
-                // RetroPad combinations: 4 is Select+Start, 2 is L3+R3
-                ("input_quit_gamepad_combo", "4"),
+                // Borderless over the whole screen: no change of the screen's mode (black flashes) when it starts and quits
+                ("video_windowed_fullscreen", "true"),
+                // RetroPad combinations: 4 is Select+Start, 2 is L3+R3, 0 none
+                ("input_quit_gamepad_combo", quitCombo ? "4" : "0"),
                 ("input_menu_toggle_gamepad_combo", "2"),
                 ("quit_press_twice", "false"),
                 ("pause_nonactive", "false"),
@@ -179,6 +186,7 @@ namespace GameVault.Core.Retro
                 ("config_save_on_exit", "false"),
                 // A picture of the game with each save state: the game's page shows them
                 ("savestate_thumbnail_enable", "true"),
+                ("screenshot_directory", ScreenshotsDirectory),
                 ("video_shader_dir", ShadersDirectory),
                 ("video_shader_enable", "true"),
                 // Not hardcore: the save states stay allowed
@@ -195,8 +203,8 @@ namespace GameVault.Core.Retro
 
         /// <param name="stateSlot">The save state the game starts from, or none.</param>
         public IReadOnlyList<string> Arguments(string core, string rom, int? stateSlot = null) => stateSlot is int slot
-            ? new[] { "-L", CoreFile(core), "--config", ConfigFile, "--entryslot", slot.ToString(), rom }
-            : new[] { "-L", CoreFile(core), "--config", ConfigFile, rom };
+            ? new[] { "-L", CoreFile(core), "--config", ConfigFile, "--entryslot", slot.ToString(), "-v", "--log-file", LogFile, rom }
+            : new[] { "-L", CoreFile(core), "--config", ConfigFile, "-v", "--log-file", LogFile, rom };
 
         /// <summary>A save state of a game: its slot (0 is ".state"), when, and its picture when RetroArch took one.</summary>
         public sealed record SaveState(int Slot, string File, DateTime Saved, string? Picture);

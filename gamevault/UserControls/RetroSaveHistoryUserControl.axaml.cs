@@ -104,8 +104,8 @@ namespace gamevault.UserControls
         {
             Version = version;
             DateTime local = DateTimeOffset.FromUnixTimeMilliseconds(version.SavedAt).LocalDateTime;
-            Date = local.ToString("f", CultureInfo.CurrentCulture);
-            Details = string.Join(" · ", new[] { RelativeDate.Format(local), version.Size > 0 ? StorageCleanup.FormatSize(version.Size) : null, version.Label }
+            Date = local.ToString("d MMMM yyyy HH:mm", CultureInfo.CurrentCulture);// no day of the week
+            Details = string.Join(" · ", new[] { RelativeDate.Format(local), version.Size > 0 ? gamevault.Converter.GameSizeConverter.Text(version.Size) : null, version.Label }
                 .Where(p => !string.IsNullOrEmpty(p)));
         }
 

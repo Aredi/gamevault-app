@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -51,6 +52,68 @@ namespace gamevault.Helper
     /// </summary>
     public static class DialogService
     {
+        /// <summary>A question shown in the window, as the living-room mode answers it with a gamepad: its buttons from left to right.</summary>
+        internal sealed class OpenDialog
+        {
+            private readonly List<(IconButton Button, MessageDialogResult Result)> buttons;
+            private readonly Action<MessageDialogResult> close;
+            private int focused;
+            private bool marked;
+
+            /// <summary>The question on the screen, and its text box when it asks for a text.</summary>
+            internal Control Scope { get; }
+            internal TextBox? Input { get; }
+
+            internal OpenDialog(List<(IconButton, MessageDialogResult)> buttons, Action<MessageDialogResult> close, Control scope, TextBox? input)
+            {
+                this.buttons = buttons;
+                this.close = close;
+                Scope = scope;
+                Input = input;
+                // The main action, on the right
+                focused = buttons.Count - 1;
+            }
+
+            internal IReadOnlyList<string> Texts => buttons.Select(b => b.Button.Text ?? "").ToList();
+            internal string Focused => buttons[focused].Button.Text ?? "";
+
+            /// <summary>The button A would press is framed.</summary>
+            internal void Mark()
+            {
+                // A text to type: the keyboard's focus shows where the gamepad is
+                if (marked || Input != null)
+                    return;
+                marked = true;
+                Frame();
+            }
+
+            private void Frame()
+            {
+                for (int i = 0; i < buttons.Count; i++)
+                {
+                    IconButton button = buttons[i].Button;
+                    button.BorderBrush = i == focused ? Brushes.White : Brush("Brush.Line");
+                    button.BorderThickness = new Thickness(i == focused ? 3 : button.Kind == ButtonKind.Primary ? 0 : 1);
+                }
+            }
+
+            internal void Move(int by)
+            {
+                focused = Math.Clamp(focused + by, 0, buttons.Count - 1);
+                marked = true;
+                Frame();
+            }
+
+            internal void Accept() => close(buttons[focused].Result);
+
+            /// <summary>B: "No" when the question has one, else its only answer.</summary>
+            internal void Cancel() => close(buttons.Any(b => b.Result == MessageDialogResult.Negative) ? MessageDialogResult.Negative : buttons[^1].Result);
+        }
+
+        private static readonly List<OpenDialog> open = new();
+        /// <summary>The question in front, null when none is asked.</summary>
+        internal static OpenDialog? Current => open.Count > 0 ? open[^1] : null;
+
         public static Task<MessageDialogResult> ShowMessageAsync(this Visual? window, string title, string message,
             MessageDialogStyle style = MessageDialogStyle.Affirmative, MetroDialogSettings? settings = null)
         {
@@ -113,16 +176,17 @@ namespace gamevault.Helper
 
             TextBox? inputBox = input ? new TextBox { Text = settings.DefaultText, Margin = new Thickness(0, 15, 0, 0), MinWidth = 300 } : null;
 
-            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 10, Margin = new Thickness(0, 25, 0, 0) };
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 10, Margin = new Thickness(0, 22, 0, 0) };
 
-            var content = new StackPanel { MaxWidth = 900 };
+            var content = new StackPanel { Width = 520 };
             if (!string.IsNullOrEmpty(title))
             {
                 content.Children.Add(new TextBlock
                 {
                     Text = title,
-                    FontSize = double.IsNaN(settings.DialogTitleFontSize) ? 24 : settings.DialogTitleFontSize,
+                    FontSize = double.IsNaN(settings.DialogTitleFontSize) ? 20 : settings.DialogTitleFontSize,
                     FontWeight = FontWeight.Bold,
+                    FontFamily = (Application.Current!.TryGetResource("Font.Display", null, out object? display) ? display as FontFamily : null) ?? FontFamily.Default,
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 0, 0, 10),
                 });
@@ -132,7 +196,7 @@ namespace gamevault.Helper
                 content.Children.Add(new SelectableTextBlock
                 {
                     Text = message,
-                    FontSize = double.IsNaN(settings.DialogMessageFontSize) ? 15 : settings.DialogMessageFontSize,
+                    FontSize = double.IsNaN(settings.DialogMessageFontSize) ? 14 : settings.DialogMessageFontSize,
                     TextWrapping = TextWrapping.Wrap,
                 });
             }
@@ -142,17 +206,19 @@ namespace gamevault.Helper
 
             var dialog = new Border
             {
-                Background = Brush("Brush.Background2"),
-                BorderBrush = Brush("Brush.Accent"),
-                BorderThickness = new Thickness(0, 2, 0, 2),
-                Padding = new Thickness(40, 25),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Background = Brush("Brush.Background"),
+                BorderBrush = Brush("Brush.Line"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(18),
+                BoxShadow = BoxShadows.Parse("0 30 80 -20 #E6000000"),
+                Padding = new Thickness(28, 24),
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Child = new Panel { Children = { new Border { Child = content, HorizontalAlignment = HorizontalAlignment.Center } } },
+                Child = content,
             };
             var overlay = new Panel
             {
-                Background = new SolidColorBrush(Color.FromArgb(0x99, 0, 0, 0)),
+                Background = new SolidColorBrush(Color.FromArgb(0xA6, 0, 0, 0)),
                 Children = { dialog },
                 ZIndex = 1000,
             };
@@ -164,10 +230,15 @@ namespace gamevault.Helper
                 : null;
             Window? standalone = null;
 
+            OpenDialog? tracked = null;
+            var answers = new List<(IconButton, MessageDialogResult)>();
+
             void Close(MessageDialogResult result)
             {
                 if (tcs.Task.IsCompleted)
                     return;
+                if (tracked != null)
+                    open.Remove(tracked);
                 if (layer != null)
                 {
                     layer.Children.Remove(overlay);
@@ -183,14 +254,15 @@ namespace gamevault.Helper
                 {
                     Text = text,
                     MinWidth = 100,
-                    Height = 32,
-                    Padding = new Thickness(12, 0),
-                    FontSize = 15,
+                    Height = 38,
+                    Padding = new Thickness(16, 0),
                     Kind = primary ? ButtonKind.Primary : ButtonKind.Skeleton,
                     BorderThickness = new Thickness(primary ? 0 : 1),
                 };
                 button.Click += (_, _) => Close(result);
-                buttons.Children.Add(button);
+                // The main action last, on the right, as in the popups
+                buttons.Children.Insert(0, button);
+                answers.Insert(0, (button, result));
             }
 
             AddButton(settings.AffirmativeButtonText, MessageDialogResult.Affirmative, true);
@@ -217,6 +289,7 @@ namespace gamevault.Helper
             }
             if (layer != null)
             {
+                open.Add(tracked = new OpenDialog(answers, Close, overlay, inputBox));
                 layer.Children.Add(overlay);
                 layer.IsHitTestVisible = true;
                 Dispatcher.UIThread.Post(() => (inputBox as Control ?? buttons.Children.FirstOrDefault())?.Focus());

@@ -63,6 +63,8 @@ namespace gamevault.UserControls
             }
             gameID = game.ID;
             this.DataContext = ViewModel;
+            uiCaptures.Game = GameCaptures.PcKey(game.ID);
+            uiReviews.Game = SocialService.GameKey(game);
             Loaded += UserControl_Loaded;
             Loaded += (_, _) => ObserveInstallState(true);
             InitLayout();
@@ -85,6 +87,12 @@ namespace gamevault.UserControls
             if (!loaded)
             {
                 loaded = true;
+                // The page arrives: its art settles, then the cover, the words and the rest come up one after another
+                Motion.Settle(uiBackground);
+                Motion.Enter(uiCoverFrame, 30);
+                Motion.Enter(uiHeaderText, 90);
+                Motion.Enter(uiStats, 140);
+                Motion.Enter(uiBody, 190, fromY: 24);
 
                 if (ViewModel.Game == null)
                 {
@@ -97,6 +105,8 @@ namespace gamevault.UserControls
                     catch (Exception ex) { Log.Ignored(ex); }
                 }
                 _ = ShowLanAsync();
+                _ = ShowHypervisorAdminAsync();
+                _ = ShowArchivePasswordAdminAsync();
                 ViewModel.IsInstalled = IsGameInstalled(ViewModel.Game);
                 ViewModel.IsDownloaded = IsGameDownloaded(ViewModel.Game);
                 ViewModel.IsUpdateAvailable = HasUpdate(ViewModel.Game);
@@ -257,6 +267,18 @@ namespace gamevault.UserControls
                     ViewModel.SetAccent(uiCover.AccentColor);
             };
             SizeChanged += (_, e) => ApplyWidth(e.NewSize.Width);
+            uiHeroArt.RenderTransform = heroDepth;
+            uiPageScroll.ScrollChanged += (_, _) => FollowScroll();
+        }
+        /// <summary>Moved by the scroll: the art scrolls slower than the page, as if it were further away.</summary>
+        private readonly TranslateTransform heroDepth = new();
+        private void FollowScroll()
+        {
+            double offset = uiPageScroll.Offset.Y;
+            // Past the art it is out of sight: nothing to move
+            double depth = Math.Min(offset, uiHeroArt.Bounds.Height) * 0.4;
+            if (Math.Abs(heroDepth.Y - depth) >= 0.5)
+                heroDepth.Y = depth;
         }
         private bool? narrowLayout;
         private void ApplyWidth(double width)
@@ -298,10 +320,65 @@ namespace gamevault.UserControls
                 if (lanRoom != null)
                     uiLanRoomText.Text = lanRoom.Members.Count == 1
                         ? Loc.F("{0} plays in LAN in {1}", lanRoom.Members[0].UserName, lanRoom.Name)
-                        : Loc.F("{0} and {1} more play in LAN in {2}", lanRoom.Members[0].UserName, lanRoom.Members.Count - 1, lanRoom.Name);
+                        : Loc.Plural(lanRoom.Members.Count - 1, "{0} and {1} other play in LAN in {2}", "{0} and {1} others play in LAN in {2}", lanRoom.Members[0].UserName, lanRoom.Members.Count - 1, lanRoom.Name);
             }
             // The server has no LAN rooms: nothing shown
             catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>The administrators mark the games using a hypervisor; without the service the box stays hidden.</summary>
+        private async Task ShowHypervisorAdminAsync()
+        {
+            if (ViewModel.Game is not Game game || LoginManager.Instance.GetCurrentUser()?.Role != PERMISSION_ROLE.ADMIN)
+                return;
+            try
+            {
+                HypervisorNotice? notice = await HypervisorService.GetAsync();
+                uiHypervisorAdmin.IsVisible = notice != null;
+                uiHypervisorAdmin.IsChecked = notice?.Games.Contains(game.ID) == true;
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>The administrators give a game its archive's password; without the service the field stays hidden.</summary>
+        private async Task ShowArchivePasswordAdminAsync()
+        {
+            if (ViewModel.Game is not Game game || LoginManager.Instance.GetCurrentUser()?.Role != PERMISSION_ROLE.ADMIN)
+                return;
+            try
+            {
+                string? password = await ArchivePasswordService.GetAsync(game.ID);
+                uiArchivePasswordAdmin.IsVisible = password != null;
+                uiArchivePassword.Text = password ?? "";
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        private async void ArchivePasswordSave_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game is not Game game)
+                return;
+            uiArchivePasswordSave.IsEnabled = false;
+            try
+            {
+                string password = uiArchivePassword.Text?.Trim() ?? "";
+                await ArchivePasswordService.SetAsync(game.ID, password);
+                MainWindowViewModel.Instance.AppBarText = password.Length > 0 ? Loc.T("The archive's password is saved") : Loc.T("The archive's password is removed");
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+            uiArchivePasswordSave.IsEnabled = true;
+        }
+
+        private async void HypervisorAdmin_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game is not Game game)
+                return;
+            try { await HypervisorService.SetGameAsync(game.ID, uiHypervisorAdmin.IsChecked == true); }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
+                uiHypervisorAdmin.IsChecked = !uiHypervisorAdmin.IsChecked;
+            }
         }
 
         private void LanPlay_Click(object? sender, RoutedEventArgs e)
@@ -498,6 +575,12 @@ namespace gamevault.UserControls
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
         }
+        private void Recommend_Click(object? sender, RoutedEventArgs e)
+        {
+            if (ViewModel.Game is Game game)
+                MainWindowViewModel.Instance.OpenPopup(new RecommendPopup(ChatGame.Of(game, invite: false)));
+        }
+
         private void Share_Click(object sender, RoutedEventArgs e)
         {
             try

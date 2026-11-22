@@ -18,20 +18,20 @@
         </Style>
     </UserControl.Styles>
     <Grid>
-        <Grid Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,10,0" ZIndex="1" Height="20" Width="20" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
-            <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" />
-        </Grid>
-        <Border Background="{DynamicResource Brush.Background}" Padding="20" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" CornerRadius="10">
+        <Button Classes="round small" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,14,0" ZIndex="1" Click="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
+            <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+        </Button>
+        <Border Background="{DynamicResource Brush.Background}" Padding="28,22">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-              <StackPanel Width="820">
+              <StackPanel MaxWidth="860" HorizontalAlignment="Left">
                 <StackPanel Spacing="2" IsEnabled="{Binding IsIdle}">
-                    <TextBlock Text="{l:T 'Publish a Game'}" FontSize="26" FontWeight="Bold" />
+                    <TextBlock Classes="sectionTitle" Text="{l:T 'Publish a Game'}" FontSize="22" />
 
                     <TextBlock Classes="label" Text="{l:T '1. Game files'}" />
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <controls:IconButton Text="{l:T 'Game folder'}" Icon="{DynamicResource IconGameSettingsFolder}" IconMargin="0,0,5,0" MinWidth="140" Height="32" FontSize="14" Click="PickFolder_Click" />
                         <controls:IconButton Text="{l:T 'Installer or archive'}" MinWidth="170" Height="32" FontSize="14" Click="PickFile_Click" />
-                        <TextBlock Text="{Binding SourcePath}" VerticalAlignment="Center" Width="480" TextTrimming="CharacterEllipsis" FontSize="13" />
+                        <TextBlock Text="{Binding SourcePath}" VerticalAlignment="Center" MaxWidth="440" TextTrimming="CharacterEllipsis" FontSize="13" />
                     </StackPanel>
 
                     <StackPanel IsVisible="{Binding HasSource}">

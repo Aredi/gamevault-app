@@ -108,6 +108,10 @@ namespace gamevault.Helper
         public string PlaytimeText => MinutesPlayed > 0
             ? (string)new Converter.GameTimeConverter().Convert(MinutesPlayed, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture)!
             : "—";
+        /// <summary>Under its card in the library's "Continue playing": "PlayStation · 3 h · yesterday".</summary>
+        [JsonIgnore]
+        public string ContinueInfo => string.Join(" · ", new[] { Platform?.Name, MinutesPlayed > 0 ? PlaytimeText : null,
+            RetroLibrary.LastPlayedOf(this) is DateTime last ? Converter.RelativeDate.Format(last) : null }.Where(p => !string.IsNullOrEmpty(p)));
         [JsonIgnore]
         public bool IsFavorite
         {
@@ -121,6 +125,7 @@ namespace gamevault.Helper
             OnPropertyChanged(nameof(MinutesPlayed));
             OnPropertyChanged(nameof(PlaytimeText));
             OnPropertyChanged(nameof(IsFavorite));
+            OnPropertyChanged(nameof(ContinueInfo));
         }
 
         [JsonIgnore]
@@ -218,6 +223,26 @@ namespace gamevault.Helper
         [JsonIgnore]
         public string Status { get => status; set { status = value; OnPropertyChanged(); } }
 
+        private GameVault.Core.Diagnostics.GameFailure? failure;
+        /// <summary>The last start failed: told on the game's page until it is closed or the game started again.</summary>
+        [JsonIgnore]
+        public GameVault.Core.Diagnostics.GameFailure? Failure
+        {
+            get => failure;
+            set
+            {
+                failure = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasFailure));
+                OnPropertyChanged(nameof(FailureAdvice));
+            }
+        }
+        [JsonIgnore]
+        public bool HasFailure => failure != null;
+        [JsonIgnore]
+        public string FailureAdvice => failure?.ExitCode == null ? Loc.T("You can try again, or tell the administrators with the diagnostic.")
+            : Loc.F("It ran for {0} s. You can try again, or tell the administrators with the diagnostic.", failure.Seconds);
+
         private bool isSelected;
         /// <summary>Selected with the keyboard (the card gets the library's selection frame).</summary>
         [JsonIgnore]
@@ -310,6 +335,21 @@ namespace gamevault.Helper
             .FirstOrDefault(folder => Directory.Exists(folder) && !File.Exists(Path.Combine(folder, DownloadMetadata)));
 
         /// <summary>
+        /// The game's folder deleted away from the screen's thread (a PS3 or a Switch game has thousands of files, the
+        /// window froze meanwhile); busy until then, so it is not started half deleted.
+        /// </summary>
+        public static async Task DeleteAsync(RetroGame game, string folder)
+        {
+            game.Busy = true;
+            try { await Task.Run(() => Directory.Delete(folder, true)); }
+            finally
+            {
+                game.Busy = false;
+                game.Refresh();
+            }
+        }
+
+        /// <summary>
         /// The retro games in the library folders, from the description written beside each: the installed ones, or the
         /// ones whose download stopped half way.
         /// </summary>
@@ -358,6 +398,79 @@ namespace gamevault.Helper
             while (read < bytes && (last = await body.ReadAsync(start.AsMemory(read))) > 0)
                 read += last;
             return start[..read];
+        }
+
+        private sealed record GameFile(
+            [property: JsonPropertyName("id")] int Id, [property: JsonPropertyName("path")] string? Path,
+            [property: JsonPropertyName("size")] long Size, [property: JsonPropertyName("category")] string? Category);
+
+        /// <summary>
+        /// The updates RomM has for an installed game in a folder (a file in its "update" folder) that its folder here
+        /// does not: none for a game in one file, without network or from an older service.
+        /// </summary>
+        public static async Task<IReadOnlyList<RetroUpdates.RemoteFile>> MissingUpdatesAsync(RetroGame game)
+        {
+            // Eden's alone reads an update from the game's folder; a PS3 game's thousand files are not listed for nothing
+            if (!game.Multi || !game.Platform.System.IsEden || InstalledFolder(game) is not string folder)
+                return Array.Empty<RetroUpdates.RemoteFile>();
+            try
+            {
+                var files = await TryGetAsync<List<GameFile>>($"/retro/games/{game.Id}/files");
+                if (files == null || InstalledFolder(game) != folder)
+                    return Array.Empty<RetroUpdates.RemoteFile>();
+                var here = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(folder, f));
+                return RetroUpdates.Missing(files.Select(f => new RetroUpdates.RemoteFile(f.Id, f.Path ?? "", f.Size, f.Category)), here);
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return Array.Empty<RetroUpdates.RemoteFile>();
+            }
+        }
+
+        /// <summary>
+        /// The updates into the installed game's folder, each where RomM keeps it ("update/…"): downloaded beside the
+        /// folder first (the downloader's notes would make the game look half installed), then moved in.
+        /// </summary>
+        public static async Task DownloadUpdatesAsync(RetroGame game, IReadOnlyList<RetroUpdates.RemoteFile> updates, Action<string> progress)
+        {
+            if (InstalledFolder(game) is not string folder)
+                return;
+            string temporary = folder + ".update";
+            long total = Math.Max(1, updates.Sum(u => u.Size)), before = 0;
+            var headers = SettingsViewModel.Instance.DownloadLimit > 0
+                ? new Dictionary<string, string> { ["X-Download-Speed-Limit"] = SettingsViewModel.Instance.DownloadLimit.ToString() }
+                : null;
+            try
+            {
+                foreach (var update in updates)
+                {
+                    if (Directory.Exists(temporary))
+                        Directory.Delete(temporary, true);
+                    Directory.CreateDirectory(temporary);
+                    var client = new HttpClientDownloadWithProgress($"{Service}/retro/games/{game.Id}/files/{update.Id}/content", temporary, Path.GetFileName(update.Path), headers);
+                    long done = before;
+                    client.ProgressChanged += (_, _, downloaded, _, _) =>
+                        progress(Loc.F("Downloading the update... {0}%", (int)(Math.Min(total, done + downloaded) * 100 / total)));
+                    await client.StartDownload();
+                    string downloaded = Directory.EnumerateFiles(temporary).First(f => Path.GetFileName(f) != DownloadMetadata);
+                    if (game.Platform.System.IsEden && SwitchCompressed.IsCompressed(downloaded))
+                    {
+                        progress(Loc.F("Decompressing the Switch game... {0}%", 0));
+                        string compressed = downloaded;
+                        downloaded = await Task.Run(() => SwitchCompressed.Decompress(compressed, d => progress(Loc.F("Decompressing the Switch game... {0}%", (int)(d * 100)))));
+                    }
+                    string target = Path.Combine(folder, Path.GetDirectoryName(update.Path) ?? "", Path.GetFileName(downloaded));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Move(downloaded, target, overwrite: true);
+                    before += update.Size;
+                }
+            }
+            finally
+            {
+                try { if (Directory.Exists(temporary)) Directory.Delete(temporary, true); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
         }
 
         /// <summary>A game added to RomM lately.</summary>
@@ -423,9 +536,12 @@ namespace gamevault.Helper
         }
 
         /// <summary>A cover, screenshot or manual of RomM, kept on disk: each is downloaded once.</summary>
+        /// <summary>The retro covers, screenshots and badges kept on disk: part of the image cache (Settings).</summary>
+        public static string MediaDirectory => Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media");
+
         public static async Task<string> MediaFileAsync(string media, string? version = null)
         {
-            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", (version != null ? version + "-" : "") + media.Replace('/', '_'));
+            string file = Path.Combine(MediaDirectory, (version != null ? version + "-" : "") + media.Replace('/', '_'));
             if (!File.Exists(file))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(file)!);
@@ -437,7 +553,7 @@ namespace gamevault.Helper
         /// <summary>A RetroAchievements badge, kept on disk: a badge never changes, and pages show it again and again.</summary>
         public static async Task<Bitmap> BadgeImageAsync(string url)
         {
-            string file = Path.Combine(PlatformInfo.LocalDataDirectory, "retro-media", "badges", Path.GetFileName(new Uri(url).AbsolutePath));
+            string file = Path.Combine(MediaDirectory, "badges", Path.GetFileName(new Uri(url).AbsolutePath));
             if (!File.Exists(file))
             {
                 byte[] png = await HttpClients.Shared.GetByteArrayAsync(url);
@@ -448,6 +564,18 @@ namespace gamevault.Helper
             }
             return await Task.Run(() => new Bitmap(file));
         }
+
+        /// <summary>Badges read a few at a time (a game has up to a few hundred), each given on the screen's thread once read.</summary>
+        public static Task LoadBadgesAsync(IEnumerable<(string Url, Action<Bitmap> Show)> badges) =>
+            Parallel.ForEachAsync(badges, new ParallelOptions { MaxDegreeOfParallelism = 6 }, async (badge, _) =>
+            {
+                try
+                {
+                    Bitmap image = await BadgeImageAsync(badge.Url);
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => badge.Show(image));
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+            });
 
         public static async Task<Bitmap> MediaImageAsync(string media, int width, string? version = null)
         {

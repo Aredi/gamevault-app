@@ -41,6 +41,9 @@ namespace gamevault.Helper
             watchers.Add(game);
         }
 
+        /// <summary>The download's numbers, for the living-room mode's screen of the downloads.</summary>
+        internal DownloadBytes Bytes { get; private set; }
+
         private int progress;
         public int Progress { get => progress; private set { progress = value; OnPropertyChanged(); } }
 
@@ -273,18 +276,14 @@ namespace gamevault.Helper
                 if (currentBytesDownloaded > 0)
                     speed.UpdateSpeed(currentBytesDownloaded);
                 double perSecond = speed.GetCurrentSpeed();
-                string left = perSecond > 0 ? TimeSpan.FromSeconds(Math.Max(0, (totalFileSize - totalBytesDownloaded) / perSecond)).ToString(@"hh\:mm\:ss") : "--:--:--";
-                Info = currentBytesDownloaded > 0
-                    ? Loc.F("{0} - {1} of {2} | Time left: {3}", $"{Size(perSecond, 1000)}/s", Size(totalBytesDownloaded), Size(totalFileSize), left)
-                    : $"{Size(totalBytesDownloaded)} / {Size(totalFileSize)}";
+                Info = DownloadText.Line(totalBytesDownloaded, totalFileSize, currentBytesDownloaded > 0 ? perSecond : 0);
                 Progress = (int)(progressPercentage ?? 0);
+                Bytes = new DownloadBytes(totalBytesDownloaded, totalFileSize, currentBytesDownloaded > 0 ? perSecond : 0);
                 Notify();
             });
         }
 
-        /// <summary>A whole number of bytes: the converter reads its value back with the current culture ("8388608.5" is no number in French).</summary>
-        internal static string Size(double bytes, int unit = 1024) =>
-            new Converter.GameSizeConverter().Convert((long)Math.Round(bytes), typeof(string), unit, System.Globalization.CultureInfo.CurrentCulture) as string ?? "";
+        internal static string Size(double bytes, int unit = 1024) => Converter.GameSizeConverter.Text(bytes, unit);
 
         /// <summary>A step of the preparation, from another thread: shown when it comes, unless the preparation ended (its outcome stays).</summary>
         private void Preparing(string text) => Dispatcher.UIThread.Post(() =>
@@ -297,14 +296,14 @@ namespace gamevault.Helper
         private async Task PrepareAsync()
         {
             string downloaded = Directory.EnumerateFiles(Folder).Where(f => Path.GetFileName(f) != InfoFile).OrderByDescending(File.GetLastWriteTimeUtc).First();
-            if ((Game.Multi || Game.Platform.System.IsStandalone) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z")
+            if ((Game.Multi || Game.Platform.System.IsStandalone) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z" or ".rar")
             {
-                // A game in several files (a CD and its tracks, a PS3 game's folder): RomM sends them zipped; a PS3 ISO or a Switch card may be zipped too
+                // A game in several files (a CD and its tracks, a PS3 game's folder, a Switch 2 dump): RomM sends them zipped; a PS3 ISO or a Switch card may be zipped too
                 if (Helper.Platform.PlatformInfo.IsAndroid)
                 {
                     // No 7-Zip on Android: .NET's own zip reader
                     if (!string.Equals(Path.GetExtension(downloaded), ".zip", StringComparison.OrdinalIgnoreCase))
-                        throw new IOException(Loc.T("This game is a .7z archive: Android unpacks .zip games only for now."));
+                        throw new IOException(Loc.T("This game is a .7z or .rar archive: Android unpacks .zip games only for now."));
                     State = Loc.F("Unpacking... {0}%", 0);
                     await Task.Run(() => System.IO.Compression.ZipFile.ExtractToDirectory(downloaded, Folder, overwriteFiles: true));
                 }
@@ -342,6 +341,13 @@ namespace gamevault.Helper
                 }
             // xemu reads no full dump of an Xbox disc: its game's partition alone
             if (Game.Platform.System.IsXemu)
+            {
+                // A conversion stopped half way left an image that is neither a dump nor an XISO: the retry downloads it again
+                if (XboxDisc.DiscardInterrupted(Folder))
+                {
+                    this.downloaded = false;
+                    throw new IOException(Loc.F("The archive of '{0}' is damaged, it is downloaded again", Game.Name));
+                }
                 foreach (string disc in Directory.EnumerateFiles(Folder, "*", SearchOption.AllDirectories).Where(f => string.Equals(Path.GetExtension(f), ".iso", StringComparison.OrdinalIgnoreCase) && XboxDisc.IsRedump(f)).ToList())
                 {
                     int shown = -1;
@@ -352,6 +358,7 @@ namespace gamevault.Helper
                             Preparing(Loc.F("Preparing the Xbox disc... {0}%", shown = percent));
                     }));
                 }
+            }
             if (Helper.Platform.MobilePlatform.Current is Helper.Platform.IMobilePlatform mobile)
             {
                 // Android: the core of the app's own player and the BIOS; RetroArch for Android (GameCube, Wii, 3DS) comes with

@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="gamevault.Windows.LoginWindow"
         Title="SanctuaryVault" Icon="/Resources/Images/icon.ico"
-        Width="720" Height="500" CanResize="False" WindowStartupLocation="CenterScreen"
+        Width="960" Height="620" CanResize="False" WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Brush.Background2}">
     <!-- LoginView is set by the code: it takes the window's arguments -->
 </Window>

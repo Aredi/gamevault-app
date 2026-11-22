@@ -82,10 +82,13 @@ namespace gamevault.Models
         GameWinetricksApplied,
         //New game notifications
         NotifyNewGames,
+        CaptureShortcut,
         //"0": games go to the last game folder without asking where
         AskInstallLocation,
         LastSeenGameId,
         LastSeenRetroGameId,
+        //The games whose hypervisor notice is no longer shown, with commas
+        HypervisorNoticesSeen,
         //Status of each game request last seen (id -> status), to tell when one is added or refused
         GameRequestStatuses,
         //This PC for "Install on my PC" (profileconfig): the id the web page asks for
@@ -102,6 +105,10 @@ namespace gamevault.Models
         RetroResolution,
         //3D consoles drawn in 16:9, by their core (profileconfig): "dolphin,pcsx2"
         RetroWidescreen,
+        //A game resumed where it was left, on the consoles of RetroComfort.ResumeCores (profileconfig): "0" off, else on
+        RetroQuickResume,
+        //The gamepad's lag removed by run-ahead, on the consoles of RetroComfort.RunAheadCores (profileconfig): "0" off, else on
+        RetroRunAhead,
         //Language of the consoles that have one (profileconfig): RomM's name, "French"; "" for the client's
         RetroLanguage,
         //Language chosen for games (profileconfig): "559=French;12=Japanese"
@@ -129,6 +136,9 @@ namespace gamevault.Models
         PublishTargetDirectory,
         PublishUploaderUrl,
         ShareActivity,
+        //The chat: the status chosen (online, away, busy, invisible), desktop notifications on or off
+        ChatStatus,
+        ChatNotifications,
         //LAN rooms' shared screen: this PC's Sunshine login (encrypted)
         SunshineUser,
         SunshinePassword,
@@ -139,10 +149,16 @@ namespace gamevault.Models
         LibraryShowcase,
         //Navigation bar folded to its icons ("1", profileconfig)
         SidebarFolded,
+        //The client opens in the living-room mode ("1", profileconfig)
+        CouchAtStart,
+        //The living-room mode's sounds ("0": off, profileconfig)
+        CouchSounds,
         //Server news: when they were last opened (the newer ones are counted on the badge)
         NewsLastSeen,
         //Android: linking RomM was offered at the first retro game ("1", userconfig)
-        RommOffered
+        RommOffered,
+        //The retro page's sort, by its name in RetroViewModel.SortKeys
+        LastRetroSortBy
     }
     public static class Globals
     {

@@ -20,6 +20,10 @@ namespace GameVault.Uploader
         public string? RommCommApiKey { get; init; }
         /// <summary>RETRO_SAVES_DIRECTORY: the players' saves of the retro games (a volume, e.g. /data/retro-saves).</summary>
         public string RetroSavesDirectory { get; init; } = "/data/retro-saves";
+        /// <summary>CHAT_DIRECTORY: the players' conversations and the pictures sent in them, kept 90 days (a volume, e.g. /data/chat).</summary>
+        public string ChatDirectory { get; init; } = "/data/chat";
+        /// <summary>CHAT_KEY: the key the chat is sealed with (32 bytes in base64); without it, a key file made beside the chat's folder (/data/chat.key).</summary>
+        public string? ChatKey { get; init; }
         /// <summary>RETRO_PLAYERS_DIRECTORY: the players' time on the retro games and their favorites (a volume, e.g. /data/retro-players).</summary>
         public string RetroPlayersDirectory { get; init; } = "/data/retro-players";
         /// <summary>ROMM_URL: RomM, for the games of the other platforms (e.g. http://romm:8080); off without it.</summary>
@@ -37,6 +41,22 @@ namespace GameVault.Uploader
         public string RoomsDirectory { get; init; } = "/data/rooms";
         /// <summary>REPORTS_DIRECTORY: the problems the players report on games (a volume, e.g. /data/reports).</summary>
         public string ReportsDirectory { get; init; } = "/data/reports";
+        /// <summary>INVITES_DIRECTORY: the invitation codes new accounts need (a volume, e.g. /data/invites).</summary>
+        public string InvitesDirectory { get; init; } = "/data/invites";
+        /// <summary>HYPERVISOR_DIRECTORY: the games using a hypervisor and the text shown to who downloads them (a volume, e.g. /data/hypervisor).</summary>
+        public string HypervisorDirectory { get; init; } = "/data/hypervisor";
+        /// <summary>ARCHIVE_PASSWORDS_DIRECTORY: the passwords of the games' archives (a volume, e.g. /data/passwords).</summary>
+        public string ArchivePasswordsDirectory { get; init; } = "/data/passwords";
+        /// <summary>EMULATORS_DIRECTORY: the emulators given to some retro games instead of their console's (a volume, e.g. /data/emulators).</summary>
+        public string EmulatorsDirectory { get; init; } = "/data/emulators";
+        /// <summary>CHALLENGES_DIRECTORY: the challenge of each week and what the players did for it (a volume, e.g. /data/challenges).</summary>
+        public string ChallengesDirectory { get; init; } = "/data/challenges";
+        /// <summary>The games' logos, each fetched once (LOGOS_DIRECTORY).</summary>
+        public string LogosDirectory { get; init; } = "/data/logos";
+        /// <summary>SteamGridDB's key (STEAMGRIDDB_API_KEY): the logos of the library's games, and of the retro games RomM has none for.</summary>
+        public string? SteamGridDbKey { get; init; }
+        /// <summary>GAMEVAULT_API_KEY: an administrator's API key of the GameVault server, to activate the accounts invited (AUTH_API_KEY_ENABLED on the server).</summary>
+        public string? GameVaultApiKey { get; init; }
 
         public static UploaderOptions From(IConfiguration configuration)
         {
@@ -44,7 +64,7 @@ namespace GameVault.Uploader
             string files = configuration["FILES_DIRECTORY"] ?? "/files";
             if (!Directory.Exists(files))
                 throw new InvalidOperationException($"FILES_DIRECTORY '{files}' does not exist: mount the games folder of the GameVault server there.");
-            return new UploaderOptions { GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote", RommCommUrl = configuration["ROMM_COMM_URL"], RommCommApiKey = configuration["ROMM_COMM_API_KEY"], RetroSavesDirectory = configuration["RETRO_SAVES_DIRECTORY"] ?? "/data/retro-saves", RetroPlayersDirectory = configuration["RETRO_PLAYERS_DIRECTORY"] ?? "/data/retro-players", RommUrl = configuration["ROMM_URL"], RommUsername = configuration["ROMM_USERNAME"], RommPublicUrl = configuration["ROMM_PUBLIC_URL"], RommPassword = configuration["ROMM_PASSWORD"], ZeroTierControllerUrl = configuration["ZEROTIER_CONTROLLER_URL"], ZeroTierApiSecret = configuration["ZEROTIER_API_SECRET"], RoomsDirectory = configuration["ROOMS_DIRECTORY"] ?? "/data/rooms", ReportsDirectory = configuration["REPORTS_DIRECTORY"] ?? "/data/reports" };
+            return new UploaderOptions { LogosDirectory = configuration["LOGOS_DIRECTORY"] ?? "/data/logos", SteamGridDbKey = configuration["STEAMGRIDDB_API_KEY"], EmulatorsDirectory = configuration["EMULATORS_DIRECTORY"] ?? "/data/emulators", HypervisorDirectory = configuration["HYPERVISOR_DIRECTORY"] ?? "/data/hypervisor", ArchivePasswordsDirectory = configuration["ARCHIVE_PASSWORDS_DIRECTORY"] ?? "/data/passwords", GameVaultUrl = server, FilesDirectory = files, ProfilesDirectory = configuration["PROFILES_DIRECTORY"] ?? "/data/profiles", SavefilesDirectory = configuration["SAVEFILES_DIRECTORY"] ?? "/savefiles", RemoteInstallsDirectory = configuration["REMOTE_INSTALLS_DIRECTORY"] ?? "/data/remote", RommCommUrl = configuration["ROMM_COMM_URL"], RommCommApiKey = configuration["ROMM_COMM_API_KEY"], RetroSavesDirectory = configuration["RETRO_SAVES_DIRECTORY"] ?? "/data/retro-saves", RetroPlayersDirectory = configuration["RETRO_PLAYERS_DIRECTORY"] ?? "/data/retro-players", RommUrl = configuration["ROMM_URL"], RommUsername = configuration["ROMM_USERNAME"], RommPublicUrl = configuration["ROMM_PUBLIC_URL"], RommPassword = configuration["ROMM_PASSWORD"], ZeroTierControllerUrl = configuration["ZEROTIER_CONTROLLER_URL"], ZeroTierApiSecret = configuration["ZEROTIER_API_SECRET"], RoomsDirectory = configuration["ROOMS_DIRECTORY"] ?? "/data/rooms", ReportsDirectory = configuration["REPORTS_DIRECTORY"] ?? "/data/reports", InvitesDirectory = configuration["INVITES_DIRECTORY"] ?? "/data/invites", GameVaultApiKey = configuration["GAMEVAULT_API_KEY"], ChatDirectory = configuration["CHAT_DIRECTORY"] ?? "/data/chat", ChatKey = configuration["CHAT_KEY"], ChallengesDirectory = configuration["CHALLENGES_DIRECTORY"] ?? "/data/challenges" };
         }
     }
 }

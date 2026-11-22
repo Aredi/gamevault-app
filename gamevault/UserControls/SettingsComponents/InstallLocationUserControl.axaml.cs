@@ -64,9 +64,12 @@ namespace gamevault.UserControls
             };
         }
 
+        /// <summary>The size of the game, 0 when unknown.</summary>
+        internal long RequiredBytes => requiredBytes;
+
         internal IReadOnlyList<InstallLocationRow> Rows => uiLocations.ItemsSource as IReadOnlyList<InstallLocationRow> ?? Array.Empty<InstallLocationRow>();
 
-        private static string Size(long bytes) => new GameSizeConverter().Convert(bytes, typeof(string), null, CultureInfo.CurrentCulture) as string ?? "";
+        private static string Size(long bytes) => GameSizeConverter.Text(bytes);
 
         private void Load()
         {
@@ -75,8 +78,13 @@ namespace gamevault.UserControls
             string? currentDrive = movingFrom == null ? null : DriveName(movingFrom);
             foreach (DirectoryEntry root in SettingsViewModel.Instance.RootDirectories)
             {
-                long? free = null;
-                try { free = PlatformInfo.GetDriveForPath(root.Uri)?.AvailableFreeSpace; }
+                long? free = null, total = null;
+                try
+                {
+                    var drive = PlatformInfo.GetDriveForPath(root.Uri);
+                    free = drive?.AvailableFreeSpace;
+                    total = drive?.TotalSize;
+                }
                 catch (Exception ex) { Log.Ignored(ex); }
                 bool exists = Directory.Exists(root.Uri);
                 string details = !exists ? Loc.T("Not found (disk unplugged?)")
@@ -91,7 +99,12 @@ namespace gamevault.UserControls
                     details = Loc.T("The game is here");
                     hasRoom = false;
                 }
-                rows.Add(new InstallLocationRow(root.Uri, details, movingFrom == null && root.Uri == last, hasRoom, movingFrom == null ? Loc.T("Install here") : Loc.T("Move here")));
+                rows.Add(new InstallLocationRow(root.Uri, details, movingFrom == null && root.Uri == last, hasRoom, movingFrom == null ? Loc.T("Install here") : Loc.T("Move here"))
+                {
+                    Exists = exists,
+                    Free = exists ? free : null,
+                    Total = exists ? total : null,
+                });
             }
             uiLocations.ItemsSource = rows;
         }
@@ -117,7 +130,8 @@ namespace gamevault.UserControls
 
         public Task<string> SelectInstallLocation() => ResultTaskSource.Task;
 
-        private void Choose(string directory)
+        /// <summary>The folder chosen (empty: none, the download is not started); the living-room mode answers through it too.</summary>
+        internal void Choose(string directory)
         {
             if (directory != string.Empty && movingFrom == null)
             {
@@ -183,5 +197,9 @@ namespace gamevault.UserControls
         public bool IsLast { get; }
         public bool HasRoom { get; }
         public string Action { get; }
+        public bool Exists { get; init; } = true;
+        /// <summary>The disk's free and whole room, null when unknown.</summary>
+        public long? Free { get; init; }
+        public long? Total { get; init; }
     }
 }

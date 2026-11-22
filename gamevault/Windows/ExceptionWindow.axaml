@@ -2,21 +2,23 @@
              xmlns:l="clr-namespace:gamevault.Localization"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="gamevault.Windows.ExceptionWindow"
-        Title="{l:T 'Unhandled Error'}" Width="480" Height="170" CanResize="False" Topmost="True"
-        WindowStartupLocation="CenterScreen" Icon="/Resources/Images/icon.ico">
-    <Grid Margin="10" RowDefinitions="*,Auto">
-        <TextBlock FontSize="13" TextWrapping="Wrap">
-            An unhandled error has occurred in SanctuaryVault.
-            <LineBreak />
-            You can view technical details in the error log that has been created.
-        </TextBlock>
-        <Grid Grid.Row="1" Height="60" HorizontalAlignment="Left">
-            <Image Source="/Resources/Images/icon.png" />
-            <Path Data="{DynamicResource IconAppError}" Fill="IndianRed" HorizontalAlignment="Right" VerticalAlignment="Bottom" RenderTransform="scale(1.7)" />
+        Title="{l:T 'Unhandled Error'}" Width="500" SizeToContent="Height" CanResize="False" Topmost="True"
+        WindowStartupLocation="CenterScreen" Icon="/Resources/Images/icon.ico"
+        Background="{DynamicResource Brush.Background}">
+    <StackPanel Margin="24,22" Spacing="20">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+            <Grid Width="52" Height="52" VerticalAlignment="Top">
+                <Image Source="/Resources/Images/icon.png" />
+                <Path Data="{DynamicResource IconAppError}" Fill="{DynamicResource Brush.Danger}" HorizontalAlignment="Right" VerticalAlignment="Bottom" RenderTransform="scale(1.3)" />
+            </Grid>
+            <StackPanel Grid.Column="1" Spacing="4">
+                <TextBlock Classes="sectionTitle" Text="{l:T 'An unhandled error has occurred in SanctuaryVault.'}" TextWrapping="Wrap" />
+                <TextBlock Classes="muted" FontSize="14" TextWrapping="Wrap" Text="{l:T 'You can view technical details in the error log that has been created.'}" />
+            </StackPanel>
         </Grid>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Spacing="10">
-            <Button Content="{l:T 'Open Log Folder'}" Click="OpenLog_Click" />
-            <Button Content="{l:T 'Close'}" Click="Close_Click" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Classes="ghost small" Content="{l:T 'Open Log Folder'}" Click="OpenLog_Click" />
+            <Button Classes="action small" Content="{l:T 'Close'}" Click="Close_Click" />
         </StackPanel>
-    </Grid>
+    </StackPanel>
 </Window>

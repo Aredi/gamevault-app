@@ -34,6 +34,12 @@ namespace gamevault.UserControls
     /// <summary>
     /// Interaction logic for GameSettingsUserControl.xaml
     /// </summary>
+    public sealed record DiskSlice(string Name, double Percentage, Color Color, string Label)
+    {
+        // Made when shown: a brush belongs to the UI thread, the slices are measured on another one
+        public IBrush Brush => new SolidColorBrush(Color);
+    }
+
     public partial class GameSettingsUserControl : UserControl
     {
         private bool startup = true;
@@ -92,7 +98,7 @@ namespace gamevault.UserControls
                 await LoadGameMedatataProviders();
             }
         }
-        private void Help_Click(object? sender, PointerReleasedEventArgs e)
+        private void Help_Click(object? sender, RoutedEventArgs e)
         {
             try
             {
@@ -172,7 +178,13 @@ namespace gamevault.UserControls
             }
         }
 
-        private void Close_Click(object? sender, PointerReleasedEventArgs e)
+        private void MetadataPage_SizeChanged(object? sender, SizeChangedEventArgs e)
+        {
+            // Its margins out, and at least its header with the results' 200
+            uiMetadataPage.Height = Math.Max(uiMetadataScroller.Bounds.Height - 32, uiMetadataHeader.Bounds.Height + 210);
+        }
+
+        private void Close_Click(object? sender, RoutedEventArgs e)
         {
             MainWindowViewModel.Instance.ClosePopup();
         }
@@ -358,11 +370,11 @@ namespace gamevault.UserControls
                 }
                 string[] names = { Loc.F("This Game ({0})", ViewModel.Game.Title), Loc.T("Other installed SanctuaryVault Games"), Loc.T("Unmanaged Data"), Loc.T("Free Space") };
                 long[] sizes = { currentGameSize, otherGamesSize, unmanagedDiskSize, freeSpace };
-                Color[] colors = { Colors.DeepPink, Colors.LightSeaGreen, Colors.PaleVioletRed, Colors.DarkGray };
-                var slices = new List<PieSlice>();
+                Color[] colors = { Color.Parse("#F2A65A"), Color.Parse("#6A61D8"), Color.Parse("#8D8AA8"), Colors.Transparent };
+                var slices = new List<DiskSlice>();
                 for (int i = 0; i < percentages.Length; i++)
                 {
-                    slices.Add(new PieSlice(names[i], percentages[i], colors[i], sizes[i] == 0 ? "" : (string)gameSizeConverter.Convert(sizes[i], null, null, null)));
+                    slices.Add(new DiskSlice(names[i], percentages[i], colors[i], sizes[i] == 0 ? "" : (string)gameSizeConverter.Convert(sizes[i], null, null, null)));
                 }
                 try
                 {
@@ -373,8 +385,22 @@ namespace gamevault.UserControls
                 {
                     ViewModel.DiskSize = $"{gameSizeConverter.Convert(drive.TotalSize, null, null, null)}";
                 }
-                Dispatcher.UIThread.Post(() => uiDiscUsagePieChart.Slices = slices);
+                Dispatcher.UIThread.Post(() => ShowDiskUsage(slices));
             });
+        }
+
+        internal void ShowDiskUsage(List<DiskSlice> slices)
+        {
+            uiDiskBar.ColumnDefinitions.Clear();
+            uiDiskBar.Children.Clear();
+            for (int i = 0; i < slices.Count; i++)
+            {
+                uiDiskBar.ColumnDefinitions.Add(new ColumnDefinition(Math.Max(0, slices[i].Percentage), GridUnitType.Star));
+                var part = new Border { Background = slices[i].Brush };
+                Grid.SetColumn(part, i);
+                uiDiskBar.Children.Add(part);
+            }
+            uiDiskLegend.ItemsSource = slices;
         }
 
         #endregion
@@ -517,7 +543,7 @@ namespace gamevault.UserControls
             catch { defaultName = CompatibilityManager.DisplayName(CompatibilitySettings.DefaultToolId); }
             var tools = new List<CompatibilityTool>
             {
-                new CompatibilityTool(CompatibilityToolId.Default, Loc.F("Default ({0})", defaultName), CompatibilityToolKind.Wine, null, "the default tool of Settings → Linux", false),
+                new CompatibilityTool(CompatibilityToolId.Default, Loc.F("Default ({0})", defaultName), CompatibilityToolKind.Wine, null, Loc.T("the default tool of Settings → Linux"), false),
             };
             tools.AddRange(CompatibilityManager.GetTools(refresh: true).Where(t => t.Id != CompatibilityToolId.Auto));
             // Keep a tool that was deleted meanwhile visible, so the choice is not silently changed

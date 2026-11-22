@@ -32,7 +32,7 @@ namespace gamevault.Helper
                 string version = status.RootElement.GetProperty("version").GetString() ?? "?";
                 long free = status.RootElement.TryGetProperty("freeSpace", out var space) ? space.GetInt64() : -1;
                 return (true, free >= 0
-                    ? Loc.F("SanctuaryVault Uploader {0} is ready, {1} free on the server", version, GameVault.Core.Storage.StorageCleanup.FormatSize(free))
+                    ? Loc.F("SanctuaryVault Uploader {0} is ready, {1} free on the server", version, gamevault.Converter.GameSizeConverter.Text(free))
                     : Loc.F("SanctuaryVault Uploader {0} is ready", version));
             }
             catch (Exception ex)

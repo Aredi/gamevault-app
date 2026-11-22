@@ -36,6 +36,67 @@ namespace gamevault.UserControls
     /// </summary>
     public partial class SettingsUserControl : UserControl
     {
+        public sealed record SearchHit(string Title, string Tab, TabItem Item, Control Target);
+
+        /// <summary>A setting (its row) or a part of a page (its title) whose text has what was typed, in every tab shown.</summary>
+        private List<SearchHit> FindSettings(string text)
+        {
+            var hits = new List<SearchHit>();
+            bool Has(string? value) => value?.Contains(text, StringComparison.CurrentCultureIgnoreCase) == true;
+            void Walk(object? node, TabItem tab, string tabName)
+            {
+                switch (node)
+                {
+                    case SettingRow row:
+                        if (Has(row.Title) || Has(row.Hint))
+                            hits.Add(new SearchHit(row.Title ?? "", tabName, tab, row));
+                        break;
+                    case TextBlock title when title.Classes.Contains("h1"):
+                        if (Has(title.Text))
+                            hits.Add(new SearchHit(title.Text!, tabName, tab, title));
+                        break;
+                    case Panel panel:
+                        foreach (Control child in panel.Children)
+                            Walk(child, tab, tabName);
+                        break;
+                    case Decorator decorator:
+                        Walk(decorator.Child, tab, tabName);
+                        break;
+                    case ContentControl content:
+                        Walk(content.Content, tab, tabName);
+                        break;
+                }
+            }
+            foreach (TabItem tab in uiTabControl.Items.OfType<TabItem>().Where(t => t.IsVisible))
+                Walk(tab.Content, tab, (tab.Header as Panel)?.Children.OfType<TextBlock>().FirstOrDefault()?.Text ?? "");
+            return hits;
+        }
+
+        private void Search_TextChanged(object? sender, TextChangedEventArgs e)
+        {
+            string text = uiSearch.Text?.Trim() ?? "";
+            uiSearchResults.IsVisible = text.Length >= 2;
+            if (!uiSearchResults.IsVisible)
+                return;
+            List<SearchHit> hits = FindSettings(text);
+            uiSearchHits.ItemsSource = hits;
+            uiSearchNothing.IsVisible = hits.Count == 0;
+        }
+
+        private void Search_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+                uiSearch.Text = "";
+        }
+
+        private void SearchHit_Click(object? sender, RoutedEventArgs e)
+        {
+            var hit = (SearchHit)((Control)sender!).DataContext!;
+            uiSearch.Text = "";
+            uiTabControl.SelectedItem = hit.Item;
+            Dispatcher.UIThread.Post(() => hit.Target.BringIntoView(), DispatcherPriority.Loaded);
+        }
+
         private SettingsViewModel ViewModel { get; set; }
         private bool loaded = false;
         public SettingsUserControl()
@@ -67,6 +128,12 @@ namespace gamevault.UserControls
             {
                 Directory.Delete(LoginManager.Instance.GetUserProfile().ImageCacheDir, true);
                 Directory.CreateDirectory(LoginManager.Instance.GetUserProfile().ImageCacheDir);
+                // The retro covers and screenshots too: nothing else ever empties them
+                if (Directory.Exists(RetroService.MediaDirectory))
+                    Directory.Delete(RetroService.MediaDirectory, true);
+                // The chat's pictures: the service sends them again when a conversation shows them
+                if (Directory.Exists(ChatService.PicturesDirectory))
+                    Directory.Delete(ChatService.PicturesDirectory, true);
                 ViewModel.ImageCacheSize = 0;
                 MainWindowViewModel.Instance.AppBarText = Loc.T("Image cache cleared");
             }
@@ -137,7 +204,9 @@ namespace gamevault.UserControls
             }
             if (uiTabControl.SelectedIndex == 3)
             {
-                ViewModel.ImageCacheSize = await CalculateDirectorySize(new DirectoryInfo(LoginManager.Instance.GetUserProfile().ImageCacheDir));
+                ViewModel.ImageCacheSize = await CalculateDirectorySize(new DirectoryInfo(LoginManager.Instance.GetUserProfile().ImageCacheDir))
+                    + await CalculateDirectorySize(new DirectoryInfo(RetroService.MediaDirectory))
+                    + await CalculateDirectorySize(new DirectoryInfo(ChatService.PicturesDirectory));
                 ViewModel.OfflineCacheSize = (File.Exists(LoginManager.Instance.GetUserProfile().OfflineCache) ? new FileInfo(LoginManager.Instance.GetUserProfile().OfflineCache).Length : 0);
             }
         }
@@ -182,7 +251,9 @@ namespace gamevault.UserControls
                 {
                     bool isLoggedInWithSSO = Preferences.Get(AppConfigKey.IsLoggedInWithSSO, LoginManager.Instance.GetUserProfile().UserConfigFile) == "1";
                     Preferences.DeleteKey(AppConfigKey.SessionToken, LoginManager.Instance.GetUserProfile().UserConfigFile);
-                    await WebHelper.PostAsync($"{SettingsViewModel.Instance.ServerUrl}/api/auth/revoke", "{" + $"\"refresh_token\": \"{WebHelper.GetRefreshToken()}\"" + "}");
+                    // Offline or refused (an SSO sign-in turned down opens the library offline): this device is logged out all the same
+                    try { await WebHelper.PostAsync($"{SettingsViewModel.Instance.ServerUrl}/api/auth/revoke", "{" + $"\"refresh_token\": \"{WebHelper.GetRefreshToken()}\"" + "}"); }
+                    catch (Exception ex) { Log.Ignored(ex); }
                     if (!isLoggedInWithSSO)
                     {
                         Preferences.DeleteKey(AppConfigKey.Password, LoginManager.Instance.GetUserProfile().UserConfigFile);
@@ -545,7 +616,7 @@ namespace gamevault.UserControls
             if (selected.Count == 0)
                 return;
             long total = selected.Sum(i => i.Candidate.Size);
-            if (!await DialogService.ConfirmAsync(Loc.F("Delete {0} item(s) and free {1}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", selected.Count, GameVault.Core.Storage.StorageCleanup.FormatSize(total)), Loc.T("Free up disk space")))
+            if (!await DialogService.ConfirmAsync(Loc.Plural(selected.Count, "Delete {0} item and free {1}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", "Delete {0} items and free {1}?\n\nDeleted archives must be downloaded again to reinstall a game. Saves inside deleted Wine prefixes are lost unless they are in the cloud.", selected.Count, gamevault.Converter.GameSizeConverter.Text(total)), Loc.T("Free up disk space")))
                 return;
             ViewModel.IsStorageCleanupRunning = true;
             var failed = new List<string>();
@@ -565,7 +636,7 @@ namespace gamevault.UserControls
             if (OperatingSystem.IsLinux())
                 ViewModel.RefreshCompatibilityTools();
             MainWindowViewModel.Instance.AppBarText = failed.Count == 0
-                ? Loc.F("Freed {0}", GameVault.Core.Storage.StorageCleanup.FormatSize(total))
+                ? Loc.F("Freed {0}", gamevault.Converter.GameSizeConverter.Text(total))
                 : Loc.F("Could not delete: {0}", string.Join(", ", failed));
             ViewModel.IsStorageCleanupRunning = false;
             AnalyzeStorage_Click(sender, e);
@@ -592,7 +663,7 @@ namespace gamevault.UserControls
                 return;
             int users = InstallViewModel.Instance.InstalledGames
                 .Count(g => GameCompatibility.ForInstallation(g.Value).ToolId == tool.Id);
-            string warning = users > 0 ? Loc.F("\n\n{0} installed game(s) use it and will fall back to the default tool.", users) : "";
+            string warning = users > 0 ? Loc.Plural(users, "\n\n{0} installed game uses it and will fall back to the default tool.", "\n\n{0} installed games use it and will fall back to the default tool.") : "";
             if (CompatibilitySettings.DefaultToolId == tool.Id)
                 warning += "\n\nIt is the default tool, the default goes back to \"Automatic\".";
             if (!await DialogService.ConfirmAsync(Loc.F("Delete {0}?{1}", tool.Name, warning), Loc.T("Delete compatibility tool")))

@@ -57,5 +57,19 @@ namespace GameVault.Core.Tests
             Assert.Equal("2.0.0", UpdateChecker.ParseReleaseList(list, "1.0.0", null)?.Version);
             Assert.Null(UpdateChecker.ParseReleaseList(list, "2.0.0", null));
         }
+
+        [Fact]
+        public void ReleaseList_PicksTheHighestVersion_NotTheFirst()
+        {
+            // A fix of the older line, published after 2.0.0
+            string list = """
+            [
+              { "tag_name": "1.9.1" },
+              { "tag_name": "2.0.0" },
+              { "tag_name": "1.9.0" }
+            ]
+            """;
+            Assert.Equal("2.0.0", UpdateChecker.ParseReleaseList(list, "1.9.0", null)?.Version);
+        }
     }
 }

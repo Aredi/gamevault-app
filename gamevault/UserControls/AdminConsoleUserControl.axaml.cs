@@ -54,6 +54,7 @@ namespace gamevault.UserControls
                 await InitUserList();
                 await LoadReportsAsync();
                 ViewModel.ServerVersionInfo = await GetServerVersionInfo();
+                uiCountServer.Text = ViewModel.ServerVersionInfo.Key.Split(':').Last().Trim();
             }
         }
 
@@ -64,13 +65,27 @@ namespace gamevault.UserControls
                 string userList = await WebHelper.GetAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users");
                 User[]? users = JsonSerializer.Deserialize<User[]>(userList);
                 await AddLastSeenAsync(users);
+                await LoadInvitesAsync(users);
+                await LoadHypervisorAsync();
+                await LoadEmulatorsAsync();
                 ViewModel.Users = users;
+                uiCountPlayers.Text = (users?.Count(u => u.DeletedAt == null) ?? 0).ToString();
             }
             catch (Exception ex)
             {
                 string msg = WebExceptionHelper.TryGetServerMessage(ex);
                 MainWindowViewModel.Instance.AppBarText = msg;
             }
+        }
+
+        /// <summary>A counter opens its part of the console; one is always open.</summary>
+        private void Section_Click(object? sender, RoutedEventArgs e)
+        {
+            var section = (AdminConsoleSection)((Control)sender!).Tag!;
+            uiTilePlayers.IsChecked = uiSectionPlayers.IsVisible = section == AdminConsoleSection.Players;
+            uiTileReports.IsChecked = uiSectionReports.IsVisible = section == AdminConsoleSection.Reports;
+            uiTileInvites.IsChecked = uiSectionInvites.IsVisible = section == AdminConsoleSection.Invites;
+            uiTileServer.IsChecked = uiSectionServer.IsVisible = section == AdminConsoleSection.Server;
         }
 
         /// <summary>The open problem reports; without the SanctuaryVault service (or its reports) the card stays hidden.</summary>
@@ -83,6 +98,7 @@ namespace gamevault.UserControls
                 uiReports.ItemsSource = open;
                 uiReportsTitle.Text = Loc.F("Problem reports ({0} open)", open?.Count ?? 0);
                 uiReportsEmpty.IsVisible = open?.Count == 0;
+                uiCountReports.Text = (open?.Count ?? 0).ToString();
             }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
         }
@@ -101,6 +117,14 @@ namespace gamevault.UserControls
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
 
+        private async void ReportDiagnostic_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not ProblemReportItem report)
+                return;
+            try { MainWindowViewModel.Instance.OpenPopup(new ReportDiagnosticPopup(report, await ReportsService.DiagnosticAsync(report.Id))); }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
         private async void ReportResolve_Click(object? sender, RoutedEventArgs e)
         {
             if ((sender as Control)?.DataContext is not ProblemReportItem report)
@@ -111,6 +135,165 @@ namespace gamevault.UserControls
                 await LoadReportsAsync();
             }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
+        }
+
+        /// <summary>The invitation codes, and the one each account was activated with; without the service the card stays hidden.</summary>
+        internal async Task LoadInvitesAsync(User[]? users = null)
+        {
+            try
+            {
+                var invites = await InvitesService.ListAsync();
+                uiInvitesCard.IsVisible = invites != null;
+                uiInvites.ItemsSource = invites;
+                uiCountInvites.Text = (invites?.Count(i => i.IsUnused) ?? 0).ToString();
+                foreach (User user in users ?? Array.Empty<User>())
+                    user.InviteText = invites?.FirstOrDefault(i => i.UserId == user.ID) is InviteItem used ? Loc.F("Invitation code {0}", used.Name) : null;
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        internal async Task LoadHypervisorAsync()
+        {
+            try
+            {
+                HypervisorNotice? notice = await HypervisorService.GetAsync();
+                uiHypervisorCard.IsVisible = notice != null;
+                uiHypervisorText.Text = notice?.Text;
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        /// <summary>An emulator given to some games, as the card edits it.</summary>
+        internal sealed class EmulatorRow
+        {
+            /// <summary>The Switch ones first (a fork is one of theirs); a recomp is given to a game of any console.</summary>
+            public static readonly string[] Slugs = new[] { "switch-2", "switch" }.Concat(GameVault.Core.Retro.RetroSystems.All.Keys.Where(s => s is not ("switch-2" or "switch")).OrderBy(s => GameVault.Core.Retro.RetroSystems.All[s].Name)).ToArray();
+            public string Id { get; init; } = Guid.NewGuid().ToString("N")[..12];
+            public string Name { get; set; } = "";
+            public string[] Consoles { get; } = Slugs.Select(s => GameVault.Core.Retro.RetroSystems.All[s].Name).ToArray();
+            public int ConsoleIndex { get; set; }
+            public string? Windows { get; set; }
+            public string? Linux { get; set; }
+            public string? Mac { get; set; }
+            public string? Executable { get; set; }
+            /// <summary>A program of its own that reads the game's files, not a fork of the console's emulator.</summary>
+            public bool IsRecomp { get; set; }
+            public string? Arguments { get; set; }
+            public int Games { get; init; }
+            public string GamesText => Loc.Plural(Games, "{0} game", "{0} games");
+            public bool Saved { get; set; }
+
+            public GameEmulators.Emulator ToEmulator() => new() { Id = Id, Name = Name, Console = Slugs[Math.Max(0, ConsoleIndex)], Windows = Windows, Linux = Linux, Mac = Mac, Executable = Executable, Kind = IsRecomp ? "recomp" : null, Arguments = IsRecomp ? Arguments : null };
+        }
+
+        private readonly System.Collections.ObjectModel.ObservableCollection<EmulatorRow> emulators = new();
+
+        internal async Task LoadEmulatorsAsync()
+        {
+            GameEmulators.Catalog? catalog = await GameEmulators.LoadAsync();
+            uiEmulatorsCard.IsVisible = catalog != null;
+            emulators.Clear();
+            foreach (GameEmulators.Emulator e in catalog?.Emulators ?? new())
+                emulators.Add(new EmulatorRow
+                {
+                    Id = e.Id, Name = e.Name, ConsoleIndex = Math.Max(0, Array.IndexOf(EmulatorRow.Slugs, e.Console)), Windows = e.Windows, Linux = e.Linux, Mac = e.Mac, Executable = e.Executable, IsRecomp = e.IsRecomp, Arguments = e.Arguments,
+                    Games = catalog!.Games.Count(g => g.Value == e.Id), Saved = true,
+                });
+            uiEmulators.ItemsSource = emulators;
+        }
+
+        private void AddEmulator_Click(object? sender, RoutedEventArgs e) => emulators.Insert(0, new EmulatorRow());
+
+        private async void SaveEmulator_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not EmulatorRow row)
+                return;
+            try
+            {
+                await GameEmulators.SetAsync(row.ToEmulator());
+                row.Saved = true;
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Saved");
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+        }
+
+        private async void DeleteEmulator_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not EmulatorRow row)
+                return;
+            try
+            {
+                if (row.Saved)
+                {
+                    if (!await DialogService.ConfirmAsync(Loc.F("Delete the emulator '{0}'? Its games are played by their console emulator again.", row.Name)))
+                        return;
+                    await GameEmulators.DeleteAsync(row.Id);
+                }
+                emulators.Remove(row);
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+        }
+
+        private async void SaveHypervisorText_Click(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await HypervisorService.SetTextAsync(uiHypervisorText.Text ?? "");
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Saved");
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+        }
+
+        private async void CreateInvite_Click(object? sender, RoutedEventArgs e)
+        {
+            string name = uiInviteName.Text?.Trim() ?? "";
+            if (name.Length == 0)
+            {
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Give the invitation a name (who it is for).");
+                return;
+            }
+            try
+            {
+                InviteItem invite = await InvitesService.CreateAsync(name);
+                uiInviteName.Text = "";
+                await LoadInvitesAsync();
+                await CopyAsync(invite);
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
+        }
+
+        private void InviteName_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                CreateInvite_Click(sender, e);
+            }
+        }
+
+        private async void CopyInvite_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is InviteItem invite)
+                await CopyAsync(invite);
+        }
+
+        private async Task CopyAsync(InviteItem invite)
+        {
+            if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+                await clipboard.SetTextAsync(invite.Code);
+            MainWindowViewModel.Instance.AppBarText = Loc.F("Invitation code for {0} copied: {1}", invite.Name, invite.Code);
+        }
+
+        private async void DeleteInvite_Click(object? sender, RoutedEventArgs e)
+        {
+            if ((sender as Control)?.DataContext is not InviteItem invite)
+                return;
+            try
+            {
+                await InvitesService.DeleteAsync(invite.Code);
+                await LoadInvitesAsync();
+            }
+            catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = ex.Message; }
         }
 
         /// <summary>Without the SanctuaryVault service the line stays hidden.</summary>

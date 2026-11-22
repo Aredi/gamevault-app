@@ -158,6 +158,8 @@ namespace gamevault.Helper
             return await response.Content.ReadAsStringAsync();
         }
         /// <summary>A request with the GameVault sign-in to a companion service (uploader), without the usual time limit.</summary>
+        internal static Task<string?> AccessTokenAsync() => HttpClient.AccessTokenAsync();
+
         internal static Task<HttpResponseMessage> SendLongAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken) =>
             HttpClient.SendLongAsync(request, cancellationToken);
         public static async Task DownloadImageFromUrlAsync(string imageUrl, string cacheFile)
@@ -172,7 +174,7 @@ namespace gamevault.Helper
         }
         public static async Task<Bitmap> DownloadImageFromUrlAsync(string imageUrl)
         {
-            var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);
+            using var response = await HttpClient.GetAsync(imageUrl, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             var imageData = await response.Content.ReadAsByteArrayAsync();
             using var memoryStream = new MemoryStream(imageData);

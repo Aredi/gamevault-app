@@ -141,6 +141,8 @@ jobs:
 
   release:
     needs: [linux, windows, macos]
+    # A Mac job that fails, or finds no runner (1.40.6), must not hold back Windows and Linux
+    if: ${{ !cancelled() && needs.linux.result == 'success' && needs.windows.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

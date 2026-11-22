@@ -74,7 +74,7 @@ namespace gamevault.UserControls.SettingsComponents
             RetroArchLayout layout = RetroArchManager.Layout;
             long size = await Task.Run(RetroArchManager.InstalledSize);
             uiRetroArch.Text = layout.IsInstalled
-                ? Loc.F("Version {0} installed · {1}", RetroArchLayout.Version, StorageCleanup.FormatSize(size))
+                ? Loc.F("Version {0} installed · {1}", RetroArchLayout.Version, gamevault.Converter.GameSizeConverter.Text(size))
                 : Loc.T("Not installed");
             uiUninstall.IsEnabled = size > 0;
             var cores = RetroSystems.All.Values.Where(s => StandaloneEmulator.Of(s) is StandaloneEmulator emulator ? emulator.Layout.IsInstalled : File.Exists(layout.CoreFile(s.Core)))
@@ -99,6 +99,11 @@ namespace gamevault.UserControls.SettingsComponents
             var widescreen = RetroArchManager.WidescreenCores;
             uiWidescreen.ItemsSource = RetroResolution.WidescreenCores.Select(core => new CrtRow(core,
                 string.Join(", ", RetroSystems.All.Values.Where(s => s.Core == core).Select(s => s.Name)), widescreen.Contains(core))).ToList();
+            string Consoles(string[] cores) => string.Join(", ", RetroSystems.All.Values.Where(s => cores.Contains(s.Core)).Select(s => s.Name));
+            uiQuickResume.IsChecked = RetroArchManager.QuickResume;
+            uiQuickResumeNote.Text = Loc.F("The game is saved when you quit and starts again at that moment (a save state chosen on its page comes first): {0}.", Consoles(RetroComfort.ResumeCores));
+            uiRunAhead.IsChecked = RetroArchManager.RunAhead;
+            uiRunAheadNote.Text = Loc.F("Each frame is computed one ahead, which removes a frame of lag; the console runs twice, so only the light ones: {0}.", Consoles(RetroComfort.RunAheadCores));
             RefreshControls();
             uiLanguageConsoles.Text = Loc.F("The consoles that have a language start in this one: {0}. A game without it keeps its own; a game's page can choose another.",
                 string.Join(", ", RetroSystems.All.Values.Where(s => RetroLanguage.Cores.Contains(s.Core)).Select(s => s.Name)));
@@ -230,6 +235,9 @@ namespace gamevault.UserControls.SettingsComponents
             resolutions[row.Core] = row.Scales[box.SelectedIndex];
             RetroArchManager.Resolutions = resolutions;
         }
+
+        private void QuickResume_Changed(object? sender, RoutedEventArgs e) => RetroArchManager.QuickResume = uiQuickResume.IsChecked == true;
+        private void RunAhead_Changed(object? sender, RoutedEventArgs e) => RetroArchManager.RunAhead = uiRunAhead.IsChecked == true;
 
         private void Widescreen_Changed(object? sender, RoutedEventArgs e)
         {

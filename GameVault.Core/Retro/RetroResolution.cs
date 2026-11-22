@@ -17,6 +17,7 @@ namespace GameVault.Core.Retro
             ["azahar"] = new[] { 1, 2, 3, 4 },
             ["rpcs3"] = new[] { 1, 2, 3 },
             ["eden"] = new[] { 1, 2, 3 },
+            ["eglantine"] = new[] { 1, 2, 3 },
             ["xemu"] = new[] { 1, 2, 3 },
         };
 

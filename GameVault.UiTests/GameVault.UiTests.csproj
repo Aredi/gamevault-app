@@ -30,6 +30,8 @@
 	<ItemGroup>
 		<!-- The compressed Switch game of SwitchCompressedTests, downloaded as a RomM game -->
 		<None Include="..\GameVault.Core.Tests\Fixtures\Switch\game.nsz" Link="Fixtures\game.nsz" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="..\GameVault.Core.Tests\Fixtures\DiscImage\disc-game.tar.gz" Link="Fixtures\disc-game.tar.gz" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="..\GameVault.Core.Tests\Fixtures\Locked\locked.zip" Link="Fixtures\locked.zip" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 </Project>

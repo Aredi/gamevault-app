@@ -32,10 +32,11 @@ namespace gamevault.ViewModels
         private int selectedMetadataProviderIndex { get; set; }
         private string? installedGameVersion { get; set; }
         #endregion
+        public string? ReleaseYear => (Game?.Metadata?.ReleaseDate ?? Game?.ReleaseDate)?.Year.ToString();
         public Game Game
         {
             get { return game; }
-            set { game = value; OnPropertyChanged(); }
+            set { game = value; OnPropertyChanged(); OnPropertyChanged(nameof(ReleaseYear)); }
         }
         public UpdateGameDto? UpdateGame
         {

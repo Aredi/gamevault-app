@@ -56,8 +56,21 @@
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+        <!-- Hovered or chosen, the item's background fades in rather than switching on -->
         <Style Selector="ListBox#uiNavigation ListBoxItem /template/ ContentPresenter">
             <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.16" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.navItem /template/ Border#PART_Bg">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.16" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.navItem">
             <Setter Property="BorderThickness" Value="0" />
@@ -83,6 +96,16 @@
         </Style>
         <Style Selector="ListBox#uiNavigation ListBoxItem:selected">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        </Style>
+        <!-- The section a game's page was opened from: lit as if chosen, though it is not selected -->
+        <Style Selector="ListBox#uiNavigation ListBoxItem.current /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent3}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem.current">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        </Style>
+        <Style Selector="ListBox#uiNavigation ListBoxItem.current:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent2}" />
         </Style>
         <Style Selector="ListBox#uiNavigation ListBoxItem:selected:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource Brush.Accent2}" />
@@ -166,7 +189,7 @@
     </UserControl.Styles>
 
     <Panel>
-        <Grid ColumnDefinitions="Auto,*">
+        <Grid x:Name="uiDesktop" ColumnDefinitions="Auto,*,Auto">
             <!-- Navigation bar -->
             <Border x:Name="uiSidebar" Grid.Column="0" Background="{DynamicResource Brush.Background2}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0" ClipToBounds="True">
                 <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
@@ -213,12 +236,12 @@
                                     </StackPanel>
                                 </Panel>
                             </ListBoxItem>
-                            <ListBoxItem ToolTip.Tip="{l:T 'Retro'}">
+                            <ListBoxItem ToolTip.Tip="{l:T 'Consoles and retro'}">
                                 <Panel>
                                     <Border Classes="mark" />
                                     <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
                                         <Path Data="{StaticResource IconNavRetro}" />
-                                        <TextBlock Classes="wide" Text="{l:T 'Retro'}" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Consoles and retro'}" />
                                     </StackPanel>
                                 </Panel>
                             </ListBoxItem>
@@ -262,6 +285,16 @@
                                     </StackPanel>
                                 </Panel>
                             </ListBoxItem>
+                            <!-- Under Community: the challenge of the week and its rankings -->
+                            <ListBoxItem Classes="sub" ToolTip.Tip="{l:T 'Challenges'}">
+                                <Panel>
+                                    <Border Classes="mark" />
+                                    <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="11">
+                                        <Path Data="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4" Stroke="{Binding $parent[ContentControl].Foreground}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                                        <TextBlock Classes="wide" Text="{l:T 'Challenges'}" />
+                                    </StackPanel>
+                                </Panel>
+                            </ListBoxItem>
                             <ListBoxItem ToolTip.Tip="{l:T 'Settings'}">
                                 <Panel>
                                     <Border Classes="mark" />
@@ -285,6 +318,15 @@
 
                     <!-- News, problems, links -->
                     <StackPanel Grid.Row="4" Margin="12,0,12,10">
+                        <!-- The chat: the friends and the conversations on the right -->
+                        <Button Classes="navItem" x:Name="uiChatButton" Click="Chat_Click" ToolTip.Tip="{l:T 'Friends and messages'}" IsVisible="{Binding IsChatAvailable}">
+                            <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
+                                <uc:Badged Badge="{Binding ChatBadge}" BadgeBackground="{DynamicResource Brush.Accent}">
+                                    <Path Data="{StaticResource IconChat}" />
+                                </uc:Badged>
+                                <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'Messages'}" Margin="13,0,0,0" />
+                            </Grid>
+                        </Button>
                         <Button Classes="navItem" Click="News_Click" ToolTip.Tip="{l:T 'Open News'}">
                             <Grid Classes="navRow" ColumnDefinitions="Auto,*,Auto">
                                 <uc:Badged x:Name="uiNewsBadge" Badge="{Binding NewsBadge}" BadgeBackground="{DynamicResource Brush.Warning}">
@@ -292,6 +334,13 @@
                                 </uc:Badged>
                                 <TextBlock Grid.Column="1" Classes="wide" Text="{l:T 'News'}" Margin="13,0,0,0" />
                             </Grid>
+                        </Button>
+                        <!-- The whole screen, played with a gamepad from the couch (F11) -->
+                        <Button Classes="navItem" x:Name="uiCouchButton" Click="Couch_Click" ToolTip.Tip="{l:T 'Living-room mode: the whole screen, with a gamepad (F11)'}">
+                            <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
+                                <Path Data="M3 5h18v12H3zM8 21h8M12 17v4" Stroke="{Binding $parent[ContentControl].Foreground}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                                <TextBlock Classes="wide" Text="{l:T 'Living-room mode'}" />
+                            </StackPanel>
                         </Button>
                         <Button Classes="navItem" x:Name="uiBugReportShortcut" Click="ProblemReport_Click" ToolTip.Tip="{l:T 'Report a problem'}">
                             <StackPanel Classes="navRow" Orientation="Horizontal" Spacing="13">
@@ -312,12 +361,12 @@
                                 <Border Width="13" Height="13" CornerRadius="7" HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="2"
                                         BorderBrush="{DynamicResource Brush.Background2}" Background="{DynamicResource Brush.Success}" IsVisible="{Binding !IsOffline}" />
                                 <Border Width="13" Height="13" CornerRadius="7" HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="2"
-                                        BorderBrush="{DynamicResource Brush.Background2}" Background="IndianRed" IsVisible="{Binding IsOffline}" ToolTip.Tip="{l:T 'Offline'}" />
+                                        BorderBrush="{DynamicResource Brush.Background2}" Background="{DynamicResource Brush.Danger}" IsVisible="{Binding IsOffline}" ToolTip.Tip="{l:T 'Offline'}" />
                             </Panel>
                             <StackPanel Grid.Column="1" Classes="wide" Margin="11,0,0,0" VerticalAlignment="Center" Spacing="1">
                                 <TextBlock Text="{Binding UserAvatar.Username}" FontWeight="Bold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
                                 <TextBlock x:Name="uiServerName" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsOffline}" />
-                                <TextBlock Classes="muted" FontSize="11.5" Text="{l:T 'Offline'}" Foreground="IndianRed" IsVisible="{Binding IsOffline}" />
+                                <TextBlock Classes="muted" FontSize="11.5" Text="{l:T 'Offline'}" Foreground="{DynamicResource Brush.Danger}" IsVisible="{Binding IsOffline}" />
                             </StackPanel>
                         </Grid>
                     </Button>
@@ -325,20 +374,42 @@
             </Border>
 
             <!-- Pages -->
-            <TransitioningContentControl Grid.Column="1" Content="{Binding ActiveControl}">
+            <ContentControl Grid.Column="1" x:Name="uiLibraryHost" />
+            <TransitioningContentControl Grid.Column="1" Content="{Binding TransitioningPage}">
                 <TransitioningContentControl.PageTransition>
                     <CrossFade Duration="0:0:0.15" />
                 </TransitioningContentControl.PageTransition>
             </TransitioningContentControl>
+
+            <!-- The chat, as Steam's friends: beside the page, not over it -->
+            <!-- (the panel has its own data: the window's is read on its host) -->
+            <Panel x:Name="uiChatHost" Grid.Column="2">
+                <Panel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="IsChatOpen" />
+                        <Binding Path="IsChatAvailable" />
+                    </MultiBinding>
+                </Panel.IsVisible>
+                <uc:ChatPanel x:Name="uiChat" />
+            </Panel>
         </Grid>
+
+        <!-- The living-room mode covers the desktop; the popups and the messages stay over it -->
+        <uc:CouchUserControl x:Name="uiCouch" IsVisible="False" />
+
+        <!-- The living-room mode's keyboard for the text boxes of the popups and the questions: over them -->
+        <uc:CouchKeyboard x:Name="uiCouchKeys" ZIndex="20" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,36" RenderTransformOrigin="50%,100%" />
 
         <!-- Popups (game settings, user settings, news, ...): shown at their real size, only scaled down when the window is too small -->
         <Panel x:Name="uiPopupLayer" ZIndex="1" Background="#A6000000"
                IsVisible="{Binding Popup, Converter={x:Static ObjectConverters.IsNotNull}}">
             <Viewbox x:Name="uiPopupFit" StretchDirection="DownOnly" Margin="28">
-                <Border x:Name="uiPopupFrame" CornerRadius="18" ClipToBounds="True" BoxShadow="0 30 80 -20 #E6000000">
-                    <ContentControl Content="{Binding Popup}" />
-                </Border>
+                <!-- Larger in the living-room mode: read from the couch -->
+                <LayoutTransformControl x:Name="uiPopupZoom">
+                    <Border x:Name="uiPopupFrame" CornerRadius="18" ClipToBounds="True" BoxShadow="0 30 80 -20 #E6000000">
+                        <ContentControl Content="{Binding Popup}" />
+                    </Border>
+                </LayoutTransformControl>
             </Viewbox>
         </Panel>
 

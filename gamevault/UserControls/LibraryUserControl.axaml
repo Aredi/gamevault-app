@@ -294,11 +294,11 @@
                             </Border.Background>
                         </Border>
                         <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Bottom" Margin="32,0,120,30">
-                            <Border Width="112" Height="168" CornerRadius="10" ClipToBounds="True" VerticalAlignment="Bottom" Margin="0,0,24,0"
+                            <Border x:Name="uiHeroCoverFrame" Width="112" Height="168" CornerRadius="10" ClipToBounds="True" VerticalAlignment="Bottom" Margin="0,0,24,0"
                                     BoxShadow="0 18 40 -12 #CC000000" IsVisible="{Binding IsWide}">
                                 <local:CacheImage x:Name="uiHeroCover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding CurrentHero.Game}" />
                             </Border>
-                            <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Bottom">
+                            <StackPanel x:Name="uiHeroText" Grid.Column="1" Spacing="10" VerticalAlignment="Bottom">
                                 <TextBlock Classes="eyebrow" Text="{Binding CurrentHero.Eyebrow}" Opacity="0.85" />
                                 <TextBlock Classes="display" FontSize="{Binding HeroTitleSize}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" >
                                     <TextBlock.Text>
@@ -530,7 +530,11 @@
                                                 <Border Classes="glow" CornerRadius="10" Background="{DynamicResource Brush.Surface}"
                                                         BoxShadow="{Binding #cover.AccentColor, Converter={StaticResource accentShadowConv}, ConverterParameter='16 36 -8 0.75'}" />
                                                 <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource Brush.Surface}">
-                                                    <local:CacheImage x:Name="cover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
+                                                    <Panel>
+                                                        <local:CacheImage x:Name="cover" ImageCacheType="GameCover" ComputeAccent="True" Stretch="UniformToFill" Data="{Binding}" />
+                                                        <!-- Hovered a moment: the game's screenshots -->
+                                                        <local:CoverSlideshow />
+                                                    </Panel>
                                                 </Border>
                                                 <Border Classes="selection" BorderBrush="{Binding #cover.AccentColor, Converter={StaticResource accentBrushConv}}">
                                                     <Border.IsVisible>

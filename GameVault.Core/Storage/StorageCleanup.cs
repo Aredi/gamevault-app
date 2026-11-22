@@ -16,8 +16,14 @@ namespace GameVault.Core.Storage
 
     public record CleanupCandidate(CleanupKind Kind, string Title, string Path, long Size)
     {
-        /// <summary>Safe items are selected by default; downloads waiting for installation are not.</summary>
-        public bool SelectedByDefault => Kind != CleanupKind.NotInstalledDownload;
+        /// <summary>
+        /// Safe items are selected by default; downloads waiting for installation are not, nor prefixes and tools
+        /// while a library folder cannot be read (an unplugged disk may hold the games that use them).
+        /// </summary>
+        public bool SelectedByDefault => Kind != CleanupKind.NotInstalledDownload && !Unsure;
+
+        /// <summary>A root's installations could not be seen: whether a game still uses it is not known.</summary>
+        public bool Unsure { get; init; }
     }
 
     public class CleanupInputs
@@ -38,7 +44,7 @@ namespace GameVault.Core.Storage
 
     public static class StorageCleanup
     {
-        private static readonly Regex GameFolder = new(@"^\((\d+)\)(.*)$");
+        private static readonly Regex GameFolder = new(@"^\(([0-9]+)\)(.*)$");
 
         public static List<CleanupCandidate> Scan(CleanupInputs inputs)
         {
@@ -51,9 +57,9 @@ namespace GameVault.Core.Storage
                 foreach (string dir in SubDirectories(downloads))
                 {
                     Match match = GameFolder.Match(Path.GetFileName(dir));
-                    if (!match.Success)
+                    // Too big for an id: not a game's folder
+                    if (!match.Success || !int.TryParse(match.Groups[1].Value, out int id))
                         continue;
-                    int id = int.Parse(match.Groups[1].Value);
                     if (inputs.ActiveDownloadIds.Contains(id))
                         continue;
                     long size = DirectorySize(dir);
@@ -63,12 +69,13 @@ namespace GameVault.Core.Storage
                     result.Add(new CleanupCandidate(kind, match.Groups[2].Value, dir, size));
                 }
             }
+            bool unsure = inputs.RootDirectories.Any(root => !Directory.Exists(Path.Combine(root, "GameVault", "Installations")));
             if (inputs.PrefixesDirectory != null)
             {
                 foreach (string dir in SubDirectories(inputs.PrefixesDirectory))
                 {
                     if (int.TryParse(Path.GetFileName(dir), out int id) && !installedIds.Contains(id))
-                        result.Add(new CleanupCandidate(CleanupKind.OrphanPrefix, $"Game #{id}", dir, DirectorySize(dir)));
+                        result.Add(new CleanupCandidate(CleanupKind.OrphanPrefix, $"Game #{id}", dir, DirectorySize(dir)) { Unsure = unsure });
                 }
             }
             if (inputs.ManagedToolsDirectory != null)
@@ -78,7 +85,7 @@ namespace GameVault.Core.Storage
                 {
                     if (Path.GetFileName(dir).StartsWith('.') || used.Contains(Normalize(dir)))
                         continue;
-                    result.Add(new CleanupCandidate(CleanupKind.UnusedCompatibilityTool, Path.GetFileName(dir), dir, DirectorySize(dir)));
+                    result.Add(new CleanupCandidate(CleanupKind.UnusedCompatibilityTool, Path.GetFileName(dir), dir, DirectorySize(dir)) { Unsure = unsure });
                 }
             }
             return result.OrderBy(c => c.Kind).ThenByDescending(c => c.Size).ToList();
@@ -95,8 +102,8 @@ namespace GameVault.Core.Storage
                     Match match = GameFolder.Match(Path.GetFileName(dir));
                     try
                     {
-                        if (match.Success && Directory.EnumerateFileSystemEntries(dir).Any())
-                            result.Add((int.Parse(match.Groups[1].Value), dir));
+                        if (match.Success && int.TryParse(match.Groups[1].Value, out int id) && Directory.EnumerateFileSystemEntries(dir).Any())
+                            result.Add((id, dir));
                     }
                     catch (Exception ex) { Log.Ignored(ex); }
                 }
@@ -115,19 +122,6 @@ namespace GameVault.Core.Storage
             }
             catch (Exception ex) { Log.Ignored(ex); }
             return size;
-        }
-
-        public static string FormatSize(long bytes)
-        {
-            string[] units = { "B", "KB", "MB", "GB", "TB" };
-            double value = bytes;
-            int unit = 0;
-            while (value >= 1024 && unit < units.Length - 1)
-            {
-                value /= 1024;
-                unit++;
-            }
-            return unit == 0 ? $"{bytes} B" : $"{value:0.#} {units[unit]}";
         }
 
         private static IEnumerable<string> SubDirectories(string parent)

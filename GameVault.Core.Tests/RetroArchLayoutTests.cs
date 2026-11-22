@@ -17,11 +17,15 @@ namespace GameVault.Core.Tests
             Assert.Contains($"joypad_autoconfig_dir = \"{home}/autoconfig\"\n", config);
             Assert.Contains($"libretro_info_path = \"{home}/cores\"\n", config);
             Assert.Contains("savefile_directory = \"/data/retroarch/saves/12\"\n", config);
+            // Its screenshots in a folder the client watches, not beside the game's file
+            Assert.Contains($"screenshot_directory = \"{home}/screenshots\"\n", config);
             Assert.Contains("input_quit_gamepad_combo = \"4\"\n", config);
+            // The living-room mode's menu over a game takes Select+Start
+            Assert.Contains("input_quit_gamepad_combo = \"0\"\n", layout.Config("12", quitCombo: false));
             // The only menu theme unpacked
             Assert.Contains("menu_driver = \"ozone\"\n", config);
             Assert.DoesNotContain("ozone", RetroArchLayout.UnusedPackageFolders);
-            Assert.Equal(new[] { "-L", "/data/retroarch/cores/mgba_libretro.so", "--config", "/data/retroarch/sanctuaryvault.cfg", "/games/a.gba" }, layout.Arguments("mgba", "/games/a.gba"));
+            Assert.Equal(new[] { "-L", "/data/retroarch/cores/mgba_libretro.so", "--config", "/data/retroarch/sanctuaryvault.cfg", "-v", "--log-file", "/data/retroarch/retroarch.log", "/games/a.gba" }, layout.Arguments("mgba", "/games/a.gba"));
         }
 
         [Fact]
@@ -106,7 +110,7 @@ namespace GameVault.Core.Tests
             Assert.Equal(new[] { 4, 0 }, states.Select(s => s.Slot));
             Assert.Null(states[0].Picture);
             Assert.EndsWith("Zelda.state.png", states[1].Picture);
-            Assert.Equal(new[] { "-L", Path.Combine(root, "cores", "mesen_libretro.so"), "--config", layout.ConfigFile, "--entryslot", "4", "/games/Zelda.nes" }, layout.Arguments("mesen", "/games/Zelda.nes", 4));
+            Assert.Equal(new[] { "-L", Path.Combine(root, "cores", "mesen_libretro.so"), "--config", layout.ConfigFile, "--entryslot", "4", "-v", "--log-file", layout.LogFile, "/games/Zelda.nes" }, layout.Arguments("mesen", "/games/Zelda.nes", 4));
             Assert.Empty(layout.SaveStates("4", "mesen", "/games/Zelda.nes"));
             Directory.Delete(root, true);
         }

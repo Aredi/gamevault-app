@@ -56,6 +56,11 @@ namespace gamevault.Helper
                 string names = string.Join(", ", added.Take(5).Select(g => $"{g.Name} ({g.PlatformName ?? g.Platform})"));
                 if (added.Count > 5)
                     names += ", ...";
+                foreach (var game in added)
+                    await ChatService.Instance.AnnounceAsync(new ChatGame
+                    {
+                        Kind = "retro", Id = game.Id, Platform = game.Platform, PlatformName = game.PlatformName, Title = game.Name, Cover = game.Cover,
+                    });
                 ToastMessageHelper.CreateToastMessage(title, names);
                 MainWindowViewModel.Instance.AppBarText = Loc.F("{0}: {1}", title, names);
                 Log.Info($"{title}: {names}");

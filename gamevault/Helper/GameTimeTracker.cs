@@ -47,34 +47,13 @@ namespace gamevault.Helper
         }
         private async Task TrackRunningGamesAsync()
         {
-            //string installationPath = Path.Combine(SettingsViewModel.Instance.RootPath, "GameVault\\Installations");
-
             if (SettingsViewModel.Instance.RootDirectories.Count == 0)
                 return;
-
-            List<string> allDirectoriesFromRootDirectories = new List<string>();
-            foreach (DirectoryEntry dirEntry in SettingsViewModel.Instance.RootDirectories)
-            {
-                if (Directory.Exists(Path.Combine(dirEntry.Uri, "GameVault", "Installations")))
-                    allDirectoriesFromRootDirectories.AddRange(Directory.GetDirectories(Path.Combine(dirEntry.Uri, "GameVault", "Installations")));
-            }
-            Dictionary<int, string> foundGames = new Dictionary<int, string>();
-
-            foreach (string dir in allDirectoriesFromRootDirectories)
-            {
-                var dirInf = new DirectoryInfo(dir);
-                if (dirInf.GetFiles().Length != 0 || dirInf.GetDirectories().Length != 0)
-                {
-                    int id = GetGameIdByDirectory(dir);
-                    if (id == -1) continue;
-                    if (foundGames.Where(x => x.Key == id).Count() > 0)
-                        continue;
-                    foundGames.Add(id, dir);
-                }
-            }
-            List<int> gamesToCountUp = OperatingSystem.IsWindows()
-                ? FindRunningGamesWindows(foundGames)
-                : FindRunningGamesLinux(foundGames);
+            Dictionary<int, string> foundGames = InstalledFolders();
+            List<int> gamesToCountUp = Running(foundGames);
+            if (gamesToCountUp.Count > 0)
+                GameCaptures.PcSeen(gamesToCountUp[0]);
+            GameCaptures.PcRunning(gamesToCountUp.Count > 0);
             // Online or not, Discord shows the game being played
             Avalonia.Threading.Dispatcher.UIThread.Post(() => DiscordHelper.Instance.SyncGameWithDiscordPresence(gamesToCountUp, foundGames));
             // The other players see what is played
@@ -89,6 +68,8 @@ namespace gamevault.Helper
                     }
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
+                // The challenge of the week first: it must hear of a game before the server has time on it
+                await ChallengesService.PlayedAsync(gamesToCountUp);
                 // Each minute is counted once: on the server, or offline when sending it failed
                 var notSent = new List<int>();
                 foreach (int gameid in gamesToCountUp)
@@ -118,6 +99,33 @@ namespace gamevault.Helper
                 catch (Exception ex) { Log.Ignored(ex); }
             }
         }
+        /// <summary>The installed games by id, in their folder.</summary>
+        private static Dictionary<int, string> InstalledFolders()
+        {
+            var foundGames = new Dictionary<int, string>();
+            foreach (DirectoryEntry dirEntry in SettingsViewModel.Instance.RootDirectories.ToList())
+            {
+                string installations = Path.Combine(dirEntry.Uri, "GameVault", "Installations");
+                if (!Directory.Exists(installations))
+                    continue;
+                foreach (string dir in Directory.GetDirectories(installations))
+                {
+                    if (!gamevault.UserControls.InstallUserControl.IsInstallation(dir))
+                        continue;
+                    int id = gamevault.UserControls.InstallUserControl.GameIdOf(dir);
+                    if (id != -1)
+                        foundGames.TryAdd(id, dir);
+                }
+            }
+            return foundGames;
+        }
+
+        private static List<int> Running(Dictionary<int, string> foundGames) =>
+            OperatingSystem.IsWindows() ? FindRunningGamesWindows(foundGames) : FindRunningGamesLinux(foundGames);
+
+        /// <summary>The installed PC games running now (a capture is taken: whose is it).</summary>
+        internal static List<int> RunningGames() => Running(InstalledFolders());
+
         /// <summary>A program of the game installed in <paramref name="installation"/> is running.</summary>
         internal static bool IsRunning(int gameId, string installation)
         {
@@ -155,7 +163,7 @@ namespace gamevault.Helper
                     if (gamesToCountUp.Contains(game.Key))
                         continue;
                     bool belongs = path != null
-                        ? path.Contains(game.Value)
+                        ? IsInside(path, game.Value)
                         : ExecutablesOf(game).Contains(process.ProcessName);
                     if (belongs && !ContainsValueFromIgnoreList(path != null ? Path.GetFileNameWithoutExtension(path) : process.ProcessName))
                         gamesToCountUp.Add(game.Key);
@@ -291,18 +299,13 @@ namespace gamevault.Helper
                 sendingOffline.Release();
             }
         }
-        private int GetGameIdByDirectory(string dir)
-        {
-            try
-            {
-                string dirName = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
-                string gameId = dirName.Substring(1, dirName.IndexOf(')') - 1);
-                int id = int.Parse(gameId);
-                return id;
-            }
-            catch (Exception ignored) { Log.Ignored(ignored); }
-            return -1;
-        }
+        /// <summary>
+        /// A program of the game's folder: its path starts with the folder, whatever the case on Windows and macOS
+        /// ("c:\test" set in the settings, "C:\test\..." run), and not a folder of the same name with more after it.
+        /// </summary>
+        internal static bool IsInside(string program, string folder) =>
+            program.StartsWith(Path.TrimEndingDirectorySeparator(folder) + Path.DirectorySeparatorChar,
+                OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
         private string[] GetAllOfflineCacheKeys()
         {
             if (File.Exists(LoginManager.Instance.GetUserProfile().OfflineProgress))

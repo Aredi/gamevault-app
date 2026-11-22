@@ -9,6 +9,24 @@ namespace GameVault.Core.Tests
         private static readonly string Root = Path.Combine(Path.GetTempPath(), "eden-layout");
 
         [Fact]
+        public void ItsLog_IsTheNewestOfItsLogFolder()
+        {
+            string root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            try
+            {
+                var layout = new EdenLayout(root, windows: true);
+                Assert.Null(layout.LogFile);
+                string logs = Directory.CreateDirectory(Path.Combine(layout.UserDirectory, "log")).FullName;
+                string old = Path.Combine(logs, "eden_log.old.txt"), last = Path.Combine(logs, "eden_log.txt");
+                File.WriteAllText(old, "old");
+                File.WriteAllText(last, "last");
+                File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddHours(-1));
+                Assert.Equal(last, layout.LogFile);
+            }
+            finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+        }
+
+        [Fact]
         public void TheSwitch_StartsItsGames_NotTheirUpdatesAndDlc()
         {
             RetroSystem system = RetroSystems.All["switch"];
@@ -81,7 +99,8 @@ namespace GameVault.Core.Tests
         public void ANewerNightly_IsOffered_WithThisPcsBuild_AndKeptOnceInstalled()
         {
             var layout = new EdenLayout(Path.Combine(Root, Guid.NewGuid().ToString("N")), windows: false);
-            string Feed(string tag, string file) => $"{{\"tag_name\":\"{tag}\",\"assets\":[{{\"name\":\"{file}\"}}]}}";
+            // As the forge answers: no asset, the files linked in the notes
+            string Feed(string tag, string file) => $"{{\"tag_name\":\"{tag}\",\"body\":\"| amd64 | [AppImage](https://nightly.eden-emu.dev/{tag}/{file}) |\",\"assets\":[]}}";
             const string newer = "v1792500000.989768aa46";
             Assert.Equal(newer, layout.NewerNightly(Feed(newer, "Eden-Linux-989768aa46-amd64-clang-pgo.AppImage")));
             // Not newer, or without the build this PC takes: nothing offered
@@ -105,6 +124,51 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void AnOlderProcessor_TakesTheBuildItCanRun_InPlaceOfTheOtherOne()
+        {
+            string folder = Path.Combine(Root, Guid.NewGuid().ToString("N"));
+            string commit = EdenLayout.Pinned[(EdenLayout.Pinned.IndexOf('.') + 1)..];
+            var linux = new EdenLayout(folder, windows: false, x86V3: false);
+            Assert.EndsWith($"/Eden-Linux-{commit}-legacy-clang-pgo.AppImage", linux.PackageUrl);
+            Assert.EndsWith($"/Eden-Windows-{commit}-amd64-msvc-standard.zip", new EdenLayout(folder, windows: true, x86V3: false).PackageUrl);
+            Assert.EndsWith($"/Eden-macOS-{commit}.dmg", new EdenLayout(folder, windows: false, mac: true, x86V3: false).PackageUrl);
+
+            // The main build already there, on a processor that dies on it: installed again, once
+            Directory.CreateDirectory(Path.Combine(folder, "app"));
+            File.WriteAllText(linux.Executable, "");
+            File.WriteAllText(linux.VersionFile, EdenLayout.Pinned);
+            Assert.False(linux.IsInstalled);
+            File.WriteAllText(linux.VersionFile, linux.Version);
+            Assert.True(linux.IsInstalled);
+            Assert.Equal(EdenLayout.Pinned, linux.Tag);
+
+            // A newer nightly of its own build, not of the main one
+            const string newer = "v1792500000.989768aa46";
+            string Feed(string file) => $"{{\"tag_name\":\"{newer}\",\"body\":\"{file}\",\"assets\":[]}}";
+            Assert.Null(linux.NewerNightly(Feed("Eden-Linux-989768aa46-amd64-clang-pgo.AppImage")));
+            Assert.Equal(newer, linux.NewerNightly(Feed("Eden-Linux-989768aa46-legacy-clang-pgo.AppImage")));
+        }
+
+        [Theory]
+        [InlineData(0, 2, EmulatorFailure.None)]
+        [InlineData(1, 60, EmulatorFailure.None)]
+        [InlineData(132, 2, EmulatorFailure.OlderProcessor)]
+        [InlineData(unchecked((int)0xC000001D), 2, EmulatorFailure.OlderProcessor)]
+        [InlineData(unchecked((int)0xC0000135), 2, EmulatorFailure.MissingRuntime)]
+        [InlineData(1, 2, EmulatorFailure.Other)]
+        public void AnEmulator_ThatDiesAtItsStart_IsTold(int exitCode, int seconds, EmulatorFailure failure)
+        {
+            Assert.Equal(failure, EmulatorExit.Of(exitCode, TimeSpan.FromSeconds(seconds)));
+        }
+
+        [Fact]
+        public void ItsExitCode_IsWrittenAsTheSystemDocumentsIt()
+        {
+            Assert.Equal("0xC000001D", EmulatorExit.CodeText(unchecked((int)0xC000001D)));
+            Assert.Equal("139", EmulatorExit.CodeText(139));
+        }
+
+        [Fact]
         public void ItsSettings_AreReadByEden_AndKeepItsOwn()
         {
             var layout = new EdenLayout(Root, windows: false);
@@ -113,6 +177,17 @@ namespace GameVault.Core.Tests
             Assert.Contains("check_for_updates\\default=false\ncheck_for_updates=false", merged);
             Assert.Contains("confirmStop\\default=false\nconfirmStop=2", merged);
             Assert.True(merged.IndexOf("confirmStop", StringComparison.Ordinal) < merged.IndexOf("[System]", StringComparison.Ordinal));
+            Assert.Equal(merged, layout.Settings(merged));
+        }
+
+        [Fact]
+        public void ItsTextures_StayInTheVram_DecodedByTheGpu()
+        {
+            var layout = new EdenLayout(Root, windows: false);
+            string merged = layout.Settings("[Renderer]\nvram_usage_mode\\default=true\nvram_usage_mode=0\naccelerate_astc\\default=false\naccelerate_astc=2\nresolution_setup=6\n");
+            Assert.Contains("vram_usage_mode\\default=false\nvram_usage_mode=1", merged);
+            Assert.Contains("accelerate_astc\\default=false\naccelerate_astc=1", merged);
+            Assert.Contains("resolution_setup=6", merged);
             Assert.Equal(merged, layout.Settings(merged));
         }
 

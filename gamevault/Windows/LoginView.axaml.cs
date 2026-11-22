@@ -21,7 +21,9 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Text.Json;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 
 
 namespace gamevault.Windows
@@ -39,6 +41,7 @@ namespace gamevault.Windows
         private string lastName;
         private string eMail;
         private bool isLoggedInWithSSO;
+        private string inviteCode;
 
         public string ID { get; set; }
         public string ServerUrl { get => serverUrl; set { serverUrl = value; OnPropertyChanged(); } }
@@ -50,6 +53,8 @@ namespace gamevault.Windows
         public string LastName { get => lastName; set { lastName = value; OnPropertyChanged(); } }
         public string EMail { get => eMail; set { eMail = value; OnPropertyChanged(); } }
         public bool IsLoggedInWithSSO { get => isLoggedInWithSSO; set { isLoggedInWithSSO = value; OnPropertyChanged(); } }
+        /// <summary>Given by an administrator: a new account waits for its activation until it gives one.</summary>
+        public string InviteCode { get => inviteCode; set { inviteCode = value; OnPropertyChanged(); } }
     }
     public enum LoginStep
     {
@@ -70,6 +75,8 @@ namespace gamevault.Windows
         public Task<bool> Completion => completion.Task;
 
         private LoginWindowViewModel ViewModel { get; set; }
+        /// <summary>A step that waits for the player (a profile to choose, a password): not just loading.</summary>
+        internal event Action? NeedsThePlayer;
         private bool SkipBootTasks = false;
         private InputTimer InputTimer { get; set; }
         private bool loaded;
@@ -85,7 +92,81 @@ namespace gamevault.Windows
             InputTimer.Interval = TimeSpan.FromMilliseconds(400);
             InputTimer.Tick += ServerUrlInput_Tick;
 
+            // Opened hidden by the living-room mode: shown only when it asks the player something
+            ViewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(LoginWindowViewModel.LoginStepIndex) && ViewModel.LoginStepIndex != (int)LoginStep.LoadingAction)
+                    NeedsThePlayer?.Invoke();
+            };
             AttachedToVisualTree += LoginView_Loaded;
+            AttachedToVisualTree += (_, _) => _ = LoadArtWallAsync();
+            DetachedFromVisualTree += (_, _) => ClearArtWall();
+            // A narrow screen (a phone held upright): the forms alone, without the covers' column
+            SizeChanged += (_, e) =>
+            {
+                bool narrow = e.NewSize.Width > 0 && e.NewSize.Width < 720;
+                uiArtSide.IsVisible = !narrow;
+                uiLoginColumns.ColumnDefinitions[0].Width = narrow ? new GridLength(0) : new GridLength(360);
+            };
+        }
+
+        private const int ArtWallCovers = 6;
+        private readonly List<Bitmap> artWall = new();
+
+        private void ClearArtWall()
+        {
+            uiArtWall.Children.Clear();
+            foreach (Bitmap cover in artWall)
+                cover.Dispose();
+            artWall.Clear();
+        }
+
+        /// <summary>Covers already in the image cache, whatever the server: without enough of them the logo stays.</summary>
+        private async Task LoadArtWallAsync()
+        {
+            if (artWall.Count > 0)
+                return;
+            List<Bitmap> covers = await Task.Run(() =>
+            {
+                var loaded = new List<Bitmap>();
+                try
+                {
+                    string[] files = Directory.GetDirectories(ProfileManager.ProfileRootDirectory)
+                        .Select(server => Path.Combine(server, "ImageCache", "gbox"))
+                        .Where(Directory.Exists)
+                        .SelectMany(Directory.GetFiles)
+                        .ToArray();
+                    Random.Shared.Shuffle(files);
+                    foreach (string file in files)
+                    {
+                        if (loaded.Count == ArtWallCovers)
+                            break;
+                        try
+                        {
+                            using FileStream stream = File.OpenRead(file);
+                            loaded.Add(Bitmap.DecodeToWidth(stream, 240));
+                        }
+                        catch (Exception unreadable) { Log.Ignored(unreadable); }
+                    }
+                }
+                catch (Exception ignored) { Log.Ignored(ignored); }
+                return loaded;
+            });
+            if (covers.Count < ArtWallCovers || !IsVisible || artWall.Count > 0)
+            {
+                covers.ForEach(cover => cover.Dispose());
+                return;
+            }
+            artWall.AddRange(covers);
+            uiArtLogo.IsVisible = false;
+            for (int i = 0; i < covers.Count; i++)
+            {
+                var image = new Image { Source = covers[i], Stretch = Stretch.UniformToFill, Height = 214 };
+                var card = new Border { CornerRadius = new CornerRadius(12), ClipToBounds = true, Child = image, Margin = new Thickness(0, i % 3 == 1 ? 40 : 0, 0, 0) };
+                Grid.SetColumn(card, i % 3);
+                Grid.SetRow(card, i / 3);
+                uiArtWall.Children.Add(card);
+            }
         }
 
         private async void LoginView_Loaded(object? sender, VisualTreeAttachmentEventArgs e)
@@ -140,6 +221,26 @@ namespace gamevault.Windows
         {
             ViewModel.LoginStepIndex = (int)LoginStep.SignUp;
             _ = CheckServerAsync(false, ViewModel.SignupUser.ServerUrl);
+        }
+
+        private UserProfile? pendingProfile;
+
+        /// <summary>The account waiting for its activation gives its invitation code; then it signs in.</summary>
+        private async void ActivateWithInvite_Click(object sender, RoutedEventArgs e)
+        {
+            ((Control)sender).IsEnabled = false;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(ViewModel.PendingUser.Username) || string.IsNullOrWhiteSpace(ViewModel.PendingUser.InviteCode))
+                    throw new InvalidOperationException(Loc.T("Type your username and your invitation code."));
+                await InvitesService.RedeemAsync(ViewModel.PendingUser.InviteCode, ViewModel.PendingUser.Username);
+                ViewModel.AppBarText = Loc.T("Your account is activated.");
+                // A password profile signs in by itself within 5 seconds; an SSO one asks the browser once more
+                if (pendingProfile != null && Preferences.Get(AppConfigKey.IsLoggedInWithSSO, pendingProfile.UserConfigFile) == "1")
+                    await Login(pendingProfile);
+            }
+            catch (Exception ex) { ViewModel.AppBarText = ex is InvalidOperationException ? ex.Message : WebExceptionHelper.TryGetServerMessage(ex); }
+            finally { ((Control)sender).IsEnabled = true; }
         }
 
         private void Back_Click(object sender, RoutedEventArgs e)
@@ -317,7 +418,7 @@ namespace gamevault.Windows
                 {
                     Preferences.Set(AppConfigKey.Username, LoginManager.Instance.GetCurrentUser()?.Username, profile.UserConfigFile);
                 }
-                else if (state != LoginState.Success && firstTimeLogin)
+                else if (state != LoginState.Success && state != LoginState.NotActivated && firstTimeLogin)
                 {
                     try
                     {
@@ -338,7 +439,17 @@ namespace gamevault.Windows
             }
             else if (state == LoginState.NotActivated)
             {
+                if (!calledByActivationLoop)
+                {
+                    pendingProfile = profile;
+                    // The name of a sign up or a saved profile; an SSO account's name is not known here: typed
+                    ViewModel.PendingUser = new LoginUser { Username = isLoggedInWithSSO ? "" : Preferences.Get(AppConfigKey.Username, profile.UserConfigFile), InviteCode = ViewModel.SignupUser.InviteCode };
+                    ViewModel.AppBarText = LoginManager.Instance.GetServerLoginResponseMessage();
+                }
                 ViewModel.LoginStepIndex = (int)LoginStep.PendingActivation;
+                // SSO signs in again in the browser: only once activated, not every 5 seconds
+                if (isLoggedInWithSSO)
+                    return;
                 await Task.Delay(5000);
                 if (ViewModel.LoginStepIndex == (int)LoginStep.PendingActivation)
                     await Login(profile, firstTimeLogin, true);
@@ -405,6 +516,12 @@ namespace gamevault.Windows
                 if (!ViewModel.SignupUser.IsLoggedInWithSSO)
                 {
                     state = await LoginManager.Instance.Register(ViewModel.SignupUser);//Only non-provider login has a additional call. Else its just a login, because the server will create the account internally
+                    if (state == LoginState.NotActivated && !string.IsNullOrWhiteSpace(ViewModel.SignupUser.InviteCode))
+                    {
+                        // Activated at once; else the waiting page asks for the code again
+                        try { await InvitesService.RedeemAsync(ViewModel.SignupUser.InviteCode, ViewModel.SignupUser.Username); }
+                        catch (Exception ex) { ViewModel.AppBarText = ex.Message; }
+                    }
                 }
                 UserProfile profile = null;
                 if (state != LoginState.Error)
@@ -473,9 +590,10 @@ namespace gamevault.Windows
                 ViewModel.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
             }
         }
-        private void OpenProfileEdit(UserProfile profileToEdit)
+        internal void OpenProfileEdit(UserProfile profileToEdit)
         {
-            ViewModel.EditUser = new LoginUser() { ID = profileToEdit.RootDir, ServerUrl = profileToEdit.ServerUrl, Username = profileToEdit.Name, Password = Preferences.Get(AppConfigKey.Password, profileToEdit.UserConfigFile, true) };
+            ViewModel.EditUser = new LoginUser() { ID = profileToEdit.RootDir, ServerUrl = profileToEdit.ServerUrl, Username = profileToEdit.Name, Password = Preferences.Get(AppConfigKey.Password, profileToEdit.UserConfigFile, true),
+                IsLoggedInWithSSO = Preferences.Get(AppConfigKey.IsLoggedInWithSSO, profileToEdit.UserConfigFile) == "1" };
             ViewModel.LoginStepIndex = (int)LoginStep.EditProfile;
         }
 
@@ -500,9 +618,10 @@ namespace gamevault.Windows
                 UserProfile? profileToEdit = ViewModel.UserProfiles.FirstOrDefault(x => x.RootDir == ViewModel.EditUser.ID);
                 if (profileToEdit == null)
                     throw new Exception(Loc.T("User Profile not found"));
+                UserProfile saved = profileToEdit;
                 if (profileToEdit.ServerUrl != ViewModel.EditUser.ServerUrl)
                 {
-                    UserProfile profile = ProfileManager.ChangeServer(profileToEdit, ViewModel.EditUser.ServerUrl);
+                    UserProfile profile = saved = ProfileManager.ChangeServer(profileToEdit, ViewModel.EditUser.ServerUrl);
                     ViewModel.UserProfiles.Remove(profileToEdit);
                     profile.Name = ViewModel.EditUser.Username;
                     profile.ServerUrl = ViewModel.EditUser.ServerUrl;
@@ -517,6 +636,11 @@ namespace gamevault.Windows
                     Preferences.Set(AppConfigKey.Username, ViewModel.EditUser.Username, profileToEdit.UserConfigFile);
                     Preferences.Set(AppConfigKey.Password, ViewModel.EditUser.Password, profileToEdit.UserConfigFile, true);
                 }
+                // SSO or a password, as the player chose: a profile made with SSO can change to its password (and back)
+                if (ViewModel.EditUser.IsLoggedInWithSSO)
+                    Preferences.Set(AppConfigKey.IsLoggedInWithSSO, "1", saved.UserConfigFile);
+                else
+                    Preferences.DeleteKey(AppConfigKey.IsLoggedInWithSSO, saved.UserConfigFile);
                 ViewModel.LoginStepIndex = (int)LoginStep.ChooseProfile;
             }
             catch (Exception ex)

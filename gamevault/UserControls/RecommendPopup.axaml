@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="gamevault.UserControls.RecommendPopup"
+             Width="520" Focusable="True">
+    <!-- Recommend a game to a friend: they are told, and see it at the top of their activity -->
+    <Border Background="{DynamicResource Brush.Background}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18">
+        <StackPanel Margin="28,22,28,26" Spacing="14">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock x:Name="uiTitle" Classes="sectionTitle" FontSize="22" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="round small" Click="Close_Click" ToolTip.Tip="{l:T 'Close'}">
+                    <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+                </Button>
+            </Grid>
+            <TextBlock FontSize="13" Text="{l:T 'To whom'}" />
+            <TextBox x:Name="uiSearch" Watermark="{l:T 'Search a player'}" />
+            <ListBox x:Name="uiPlayers" Height="220" DisplayMemberBinding="{Binding Username}" />
+            <TextBlock FontSize="13" Text="{l:T 'A word (optional)'}" />
+            <TextBox x:Name="uiNote" MaxLength="300" AcceptsReturn="True" TextWrapping="Wrap" Height="70" Watermark="{l:T 'Why they will like it'}" />
+            <TextBlock x:Name="uiStatus" Classes="muted" FontSize="13" TextWrapping="Wrap" IsVisible="False" />
+            <Button x:Name="uiSend" Classes="action" HorizontalAlignment="Right" Click="Send_Click" Content="{l:T 'Recommend'}" />
+        </StackPanel>
+    </Border>
+</UserControl>

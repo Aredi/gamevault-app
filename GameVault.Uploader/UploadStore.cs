@@ -100,23 +100,36 @@ namespace GameVault.Uploader
         public enum CompleteResult { Completed, WrongSize, Exists, Missing }
 
         /// <summary>Renames the partial file once it has the announced size: the server indexes it from then on.</summary>
-        public CompleteResult Complete(string name, long size, bool overwrite)
+        /// <remarks>Under the name's lock, as the chunks: never renamed or deleted while a chunk is being written.</remarks>
+        public async Task<CompleteResult> CompleteAsync(string name, long size, bool overwrite)
         {
-            string partial = PartialPath(name);
-            if (!File.Exists(partial))
-                return CompleteResult.Missing;
-            if (new FileInfo(partial).Length != size)
-                return CompleteResult.WrongSize;
-            if (File.Exists(FinalPath(name)) && !overwrite)
-                return CompleteResult.Exists;
-            File.Move(partial, FinalPath(name), overwrite);
-            return CompleteResult.Completed;
+            SemaphoreSlim gate = locks.GetOrAdd(name, _ => new SemaphoreSlim(1, 1));
+            await gate.WaitAsync();
+            try
+            {
+                string partial = PartialPath(name);
+                if (!File.Exists(partial))
+                    return CompleteResult.Missing;
+                if (new FileInfo(partial).Length != size)
+                    return CompleteResult.WrongSize;
+                if (File.Exists(FinalPath(name)) && !overwrite)
+                    return CompleteResult.Exists;
+                File.Move(partial, FinalPath(name), overwrite);
+                return CompleteResult.Completed;
+            }
+            finally { gate.Release(); }
         }
 
-        public void Cancel(string name)
+        public async Task CancelAsync(string name)
         {
-            if (File.Exists(PartialPath(name)))
-                File.Delete(PartialPath(name));
+            SemaphoreSlim gate = locks.GetOrAdd(name, _ => new SemaphoreSlim(1, 1));
+            await gate.WaitAsync();
+            try
+            {
+                if (File.Exists(PartialPath(name)))
+                    File.Delete(PartialPath(name));
+            }
+            finally { gate.Release(); }
         }
     }
 }

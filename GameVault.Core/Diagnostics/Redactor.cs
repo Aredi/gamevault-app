@@ -9,6 +9,10 @@ namespace GameVault.Core.Diagnostics
     public static class Redactor
     {
         public const string Hidden = "[hidden]";
+        public const string Session = "[session]";
+
+        /// <summary>The folder after C:\Users\, /home/ or /Users/.</summary>
+        private static readonly Regex HomeFolder = new(@"(?<![A-Za-z0-9])((?:[A-Za-z]:[\\/]+Users|[\\/]home|[\\/]Users)[\\/]+)[^\\/\s""':;]+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly (Regex Pattern, string Replacement)[] Rules =
         {
@@ -33,6 +37,19 @@ namespace GameVault.Core.Diagnostics
             foreach (var (pattern, replacement) in Rules)
                 text = pattern.Replace(text, replacement);
             return text;
+        }
+
+        /// <summary>
+        /// Without the name of the computer's session: <paramref name="names"/> (the session's, its home folder's, whose
+        /// spaces a path can not tell from its end), and whatever folder a path has in the home folders.
+        /// </summary>
+        public static string HideSession(string? text, params string?[] names)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text ?? "";
+            foreach (string name in names.Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().OrderByDescending(n => n!.Length)!)
+                text = Regex.Replace(text, $@"(?<![A-Za-z0-9]){Regex.Escape(name)}(?![A-Za-z0-9])", Session, RegexOptions.IgnoreCase);
+            return HomeFolder.Replace(text, m => m.Groups[1].Value + Session);
         }
 
         /// <summary>The end of a log: the last <paramref name="maxBytes"/> bytes, starting at a whole line.</summary>

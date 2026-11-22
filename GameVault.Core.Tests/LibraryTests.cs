@@ -52,6 +52,16 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void OrderByPlayersRating_PutsTheBestFirst_AndTheUnreviewedLast()
+        {
+            var ratings = new Dictionary<string, (double, int)> { ["b"] = (4.5, 2), ["c"] = (2, 1), ["d"] = (4.5, 5) };
+            var games = new[] { "a", "b", "c", "d", "e" };
+            (double, int)? Of(string g) => ratings.TryGetValue(g, out var r) ? r : null;
+            Assert.Equal(new[] { "d", "b", "c", "a", "e" }, LibraryQuery.OrderByPlayersRating(games, Of, ascending: false));
+            Assert.Equal(new[] { "c", "d", "b", "a", "e" }, LibraryQuery.OrderByPlayersRating(games, Of, ascending: true));
+        }
+
+        [Fact]
         public void OrderByPlay_SortsByLastPlayedOrPlaytime()
         {
             var records = new[]

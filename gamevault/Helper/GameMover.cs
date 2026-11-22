@@ -100,7 +100,7 @@ namespace gamevault.Helper
             }
         }
 
-        private static string Size(long bytes) => new GameSizeConverter().Convert(bytes, typeof(string), null, CultureInfo.CurrentCulture) as string ?? "";
+        private static string Size(long bytes) => GameSizeConverter.Text(bytes);
 
         /// <summary>The chosen program is stored with its full path, and the library points to the new folder.</summary>
         private static void Relocate(Game game, string from, string to)

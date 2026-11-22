@@ -242,7 +242,7 @@ namespace gamevault
                 var menu = new NativeMenu();
                 if (!Helper.Platform.PlatformInfo.IsMac)
                     menu.Items.Add(CreateTrayItem(Loc.T("Library"), () => NavigateFromTray(MainControl.Library)));
-                menu.Items.Add(CreateTrayItem(Loc.T("Retro"), () => NavigateFromTray(MainControl.Retro)));
+                menu.Items.Add(CreateTrayItem(Loc.T("Consoles and retro"), () => NavigateFromTray(MainControl.Retro)));
                 menu.Items.Add(CreateTrayItem(Loc.T("Downloads"), () => NavigateFromTray(MainControl.Downloads)));
                 menu.Items.Add(CreateTrayItem(Loc.T("Community"), () => NavigateFromTray(MainControl.Community)));
                 menu.Items.Add(CreateTrayItem(Loc.T("Settings"), () => NavigateFromTray(MainControl.Settings)));
@@ -288,8 +288,9 @@ namespace gamevault
             if (window is not gamevault.Windows.MainWindow)
                 return;
             window.Show();
+            // The living-room mode is on the whole screen: back to it, not to a window
             if (window.WindowState == WindowState.Minimized)
-                window.WindowState = WindowState.Normal;
+                window.WindowState = gamevault.Windows.MainView.Current?.IsCouchShown == true ? WindowState.FullScreen : WindowState.Normal;
             window.Activate();
         }
 

@@ -151,6 +151,13 @@ namespace gamevault.Helper
             {
                 AuthResponse? authResponse;
                 try { authResponse = await SsoAuthenticator.AuthenticateAsync(profile.ServerUrl, profile.WebConfigDir); }
+                catch (SsoAuthenticator.RefusedException ex) when (ex.StatusCode == 406)
+                {
+                    // A new SSO account, made but waiting for its activation (an invitation code)
+                    m_LoginState = LoginState.NotActivated;
+                    m_LoginMessage = Loc.T("Your account waits for its activation: give your invitation code.");
+                    return LoginState.NotActivated;
+                }
                 catch (SsoAuthenticator.RefusedException ex)
                 {
                     m_LoginState = LoginState.Error;

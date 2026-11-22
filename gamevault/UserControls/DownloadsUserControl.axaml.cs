@@ -55,13 +55,11 @@ namespace gamevault.UserControls
                  {
                      try
                      {
-                         if (new DirectoryInfo(dir).GetFiles().Length == 0)
+                         // Files or folders: a paused update by pieces has only its Pieces folder
+                         if (!InstallUserControl.IsInstallation(dir))
                              continue;
 
-                         string dirName = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
-                         string gameId = dirName.Substring(1, dirName.IndexOf(')') - 1);
-
-                         if (int.TryParse(gameId, out int id))
+                         if (InstallUserControl.GameIdOf(dir) is int id and not -1)
                              foundPathsById.Add(id, SettingsViewModel.Instance.RootDirectories
                             .Where(x => dir.Contains(x.Uri))
                             .OrderByDescending(x => x.Uri.Length)
@@ -219,7 +217,7 @@ namespace gamevault.UserControls
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough space available to update '{0}'", game.Title);
                 return;
             }
-            DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, root, true, installed.Value) { IsUpdate = true });
+            DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, root, true, installed.Value, isUpdate: true));
             MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is updated{1}, your saves and settings are kept", game.Title, (string.IsNullOrEmpty(game.Version) ? "" : Loc.F(" to {0}", game.Version)));
         }
         /// <param name="unattended">Asked from elsewhere (remote install): nobody answers questions, the last
@@ -244,7 +242,11 @@ namespace gamevault.UserControls
             {
                 long.TryParse(game.Size, out long size);
                 var installLocationPicker = new InstallLocationUserControl(size);
-                MainWindowViewModel.Instance.OpenPopup(installLocationPicker);
+                // In the living-room mode: one of its screens, read with the gamepad, for the same answer
+                if (Windows.MainView.Current is { IsCouchShown: true } main && installLocationPicker.Rows.Count > 0)
+                    main.uiCouch.ChooseInstallLocation(installLocationPicker, game);
+                else
+                    MainWindowViewModel.Instance.OpenPopup(installLocationPicker);
                 selectedDirectory = await installLocationPicker.SelectInstallLocation();
             }
             if (selectedDirectory == string.Empty)
@@ -267,9 +269,16 @@ namespace gamevault.UserControls
                 string? driveName = PlatformInfo.GetDriveForPath(selectedDirectory)?.Name ?? Path.GetPathRoot(selectedDirectory);
                 return Fail(Loc.F("Not enough space available for drive {0}", driveName));
             }
+            if (!unattended)
+                await HypervisorNoticePopup.ShowOnceAsync(game);
             GameDownloadUserControl? oldDownloadEntry = DownloadsViewModel.Instance.DownloadedGames.Where(g => g.GetGameId() == game.ID).FirstOrDefault();
             if (oldDownloadEntry != null)
             {
+                if (oldDownloadEntry.IsBusy())
+                    return Fail(Loc.F("'{0}' is already being downloaded", game.Title));
+                // Its files go too (the user agreed to overwrite them): an archive of the previous build left
+                // beside the new one could be the one extracted
+                await oldDownloadEntry.DeleteFile(false);
                 DownloadQueue.Remove(oldDownloadEntry);
                 DownloadsViewModel.Instance.DownloadedGames.Remove(oldDownloadEntry);
             }
@@ -303,10 +312,8 @@ namespace gamevault.UserControls
         }
         private bool IsEnoughDriveSpaceAvailable(long gameSize, string directory)
         {
-            DriveInfo? drive = PlatformInfo.GetDriveForPath(directory);
-            if (drive == null)
-                return false;
-            return (drive.AvailableFreeSpace - 1000) > gameSize;
+            // The archive stays next to what it extracts to, which is at least as big
+            return GameDownloadUserControl.FreeSpace(directory) is long free && free - 1000 > gameSize * 2;
         }
 
         private async void DeleteAllDownloads_Click(object sender, RoutedEventArgs e)
@@ -328,7 +335,10 @@ namespace gamevault.UserControls
 
         private static RetroDownload? RetroOf(object? sender) => (sender as Control)?.DataContext as RetroDownload;
 
+        private void BrowseLibrary_Click(object? sender, RoutedEventArgs e) => MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+
         private void RetroOpenFolder_Click(object? sender, RoutedEventArgs e)
+
         {
             if (RetroOf(sender) is RetroDownload download)
                 PlatformInfo.OpenFolder(download.Folder);

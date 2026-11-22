@@ -218,7 +218,7 @@ namespace gamevault.Helper
                 if (headers.TryGetValue("X-Download-Speed-Limit", out string? limit) && long.TryParse(limit, out long total) && connections > 1)
                     headers["X-Download-Speed-Limit"] = Math.Max(1, total / connections).ToString();
                 response = await WebHelper.GetAsync(DownloadUrl, headers, HttpCompletionOption.ResponseHeadersRead);
-                if (!HonorsRange(response, part.Position, part.End - part.Position + 1))
+                if (!HonorsRange(response, part.Position, part.End - part.Position + 1, PreResumeSize))
                 {
                     response.Dispose();
                     throw new RangeNotSupportedException();
@@ -262,10 +262,16 @@ namespace gamevault.Helper
         /// from GameVault (it sends the range with X-Download-Size and no Content-Range). A server that ignores
         /// Range sends the whole file, which has another size.
         /// </summary>
-        internal static bool HonorsRange(HttpResponseMessage response, long from, long length)
+        /// <param name="total">The size of the whole file when known: a part of a file of another size (replaced on the server) is not one of it.</param>
+        internal static bool HonorsRange(HttpResponseMessage response, long from, long length, long? total = null)
         {
             if (response.StatusCode == System.Net.HttpStatusCode.PartialContent)
-                return response.Content.Headers.ContentRange?.From is null || response.Content.Headers.ContentRange.From == from;
+            {
+                ContentRangeHeaderValue? range = response.Content.Headers.ContentRange;
+                if (total != null && range?.Length is long whole && whole != total)
+                    return false;
+                return range?.From is null || range.From == from;
+            }
             if (response.StatusCode != System.Net.HttpStatusCode.OK)
                 return false;
             long? size = response.Content.Headers.ContentLength;
@@ -320,6 +326,18 @@ namespace gamevault.Helper
         private async Task DownloadFileFromHttpResponseMessage(HttpResponseMessage response)
         {
             ReadFileName(response);
+            if (ResumePosition != -1 && !HonorsRange(response, ResumePosition, PreResumeSize - ResumePosition, PreResumeSize)
+                && response.StatusCode == System.Net.HttpStatusCode.PartialContent)
+            {
+                // A part of another file (replaced on the server): asked again whole, as a part is not the start of it
+                Log.Info($"{FileName} changed on the server, downloading again");
+                AdditionalHeader?.Remove("Range");
+                ResumePosition = -1;
+                PreResumeSize = -1;
+                response.Dispose();
+                await StartDownload(false);
+                return;
+            }
             if (ResumePosition != -1 && !HonorsRange(response, ResumePosition, PreResumeSize - ResumePosition))
             {
                 // The server ignored the Range header and sends the whole file: start again instead of appending it
@@ -348,11 +366,12 @@ namespace gamevault.Helper
         private async Task ProcessContentStream(long currentDownloadSize, Stream contentStream)
         {
             long currentBytesRead = 0;
-            byte[] buffer = new byte[8192];
+            // 1 MB: 8 KB was 12,000 reads and writes a second at 100 MB/s
+            byte[] buffer = new byte[1 << 20];
             bool isMoreToRead = true;
             LastTime = DateTime.Now;
             string fullFilePath = Path.Combine(DestinationFolderPath, FileName);
-            using (var fileStream = new FileStream(fullFilePath, ResumePosition == -1 ? FileMode.Create : FileMode.Open, FileAccess.Write, FileShare.None, 8192, true))
+            using (var fileStream = new FileStream(fullFilePath, ResumePosition == -1 ? FileMode.Create : FileMode.Open, FileAccess.Write, FileShare.None, 1 << 20, true))
             {
                 try
                 {

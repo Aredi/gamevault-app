@@ -58,6 +58,9 @@ namespace GameVault.Core.Retro
         /// <summary>Writes the main content of a playable CIA as a .cxi file next to it, then deletes the CIA.</summary>
         public static async Task<string> ExtractAsync(string cia, Content content, CancellationToken cancellationToken = default)
         {
+            // Anything else has no readable content at that offset: the CIA would be replaced by garbage
+            if (content.Verdict != Verdict.Playable)
+                throw new InvalidDataException($"The CIA can not be played ({content.Verdict})");
             string cxi = Path.ChangeExtension(cia, ".cxi");
             await using (FileStream source = File.OpenRead(cia))
             await using (FileStream target = File.Create(cxi + ".part"))

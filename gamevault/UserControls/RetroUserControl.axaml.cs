@@ -302,7 +302,7 @@ namespace gamevault.UserControls
             if (!ViewModel.Games.Contains(game))
             {
                 ViewModel.Search = "";
-                ViewModel.OnlyInstalled = ViewModel.OnlyFavorites = false;
+                ViewModel.OnlyInstalled = ViewModel.OnlyFavorites = ViewModel.OnlyNeverPlayed = false;
                 ViewModel.Collection = 0;
                 ViewModel.ClearFilters();
             }

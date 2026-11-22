@@ -1,0 +1,83 @@
+using Avalonia.Media.Imaging;
+using GameVault.Core;
+using gamevault.Helper.Platform;
+using gamevault.Models;
+using System;
+using System.Collections.Concurrent;
+using System.IO;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace gamevault.Helper
+{
+    /// <summary>
+    /// The games' logos (their title as drawn on their box), from the SanctuaryVault service: it has RomM's for the
+    /// retro games and SteamGridDB's for the others. Kept on this PC once read; a game without one is not asked again
+    /// before the client starts again.
+    /// </summary>
+    internal static class GameLogoService
+    {
+        // The logo's file by game (null: none): the pictures themselves go through the images kept within a budget
+        private static readonly ConcurrentDictionary<string, Task<string?>> asked = new();
+        /// <summary>Decoded this wide at most: shown 820 wide at most.</summary>
+        internal const int DecodeWidth = 1000;
+
+        private static string Folder => Path.Combine(PlatformInfo.LocalDataDirectory, "cache", "logos");
+
+        /// <summary>The tests start from nothing (with the files kept on the PC too, when asked).</summary>
+        internal static void Forget(bool files = false)
+        {
+            asked.Clear();
+            if (files && Directory.Exists(Folder))
+                Directory.Delete(Folder, true);
+        }
+
+        public static Task<Bitmap?> OfAsync(Game game) => DecodeAsync(asked.GetOrAdd($"pc-{game.ID}", key => ReadAsync(key, $"/logos/pc/{game.ID}")));
+
+        public static Task<Bitmap?> OfAsync(RetroGame game) => DecodeAsync(asked.GetOrAdd($"retro-{game.Id}", key => ReadAsync(key, $"/retro/games/{game.Id}/logo")));
+
+        /// <summary>A retro game's large picture for the background (ScreenScraper's fanart, SteamGridDB's hero), the screen's width.</summary>
+        public static Task<Bitmap?> HeroOfAsync(RetroGame game) => DecodeAsync(asked.GetOrAdd($"hero-retro-{game.Id}", key => ReadAsync(key, $"/retro/games/{game.Id}/hero")), 1920);
+
+        private static async Task<Bitmap?> DecodeAsync(Task<string?> asking, int width = DecodeWidth)
+        {
+            if (await asking is not string file)
+                return null;
+            try { return DecodedImages.TryGet(file, width) ?? await Task.Run(() => DecodedImages.Load(file, width)); }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return null;
+            }
+        }
+
+        /// <summary>The logo's file on this PC, fetched once from the service; null when it has none.</summary>
+        private static async Task<string?> ReadAsync(string key, string path)
+        {
+            try
+            {
+                // One folder by service: another server's game of the same number is another game
+                string file = Path.Combine(Folder, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(SanctuaryService.Current)))[..10], key + ".img");
+                if (!File.Exists(file))
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Get, SanctuaryService.Current.TrimEnd('/') + path);
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+                    using HttpResponseMessage response = await WebHelper.SendLongAsync(request, timeout.Token);
+                    if (!response.IsSuccessStatusCode)
+                        return null;
+                    byte[] bytes = await response.Content.ReadAsByteArrayAsync(timeout.Token);
+                    Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                    await File.WriteAllBytesAsync(file + ".part", bytes);
+                    File.Move(file + ".part", file, true);
+                }
+                return file;
+            }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                return null;
+            }
+        }
+    }
+}

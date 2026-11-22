@@ -13,6 +13,11 @@ namespace GameVault.Uploader.Tests
     internal sealed class FakeGameVault : HttpMessageHandler
     {
         public int Calls;
+        /// <summary>The accounts activated by the service, with the administrator's API key "admin-key".</summary>
+        public readonly List<int> Activated = new();
+        /// <summary>The players' progresses asked for; answered 500 while <see cref="ProgressesDown"/>.</summary>
+        public int ProgressCalls;
+        public bool ProgressesDown;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -27,6 +32,40 @@ namespace GameVault.Uploader.Tests
                 return Task.FromResult(request.Headers.Authorization?.Parameter == "refresh-admin"
                     ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { access_token = "admin", refresh_token = "refresh-admin" }) }
                     : new HttpResponseMessage(HttpStatusCode.Unauthorized));
+            // Users: "newbie" (11) waits for its activation, "player" is active, "gone" (13) waits but was deleted
+            if (path.EndsWith("/api/users") && request.Method == HttpMethod.Get)
+                return Task.FromResult(!request.Headers.TryGetValues("X-Api-Key", out var key) || key.Single() != "admin-key"
+                    ? new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                    : new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = JsonContent.Create(new object[]
+                        {
+                            new { id = 2, username = "player", activated = true, deleted_at = (string?)null },
+                            new { id = 11, username = "Newbie", activated = Activated.Contains(11), deleted_at = (string?)null },
+                            new { id = 13, username = "gone", activated = false, deleted_at = "2025-01-01T00:00:00.000Z" },
+                        }),
+                    });
+            if (path.StartsWith("/api/users/") && request.Method == HttpMethod.Put && request.Headers.TryGetValues("X-Api-Key", out var admin) && admin.Single() == "admin-key")
+            {
+                lock (Activated)
+                    Activated.Add(int.Parse(path["/api/users/".Length..]));
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { }) });
+            }
+            // The player 2 played the game 5 before; the game 6 was only opened
+            if (path.EndsWith("/api/progresses") && Interlocked.Increment(ref ProgressCalls) is var _ && ProgressesDown)
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            if (path.EndsWith("/api/progresses"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new
+                    {
+                        data = request.RequestUri.Query.Contains("eq:2", StringComparison.Ordinal) || request.RequestUri.Query.Contains("eq%3A2", StringComparison.Ordinal)
+                            ? new object[] { new { minutes_played = 30, game = new { id = 5 } }, new { minutes_played = 0, game = new { id = 6 } } }
+                            : Array.Empty<object>(),
+                    }),
+                });
+            if (path.EndsWith("/api/games/8"))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 8, title = "Hades" }) });
             if (path.EndsWith("/api/games/6"))
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 6, title = "Prey" }) });
             if (path.EndsWith("/api/games") && request.Headers.Authorization?.Parameter == "admin")
@@ -86,6 +125,8 @@ namespace GameVault.Uploader.Tests
     internal sealed class FakeZeroTier : HttpMessageHandler
     {
         public readonly List<string> Calls = new();
+        /// <summary>"DELETE /controller/network/..." calls answered 404: deleted on the controller already.</summary>
+        public readonly HashSet<string> Gone = new();
         private int networks;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -96,6 +137,8 @@ namespace GameVault.Uploader.Tests
             string call = $"{request.Method} {path} {(request.Content == null ? "" : await request.Content.ReadAsStringAsync(cancellationToken))}".TrimEnd();
             lock (Calls)
                 Calls.Add(call);
+            if (Gone.Contains($"{request.Method} {path}"))
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
             if (path == "/status")
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new { address = "c4576f0616" }) };
             if (request.Method == HttpMethod.Post && path == "/controller/network/c4576f0616______")
@@ -121,6 +164,48 @@ namespace GameVault.Uploader.Tests
     }
 
     /// <summary>RomM: one platform with one game, a cover, and the game's file sent in parts.</summary>
+    /// <summary>ScreenScraper and SteamGridDB, as the service asks them for logos.</summary>
+    internal sealed class FakeLogos : HttpMessageHandler
+    {
+        public readonly List<string> Asked = new();
+
+        /// <summary>A PNG's first bytes, then what tells which one it is.</summary>
+        public static byte[] Png(byte id) => new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, id };
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Uri uri = request.RequestUri!;
+            lock (Asked)
+                Asked.Add(uri.Host + uri.AbsolutePath);
+            HttpResponseMessage answer;
+            if (uri.Host == "neoclone.screenscraper.fr" && uri.Query.Contains("devpassword=secret"))
+                answer = new(HttpStatusCode.OK) { Content = new ByteArrayContent(Png(45)) };
+            else if (uri.Host == "www.steamgriddb.com" && request.Headers.Authorization?.Parameter != "sgdb-key")
+                answer = new(HttpStatusCode.Unauthorized);
+            else if (uri.Host == "www.steamgriddb.com" && uri.AbsolutePath.StartsWith("/api/v2/search/autocomplete/"))
+            {
+                string name = Uri.UnescapeDataString(uri.AbsolutePath.Split('/').Last());
+                object[] games = name switch { "Metroid" => new object[] { new { id = 888, name } }, "Hades" => new object[] { new { id = 999, name } }, _ => Array.Empty<object>() };
+                answer = new(HttpStatusCode.OK) { Content = JsonContent.Create(new { success = true, data = games }) };
+            }
+            else if (uri.Host == "www.steamgriddb.com" && uri.AbsolutePath.StartsWith("/api/v2/heroes/game/"))
+                answer = new(HttpStatusCode.OK) { Content = JsonContent.Create(new { success = true, data = new[] { new { url = $"https://cdn2.steamgriddb.com/hero/{uri.AbsolutePath.Split('/').Last()}.png" } } }) };
+            else if (uri.Host == "www.steamgriddb.com" && uri.AbsolutePath.StartsWith("/api/v2/logos/game/"))
+            {
+                string id = uri.AbsolutePath.Split('/').Last();
+                // The first one is not a picture: the next is taken
+                answer = new(HttpStatusCode.OK) { Content = JsonContent.Create(new { success = true, data = new[] { new { url = "https://cdn2.steamgriddb.com/logo/broken.png" }, new { url = $"https://cdn2.steamgriddb.com/logo/{id}.png" } } }) };
+            }
+            else if (uri.Host == "cdn2.steamgriddb.com" && uri.AbsolutePath == "/logo/broken.png")
+                answer = new(HttpStatusCode.OK) { Content = new StringContent("<html>not a picture</html>") };
+            else if (uri.Host == "cdn2.steamgriddb.com")
+                answer = new(HttpStatusCode.OK) { Content = new ByteArrayContent(Png((byte)(int.Parse(Path.GetFileNameWithoutExtension(uri.AbsolutePath)) % 256))) };
+            else
+                answer = new(HttpStatusCode.NotFound);
+            return Task.FromResult(answer);
+        }
+    }
+
     internal sealed class FakeRomm : HttpMessageHandler
     {
         public static readonly byte[] Rom = System.Text.Encoding.ASCII.GetBytes("NES-ROM-CONTENT");
@@ -156,6 +241,13 @@ namespace GameVault.Uploader.Tests
                 "/api/firmware/7/content/scph5501.bin" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 1, 2, 3, 4 }) },
                 "/api/roms/40/content/Zelda%20%28E%29.nes" => Part(request),
                 "/assets/romm/resources/roms/3/40/cover/big.png" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 0x89, 0x50 }) { Headers = { ContentType = new("image/png") } } },
+                // Logos: ScreenScraper's address (with RomM's keys), a picture RomM kept, SteamGridDB's id, a name only, nothing
+                "/api/roms/45" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 45, name = "Castlevania", ss_metadata = new { logo_url = "https://neoclone.screenscraper.fr/api2/mediaJeu.php?devid=romm&devpassword=secret&media=wheel" } }) },
+                "/api/roms/46" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 46, name = "Contra", ss_metadata = new { logo_path = "roms/3/46/logo/logo.png", logo_url = "https://neoclone.screenscraper.fr/unused" } }) },
+                "/assets/romm/resources/roms/3/46/logo/logo.png" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(FakeLogos.Png(46)) },
+                "/api/roms/47" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 47, name = "Kirby", sgdb_id = 777 }) },
+                "/api/roms/48" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 48, name = "Metroid" }) },
+                "/api/roms/49" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 49, name = "Unknown Game", ss_metadata = new { logo_url = "https://evil.example/logo.png", logo_path = "roms/3/49/../../../secret.png" } }) },
                 _ => new(HttpStatusCode.NotFound),
             };
             return Task.FromResult(answer);
@@ -172,7 +264,7 @@ namespace GameVault.Uploader.Tests
         }
     }
 
-    public sealed class UploaderTests : IDisposable
+    public sealed partial class UploaderTests : IDisposable
     {
         private readonly string files = Path.Combine(Path.GetTempPath(), $"gv-uploader-{Guid.NewGuid():N}");
         private readonly string profiles = Path.Combine(Path.GetTempPath(), $"gv-profiles-{Guid.NewGuid():N}");
@@ -182,6 +274,14 @@ namespace GameVault.Uploader.Tests
         private readonly string retroPlayers = Path.Combine(Path.GetTempPath(), $"gv-retro-players-{Guid.NewGuid():N}");
         private readonly string rooms = Path.Combine(Path.GetTempPath(), $"gv-rooms-{Guid.NewGuid():N}");
         private readonly string reports = Path.Combine(Path.GetTempPath(), $"gv-reports-{Guid.NewGuid():N}");
+        private readonly string invites = Path.Combine(Path.GetTempPath(), $"gv-invites-{Guid.NewGuid():N}");
+        private readonly string hypervisor = Path.Combine(Path.GetTempPath(), $"gv-hypervisor-{Guid.NewGuid():N}");
+        private readonly string passwords = Path.Combine(Path.GetTempPath(), $"gv-passwords-{Guid.NewGuid():N}");
+        private readonly string emulators = Path.Combine(Path.GetTempPath(), $"gv-emulators-{Guid.NewGuid():N}");
+        private readonly string chat = Path.Combine(Path.GetTempPath(), $"gv-chat-{Guid.NewGuid():N}");
+        private readonly string challenges = Path.Combine(Path.GetTempPath(), $"gv-challenges-{Guid.NewGuid():N}");
+        private readonly string logos = Path.Combine(Path.GetTempPath(), $"gv-logos-{Guid.NewGuid():N}");
+        private readonly FakeLogos logoSites = new();
         private readonly FakeZeroTier zeroTier = new();
         private readonly FakeWiki wiki = new();
         private readonly FakeGameVault gameVault = new();
@@ -222,12 +322,22 @@ namespace GameVault.Uploader.Tests
                 host.UseSetting("ZEROTIER_API_SECRET", "zt-secret");
                 host.UseSetting("ROOMS_DIRECTORY", rooms);
                 host.UseSetting("REPORTS_DIRECTORY", reports);
+                host.UseSetting("INVITES_DIRECTORY", invites);
+                host.UseSetting("HYPERVISOR_DIRECTORY", hypervisor);
+                host.UseSetting("ARCHIVE_PASSWORDS_DIRECTORY", passwords);
+                host.UseSetting("EMULATORS_DIRECTORY", emulators);
+                host.UseSetting("CHAT_DIRECTORY", chat);
+                host.UseSetting("CHALLENGES_DIRECTORY", challenges);
+                host.UseSetting("LOGOS_DIRECTORY", logos);
+                host.UseSetting("STEAMGRIDDB_API_KEY", "sgdb-key");
+                host.UseSetting("GAMEVAULT_API_KEY", "admin-key");
                 host.ConfigureServices(services =>
                 {
                     services.AddHttpClient<AdminCheck>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
                     services.AddHttpClient<GameVaultProxy>().ConfigurePrimaryHttpMessageHandler(() => gameVault);
                     services.AddHttpClient<GameRequestsProxy>().ConfigurePrimaryHttpMessageHandler(() => bot);
                     services.AddHttpClient<RommProxy>().ConfigurePrimaryHttpMessageHandler(() => romm);
+                    services.AddHttpClient<GameLogos>().ConfigurePrimaryHttpMessageHandler(() => logoSites);
                     services.AddHttpClient<ZeroTierController>().ConfigurePrimaryHttpMessageHandler(() => zeroTier);
                     services.AddHttpClient<PcGamingWiki>().ConfigurePrimaryHttpMessageHandler(() => wiki);
                 });
@@ -245,6 +355,14 @@ namespace GameVault.Uploader.Tests
             try { Directory.Delete(retroPlayers, true); } catch { }
             try { Directory.Delete(rooms, true); } catch { }
             try { Directory.Delete(reports, true); } catch { }
+            try { Directory.Delete(invites, true); } catch { }
+            try { Directory.Delete(hypervisor, true); } catch { }
+            try { Directory.Delete(passwords, true); } catch { }
+            try { Directory.Delete(emulators, true); } catch { }
+            try { Directory.Delete(chat, true); } catch { }
+            try { Directory.Delete(challenges, true); } catch { }
+            try { Directory.Delete(logos, true); } catch { }
+            try { File.Delete(chat + ".key"); } catch { }
         }
 
         private HttpClient Client(string? token)
@@ -394,6 +512,41 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task ADiagnostic_IsReadByTheAdministratorsOnly_AndGoesWhenResolved()
+        {
+            var player = Client("user");
+            var sent = await player.PostAsJsonAsync("/reports", new { kind = "retro", gameId = 12, platform = "switch", title = "Hades", category = "launch", context = "1.0", diagnostic = new { exitCode = -1073741819, log = "Render.Vulkan <Error> vkCreateDevice failed" } });
+            Assert.Equal(HttpStatusCode.Created, sent.StatusCode);
+            string id, file;
+            using (JsonDocument report = JsonDocument.Parse(await sent.Content.ReadAsStringAsync()))
+            {
+                id = report.RootElement.GetProperty("id").GetString()!;
+                Assert.True(report.RootElement.GetProperty("hasDiagnostic").GetBoolean());
+                Assert.DoesNotContain("vkCreateDevice", await player.GetStringAsync("/reports"));
+                file = Path.Combine(reports, "diagnostics", id + ".json");
+            }
+
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.GetAsync($"/reports/{id}/diagnostic")).StatusCode);
+            using (JsonDocument diagnostic = JsonDocument.Parse(await Client("admin").GetStringAsync($"/reports/{id}/diagnostic")))
+                Assert.Equal("Render.Vulkan <Error> vkCreateDevice failed", diagnostic.RootElement.GetProperty("log").GetString());
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").GetAsync("/reports/..%2Freports/diagnostic")).StatusCode);
+
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("admin").PostAsync($"/reports/{id}/resolve", null)).StatusCode);
+            Assert.False(File.Exists(file));
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").GetAsync($"/reports/{id}/diagnostic")).StatusCode);
+
+            // A report without one stays as it was; one too big is refused, nothing kept
+            var plain = await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Celeste", category = "file" });
+            using (JsonDocument report = JsonDocument.Parse(await plain.Content.ReadAsStringAsync()))
+            {
+                Assert.False(report.RootElement.GetProperty("hasDiagnostic").GetBoolean());
+                Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").GetAsync($"/reports/{report.RootElement.GetProperty("id").GetString()}/diagnostic")).StatusCode);
+            }
+            var tooBig = await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Celeste", category = "launch", diagnostic = new { log = new string('x', ReportStore.MaxDiagnosticLength) } });
+            Assert.Equal(HttpStatusCode.RequestEntityTooLarge, tooBig.StatusCode);
+        }
+
+        [Fact]
         public async Task AProblemReport_IsSeenByTheAdministrators_ThenResolved()
         {
             var player = Client("user");
@@ -418,6 +571,123 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/reports", new { kind = "pc", gameId = 3, title = "Hades", category = "broken" })).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await Client("admin").PostAsync("/reports/nope/resolve", null)).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/reports")).StatusCode);
+        }
+
+        [Fact]
+        public async Task TheAdmins_GiveAGameAnEmulator_PlayersOnlyReadIt()
+        {
+            var admin = Client("admin");
+            var player = Client("user");
+            var starfox = new { name = "Eglantine Star Fox", console = "switch-2", windows = "https://github.com/x/Eglantine/releases/download/sf/e.zip", linux = (string?)null, mac = "", executable = " lichii.exe " };
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/retro/emulators/starfox", starfox)).StatusCode);
+            // Its program is a file of its build: never outside it
+            foreach (string program in new[] { "../evil.exe", "bin/../../evil.exe", "C:\\Windows\\evil.exe", "/usr/bin/evil", "lichii.exe;rm" })
+                Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { executable = program })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { windows = "http://insecure/e.zip" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { console = "nes" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/Star Fox", starfox)).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox with { windows = "" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/retro/emulators/games/12", new { emulator = "starfox" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/starfox", starfox)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/other", starfox with { name = "Other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/retro/emulators/games/12", new { emulator = "starfox" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/games/12", new { emulator = "starfox" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/games/13", new { emulator = "other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/games/14", new { emulator = "other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/retro/emulators/games/14", new { emulator = (string?)null })).StatusCode);
+            // Dropped: its games go back to their console's
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.DeleteAsync("/retro/emulators/other")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.DeleteAsync("/retro/emulators/other")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await admin.DeleteAsync("/retro/emulators/other")).StatusCode);
+
+            using JsonDocument seen = JsonDocument.Parse(await player.GetStringAsync("/retro/emulators"));
+            JsonElement emulator = Assert.Single(seen.RootElement.GetProperty("emulators").EnumerateArray());
+            Assert.Equal("starfox", emulator.GetProperty("id").GetString());
+            Assert.Equal("switch-2", emulator.GetProperty("console").GetString());
+            Assert.Equal(starfox.windows, emulator.GetProperty("windows").GetString());
+            Assert.Equal(JsonValueKind.Null, emulator.GetProperty("mac").ValueKind);
+            Assert.Equal("lichii.exe", emulator.GetProperty("executable").GetString());
+            var games = seen.RootElement.GetProperty("games").EnumerateObject().ToList();
+            Assert.Equal("12", Assert.Single(games).Name);
+            Assert.Equal("starfox", games[0].Value.GetString());
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/emulators")).StatusCode);
+        }
+
+        [Fact]
+        public async Task TheAdmins_MarkHypervisorGames_AndWriteTheText_PlayersOnlyReadThem()
+        {
+            var admin = Client("admin");
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/hypervisor/games/7", new { on = true })).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/hypervisor/text", new { text = "Mine" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/hypervisor/text", new { text = new string('a', 4001) })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/hypervisor/games/7", new { on = true })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/hypervisor/games/8", new { on = true })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/hypervisor/games/7", new { on = false })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/hypervisor/text", new { text = "Read this" })).StatusCode);
+
+            using JsonDocument seen = JsonDocument.Parse(await player.GetStringAsync("/hypervisor"));
+            Assert.Equal(8, Assert.Single(seen.RootElement.GetProperty("games").EnumerateArray()).GetInt32());
+            Assert.Equal("Read this", seen.RootElement.GetProperty("text").GetString());
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/hypervisor")).StatusCode);
+        }
+
+        [Fact]
+        public async Task TheAdmins_SetAGamesArchivePassword_ThePlayersReadItGameByGame()
+        {
+            var admin = Client("admin");
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PutAsJsonAsync("/archive-passwords/games/7", new { password = "mine" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/archive-passwords/games/7", new { password = new string('a', 501) })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/7", new { password = "elamigos" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/8", new { password = "other" })).StatusCode);
+
+            using JsonDocument seven = JsonDocument.Parse(await player.GetStringAsync("/archive-passwords/games/7"));
+            Assert.Equal("elamigos", seven.RootElement.GetProperty("password").GetString());
+            // Emptied: none any more
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/archive-passwords/games/8", new { password = "" })).StatusCode);
+            using JsonDocument eight = JsonDocument.Parse(await player.GetStringAsync("/archive-passwords/games/8"));
+            Assert.Equal(JsonValueKind.Null, eight.RootElement.GetProperty("password").ValueKind);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/archive-passwords/games/7")).StatusCode);
+        }
+
+        [Fact]
+        public async Task AnInvitation_ActivatesOneWaitingAccount_Once_AndSaysWhoUsedIt()
+        {
+            var admin = Client("admin");
+            Assert.Equal(HttpStatusCode.Forbidden, (await Client("user").PostAsJsonAsync("/invites", new { name = "Me" })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/invites", new { name = " " })).StatusCode);
+            var made = await admin.PostAsJsonAsync("/invites", new { name = "Cousin Lucas" });
+            Assert.Equal(HttpStatusCode.Created, made.StatusCode);
+            string code = JsonDocument.Parse(await made.Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString()!;
+            Assert.Matches("^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$", code);
+
+            // No sign-in: the account can not sign in before it is activated
+            var anyone = Client(null);
+            Assert.Equal(HttpStatusCode.NotFound, (await anyone.PostAsJsonAsync("/invites/redeem", new { code = "AAAA-BBBB-CCCC", username = "newbie" })).StatusCode);
+            // An active account, a deleted one, or nobody: the code stays usable
+            foreach (string username in new[] { "player", "gone", "nobody" })
+                Assert.Equal(HttpStatusCode.NotFound, (await anyone.PostAsJsonAsync("/invites/redeem", new { code, username })).StatusCode);
+            Assert.Empty(gameVault.Activated);
+            // As typed: lower case, spaces
+            Assert.Equal(HttpStatusCode.NoContent, (await anyone.PostAsJsonAsync("/invites/redeem", new { code = " " + code.ToLowerInvariant().Replace("-", " "), username = "newbie" })).StatusCode);
+            Assert.Equal(new[] { 11 }, gameVault.Activated);
+            Assert.Equal(HttpStatusCode.NotFound, (await anyone.PostAsJsonAsync("/invites/redeem", new { code, username = "newbie" })).StatusCode);
+
+            using (JsonDocument list = JsonDocument.Parse(await admin.GetStringAsync("/invites")))
+            {
+                JsonElement invite = list.RootElement[0];
+                Assert.Equal("Cousin Lucas", invite.GetProperty("name").GetString());
+                Assert.Equal(11, invite.GetProperty("userId").GetInt32());
+                Assert.Equal("Newbie", invite.GetProperty("username").GetString());
+            }
+            // A used code stays, to tell who came with it; an unused one goes
+            Assert.Equal(HttpStatusCode.Conflict, (await admin.DeleteAsync($"/invites/{code}")).StatusCode);
+            string other = JsonDocument.Parse(await (await admin.PostAsJsonAsync("/invites", new { name = "Unused" })).Content.ReadAsStringAsync()).RootElement.GetProperty("code").GetString()!;
+            Assert.Equal(HttpStatusCode.Forbidden, (await Client("user").DeleteAsync($"/invites/{other}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.DeleteAsync($"/invites/{other}")).StatusCode);
+            Assert.Equal(1, JsonDocument.Parse(await admin.GetStringAsync("/invites")).RootElement.GetArrayLength());
+            Assert.True(JsonDocument.Parse(await anyone.GetStringAsync("/status")).RootElement.GetProperty("invites").GetBoolean());
         }
 
         [Fact]
@@ -593,6 +863,448 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task ASetsOldVersions_AreTheOnlyOnesItRemoves()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "gv-saves-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var store = new RetroSaveStore(new UploaderOptions { GameVaultUrl = "http://gamevault.test/", FilesDirectory = root, RetroSavesDirectory = root }, Microsoft.Extensions.Logging.Abstractions.NullLogger<RetroSaveStore>.Instance);
+                // A Switch 2 game's history: "switch-2-*.zip" names it too, as the history of the Switch game 2
+                string history = Path.Combine(root, "7", "history");
+                Directory.CreateDirectory(history);
+                File.WriteAllText(Path.Combine(history, "switch-2-1000-1700000000000.zip"), "x");
+                for (int i = 0; i <= RetroSaveStore.KeptVersions + 1; i++)
+                {
+                    Assert.NotNull(await store.SaveAsync(7, "switch-2", new MemoryStream(new byte[] { 1 }), default));
+                    File.SetLastWriteTimeUtc(Path.Combine(root, "7", "switch-2.zip"), new DateTime(2026, 1, 1).AddMinutes(i));
+                }
+                Assert.True(File.Exists(Path.Combine(history, "switch-2-1000-1700000000000.zip")));
+                Assert.Equal(RetroSaveStore.KeptVersions, store.History(7, "switch-2").Count);
+            }
+            finally
+            {
+                Directory.Delete(root, true);
+            }
+        }
+
+        private static readonly byte[] Png = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13 };
+
+        [Fact]
+        public async Task TwoPlayers_Chat_AndOnlyThemReadIt()
+        {
+            var player = Client("user");// id 2
+            var admin = Client("admin");// id 1
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = " salut ! 🎮 " })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "tu joues ce soir ?" })).StatusCode);
+
+            using (JsonDocument list = JsonDocument.Parse(await admin.GetStringAsync("/chat/conversations")))
+            {
+                JsonElement direct = Assert.Single(list.RootElement.EnumerateArray());
+                Assert.Equal(("d-1-2", 2, "tu joues ce soir ?"), (direct.GetProperty("id").GetString(), direct.GetProperty("unread").GetInt32(), direct.GetProperty("last").GetProperty("text").GetString()));
+            }
+            using (JsonDocument mine = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations")))
+                Assert.Equal(0, mine.RootElement[0].GetProperty("unread").GetInt32());// what one writes, one has read
+            using (JsonDocument messages = JsonDocument.Parse(await admin.GetStringAsync("/chat/conversations/d-1-2/messages")))
+            {
+                Assert.Equal(new[] { "salut ! 🎮", "tu joues ce soir ?" }, messages.RootElement.EnumerateArray().Select(m => m.GetProperty("text").GetString()));
+                Assert.Equal("player", messages.RootElement[0].GetProperty("senderName").GetString());
+                // The page before a message: the ones sent before it
+                string second = messages.RootElement[1].GetProperty("id").GetString()!;
+                using JsonDocument before = JsonDocument.Parse(await admin.GetStringAsync($"/chat/conversations/d-1-2/messages?before={second}"));
+                Assert.Equal("salut ! 🎮", Assert.Single(before.RootElement.EnumerateArray()).GetProperty("text").GetString());
+            }
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsync("/chat/conversations/d-1-2/read", null)).StatusCode);
+            using (JsonDocument list = JsonDocument.Parse(await admin.GetStringAsync("/chat/conversations")))
+                Assert.Equal(0, list.RootElement[0].GetProperty("unread").GetInt32());
+
+            // Another player can neither read nor write it; a conversation before its first message is empty
+            var other = Client("p5");
+            Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync("/chat/conversations/d-1-2/messages")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "hey" })).StatusCode);
+            Assert.Equal("[]", await other.GetStringAsync("/chat/conversations"));
+            Assert.Equal("[]", await other.GetStringAsync("/chat/conversations/d-1-5/messages"));
+            // Wrong ids and texts
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/chat/conversations/d-2-1/messages")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/chat/conversations/..%2Fx/messages")).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "  " })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = new string('a', 2001) })).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/chat/conversations")).StatusCode);
+        }
+
+        [Fact]
+        public async Task AGroup_TalksWithPictures_AndWhoLeavesIsOut()
+        {
+            var player = Client("user");
+            var five = Client("p5");
+            HttpResponseMessage made = await player.PostAsJsonAsync("/chat/groups", new { name = " Soirée Mario Kart ", members = new[] { 1, 5, 2, 5 } });
+            Assert.Equal(HttpStatusCode.OK, made.StatusCode);
+            string id;
+            using (JsonDocument group = JsonDocument.Parse(await made.Content.ReadAsStringAsync()))
+            {
+                id = group.RootElement.GetProperty("id").GetString()!;
+                Assert.Equal("Soirée Mario Kart", group.RootElement.GetProperty("name").GetString());
+                Assert.Equal(new[] { 1, 5, 2 }, group.RootElement.GetProperty("members").EnumerateArray().Select(m => m.GetInt32()));
+            }
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/groups", new { name = "Seul", members = new[] { 2 } })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/groups", new { name = "", members = new[] { 1 } })).StatusCode);
+
+            // A picture: only a real one is kept, and only the group sees it
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.OK, (await five.PostAsync($"/chat/conversations/{id}/pictures?text=regardez", png)).StatusCode);
+            using (var page = new ByteArrayContent("<html><script>alert(1)</script>"u8.ToArray()))
+                Assert.Equal(HttpStatusCode.UnsupportedMediaType, (await five.PostAsync($"/chat/conversations/{id}/pictures", page)).StatusCode);
+            string picture;
+            using (JsonDocument messages = JsonDocument.Parse(await player.GetStringAsync($"/chat/conversations/{id}/messages")))
+            {
+                JsonElement sent = Assert.Single(messages.RootElement.EnumerateArray());
+                Assert.Equal("regardez", sent.GetProperty("text").GetString());
+                picture = sent.GetProperty("picture").GetString()!;
+                Assert.EndsWith(".png", picture);
+            }
+            HttpResponseMessage shown = await player.GetAsync($"/chat/conversations/{id}/pictures/{picture}");
+            Assert.Equal("image/png", shown.Content.Headers.ContentType!.MediaType);
+            Assert.Equal(Png, await shown.Content.ReadAsByteArrayAsync());
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("p7").GetAsync($"/chat/conversations/{id}/pictures/{picture}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync($"/chat/conversations/{id}/pictures/..%2F..%2Fconversations.json")).StatusCode);
+
+            // Renamed, a player added; who leaves can no longer write
+            Assert.Equal(HttpStatusCode.OK, (await five.PutAsJsonAsync($"/chat/groups/{id}", new { name = "Mario Kart", add = new[] { 7 } })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Client("p7").GetAsync($"/chat/conversations/{id}/messages")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await five.DeleteAsync($"/chat/groups/{id}/members/me")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await five.PostAsJsonAsync($"/chat/conversations/{id}/messages", new { text = "re" })).StatusCode);
+            Assert.Equal("[]", await five.GetStringAsync("/chat/conversations"));
+            using (JsonDocument list = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations")))
+                Assert.Equal("Mario Kart", list.RootElement[0].GetProperty("name").GetString());
+        }
+
+        [Fact]
+        public async Task TheChat_ForgetsWhatIsOlderThan90Days()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "vieux" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-2-5/messages", new { text = "ancien" })).StatusCode);
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.OK, (await player.PostAsync("/chat/conversations/d-2-5/pictures", png)).StatusCode);
+            var store = factory.Services.GetRequiredService<ChatStore>();
+            store.Backdate("d-1-2", TimeSpan.FromDays(91));
+            store.PruneNow();
+            // The silent conversation goes; the other stays
+            using (JsonDocument list = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations")))
+                Assert.Equal("d-2-5", Assert.Single(list.RootElement.EnumerateArray()).GetProperty("id").GetString());
+            Assert.Equal("[]", await player.GetStringAsync("/chat/conversations/d-1-2/messages"));
+            Assert.False(File.Exists(Path.Combine(chat, "messages", "d-1-2.jsonl")));
+            Assert.Single(Directory.GetFiles(Path.Combine(chat, "pictures", "d-2-5")));
+        }
+
+        [Fact]
+        public async Task TheNews_StaysAfter90DaysSilent_AndDoesNotPostAGameAgain()
+        {
+            var admin = Client("admin");
+            var hades = new { kind = "pc", id = 12, title = "Hades" };
+            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/chat/news/games", hades)).StatusCode);
+            var store = factory.Services.GetRequiredService<ChatStore>();
+            store.Backdate("news", TimeSpan.FromDays(91));
+            store.PruneNow();
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync("/chat/news/games", hades)).StatusCode);
+        }
+
+        [Fact]
+        public async Task AConversationBetweenTwo_HasOneIdOnly()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.NotFound, (await player.PostAsJsonAsync("/chat/conversations/d-02-5/messages", new { text = "bis" })).StatusCode);
+            Assert.Null(ChatStore.DirectMembers("d-02-5"));
+            Assert.Equal((2, 5), ChatStore.DirectMembers("d-2-5"));
+        }
+
+        [Fact]
+        public async Task ThePicturesOfAPlayer_HaveADailyCap()
+        {
+            var store = factory.Services.GetRequiredService<ChatStore>();
+            store.PicturesPerDay = Png.Length * 2;
+            var player = Client("user");
+            for (int n = 0; n < 2; n++)
+                using (var png = new ByteArrayContent(Png))
+                    Assert.Equal(HttpStatusCode.OK, (await player.PostAsync("/chat/conversations/d-2-5/pictures", png)).StatusCode);
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.TooManyRequests, (await player.PostAsync("/chat/conversations/d-2-5/pictures", png)).StatusCode);
+            // Another player has their own
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.OK, (await Client("p5").PostAsync("/chat/conversations/d-2-5/pictures", png)).StatusCode);
+        }
+
+        [Fact]
+        public async Task TheChat_IsSealedOnTheDisk_AndOpensWithItsKeyOnly()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "mon code secret : 4242" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await player.PostAsJsonAsync("/chat/groups", new { name = "Raid du jeudi", members = new[] { 1 } })).StatusCode);
+            using (var png = new ByteArrayContent(Png))
+                Assert.Equal(HttpStatusCode.OK, (await player.PostAsync("/chat/conversations/d-1-2/pictures", png)).StatusCode);
+
+            // Nothing readable on the disk: the texts, the group's name, the picture
+            string messages = File.ReadAllText(Path.Combine(chat, "messages", "d-1-2.jsonl"));
+            Assert.DoesNotContain("4242", messages);
+            Assert.DoesNotContain("player", messages);
+            Assert.DoesNotContain("Raid", File.ReadAllText(Path.Combine(chat, "conversations.json")));
+            byte[] stored = File.ReadAllBytes(Assert.Single(Directory.GetFiles(Path.Combine(chat, "pictures", "d-1-2"))));
+            Assert.Null(ChatStore.PictureType(stored));
+            // The key is beside the folder, not in it, and only the service reads it
+            Assert.True(File.Exists(chat + ".key"));
+            Assert.Empty(Directory.GetFiles(chat, "*.key", SearchOption.AllDirectories));
+            if (!OperatingSystem.IsWindows())
+                Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(chat + ".key"));
+
+            // The service shows it opened, and opens it again after a restart
+            using (JsonDocument shown = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations/d-1-2/messages")))
+                Assert.Equal("mon code secret : 4242", shown.RootElement[0].GetProperty("text").GetString());
+            var options = new UploaderOptions { GameVaultUrl = "http://gamevault.test/", FilesDirectory = files, ChatDirectory = chat };
+            var restarted = new ChatStore(options, Microsoft.Extensions.Logging.Abstractions.NullLogger<ChatStore>.Instance);
+            Assert.Equal("mon code secret : 4242", restarted.Messages("d-1-2", null, 50)[0].Text);
+            Assert.Contains(restarted.ListFor(2), s => s.Conversation.Name == "Raid du jeudi");
+
+            // Another key opens nothing, and writes nothing over it
+            string before = File.ReadAllText(Path.Combine(chat, "conversations.json"));
+            var other = new ChatStore(new UploaderOptions { GameVaultUrl = "http://gamevault.test/", FilesDirectory = files, ChatDirectory = chat, ChatKey = Convert.ToBase64String(new byte[32]) },
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ChatStore>.Instance);
+            Assert.Throws<InvalidOperationException>(() => other.ListFor(2));
+            Assert.Empty(other.Messages("d-1-2", null, 50));
+            Assert.Equal(before, File.ReadAllText(Path.Combine(chat, "conversations.json")));
+        }
+
+        [Fact]
+        public async Task ARetroGamePlayed_ShowsToTheOthers_UntilItStops()
+        {
+            var player = Client("user");
+            var client = factory.Server.CreateWebSocketClient();
+            client.ConfigureRequest = request => request.Headers.Authorization = "Bearer admin";
+            using var socket = await client.ConnectAsync(new Uri(factory.Server.BaseAddress, "chat/live"), CancellationToken.None);
+            var hub = factory.Services.GetRequiredService<ChatHub>();
+            for (int i = 0; i < 100 && !hub.IsOnline(1); i++)
+                await Task.Delay(20);
+
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/activity/retro/me", new { platform = "switch-2", romId = 2777, name = "Star Fox", platformName = "Nintendo Switch 2" })).StatusCode);
+            using (JsonDocument now = JsonDocument.Parse(await Client("p5").GetStringAsync("/activity/retro")))
+            {
+                JsonElement playing = Assert.Single(now.RootElement.EnumerateArray());
+                Assert.Equal((2, "Star Fox", "Nintendo Switch 2"), (playing.GetProperty("userId").GetInt32(), playing.GetProperty("name").GetString(), playing.GetProperty("platformName").GetString()));
+            }
+            // The others hear it at once
+            var buffer = new byte[4096];
+            using (var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+            {
+                var received = await socket.ReceiveAsync(buffer, timeout.Token);
+                using JsonDocument live = JsonDocument.Parse(buffer.AsMemory(0, received.Count));
+                Assert.Equal(("retroPlaying", 2, "Star Fox"), (live.RootElement.GetProperty("type").GetString(), live.RootElement.GetProperty("userId").GetInt32(), live.RootElement.GetProperty("playing").GetProperty("name").GetString()));
+            }
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PutAsJsonAsync("/activity/retro/me", new { platform = "../x", romId = 1, name = "x" })).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/activity/retro/me", new { name = "" })).StatusCode);
+            Assert.Equal("[]", await player.GetStringAsync("/activity/retro"));
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/activity/retro")).StatusCode);
+        }
+
+        [Fact]
+        public async Task AMessage_ReachesTheOtherPlayer_AsItIsSent()
+        {
+            var client = factory.Server.CreateWebSocketClient();
+            client.ConfigureRequest = request => request.Headers.Authorization = "Bearer admin";
+            using var socket = await client.ConnectAsync(new Uri(factory.Server.BaseAddress, "chat/live"), CancellationToken.None);
+            // The service keeps the link just after the handshake
+            var hub = factory.Services.GetRequiredService<ChatHub>();
+            for (int i = 0; i < 100 && !hub.IsOnline(1); i++)
+                await Task.Delay(20);
+            Assert.True(hub.IsOnline(1));
+            Assert.Equal(HttpStatusCode.OK, (await Client("user").PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "ping" })).StatusCode);
+            var buffer = new byte[4096];
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var received = await socket.ReceiveAsync(buffer, timeout.Token);
+            using JsonDocument live = JsonDocument.Parse(buffer.AsMemory(0, received.Count));
+            Assert.Equal(("message", "ping"), (live.RootElement.GetProperty("type").GetString(), live.RootElement.GetProperty("message").GetProperty("text").GetString()));
+            // Not signed in: no live link
+            var anonymous = factory.Server.CreateWebSocketClient();
+            await Assert.ThrowsAnyAsync<Exception>(() => anonymous.ConnectAsync(new Uri(factory.Server.BaseAddress, "chat/live"), CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task AMessage_IsAnswered_Reacted_Changed_AndTakenBack_ByItsSenderOnly()
+        {
+            var player = Client("user");// id 2
+            var admin = Client("admin");// id 1
+            static async Task<JsonElement> Body(HttpResponseMessage response)
+            {
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
+            }
+            string first = (await Body(await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "on se fait Hades ?" }))).GetProperty("id").GetString()!;
+
+            // An answer carries a few words of the message answered
+            JsonElement answer = await Body(await admin.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { text = "grave", replyTo = first }));
+            Assert.Equal((first, "player", "on se fait Hades ?"), (answer.GetProperty("replyTo").GetProperty("id").GetString(),
+                answer.GetProperty("replyTo").GetProperty("senderName").GetString(), answer.GetProperty("replyTo").GetProperty("text").GetString()));
+
+            // An emoji: put, put by the other, taken away
+            string reactions = $"/chat/conversations/d-1-2/messages/{first}/reactions";
+            Assert.Equal(new[] { 1 }, (await Body(await admin.PutAsJsonAsync(reactions, new { emoji = "👍" }))).GetProperty("reactions").GetProperty("👍").EnumerateArray().Select(u => u.GetInt32()));
+            Assert.Equal(2, (await Body(await player.PutAsJsonAsync(reactions, new { emoji = "👍" }))).GetProperty("reactions").GetProperty("👍").GetArrayLength());
+            Assert.Equal(new[] { 2 }, (await Body(await admin.PutAsJsonAsync(reactions, new { emoji = "👍" }))).GetProperty("reactions").GetProperty("👍").EnumerateArray().Select(u => u.GetInt32()));
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync(reactions, new { emoji = "hello" })).StatusCode);
+
+            // Changed and taken back by its sender only
+            string message = $"/chat/conversations/d-1-2/messages/{first}";
+            Assert.Equal(HttpStatusCode.Forbidden, (await admin.PutAsJsonAsync(message, new { text = "piraté" })).StatusCode);
+            JsonElement edited = await Body(await player.PutAsJsonAsync(message, new { text = "on se fait Hades II ?" }));
+            Assert.Equal("on se fait Hades II ?", edited.GetProperty("text").GetString());
+            Assert.NotEqual(JsonValueKind.Null, edited.GetProperty("editedAt").ValueKind);
+            Assert.Equal(HttpStatusCode.Forbidden, (await admin.DeleteAsync(message)).StatusCode);
+            JsonElement removed = await Body(await player.DeleteAsync(message));
+            Assert.True(removed.GetProperty("deleted").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, removed.GetProperty("text").ValueKind);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.PutAsJsonAsync(message, new { text = "re" })).StatusCode);
+
+            // As the service keeps it, after a restart too: the answer stays, the message taken back has no text
+            using (JsonDocument messages = JsonDocument.Parse(await admin.GetStringAsync("/chat/conversations/d-1-2/messages")))
+            {
+                JsonElement[] all = messages.RootElement.EnumerateArray().ToArray();
+                Assert.Equal((true, JsonValueKind.Null), (all[0].GetProperty("deleted").GetBoolean(), all[0].GetProperty("text").ValueKind));
+                Assert.Equal("grave", all[1].GetProperty("text").GetString());
+            }
+
+            // A game shared, an invitation; a wrong game is refused
+            JsonElement invite = await Body(await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { game = new { kind = "retro", id = 40, platform = "nes", platformName = "NES", title = "Zelda", cover = "roms/3/40/cover/big.png", invite = true } }));
+            Assert.Equal(("retro", "Zelda", true), (invite.GetProperty("game").GetProperty("kind").GetString(), invite.GetProperty("game").GetProperty("title").GetString(), invite.GetProperty("game").GetProperty("invite").GetBoolean()));
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { game = new { kind = "retro", id = 40, platform = "../x", title = "Zelda" } })).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { game = new { kind = "pc", id = 0, title = "Hades" } })).StatusCode);
+            JsonElement evil = await Body(await player.PostAsJsonAsync("/chat/conversations/d-1-2/messages", new { game = new { kind = "retro", id = 41, platform = "nes", title = "X", cover = "../../etc/passwd" } }));
+            Assert.Equal(JsonValueKind.Null, evil.GetProperty("game").GetProperty("cover").ValueKind);
+
+            // "Seen": the reader's time, in the list
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsync("/chat/conversations/d-1-2/read", null)).StatusCode);
+            using (JsonDocument list = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations")))
+                Assert.True(list.RootElement[0].GetProperty("readAt").TryGetProperty("1", out _));
+        }
+
+        [Fact]
+        public async Task TheAnnouncements_AreReadByAll_AndWrittenByTheAdministrators()
+        {
+            var player = Client("user");
+            var admin = Client("admin");
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PostAsJsonAsync("/chat/conversations/news/messages", new { text = "je suis admin" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/chat/conversations/news/messages", new { text = "Maintenance ce soir à 23 h" })).StatusCode);
+            // A new game, told once whichever administrator's client saw it
+            var hades = new { kind = "pc", id = 12, title = "Hades" };
+            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/chat/news/games", hades)).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync("/chat/news/games", hades)).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.PostAsJsonAsync("/chat/news/games", new { kind = "pc", id = 13, title = "Celeste" })).StatusCode);
+
+            using (JsonDocument list = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations")))
+            {
+                JsonElement news = list.RootElement.EnumerateArray().Single(c => c.GetProperty("id").GetString() == "news");
+                Assert.Equal((2, "Hades"), (news.GetProperty("unread").GetInt32(), news.GetProperty("last").GetProperty("game").GetProperty("title").GetString()));
+            }
+            using (JsonDocument messages = JsonDocument.Parse(await Client("p5").GetStringAsync("/chat/conversations/news/messages")))
+                Assert.Equal(2, messages.RootElement.GetArrayLength());
+            // The players react; only an administrator takes a message back
+            string id;
+            using (JsonDocument messages = JsonDocument.Parse(await player.GetStringAsync("/chat/conversations/news/messages")))
+                id = messages.RootElement[0].GetProperty("id").GetString()!;
+            Assert.Equal(HttpStatusCode.OK, (await player.PutAsJsonAsync($"/chat/conversations/news/messages/{id}/reactions", new { emoji = "🎉" })).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await player.DeleteAsync($"/chat/conversations/news/messages/{id}")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await admin.DeleteAsync($"/chat/conversations/news/messages/{id}")).StatusCode);
+        }
+
+        [Fact]
+        public async Task AStatus_AndTheTimePlayed_ShowToTheOthers_AndAnInvisiblePlayerIsOffline()
+        {
+            var player = Client("user");
+            var admin = Client("admin");
+            DateTimeOffset since = DateTimeOffset.UtcNow.AddMinutes(-25);
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/chat/presence/me", new { state = "busy", gameId = 12, gameSince = since })).StatusCode);
+            using (JsonDocument all = JsonDocument.Parse(await admin.GetStringAsync("/chat/presence")))
+            {
+                JsonElement mine = all.RootElement.EnumerateArray().Single(s => s.GetProperty("userId").GetInt32() == 2);
+                Assert.Equal(("busy", 12), (mine.GetProperty("state").GetString(), mine.GetProperty("gameId").GetInt32()));
+                Assert.Equal(since.ToUnixTimeSeconds(), mine.GetProperty("gameSince").GetDateTimeOffset().ToUnixTimeSeconds());
+            }
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/chat/presence/me", new { state = "invisible", gameId = 12, gameSince = since })).StatusCode);
+            using (JsonDocument all = JsonDocument.Parse(await admin.GetStringAsync("/chat/presence")))
+            {
+                JsonElement mine = all.RootElement.EnumerateArray().Single(s => s.GetProperty("userId").GetInt32() == 2);
+                Assert.Equal(("offline", JsonValueKind.Null), (mine.GetProperty("state").GetString(), mine.GetProperty("gameId").ValueKind));
+            }
+            Assert.Equal(HttpStatusCode.BadRequest, (await player.PutAsJsonAsync("/chat/presence/me", new { state = "dancing" })).StatusCode);
+
+            // A retro game keeps when it started while it is said again
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/activity/retro/me", new { platform = "nes", romId = 40, name = "Zelda", platformName = "NES" })).StatusCode);
+            string started = JsonDocument.Parse(await admin.GetStringAsync("/activity/retro")).RootElement[0].GetProperty("since").GetString()!;
+            await Task.Delay(30);
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/activity/retro/me", new { platform = "nes", romId = 40, name = "Zelda", platformName = "NES" })).StatusCode);
+            Assert.Equal(started, JsonDocument.Parse(await admin.GetStringAsync("/activity/retro")).RootElement[0].GetProperty("since").GetString());
+        }
+
+        [Fact]
+        public async Task WhoWrites_IsSeenLive_ByTheOtherOnly()
+        {
+            var client = factory.Server.CreateWebSocketClient();
+            client.ConfigureRequest = request => request.Headers.Authorization = "Bearer admin";
+            using var socket = await client.ConnectAsync(new Uri(factory.Server.BaseAddress, "chat/live"), CancellationToken.None);
+            var hub = factory.Services.GetRequiredService<ChatHub>();
+            for (int i = 0; i < 100 && !hub.IsOnline(1); i++)
+                await Task.Delay(20);
+            Assert.Equal(HttpStatusCode.NoContent, (await Client("user").PostAsync("/chat/conversations/d-1-2/typing", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await Client("p5").PostAsync("/chat/conversations/d-1-2/typing", null)).StatusCode);
+            var buffer = new byte[4096];
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var received = await socket.ReceiveAsync(buffer, timeout.Token);
+            using JsonDocument live = JsonDocument.Parse(buffer.AsMemory(0, received.Count));
+            Assert.Equal(("typing", "d-1-2", 2), (live.RootElement.GetProperty("type").GetString(), live.RootElement.GetProperty("conversationId").GetString(), live.RootElement.GetProperty("userId").GetInt32()));
+        }
+
+        [Fact]
+        public void ARetroGamesKey_TakesAPlatformWithADash()
+        {
+            // The Switch 2 is "switch-2": its plays, favorites and achievements were refused, missing from the activity
+            Assert.True(RetroPlayerStore.IsValidKey("switch-2:12"));
+            Assert.True(RetroPlayerStore.IsValidKey("psx:2161"));
+            Assert.False(RetroPlayerStore.IsValidKey("../x:1"));
+            Assert.False(RetroPlayerStore.IsValidKey("bad key"));
+            Assert.False(RetroPlayerStore.IsValidKey("Switch-2:12"));
+            Assert.False(RetroPlayerStore.IsValidKey("switch-2:"));
+        }
+
+        [Fact]
+        public async Task RetroPlays_CountNoMoreThanTheClock_AndAchievementsAreNotEarnedInTheFuture()
+        {
+            var player = Client("user");
+            object Play(int minutes) => new { romId = 40, platform = "nes", platformName = "NES", name = "Zelda", minutes };
+            // A day said twice at once: the second one could not have been played
+            Assert.True((await player.PostAsJsonAsync("/retro/players/me/plays", Play(1440))).IsSuccessStatusCode);
+            Assert.True((await player.PostAsJsonAsync("/retro/players/me/plays", Play(1440))).IsSuccessStatusCode);
+            using (JsonDocument me = JsonDocument.Parse(await player.GetStringAsync("/retro/players/me")))
+                Assert.InRange(Assert.Single(me.RootElement.GetProperty("plays").EnumerateArray()).GetProperty("minutes").GetInt32(), 1440, 1442);
+
+            var future = new { title = "Forever first", date = new DateTime(9999, 12, 31, 0, 0, 0, DateTimeKind.Utc) };
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PutAsJsonAsync("/retro/players/me/achievements/nes/40", new { name = "Zelda", earned = 1, total = 5, unlocks = new[] { future } })).StatusCode);
+            using JsonDocument activity = JsonDocument.Parse(await player.GetStringAsync("/retro/activity/achievements"));
+            Assert.True(Assert.Single(activity.RootElement.EnumerateArray()).GetProperty("date").GetDateTime().ToUniversalTime() <= DateTime.UtcNow);
+        }
+
+        [Fact]
+        public async Task RetroPlays_KeepThe500LastGames()
+        {
+            Directory.CreateDirectory(retroPlayers);
+            var old = Enumerable.Range(1, 600).Select(n => new { key = $"nes:{n}", romId = n, platform = "nes", platformName = "NES", name = $"Jeu {n}", minutes = 1, lastPlayed = DateTime.UtcNow.AddDays(-30).AddMinutes(n) });
+            File.WriteAllText(Path.Combine(retroPlayers, "2.json"), JsonSerializer.Serialize(new { username = "player", plays = old }));
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.NoContent, (await player.PostAsJsonAsync("/retro/players/me/plays", new { romId = 9000, platform = "nes", platformName = "NES", name = "Zelda", minutes = 5 })).StatusCode);
+            using JsonDocument me = JsonDocument.Parse(await player.GetStringAsync("/retro/players/me"));
+            var keys = me.RootElement.GetProperty("plays").EnumerateArray().Select(p => p.GetProperty("key").GetString()).ToList();
+            Assert.Equal(RetroPlayerStore.KeptPlays, keys.Count);
+            Assert.Contains("nes:9000", keys);
+            Assert.Contains("nes:600", keys);
+            Assert.DoesNotContain("nes:1", keys);
+        }
+
+        [Fact]
         public async Task RetroAchievements_OfEachPlayer_ShowOnTheirProfileAndInTheActivity()
         {
             var player = Client("user");
@@ -667,6 +1379,30 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/retro/saves/retroarch")).StatusCode);
             Assert.Equal(HttpStatusCode.BadRequest, (await player.GetAsync("/retro/saves/..%2Fprofiles")).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/saves/retroarch")).StatusCode);
+        }
+
+        [Fact]
+        public async Task RetroSaves_SavedTwiceAtOnce_BothSucceed()
+        {
+            var player = Client("user");
+            Assert.Equal(HttpStatusCode.OK, (await player.PutAsync("/retro/saves/retroarch", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4, 0 }))).StatusCode);
+            var puts = await Task.WhenAll(Enumerable.Range(1, 30).Select(n => player.PutAsync("/retro/saves/retroarch", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4, (byte)n }))));
+            Assert.All(puts, p => Assert.Equal(HttpStatusCode.OK, p.StatusCode));
+        }
+
+        [Fact]
+        public async Task RetroSaves_ANewSetIsRefused_WhenThePlayerHasManyAlready()
+        {
+            string mine = Path.Combine(retroSaves, "2");
+            Directory.CreateDirectory(mine);
+            for (int n = 0; n < RetroSaveStore.MaxSets; n++)
+                File.WriteAllText(Path.Combine(mine, $"set-{n}.zip"), "old");
+            var player = Client("user");
+            HttpResponseMessage refused = await player.PutAsync("/retro/saves/one-more", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4 }));
+            Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+            Assert.Contains("sets", await refused.Content.ReadAsStringAsync());
+            // The sets the player has can still be saved
+            Assert.Equal(HttpStatusCode.OK, (await player.PutAsync("/retro/saves/set-3", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4 }))).StatusCode);
         }
 
         [Fact]
@@ -825,6 +1561,23 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(together, Assert.Single(left.RootElement.EnumerateArray()).GetProperty("id").GetString());
             Assert.Contains($"DELETE /controller/network/{alone}", zeroTier.Calls);
             Assert.DoesNotContain($"DELETE /controller/network/{together}", zeroTier.Calls);
+        }
+
+        [Fact]
+        public async Task ARoomWhoseNetworkIsGoneAlready_StillGoes()
+        {
+            HttpClient owner = Client("user");
+            string id = JsonDocument.Parse(await (await owner.PostAsJsonAsync("/rooms", new { name = "Seul", nodeId = "aaaaaaaa01" })).Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetString()!;
+            string file = Path.Combine(rooms, "rooms.json");
+            var state = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(file))!;
+            foreach (var room in state["Rooms"]!.AsArray())
+                (room!["CreatedAt"], room["ActiveAt"]) = (DateTime.UtcNow.AddHours(-2), DateTime.UtcNow.AddHours(-2));
+            File.WriteAllText(file, state.ToJsonString());
+            // Deleted by hand on the controller: its 404 is what the service wanted
+            zeroTier.Gone.Add($"DELETE /controller/network/{id}");
+
+            Assert.Equal("[]", await owner.GetStringAsync("/rooms"));
+            Assert.DoesNotContain(id, File.ReadAllText(file));
         }
 
         [Fact]

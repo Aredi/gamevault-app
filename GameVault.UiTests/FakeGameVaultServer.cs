@@ -23,6 +23,62 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<int, byte[]> Media { get; } = new();
         /// <summary>Players returned by /api/users (the admin is user 1); empty: only the admin.</summary>
         public ConcurrentDictionary<int, User> Users { get; } = new();
+
+        /// <summary>The chat, as the service keeps it: the messages of each conversation, and what the signed-in player (1) read.</summary>
+        public sealed record FakeChatMessage(string Id, string ConversationId, int SenderId, string SenderName, string? Text, string? Picture, DateTime SentAt)
+        {
+            public object? ReplyTo { get; set; }
+            public JsonElement? Game { get; set; }
+            public DateTime? EditedAt { get; set; }
+            public bool Deleted { get; set; }
+            public Dictionary<string, List<int>>? Reactions { get; set; }
+        }
+        /// <summary>What /challenges answers; null: the service keeps no challenges (503).</summary>
+        public object? ChallengeState { get; set; }
+        /// <summary>The minutes of library games said for the challenge, and the challenges an administrator chose.</summary>
+        public ConcurrentQueue<string> ChallengePlaysSent { get; } = new();
+        public ConcurrentQueue<string> ChallengesSet { get; } = new();
+        /// <summary>The next minute said completes the challenge.</summary>
+        public bool ChallengeDoneNext { get; set; }
+        /// <summary>The games' logos the service has, by their path ("/logos/pc/12", "/retro/games/40/logo").</summary>
+        public ConcurrentDictionary<string, byte[]> Logos { get; } = new();
+        /// <summary>The games the player bookmarked or not ("POST 12", "DELETE 12").</summary>
+        public ConcurrentQueue<string> Bookmarks { get; } = new();
+        /// <summary>When the others read each conversation ("Seen").</summary>
+        public ConcurrentDictionary<string, Dictionary<int, DateTime>> ChatOthersReadAt { get; } = new();
+        /// <summary>The conversations the player said they were writing in.</summary>
+        public ConcurrentQueue<string> ChatTyping { get; } = new();
+        /// <summary>The last status the client said (PUT /chat/presence/me), and the players' statuses it reads.</summary>
+        public string? ChatPresenceSaid { get; set; }
+        public List<object> ChatStatuses { get; } = new();
+        /// <summary>The games an administrator's client announced.</summary>
+        public ConcurrentQueue<string> ChatAnnounced { get; } = new();
+        public ConcurrentDictionary<string, List<FakeChatMessage>> Chat { get; } = new();
+        public ConcurrentDictionary<string, DateTime> ChatReadAt { get; } = new();
+        public ConcurrentDictionary<string, byte[]> ChatPictures { get; } = new();
+        public bool ChatOff { get; set; }
+
+        /// <summary>Another player writes to the signed-in player (the conversation "d-1-{sender}").</summary>
+        public FakeChatMessage ChatFrom(int sender, string name, string text)
+        {
+            var message = new FakeChatMessage(Guid.NewGuid().ToString("N")[..24], $"d-1-{sender}", sender, name, text, null, DateTime.UtcNow);
+            Chat.GetOrAdd(message.ConversationId, _ => new()).Add(message);
+            return message;
+        }
+
+        private static object ChatJson(FakeChatMessage m) => new
+        {
+            id = m.Id, conversationId = m.ConversationId, senderId = m.SenderId, senderName = m.SenderName, text = m.Text, picture = m.Picture, sentAt = m.SentAt,
+            replyTo = m.ReplyTo, game = m.Game, editedAt = m.EditedAt, deleted = m.Deleted, reactions = m.Reactions,
+        };
+
+        private FakeChatMessage? ChatMessageOf(string conversation, string id) => Chat.GetValueOrDefault(conversation)?.FirstOrDefault(m => m.Id == id);
+
+        private void ChatReplace(FakeChatMessage before, FakeChatMessage after)
+        {
+            List<FakeChatMessage> list = Chat[before.ConversationId];
+            list[list.IndexOf(before)] = after;
+        }
         /// <summary>Play data returned by /api/progresses.</summary>
         public ConcurrentQueue<Progress> Progresses { get; } = new();
         /// <summary>The newest save of each game: GameVault names it "&lt;upload ms&gt;_&lt;installation id&gt;.zip".</summary>
@@ -51,6 +107,9 @@ namespace GameVault.UiTests
         public TimeSpan PsxListDelay { get; set; } = TimeSpan.Zero;
         /// <summary>The NES games have one more, a file the emulator does not start (its preparation fails).</summary>
         public bool NesBrokenGame { get; set; }
+        /// <summary>RomM has an update in the Switch folder game's "update" folder (game 70), added after its install.</summary>
+        public bool SwitchUpdate { get; set; }
+        public static readonly byte[] SwitchUpdateFile = "update"u8.ToArray();
         /// <summary>The games the "igdb" provider knows: its search returns those sharing a word with the query.</summary>
         public ConcurrentBag<MinimalGame> ProviderCatalog { get; } = new();
         /// <summary>The SanctuaryVault service part: the players' profiles (JSON) it keeps.</summary>
@@ -113,7 +172,21 @@ namespace GameVault.UiTests
         public ConcurrentDictionary<string, (long SavedAt, byte[] Zip)> RetroSavesHistory { get; } = new();
         /// <summary>The retro plays sent (JSON), and the time kept per game key ("nes:40").</summary>
         public ConcurrentQueue<string> RetroPlaysSent { get; } = new();
+        /// <summary>The social routes of the service: reactions (by line: who, their name, the emoji), recommendations, reviews (by game).</summary>
+        public ConcurrentDictionary<string, List<(int UserId, string Name, string Emoji)>> SocialReactions { get; } = new();
+        public ConcurrentQueue<string> SocialRecommendationsSent { get; } = new();
+        /// <summary>The recommendations to the player (user 1), as the service sends them.</summary>
+        public List<Dictionary<string, object?>> SocialRecommendations { get; } = new();
+        public ConcurrentDictionary<string, List<Dictionary<string, object?>>> SocialReviews { get; } = new();
+        /// <summary>The file every GameBanana download gives: a mod Eden reads.</summary>
+        public byte[] GameBananaZip { get; set; } = Zip(("Cool Mod/romfs/cool.txt", "cool"), ("Cool Mod/exefs/main.npdm", "npdm"));
+        public ConcurrentQueue<string> GameBananaDownloads { get; } = new();
+        /// <summary>Real mods' names and pictures in the list, for the screenshots.</summary>
+        public bool GameBananaShowcase { get; set; }
         public ConcurrentDictionary<string, int> RetroMinutes { get; } = new();
+        /// <summary>The service can not take the plays (offline); each play sent waits the next of these delays first.</summary>
+        public bool RetroPlaysFail { get; set; }
+        public ConcurrentQueue<TimeSpan> RetroPlaysDelays { get; } = new();
         /// <summary>The games' achievements a player shared, by game ("nes:40"), as the client sent them.</summary>
         public ConcurrentDictionary<string, JsonElement> RetroAchievements { get; } = new();
         public string RetroFavorites { get; set; } = "[]";
@@ -140,6 +213,13 @@ namespace GameVault.UiTests
 
         /// <summary>The problem reports the service keeps (POST /reports, resolved by /reports/{id}/resolve).</summary>
         public List<Dictionary<string, object?>> Reports { get; } = new();
+        /// <summary>The invitation codes the service keeps; "WAIT-ING0-USER" is the account waiting for its activation's name.</summary>
+        public List<Dictionary<string, object?>> Invites { get; } = new();
+        public ConcurrentDictionary<int, bool> HypervisorGames { get; } = new();
+        public string HypervisorText { get; set; } = "";
+        public ConcurrentDictionary<int, string> ArchivePasswords { get; } = new();
+        /// <summary>The service's emulators by game (GET /retro/emulators), as it answers them.</summary>
+        public string EmulatorsJson { get; set; } = "{\"emulators\":[],\"games\":{}}";
 
         /// <summary>What /retro/latest answers (RomM's newest games).</summary>
         public List<object> RetroLatest { get; } = new();
@@ -352,6 +432,18 @@ namespace GameVault.UiTests
                         new { id = 71, name = "Assassin's Creed Brotherhood DLC", fileName = "Assassins Creed - Brotherhood [DLC][0100670014483001].nsp", size = 3L, multi = false },
                         new { id = 72, name = "Compressed Game", fileName = "Compressed Game.nsz", size = SwitchCompressedGame.LongLength, multi = false },
                     });
+                else if (path == "/retro/games/70/files" && SwitchUpdate)
+                    await Json(response, new object[]
+                    {
+                        new { id = 900, path = "1-2-Switch.xci", size = 3L, category = "game" },
+                        new { id = 901, path = "update/1-2-Switch [01000320000CC800][v393216].nsp", size = 467468771L, category = "update" },
+                    });
+                else if (path == "/retro/games/70/files/901/content" && SwitchUpdate)
+                {
+                    response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''1-2-Switch%20%5B01000320000CC800%5D%5Bv393216%5D.nsp");
+                    response.ContentLength64 = SwitchUpdateFile.LongLength;
+                    await response.OutputStream.WriteAsync(SwitchUpdateFile);
+                }
                 else if (path == "/retro/games/70/content")
                 {
                     response.ContentType = "application/zip";
@@ -418,12 +510,35 @@ namespace GameVault.UiTests
                     });
                 else if (path == "/retro/players/me/plays")
                 {
+                    if (RetroPlaysDelays.TryDequeue(out TimeSpan delay))
+                        await Task.Delay(delay);
+                    if (RetroPlaysFail)
+                    {
+                        response.StatusCode = 503;
+                        return;
+                    }
                     string body = await new StreamReader(request.InputStream).ReadToEndAsync();
                     RetroPlaysSent.Enqueue(body);
                     using JsonDocument play = JsonDocument.Parse(body);
                     string key = $"{play.RootElement.GetProperty("platform").GetString()}:{play.RootElement.GetProperty("romId").GetInt32()}";
                     RetroMinutes.AddOrUpdate(key, play.RootElement.GetProperty("minutes").GetInt32(), (_, m) => m + play.RootElement.GetProperty("minutes").GetInt32());
                     response.StatusCode = 204;
+                }
+                else if (path == "/logos/pc" || path.StartsWith("/logos/pc/") || Regex.IsMatch(path, @"^/retro/games/\d+/(logo|hero)$"))
+                {
+                    if (Logos.TryGetValue(path, out byte[]? logo))
+                    {
+                        response.ContentType = "image/png";
+                        response.ContentLength64 = logo.Length;
+                        await response.OutputStream.WriteAsync(logo);
+                    }
+                    else
+                        response.StatusCode = 404;
+                }
+                else if ((match = Regex.Match(path, @"^/api/users/me/bookmark/(\d+)$")).Success)
+                {
+                    Bookmarks.Enqueue($"{request.HttpMethod} {match.Groups[1].Value}");
+                    await Json(response, Admin);
                 }
                 else if (path == "/retro/players/me/favorites")
                 {
@@ -569,6 +684,7 @@ namespace GameVault.UiTests
                     report["username"] = "admin";
                     report["at"] = DateTime.UtcNow;
                     report["resolvedAt"] = null;
+                    report["hasDiagnostic"] = report.GetValueOrDefault("diagnostic") is JsonElement { ValueKind: JsonValueKind.Object };
                     lock (Reports)
                         Reports.Add(report);
                     response.StatusCode = 201;
@@ -581,11 +697,114 @@ namespace GameVault.UiTests
                         reports = Reports.ToArray();
                     await Json(response, reports);
                 }
+                else if (path.StartsWith("/reports/") && path.EndsWith("/diagnostic"))
+                {
+                    object? diagnostic;
+                    lock (Reports)
+                        diagnostic = Reports.FirstOrDefault(r => r["id"]?.ToString() == path.Split('/')[2])?.GetValueOrDefault("diagnostic");
+                    if (diagnostic != null)
+                        await Json(response, diagnostic);
+                    else
+                        response.StatusCode = 404;
+                }
                 else if (path.StartsWith("/reports/") && path.EndsWith("/resolve"))
                 {
                     lock (Reports)
                         foreach (var report in Reports.Where(r => (string?)r["id"]?.ToString() == path.Split('/')[2]))
                             report["resolvedAt"] = DateTime.UtcNow;
+                    response.StatusCode = 204;
+                }
+                else if (path == "/invites/redeem")
+                {
+                    using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string code = asked.RootElement.GetProperty("code").GetString()!.Trim().ToUpperInvariant();
+                    string username = asked.RootElement.GetProperty("username").GetString()!;
+                    Dictionary<string, object?>? invite;
+                    lock (Invites)
+                        invite = Invites.FirstOrDefault(i => (string)i["code"]! == code && i["usedAt"] == null);
+                    if (invite == null)
+                    {
+                        response.StatusCode = 404;
+                        await Json(response, new { error = "This invitation code is not valid or was already used." });
+                    }
+                    else if (username != "newbie")
+                    {
+                        response.StatusCode = 404;
+                        await Json(response, new { error = "No account of this name waits for its activation." });
+                    }
+                    else
+                    {
+                        invite["usedAt"] = DateTime.UtcNow;
+                        invite["userId"] = 11;
+                        invite["username"] = username;
+                        response.StatusCode = 204;
+                    }
+                }
+                else if (path == "/retro/emulators")
+                {
+                    response.ContentType = "application/json";
+                    byte[] body = System.Text.Encoding.UTF8.GetBytes(EmulatorsJson);
+                    await response.OutputStream.WriteAsync(body);
+                }
+                else if (path.StartsWith("/retro/emulators/"))
+                {
+                    response.StatusCode = 204;
+                }
+                else if (path == "/hypervisor")
+                {
+                    await Json(response, new { games = HypervisorGames.Keys.ToArray(), text = HypervisorText });
+                }
+                else if (path.StartsWith("/hypervisor/games/"))
+                {
+                    using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    int game = int.Parse(path.Split('/')[3]);
+                    if (asked.RootElement.GetProperty("on").GetBoolean())
+                        HypervisorGames[game] = true;
+                    else
+                        HypervisorGames.TryRemove(game, out _);
+                    response.StatusCode = 204;
+                }
+                else if (path.StartsWith("/archive-passwords/games/"))
+                {
+                    int game = int.Parse(path.Split('/')[3]);
+                    if (request.HttpMethod == "PUT")
+                    {
+                        using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                        if (asked.RootElement.GetProperty("password").GetString() is { Length: > 0 } password)
+                            ArchivePasswords[game] = password;
+                        else
+                            ArchivePasswords.TryRemove(game, out _);
+                        response.StatusCode = 204;
+                    }
+                    else
+                        await Json(response, new { password = ArchivePasswords.TryGetValue(game, out string? password) ? password : null });
+                }
+                else if (path == "/hypervisor/text")
+                {
+                    using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    HypervisorText = asked.RootElement.GetProperty("text").GetString() ?? "";
+                    response.StatusCode = 204;
+                }
+                else if (path == "/invites" && request.HttpMethod == "POST")
+                {
+                    using JsonDocument asked = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    var invite = new Dictionary<string, object?> { ["code"] = $"CODE-{Invites.Count:0000}-TEST", ["name"] = asked.RootElement.GetProperty("name").GetString(), ["createdAt"] = DateTime.UtcNow, ["usedAt"] = null, ["userId"] = null, ["username"] = null };
+                    lock (Invites)
+                        Invites.Insert(0, invite);
+                    response.StatusCode = 201;
+                    await Json(response, invite);
+                }
+                else if (path == "/invites")
+                {
+                    object[] invites;
+                    lock (Invites)
+                        invites = Invites.ToArray();
+                    await Json(response, invites);
+                }
+                else if (path.StartsWith("/invites/") && request.HttpMethod == "DELETE")
+                {
+                    lock (Invites)
+                        Invites.RemoveAll(i => (string)i["code"]! == Uri.UnescapeDataString(path.Split('/')[2]) && i["usedAt"] == null);
                     response.StatusCode = 204;
                 }
                 else if (path == "/game-requests" && request.HttpMethod == "POST")
@@ -621,6 +840,242 @@ namespace GameVault.UiTests
                         Message = report.RootElement.TryGetProperty("message", out var said) && said.ValueKind == JsonValueKind.String ? said.GetString() : null,
                     };
                     response.StatusCode = 204;
+                }
+                else if (path.StartsWith("/chat/") && ChatOff)
+                    response.StatusCode = 404;// an older service
+                else if (path == "/chat/conversations")
+                    await Json(response, Chat.Where(c => c.Value.Count > 0).OrderByDescending(c => c.Value[^1].SentAt).Select(c => new
+                    {
+                        id = c.Key, kind = c.Key.StartsWith("g-") ? "group" : c.Key == "news" ? "news" : "direct", name = (string?)null, readAt = ChatOthersReadAt.GetValueOrDefault(c.Key),
+                        members = c.Key.StartsWith("d-") ? c.Key.Split('-').Skip(1).Select(int.Parse).ToArray() : new[] { 1 },
+                        activeAt = c.Value[^1].SentAt, unread = c.Value.Count(m => m.SenderId != 1 && m.SentAt > ChatReadAt.GetValueOrDefault(c.Key)), last = ChatJson(c.Value[^1]),
+                    }).ToArray());
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages$")).Success && request.HttpMethod == "GET")
+                    await Json(response, (Chat.GetValueOrDefault(match.Groups[1].Value) ?? new()).Select(ChatJson).ToArray());
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages$")).Success)
+                {
+                    using JsonDocument sent = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string? text = sent.RootElement.TryGetProperty("text", out var said) && said.ValueKind == JsonValueKind.String && said.GetString()!.Length > 0 ? said.GetString() : null;
+                    var message = new FakeChatMessage(Guid.NewGuid().ToString("N")[..24], match.Groups[1].Value, 1, "admin", text, null, DateTime.UtcNow);
+                    if (sent.RootElement.TryGetProperty("game", out var game) && game.ValueKind == JsonValueKind.Object)
+                        message.Game = game.Clone();
+                    if (sent.RootElement.TryGetProperty("replyTo", out var replyTo) && replyTo.ValueKind == JsonValueKind.String && ChatMessageOf(match.Groups[1].Value, replyTo.GetString()!) is FakeChatMessage answered)
+                        message.ReplyTo = new { id = answered.Id, senderName = answered.SenderName, text = answered.Text };
+                    Chat.GetOrAdd(message.ConversationId, _ => new()).Add(message);
+                    await Json(response, ChatJson(message));
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/pictures$")).Success)
+                {
+                    using var picture = new MemoryStream();
+                    await request.InputStream.CopyToAsync(picture);
+                    string name = Guid.NewGuid().ToString("N")[..24] + ".png";
+                    ChatPictures[name] = picture.ToArray();
+                    string? caption = request.QueryString["text"];
+                    var message = new FakeChatMessage(name[..24], match.Groups[1].Value, 1, "admin", caption, name, DateTime.UtcNow);
+                    Chat.GetOrAdd(message.ConversationId, _ => new()).Add(message);
+                    await Json(response, ChatJson(message));
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/pictures/(.+)$")).Success && ChatPictures.TryGetValue(match.Groups[2].Value, out byte[]? chatPicture))
+                {
+                    response.ContentType = "image/png";
+                    await response.OutputStream.WriteAsync(chatPicture);
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages/([0-9a-f]+)/reactions$")).Success && ChatMessageOf(match.Groups[1].Value, match.Groups[2].Value) is FakeChatMessage reacted)
+                {
+                    using JsonDocument reaction = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string emoji = reaction.RootElement.GetProperty("emoji").GetString()!;
+                    reacted.Reactions ??= new();
+                    List<int> who = reacted.Reactions.TryGetValue(emoji, out var known) ? known : reacted.Reactions[emoji] = new();
+                    if (!who.Remove(1))
+                        who.Add(1);
+                    if (who.Count == 0)
+                        reacted.Reactions.Remove(emoji);
+                    await Json(response, ChatJson(reacted));
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/messages/([0-9a-f]+)$")).Success && ChatMessageOf(match.Groups[1].Value, match.Groups[2].Value) is FakeChatMessage chatChanged)
+                {
+                    FakeChatMessage after;
+                    if (request.HttpMethod == "DELETE")
+                    {
+                        after = chatChanged with { Text = null, Picture = null };
+                        (after.Deleted, after.Game, after.Reactions) = (true, null, null);
+                    }
+                    else
+                    {
+                        using JsonDocument edit = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                        after = chatChanged with { Text = edit.RootElement.GetProperty("text").GetString() };
+                        after.EditedAt = DateTime.UtcNow;
+                    }
+                    ChatReplace(chatChanged, after);
+                    await Json(response, ChatJson(after));
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/typing$")).Success)
+                {
+                    ChatTyping.Enqueue(match.Groups[1].Value);
+                    response.StatusCode = 204;
+                }
+                else if (path == "/chat/presence/me")
+                {
+                    ChatPresenceSaid = await new StreamReader(request.InputStream).ReadToEndAsync();
+                    response.StatusCode = 204;
+                }
+                else if (path == "/chat/presence")
+                    await Json(response, ChatStatuses.ToArray());
+                else if (path == "/chat/news/games")
+                {
+                    ChatAnnounced.Enqueue(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    response.StatusCode = 204;
+                }
+                else if ((match = Regex.Match(path, @"^/chat/conversations/([a-z0-9-]+)/read$")).Success)
+                {
+                    ChatReadAt[match.Groups[1].Value] = DateTime.UtcNow;
+                    response.StatusCode = 204;
+                }
+                else if (path == "/social/reactions" && request.HttpMethod == "GET")
+                {
+                    var items = (request.QueryString["items"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries);
+                    await Json(response, SocialReactions.Where(r => items.Contains(r.Key))
+                        .ToDictionary(r => r.Key, r => r.Value.Select(x => new { userId = x.UserId, username = x.Name, emoji = x.Emoji }).ToList()));
+                }
+                else if (path == "/social/reactions" && request.HttpMethod == "PUT")
+                {
+                    using var body = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    string item = body.RootElement.GetProperty("item").GetString()!;
+                    string? emoji = body.RootElement.GetProperty("emoji").GetString();
+                    var on = SocialReactions.GetOrAdd(item, _ => new());
+                    lock (on)
+                    {
+                        on.RemoveAll(x => x.UserId == 1);
+                        if (emoji != null)
+                            on.Add((1, "admin", emoji));
+                    }
+                    await Json(response, on.Select(x => new { userId = x.UserId, username = x.Name, emoji = x.Emoji }).ToList());
+                }
+                else if (path == "/social/recommendations" && request.HttpMethod == "POST")
+                {
+                    SocialRecommendationsSent.Enqueue(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    response.StatusCode = 201;
+                    await Json(response, new { id = "sent" });
+                }
+                else if (path == "/social/recommendations/me")
+                {
+                    List<Dictionary<string, object?>> mine;
+                    lock (SocialRecommendations)
+                        mine = SocialRecommendations.ToList();
+                    await Json(response, mine);
+                }
+                else if ((match = Regex.Match(path, @"^/social/recommendations/([a-z0-9]+)$")).Success && request.HttpMethod == "DELETE")
+                {
+                    lock (SocialRecommendations)
+                        response.StatusCode = SocialRecommendations.RemoveAll(r => (string?)r["id"] == match.Groups[1].Value) > 0 ? 204 : 404;
+                }
+                // GameBanana (GameBanana.Api = Url + "/gb"): one game, a mod and an adult one, the mod's files by version
+                else if (path == "/gb/Util/Search/Results")
+                    await Json(response, new { _aMetadata = new { _bIsComplete = true }, _aRecords = new object[] { new { _idRow = 42, _sName = "1-2-Switch" } } });
+                else if (path == "/gb/Mod/Index")
+                    await Json(response, new
+                    {
+                        _aMetadata = new { _bIsComplete = true },
+                        _aRecords = new object[]
+                        {
+                            new { _idRow = 7, _sName = "Cool Mod", _sModelName = "Mod", _nLikeCount = 5, _aRootCategory = new { _sName = "Visual" } },
+                            new { _idRow = 8, _sName = "Adult Mod", _sModelName = "Mod", _bHasContentRatings = true },
+                        }.Concat(!GameBananaShowcase ? Array.Empty<object>() : new (int Id, string Name, string Category, int Likes, string Image)[]
+                        {
+                            (480138, "UltraCam (Resolution, FPS, FreeCam)", "Visual Overhaul", 161, "65f22151ad0d3.jpg"),
+                            (446995, "Serfrost's Defogger (Native)", "Visual Overhaul", 224, "6480e18e1737c.jpg"),
+                            (443336, "Xbox UI v2 (+ PE, western, 60fpsfix)", "UI", 68, "646225ee3d0d8.jpg"),
+                            (537404, "Challenge Mode Complete Version", "Gameplay", 183, "66c8e6ae9df89.jpg"),
+                        }.Select(m => (object)new
+                        {
+                            _idRow = m.Id, _sName = m.Name, _sModelName = "Mod", _nLikeCount = m.Likes, _aRootCategory = new { _sName = m.Category },
+                            _aPreviewMedia = new { _aImages = new[] { new { _sBaseUrl = "https://images.gamebanana.com/img/ss/mods", _sFile = m.Image, _sFile220 = "220-90_" + m.Image } } },
+                        })).ToArray(),
+                    });
+                else if (path == "/gb/Mod/7/ProfilePage")
+                {
+                    string md5 = Convert.ToHexString(System.Security.Cryptography.MD5.HashData(GameBananaZip));
+                    string dl = $"{Url}/gb/dl/";
+                    await Json(response, new
+                    {
+                        _idRow = 7, _sName = "Cool Mod", _sDescription = "Makes it cool", _sProfileUrl = "https://gamebanana.com/mods/7",
+                        _aFiles = new object[]
+                        {
+                            new { _idRow = 70, _sFile = "cool_v100.zip", _nFilesize = 10L, _sDescription = "For game version 1.0.0", _tsDateAdded = 300L, _sDownloadUrl = dl + "70", _sAvResult = "clean" },
+                            new { _idRow = 71, _sFile = "cool_v110.zip", _nFilesize = 10L, _sDescription = "For v1.1.0", _tsDateAdded = 100L, _sDownloadUrl = dl + "71", _sMd5Checksum = md5, _sAvResult = "clean" },
+                            new { _idRow = 72, _sFile = "cool_bad.zip", _nFilesize = 10L, _sDescription = "v1.1.0", _tsDateAdded = 500L, _sDownloadUrl = dl + "72", _sAvResult = "infected" },
+                        },
+                    });
+                }
+                else if (path.StartsWith("/gb/dl/"))
+                {
+                    GameBananaDownloads.Enqueue(path);
+                    response.ContentType = "application/zip";
+                    response.ContentLength64 = GameBananaZip.Length;
+                    await response.OutputStream.WriteAsync(GameBananaZip);
+                }
+                else if (path == "/social/reviews" && request.HttpMethod == "GET")
+                {
+                    var ratings = new Dictionary<string, object>();
+                    foreach (var (game, list) in SocialReviews)
+                        lock (list)
+                            if (list.Count > 0)
+                                ratings[game] = new { stars = list.Average(r => (int)r["stars"]!), count = list.Count };
+                    await Json(response, ratings);
+                }
+                else if ((match = Regex.Match(path, @"^/social/reviews/([^/]+)(/me|/\d+)?$")).Success)
+                {
+                    string game = Uri.UnescapeDataString(match.Groups[1].Value);
+                    var reviews = SocialReviews.GetOrAdd(game, _ => new());
+                    if (request.HttpMethod == "GET")
+                    {
+                        List<Dictionary<string, object?>> all;
+                        lock (reviews)
+                            all = reviews.ToList();
+                        await Json(response, all);
+                    }
+                    else if (request.HttpMethod == "PUT")
+                    {
+                        using var body = JsonDocument.Parse(await new StreamReader(request.InputStream).ReadToEndAsync());
+                        var review = new Dictionary<string, object?>
+                        {
+                            ["game"] = game, ["userId"] = 1, ["username"] = "admin", ["stars"] = body.RootElement.GetProperty("stars").GetInt32(),
+                            ["text"] = body.RootElement.GetProperty("text").GetString(), ["at"] = DateTime.UtcNow,
+                        };
+                        lock (reviews)
+                        {
+                            reviews.RemoveAll(r => (int)r["userId"]! == 1);
+                            reviews.Add(review);
+                        }
+                        await Json(response, review);
+                    }
+                    else
+                    {
+                        int reviewer = match.Groups[2].Value == "/me" ? 1 : int.Parse(match.Groups[2].Value.TrimStart('/'));
+                        lock (reviews)
+                            response.StatusCode = reviews.RemoveAll(r => (int)r["userId"]! == reviewer) > 0 ? 204 : 404;
+                    }
+                }
+                else if (path.StartsWith("/challenges") && ChallengeState == null)
+                {
+                    response.StatusCode = 503;
+                    await Json(response, new { error = "Challenges are not kept by this server." });
+                }
+                else if (path == "/challenges" && request.HttpMethod == "GET")
+                    await Json(response, ChallengeState);
+                else if (path == "/challenges/week" && request.HttpMethod == "PUT")
+                {
+                    ChallengesSet.Enqueue(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    response.StatusCode = 204;
+                }
+                else if (path == "/challenges/me/plays" && request.HttpMethod == "POST")
+                {
+                    ChallengePlaysSent.Enqueue(await new StreamReader(request.InputStream).ReadToEndAsync());
+                    if (ChallengeDoneNext)
+                        await Json(response, new { challengeDone = true });
+                    else
+                        response.StatusCode = 204;
+                    ChallengeDoneNext = false;
                 }
                 else if (path == "/rooms" && request.HttpMethod == "GET")
                     await Json(response, Rooms.Values.Where(r => r.Public || r.Members.Any(m => m.UserId == 1)).Select(RoomJson).ToArray());
@@ -831,6 +1286,7 @@ namespace GameVault.UiTests
             string sort = request.QueryString["sortBy"] ?? "";
             list = sort.StartsWith("created_at:DESC") ? list.OrderByDescending(g => g.CreatedAt).ThenBy(g => g.ID)
                 : sort.StartsWith("updated_at:DESC") ? list.OrderByDescending(g => g.UpdatedAt ?? g.CreatedAt).ThenBy(g => g.ID)
+                : sort.StartsWith("id:DESC") ? list.OrderByDescending(g => g.ID)
                 : sort.StartsWith("sort_title") ? list.OrderBy(g => g.SortTitle)
                 : list.OrderBy(g => g.ID);
             var all = list.ToArray();
@@ -840,6 +1296,7 @@ namespace GameVault.UiTests
 
         /// <summary>Adds a game as it comes from the server with its metadata (the showcase uses real games).</summary>
         public void AddGame(Game game, byte[] file) => games[game.ID] = (game, file);
+        public void RemoveGame(int id) => games.TryRemove(id, out _);
 
         private async Task Download(HttpListenerContext context, int id)
         {

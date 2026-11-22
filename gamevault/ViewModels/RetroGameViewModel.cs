@@ -59,7 +59,8 @@ namespace gamevault.ViewModels
 
         /// <summary>"Konami · 2002": under the title.</summary>
         public string Subtitle => string.Join(" · ", new[] { Game.Companies.FirstOrDefault(), Game.ReleaseDate?.Year.ToString(), Game.Platform.Name }.Where(p => !string.IsNullOrEmpty(p)));
-        public string ReleaseText => Game.ReleaseDate?.ToString("D", CultureInfo.CurrentCulture) ?? "—";
+        // As the library's game page: "1 mars 1986", without the day of the week
+        public string ReleaseText => Game.ReleaseDate?.ToString("d MMMM yyyy", CultureInfo.CurrentCulture) ?? "—";
         public string LastPlayedText => RetroLibrary.LastPlayedOf(Game) is DateTime last ? Converter.RelativeDate.Format(last) : "—";
         public string Join(string[] values) => values.Length > 0 ? string.Join(", ", values) : "—";
         public string CompaniesText => Join(Game.Companies);
@@ -115,6 +116,8 @@ namespace gamevault.ViewModels
         }
         /// <summary>Régler mes touches closed: what it is played with may have changed.</summary>
         public void ControlsChanged() => OnPropertyChanged(nameof(ControlsSummary));
+        /// <summary>Another emulator was given to the game, or the ones given were read.</summary>
+        public void EmulatorChanged() => OnPropertyChanged(nameof(MenuText));
         /// <summary>A controller of <see cref="GameVault.Core.Retro.RetroControllers"/>, in the client's language.</summary>
         public static string ControllerName(string name) => name switch
         {
@@ -141,7 +144,7 @@ namespace gamevault.ViewModels
             _ => Loc.T("In English"),
         };
         /// <summary>The settings of the game's emulator.</summary>
-        public string MenuText => Loc.F("Controls and picture: {0} settings", StandaloneEmulator.Of(Game.Platform.System)?.Name ?? "RetroArch");
+        public string MenuText => Loc.F("Controls and picture: {0} settings", GameEmulators.PlayerOf(Game));
         public string PlayersText => string.IsNullOrEmpty(Game.Players) || Game.Players == "null" ? "—" : Game.Players;
 
         private Bitmap? selectedScreenshot;
@@ -254,6 +257,16 @@ namespace gamevault.ViewModels
         /// <summary>The game's save states (RetroArch's games), the newest first.</summary>
         public List<RetroStateRow> States { get => states; set { states = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasStates)); } }
         public bool HasStates => States.Count > 0;
+
+        private IReadOnlyList<GameVault.Core.Retro.RetroUpdates.RemoteFile> updates = Array.Empty<GameVault.Core.Retro.RetroUpdates.RemoteFile>();
+        /// <summary>The updates RomM has for the installed game that its folder here does not.</summary>
+        public IReadOnlyList<GameVault.Core.Retro.RetroUpdates.RemoteFile> Updates
+        {
+            get => updates;
+            set { updates = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasUpdates)); OnPropertyChanged(nameof(UpdatesSizeText)); }
+        }
+        public bool HasUpdates => Updates.Count > 0;
+        public string UpdatesSizeText => Converter.GameSizeConverter.Text(Updates.Sum(u => u.Size));
 
         /// <summary>The time played changed (a session ended): the strip shows it again.</summary>
         public void RefreshPlayer() => OnPropertyChanged(nameof(LastPlayedText));

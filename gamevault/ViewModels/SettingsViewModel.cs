@@ -95,6 +95,7 @@ namespace gamevault.ViewModels
             //Setting the private members to avoid writing to the user config file over and over again
             m_BackgroundStart = (Preferences.Get(AppConfigKey.BackgroundStart, userConfigFile) == "1"); OnPropertyChanged(nameof(BackgroundStart));
             notifyNewGames = Preferences.Get(AppConfigKey.NotifyNewGames, userConfigFile) != "0"; OnPropertyChanged(nameof(NotifyNewGames));
+            captureShortcut = Preferences.Get(AppConfigKey.CaptureShortcut, userConfigFile) != "0"; OnPropertyChanged(nameof(CaptureShortcut));
             // Android has one games' folder: not asked each time
             askInstallLocation = PlatformInfo.IsAndroid ? Preferences.Get(AppConfigKey.AskInstallLocation, userConfigFile) == "1" : Preferences.Get(AppConfigKey.AskInstallLocation, userConfigFile) != "0"; OnPropertyChanged(nameof(AskInstallLocation));
             maxConcurrentDownloads = int.TryParse(Preferences.Get(AppConfigKey.MaxConcurrentDownloads, userConfigFile), out int maxDownloads) ? Math.Clamp(maxDownloads, 0, 10) : 0;
@@ -220,7 +221,7 @@ namespace gamevault.ViewModels
             var selected = StorageCleanupItems.Where(i => i.IsSelected).ToList();
             StorageCleanupSummary = StorageCleanupItems.Count == 0
                 ? Loc.T("Nothing to clean up.")
-                : Loc.F("{0} of {1} selected: {2} can be freed.", selected.Count, StorageCleanupItems.Count, GameVault.Core.Storage.StorageCleanup.FormatSize(selected.Sum(i => i.Candidate.Size)));
+                : Loc.Plural(selected.Count, "{0} item of {1} selected: {2} can be freed.", "{0} items of {1} selected: {2} can be freed.", selected.Count, StorageCleanupItems.Count, gamevault.Converter.GameSizeConverter.Text(selected.Sum(i => i.Candidate.Size)));
         }
         #endregion
         #region Download queue
@@ -307,6 +308,13 @@ namespace gamevault.ViewModels
                 : GameVault.Core.Downloads.DownloadSchedule.Always;
         #endregion
         private bool notifyNewGames = true;
+        private bool captureShortcut = true;
+        /// <summary>Ctrl+PrtScn takes a screenshot of the game (Windows), taken while a game runs only.</summary>
+        public bool CaptureShortcut
+        {
+            get => captureShortcut;
+            set { captureShortcut = value; Preferences.Set(AppConfigKey.CaptureShortcut, value ? "1" : "0", userConfigFile); OnPropertyChanged(); }
+        }
         /// <summary>Desktop notification when games are added to the server (checked every 15 minutes).</summary>
         public bool NotifyNewGames
         {
@@ -575,13 +583,15 @@ namespace gamevault.ViewModels
         {
             get
             {
-                return Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                // "1.42.3", as the releases are named (the assembly has a fourth part, always 0)
+                return Assembly.GetExecutingAssembly().GetName().Version!.ToString(3);
             }
         }
         /// <summary>The Mac's version plays the retro games only: its PC games are Windows'.</summary>
         public bool PlaysPcGames => PlatformInfo.PlaysPcGames;
         #region Linux
         public bool IsLinux => OperatingSystem.IsLinux();
+        public bool IsWindows => OperatingSystem.IsWindows();
 
         /// <summary>
         /// Default tool of this profile. Profiles of older versions stored a runner (Auto/Proton/Wine/Custom)

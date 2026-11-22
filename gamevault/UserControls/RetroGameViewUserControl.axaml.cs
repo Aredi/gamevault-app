@@ -31,6 +31,9 @@ namespace gamevault.UserControls
             InitializeComponent();
             ViewModel = new RetroGameViewModel(game);
             DataContext = ViewModel;
+            uiCaptures.Game = GameCaptures.RetroKey(game);
+            uiReviews.Game = SocialService.GameKey(game);
+            uiMods.Game = game;
             // Android: no file manager, and not the PC's RetroArch (its own player, its touch pad). Removed, not hidden:
             // their visibility is bound
             if (PlatformInfo.IsAndroid)
@@ -73,7 +76,43 @@ namespace gamevault.UserControls
                 {
                     RefreshSaves();
                     LoadStates();
+                    if (e.PropertyName == nameof(RetroGame.Installed))
+                        _ = LoadUpdatesAsync();
                 });
+        }
+
+        /// <summary>The updates added to RomM after the game was installed here (its folder's "update" files).</summary>
+        private async Task LoadUpdatesAsync() => ViewModel.Updates = await RetroService.MissingUpdatesAsync(ViewModel.Game);
+
+        private async void Update_Click(object? sender, RoutedEventArgs e)
+        {
+            RetroGame game = ViewModel.Game;
+            if (game.Busy || !ViewModel.HasUpdates)
+                return;
+            game.Busy = true;
+            // The download's last progress may come after its end: the outcome stays
+            bool ended = false;
+            try
+            {
+                await RetroService.DownloadUpdatesAsync(game, ViewModel.Updates, text => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (!ended)
+                        game.Status = text;
+                }));
+                ended = true;
+                game.Status = Loc.T("The update is installed: it is applied when the game starts.");
+            }
+            catch (Exception ex)
+            {
+                ended = true;
+                Log.Ignored(ex);
+                game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
+            }
+            finally
+            {
+                game.Busy = false;
+                await LoadUpdatesAsync();
+            }
         }
 
         internal async Task LoadAsync()
@@ -82,6 +121,8 @@ namespace gamevault.UserControls
             LoadStates();
             _ = RetroLibrary.LoadAsync();
             Task romm = LoadRommAsync();
+            _ = LoadEmulatorAsync();
+            _ = LoadUpdatesAsync();
             await ViewModel.Game.LoadScreenshotsAsync();
             ViewModel.SelectedScreenshot ??= ViewModel.Game.ScreenshotImages?.FirstOrDefault();
             await LoadPlayersAsync();
@@ -107,16 +148,8 @@ namespace gamevault.UserControls
                 ViewModel.Achievements = achievements.Select(a => new RetroAchievementRow(a)).ToList();
                 // Earned elsewhere too (another PC, RetroAchievements' site): the profile and the activity follow
                 _ = RetroLibrary.ShareAchievementsAsync(ViewModel.Game, achievements);
-                // The badges, a few at a time (a game has up to a few hundred)
-                await Parallel.ForEachAsync(ViewModel.Achievements.Where(a => a.BadgeUrl != null), new ParallelOptions { MaxDegreeOfParallelism = 6 }, async (row, _) =>
-                {
-                    try
-                    {
-                        var badge = await RetroService.BadgeImageAsync(row.BadgeUrl!);
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() => row.Badge = badge);
-                    }
-                    catch (Exception ex) { Log.Ignored(ex); }
-                });
+                await RetroService.LoadBadgesAsync(ViewModel.Achievements.Where(a => a.BadgeUrl != null)
+                    .Select(row => (row.BadgeUrl!, (Action<Avalonia.Media.Imaging.Bitmap>)(badge => row.Badge = badge))));
             }
             catch (RommAccount.MissingScopeException ex) { ViewModel.RommNote = WebExceptionHelper.TryGetServerMessage(ex); }
             catch (Exception ex) { Log.Ignored(ex); }
@@ -139,7 +172,7 @@ namespace gamevault.UserControls
             try
             {
                 RetroGame game = ViewModel.Game;
-                if (StandaloneEmulator.Of(game.Platform.System) != null || game.RomFile is not string rom)
+                if (StandaloneEmulator.Of(game) != null || game.RomFile is not string rom)
                 {
                     ViewModel.States = new();
                     return;
@@ -184,7 +217,7 @@ namespace gamevault.UserControls
             {
                 var saves = RetroCloudSaves.Of(ViewModel.Game);
                 int files = saves.Files().Count;
-                string local = files == 0 ? Loc.T("No save on this PC") : Loc.F("{0} save file(s) on this PC", files);
+                string local = files == 0 ? Loc.T("No save on this PC") : Loc.Plural(files, "{0} save file on this PC", "{0} save files on this PC");
                 string cloud = !SettingsViewModel.Instance.CloudSaves ? Loc.T("cloud saves off (Settings > Data)")
                     : saves.LastSync > 0 ? Loc.F("synced {0}", Converter.RelativeDate.Format(DateTimeOffset.FromUnixTimeMilliseconds(saves.LastSync).UtcDateTime))
                     : Loc.T("not in the cloud yet");
@@ -221,6 +254,9 @@ namespace gamevault.UserControls
 
         private async void InstallAndPlay_Click(object? sender, RoutedEventArgs e) => await RetroPlay.InstallAsync(ViewModel.Game, playWhenDone: true);
         private async void Install_Click(object? sender, RoutedEventArgs e) => await RetroPlay.InstallAsync(ViewModel.Game);
+        private void Recommend_Click(object? sender, RoutedEventArgs e) =>
+            MainWindowViewModel.Instance.OpenPopup(new RecommendPopup(ChatGame.Of(ViewModel.Game, invite: false)));
+
         private async void Play_Click(object? sender, RoutedEventArgs e) => await RetroPlay.PlayAsync(ViewModel.Game);
 
         private void Collections_Click(object? sender, RoutedEventArgs e)
@@ -235,9 +271,8 @@ namespace gamevault.UserControls
                 return;
             if (!await DialogService.ConfirmAsync(Loc.F("Delete '{0}' from this PC? Its saves are kept.", ViewModel.Game.Name)))
                 return;
-            try { Directory.Delete(folder, true); }
+            try { await RetroService.DeleteAsync(ViewModel.Game, folder); }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
-            ViewModel.Game.Refresh();
         }
 
         private async void Manual_Click(object? sender, RoutedEventArgs e)
@@ -258,13 +293,69 @@ namespace gamevault.UserControls
         {
             try
             {
-                if (StandaloneEmulator.Of(ViewModel.Game.Platform.System) is StandaloneEmulator emulator)
+                if (GameEmulators.RecompOf(ViewModel.Game) is RecompProgram recomp)
+                {
+                    // Its own window: its settings are there
+                    await recomp.EnsureReadyAsync(text => ViewModel.Game.Status = text);
+                    recomp.Start(null, null).Dispose();
+                }
+                else if (StandaloneEmulator.Of(ViewModel.Game) is StandaloneEmulator emulator)
                     await emulator.OpenAsync(text => ViewModel.Game.Status = text);
                 else
                     await RetroArchManager.OpenMenuAsync(text => ViewModel.Game.Status = text);
             }
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
             ViewModel.Game.Status = "";
+        }
+
+        private System.Collections.Generic.List<GameEmulators.Emulator?> emulatorChoices = new();
+        private bool showingEmulator;
+
+        /// <summary>The emulator given to the game (its settings button says it); an administrator chooses it here.</summary>
+        private async Task LoadEmulatorAsync()
+        {
+            RetroGame game = ViewModel.Game;
+            // A fork is a Switch emulator's; a recomp is given to a game of any console
+            if (await GameEmulators.LoadAsync() is not GameEmulators.Catalog || (!game.Platform.System.IsSwitch && !GameEmulators.OfConsole(game.Platform.Slug).Any()))
+                return;
+            ViewModel.EmulatorChanged();
+            if (LoginManager.Instance.GetCurrentUser()?.Role != PERMISSION_ROLE.ADMIN)
+                return;
+            emulatorChoices = GameEmulators.OfConsole(game.Platform.Slug).Cast<GameEmulators.Emulator?>().Prepend(null).ToList();
+            showingEmulator = true;
+            uiEmulatorChoice.ItemsSource = emulatorChoices.Select(e => e == null ? Loc.F("{0} (console)", StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch") : $"{e.Name} ({GameEmulators.SystemsOf(e)})").ToList();
+            uiEmulatorChoice.SelectedIndex = Math.Max(0, emulatorChoices.FindIndex(e => e?.Id == GameEmulators.IdOf(game)));
+            showingEmulator = false;
+            uiEmulatorAdmin.IsVisible = emulatorChoices.Count > 1 || GameEmulators.IdOf(game) != null;
+            ShowEmulatorNote();
+        }
+
+        /// <summary>A fork without a build for this PC's system: its console's plays the game here, told.</summary>
+        private void ShowEmulatorNote()
+        {
+            RetroGame game = ViewModel.Game;
+            bool elsewhere = GameEmulators.IdOf(game) != null && GameEmulators.For(game) == null && GameEmulators.RecompOf(game) == null;
+            uiEmulatorNote.IsVisible = elsewhere;
+            if (elsewhere)
+                uiEmulatorNote.Text = Loc.F("No build for this system: {0} plays it on this PC", StandaloneEmulator.Of(game.Platform.System)?.Name ?? "RetroArch");
+        }
+
+        private async void EmulatorChoice_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (showingEmulator || uiEmulatorChoice.SelectedIndex < 0 || uiEmulatorChoice.SelectedIndex >= emulatorChoices.Count)
+                return;
+            try
+            {
+                await GameEmulators.SetGameAsync(ViewModel.Game, emulatorChoices[uiEmulatorChoice.SelectedIndex]?.Id);
+                ViewModel.EmulatorChanged();
+                ShowEmulatorNote();
+                MainWindowViewModel.Instance.AppBarText = Loc.T("Saved");
+            }
+            catch (Exception ex)
+            {
+                MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex);
+                await LoadEmulatorAsync();
+            }
         }
 
         private void FixMatch_Click(object? sender, RoutedEventArgs e)
@@ -277,11 +368,13 @@ namespace gamevault.UserControls
         }
 
         private void ReportProblem_Click(object? sender, RoutedEventArgs e) => ReportProblemPopup.Open(ViewModel.Game);
+        private void DismissFailure_Click(object? sender, RoutedEventArgs e) => ViewModel.Game.Failure = null;
 
         private void Video_Click(object? sender, RoutedEventArgs e)
         {
+            // Played here, as a library game's trailers
             if (ViewModel.Game.Video is string video)
-                PlatformInfo.OpenUrl($"https://www.youtube.com/watch?v={Uri.EscapeDataString(video)}");
+                MainWindowViewModel.Instance.OpenPopup(new TrailerPopup(new[] { $"https://www.youtube.com/watch?v={Uri.EscapeDataString(video)}" }, ViewModel.Game.Name));
         }
 
         private void PreviousScreenshot_Click(object? sender, RoutedEventArgs e) => ViewModel.MoveScreenshot(-1);

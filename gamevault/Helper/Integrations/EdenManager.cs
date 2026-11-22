@@ -16,19 +16,19 @@ namespace gamevault.Helper
     /// Eden for the Nintendo Switch games, with the console's keys and firmware from RomM copied in it, nothing to
     /// answer; each GameVault player is the console's user who plays.
     /// </summary>
-    internal sealed class EdenManager : StandaloneEmulator
+    internal sealed class EdenManager : SwitchEmulator
     {
         public override string Name => "Eden";
         public override string Core => "eden";
         public override string Console => "Switch";
-        public override EdenLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "eden"), PlatformInfo.IsWindows, PlatformInfo.IsMac);
+        public override EdenLayout Layout { get; } = new(Path.Combine(PlatformInfo.LocalDataDirectory, "eden"), PlatformInfo.IsWindows, PlatformInfo.IsMac, EmulatorExit.ProcessorIsX86V3);
 
         public override string FirmwareState => Layout.HasFirmware
             ? Loc.T("Keys and firmware installed in Eden")
             : Loc.T("Not downloaded yet");
 
         /// <summary>prod.keys (title.keys too when there), and the firmware: a zip of its .nca files, or the files themselves.</summary>
-        protected override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)
+        protected internal override async Task InstallFirmwareAsync(RetroPlatform platform, Action<string> status)
         {
             List<RetroService.Firmware> files;
             try { files = await RetroService.ListFirmwareAsync(platform); }
@@ -98,20 +98,12 @@ namespace gamevault.Helper
                 Layout.Tag = newer;
         }
 
-        public override string? ControllerHint => File.Exists(Layout.SettingsFiles.Single()) && EdenLayout.HasController(File.ReadAllText(Layout.SettingsFiles.Single()))
-            ? null
-            : Loc.T("Controller: Eden plays with the keyboard until yours is chosen once in its window (Emulation > Configure > Controls > Input Device)");
-
-        /// <summary>The player becomes the console's first user, the one the game is started as; the updates and DLC are the installed ones.</summary>
-        public override Process Launch(string player, string launchFile, string language)
+        /// <summary>The updates and DLC are the installed ones (in its settings, which a fork of it shares).</summary>
+        internal override void PrepareLaunch()
         {
             string config = Layout.SettingsFiles.Single();
             File.WriteAllText(config, EdenLayout.ContentFolders(File.ReadAllText(config),
                 RetroService.SavedGames(downloading: false).Where(g => g.Game.Platform.System.IsEden).Select(g => g.Folder).ToList()));
-            byte[]? existing = File.Exists(Layout.ProfilesFile) ? File.ReadAllBytes(Layout.ProfilesFile) : null;
-            Directory.CreateDirectory(Path.GetDirectoryName(Layout.ProfilesFile)!);
-            File.WriteAllBytes(Layout.ProfilesFile, EdenLayout.Profiles(existing, player, LoginManager.Instance.GetCurrentUser()?.Username ?? "Player"));
-            return base.Launch(player, launchFile, language);
         }
     }
 }

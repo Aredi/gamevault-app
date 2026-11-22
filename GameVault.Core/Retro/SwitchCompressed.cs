@@ -16,7 +16,7 @@ namespace GameVault.Core.Retro
 
         private const int NcaHeaderSize = 0x4000, Chunk = 0x10000;
 
-        private sealed record Entry(string Name, long Offset, long Size);
+        internal sealed record Entry(string Name, long Offset, long Size);
 
         /// <summary>The .nsp beside the compressed game, written whole before it is named (a stopped one leaves nothing).</summary>
         /// <returns>The .nsp's path.</returns>
@@ -63,7 +63,7 @@ namespace GameVault.Core.Retro
 
         #region Containers
         /// <summary>A PFS0 (an .nsp) or an HFS0 (a game card's partition) at an offset: its files, their offsets in the file.</summary>
-        private static List<Entry> Partition(Stream file, long start, bool hashed)
+        internal static List<Entry> Partition(Stream file, long start, bool hashed)
         {
             byte[] head = ReadAt(file, start, 0x10);
             string magic = Encoding.ASCII.GetString(head, 0, 4);
@@ -89,7 +89,7 @@ namespace GameVault.Core.Retro
         }
 
         /// <summary>A game card's secure partition (its header at 0, or at 0x1000 in a dump with its key area).</summary>
-        private static List<Entry> SecurePartition(Stream file)
+        internal static List<Entry> SecurePartition(Stream file)
         {
             long header = Encoding.ASCII.GetString(ReadAt(file, 0x100, 4)) == "HEAD" ? 0 : 0x1000;
             long root = header + BinaryPrimitives.ReadInt64LittleEndian(ReadAt(file, header + 0x130, 8));

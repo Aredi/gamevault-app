@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace GameVault.Uploader
 {
     /// <summary>
@@ -26,17 +28,35 @@ namespace GameVault.Uploader
     /// PUT  /rooms/{id}/stream                    the player shares their screen with the room, or stops (Sunshine)
     /// GET  /lan-games, PUT /lan-games/{gameId}   the games playable in LAN (PCGamingWiki, read in the background) / an administrator marks or unmarks one
     /// POST /reports, GET /reports                a player reports a problem on a game / the reports (all for an administrator, else the player's)
+    /// GET  /reports/{id}/diagnostic              what an administrator reads of a report's diagnostic
     /// POST /reports/{id}/resolve                 an administrator says a report is handled
+    /// GET  /retro/games/{romId}/logo             a retro game's logo (RomM's from ScreenScraper, else SteamGridDB's); 404 without one
+    /// GET  /retro/games/{romId}/hero             a retro game's large picture (ScreenScraper's fanart in RomM, else SteamGridDB's hero); 404 without one
+    /// GET  /retro/games/{romId}/files            a retro game's files in RomM (path in its folder, size, category: "update"...)
+    /// GET  /retro/games/{romId}/files/{fileId}/content   one of them, in parts when asked
+    /// GET  /logos/pc/{gameId}                   a library game's logo from SteamGridDB (STEAMGRIDDB_API_KEY); 404 without one
+    /// GET  /retro/emulators                      the emulators given to retro games instead of their console's, and their games
+    /// PUT|DELETE /retro/emulators/{id}           an administrator adds, changes or drops one (its builds' https links by system, its program's name; kind "recomp": a program that reads the game's files, with its arguments)
+    /// PUT  /retro/emulators/games/{romId}        an administrator gives a RomM game one ({ emulator: null }: its console's again)
+    /// GET  /invites, POST /invites, DELETE /invites/{code}   an administrator's invitation codes / a new one, named / an unused one dropped
+    /// POST /invites/redeem                       a new account waiting for its activation gives its code (no sign-in: it can not yet)
     /// Uploads need the Authorization header of a GameVault administrator, profiles the one of any GameVault user.
     /// </summary>
     public static class Endpoints
     {
+        /// <summary>What any request may send (Kestrel's limit, set in Program): a JSON body is read before the sign-in is checked.</summary>
+        public const long MaxBody = 1024 * 1024;
+
+        /// <summary>A route that takes more than <see cref="MaxBody"/>: the routing raises Kestrel's limit for its requests.</summary>
+        internal static RouteHandlerBuilder TakesUpTo(this RouteHandlerBuilder route, long bytes) =>
+            route.WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(bytes));
+
         public static void MapUploadEndpoints(this WebApplication app)
         {
             // The page sent to a new player: download and sign in
             app.MapGet("/invite", (IWebHostEnvironment web) => Results.File(web.WebRootFileProvider.GetFileInfo("invite.html").CreateReadStream(), "text/html; charset=utf-8"));
 
-            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled }));
+            app.MapGet("/status", (UploadStore store, ProfileStore profiles, SaveStore saves, RemoteInstallStore remote, GameRequestsProxy requests, RommProxy romm, RetroSaveStore retroSaves, RetroPlayerStore retroPlayers, RoomStore rooms, ZeroTierController zeroTier, ReportStore reports, InviteStore invites, GameEmulatorStore emulators, ChatStore chat, ChallengeStore challenges, UploaderOptions options) => Results.Json(new { status = "OK", rommUrl = options.RommPublicUrl?.TrimEnd('/'), version = UploaderOptions.Version, freeSpace = store.FreeSpace(), profiles = profiles.Enabled, saveHistory = saves.Enabled, remoteInstalls = remote.Enabled, gameRequests = requests.Enabled, retro = romm.Enabled, retroSaves = retroSaves.Enabled, retroPlayers = retroPlayers.Enabled, rooms = rooms.Enabled && zeroTier.Enabled, reports = reports.Enabled, invites = invites.Enabled, emulators = emulators.Enabled, chat = chat.Enabled, challenges = challenges.Enabled }));
 
             // Game requests, kept by the RomM-ComM bot with the ones made in Discord
             app.MapGet("/game-requests", async (HttpRequest request, AdminCheck users, GameRequestsProxy requests, CancellationToken ct) =>
@@ -72,6 +92,22 @@ namespace GameVault.Uploader
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.GamesAsync(platformId, ct))));
             app.MapGet("/retro/media/{**path}", (string path, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => { await romm.MediaAsync(path, context.Response, ct); return Results.Empty; }));
+            // The games' logos for the living-room mode: fetched once, kept, and sent as pictures
+            app.MapGet("/retro/games/{romId:int}/logo", (int romId, HttpContext context, AdminCheck users, RommProxy romm, GameLogos logos, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Logo(context, await logos.RetroAsync(romId, ct))));
+            app.MapGet("/retro/games/{romId:int}/hero", (int romId, HttpContext context, AdminCheck users, RommProxy romm, GameLogos logos, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => Logo(context, await logos.RetroHeroAsync(romId, ct))));
+            app.MapGet("/logos/pc/{gameId:int}", async (int gameId, HttpContext context, AdminCheck users, GameVaultProxy gameVault, GameLogos logos, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(context.Request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!logos.HasSteamGrid)
+                    return Results.NotFound();
+                // The game's title as the server has it: a player does not choose what is searched
+                var game = await gameVault.GetGameAsync(context.Request.Headers.Authorization.ToString(), gameId, ct);
+                return game == null ? Results.NotFound() : Logo(context, await logos.PcAsync(gameId, game.Title, ct));
+            });
             app.MapGet("/retro/platforms/{platformId:int}/firmware", (int platformId, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.FirmwareAsync(platformId, ct))));
             app.MapGet("/retro/firmware/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
@@ -92,6 +128,8 @@ namespace GameVault.Uploader
                 var (refused, id) = await SaverAsync(set, context.Request, users, saves, ct);
                 if (refused != null)
                     return refused;
+                if (saves.NewSetRefusal(id, set) is string full)
+                    return Results.Json(new { error = full }, statusCode: StatusCodes.Status409Conflict);
                 return await saves.SaveAsync(id, set, context.Request.Body, ct) is long savedAt
                     ? Results.Json(new { savedAt })
                     : Results.Json(new { error = $"Saves can have at most {RetroSaveStore.MaxSize >> 20} MB." }, statusCode: StatusCodes.Status413PayloadTooLarge);
@@ -116,7 +154,7 @@ namespace GameVault.Uploader
                     var player = players.Get(userId);
                     return Results.Json(new { plays = player.Plays, achievements = player.Achievements });
                 }));
-            app.MapPut("/retro/players/me/achievements/{platform}/{romId:int}", (string platform, int romId, RetroPlayerStore.GameAchievements game, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
+            app.MapPut("/retro/players/me/achievements/{platform}/{romId:int}", (string platform, int romId, RetroPlayerStore.GameAchievements game, HttpRequest request, AdminCheck users, RetroPlayerStore players, ChallengeStore challenges, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, check =>
                 {
                     string key = $"{platform}:{romId}";
@@ -125,12 +163,14 @@ namespace GameVault.Uploader
                     game.Name = game.Name.Trim()[..Math.Min(game.Name.Trim().Length, 200)];
                     game.PlatformName = (game.PlatformName ?? "")[..Math.Min((game.PlatformName ?? "").Length, 80)];
                     game.Cover = RommProxy.IsMedia(game.Cover) ? game.Cover : null;
+                    // Earned in the future: now, so a made-up date does not stay on top of the activity
+                    DateTime now = DateTime.UtcNow;
                     game.Unlocks = (game.Unlocks ?? new()).Where(u => !string.IsNullOrWhiteSpace(u.Title))
+                        .Select(u => new RetroPlayerStore.Unlock { Title = u.Title.Trim()[..Math.Min(u.Title.Trim().Length, 200)], Badge = RetroPlayerStore.IsBadge(u.Badge) ? u.Badge : null, Date = u.Date.ToUniversalTime() > now ? now : u.Date })
                         .OrderByDescending(u => u.Date).Take(RetroPlayerStore.KeptUnlocks)
-                        .Select(u => new RetroPlayerStore.Unlock { Title = u.Title.Trim()[..Math.Min(u.Title.Trim().Length, 200)], Badge = RetroPlayerStore.IsBadge(u.Badge) ? u.Badge : null, Date = u.Date })
                         .ToList();
                     players.SetAchievements(check.Id, check.User, key, game);
-                    return Results.NoContent();
+                    return ChallengeEndpoints.Told(challenges.Enabled && challenges.SetUnlocks(check.Id, check.User, key, game.Unlocks.Select(u => u.Date)));
                 }));
             app.MapGet("/retro/activity/achievements", (HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, _ => Results.Json(players.RecentUnlocks(30).Select(a => new
@@ -141,8 +181,13 @@ namespace GameVault.Uploader
             // The series of games (IGDB's, as RomM groups them): Zelda, Pokémon...
             app.MapGet("/retro/series", (HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => Results.Json(await romm.SeriesAsync(ct))));
-            app.MapPost("/retro/players/me/plays", (RetroPlayerStore.Play played, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
-                AsRetroPlayerAsync(request, users, players, ct, check =>
+            app.MapPost("/retro/players/me/plays", async (RetroPlayerStore.Play played, HttpRequest request, AdminCheck users, RetroPlayerStore players, ChallengeStore challenges, GameVaultProxy gameVault, CancellationToken ct) =>
+            {
+                var who = await users.CheckUserAsync(request, ct);
+                if (who.Allowed && players.Enabled)
+                    // Before the play is kept: the game may be one the player discovers
+                    await ChallengeEndpoints.SeedAsync(who.Id, request, challenges, gameVault, players, ct);
+                return await AsRetroPlayerAsync(request, users, players, ct, check =>
                 {
                     played.Key = $"{played.Platform}:{played.RomId}";
                     if (!RetroPlayerStore.IsValidKey(played.Key) || played.Minutes is < 1 or > 1440 || string.IsNullOrWhiteSpace(played.Name))
@@ -150,9 +195,13 @@ namespace GameVault.Uploader
                     played.Name = played.Name.Trim()[..Math.Min(played.Name.Trim().Length, 200)];
                     played.PlatformName = (played.PlatformName ?? "")[..Math.Min((played.PlatformName ?? "").Length, 80)];
                     played.Cover = RommProxy.IsMedia(played.Cover) ? played.Cover : null;
-                    players.AddPlay(check.Id, check.User, played);
-                    return Results.NoContent();
-                }));
+                    // Minutes the clock says were not played are not counted, and not refused: the client would send them again
+                    int minutes = players.AddPlay(check.Id, check.User, played);
+                    if (minutes == 0)
+                        return Results.NoContent();
+                    return ChallengeEndpoints.Told(challenges.Enabled && challenges.AddPlay(check.Id, check.User, played.Key, minutes));
+                });
+            });
             app.MapPut("/retro/players/me/favorites", (string[] favorites, HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct) =>
                 AsRetroPlayerAsync(request, users, players, ct, check =>
                 {
@@ -173,6 +222,11 @@ namespace GameVault.Uploader
 
             app.MapGet("/retro/games/{id:int}/content", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
                 FromRommAsync(context, users, romm, ct, async () => { await romm.ContentAsync(id, context.Request, context.Response, ct); return Results.Empty; }));
+            // A game in a folder: its files, and one of them (an update added after it was installed)
+            app.MapGet("/retro/games/{id:int}/files", (int id, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => await romm.FilesAsync(id, ct) is object files ? Results.Json(files) : (IResult)Results.NotFound()));
+            app.MapGet("/retro/games/{id:int}/files/{fileId:int}/content", (int id, int fileId, HttpContext context, AdminCheck users, RommProxy romm, CancellationToken ct) =>
+                FromRommAsync(context, users, romm, ct, async () => { await romm.FileContentAsync(id, fileId, context.Request, context.Response, ct); return Results.Empty; }));
 
             // "Install on my PC": the player's clients say they are open, the web page asks one of them for a game,
             // that client takes it and says what became of it (each player sees only their own PCs and requests)
@@ -288,12 +342,15 @@ namespace GameVault.Uploader
                 if (asked.Kind is not ("pc" or "retro") || title.Length is 0 or > 200 || !ReportStore.Categories.Contains(asked.Category)
                     || asked.Category == "other" && string.IsNullOrWhiteSpace(asked.Details))
                     return Results.Json(new { error = "Describe the problem." }, statusCode: StatusCodes.Status400BadRequest);
+                string? diagnostic = asked.Diagnostic?.ValueKind == JsonValueKind.Object ? asked.Diagnostic.Value.GetRawText() : null;
+                if (diagnostic?.Length > ReportStore.MaxDiagnosticLength)
+                    return Results.Json(new { error = "The diagnostic is too big." }, statusCode: StatusCodes.Status413PayloadTooLarge);
                 var added = reports.Add(new ReportStore.Report("", asked.Kind, asked.GameId, Cut(asked.Platform, 50), title, asked.Category!, Cut(asked.Details, 1000), Cut(asked.Context, 300),
-                    check.Id, check.User, default, null, null));
+                    check.Id, check.User, default, null, null), diagnostic);
                 return added == null
                     ? Results.Json(new { error = "You already have many open reports: wait for some to be handled." }, statusCode: StatusCodes.Status409Conflict)
                     : Results.Json(added, statusCode: StatusCodes.Status201Created);
-            });
+            }).TakesUpTo(4 * ReportStore.MaxDiagnosticLength + MaxBody);// its diagnostic, escaped in the JSON
 
             app.MapGet("/reports", async (HttpRequest request, AdminCheck users, ReportStore reports, CancellationToken ct) =>
             {
@@ -305,12 +362,184 @@ namespace GameVault.Uploader
                 return Results.Json(reports.List(check.Admin ? null : check.Id));
             });
 
+            app.MapGet("/reports/{id}/diagnostic", async (string id, HttpRequest request, AdminCheck admins, ReportStore reports, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return reports.Diagnostic(id) is string diagnostic ? Results.Text(diagnostic, "application/json") : Results.Json(new { error = "This report no longer exists." }, statusCode: StatusCodes.Status404NotFound);
+            });
+
             app.MapPost("/reports/{id}/resolve", async (string id, HttpRequest request, AdminCheck admins, ReportStore reports, CancellationToken ct) =>
             {
                 var check = await admins.CheckAsync(request, ct);
                 if (!check.Allowed)
                     return Results.Json(new { error = check.Message }, statusCode: check.Status);
                 return reports.Resolve(id, check.User) ? Results.NoContent() : Results.Json(new { error = "This report no longer exists." }, statusCode: StatusCodes.Status404NotFound);
+            });
+
+            // The games using a hypervisor: their first download shows the administrators' text
+            app.MapGet("/hypervisor", async (HttpRequest request, AdminCheck users, HypervisorStore hypervisor, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return hypervisor.Enabled ? Results.Json(hypervisor.Get()) : HypervisorOff();
+            });
+
+            app.MapPut("/hypervisor/games/{gameId:int}", async (int gameId, HypervisorGame asked, HttpRequest request, AdminCheck admins, HypervisorStore hypervisor, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!hypervisor.Enabled)
+                    return HypervisorOff();
+                hypervisor.SetGame(gameId, asked.On);
+                return Results.NoContent();
+            });
+
+            // The password of a game's archive: read by the players downloading it, set by an administrator
+            app.MapGet("/archive-passwords/games/{gameId:int}", async (int gameId, HttpRequest request, AdminCheck users, ArchivePasswordStore passwords, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return passwords.Enabled ? Results.Json(new { password = passwords.Get(gameId) }) : ArchivePasswordsOff();
+            });
+
+            app.MapPut("/archive-passwords/games/{gameId:int}", async (int gameId, ArchivePassword asked, HttpRequest request, AdminCheck admins, ArchivePasswordStore passwords, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!passwords.Enabled)
+                    return ArchivePasswordsOff();
+                if (asked.Password?.Length > ArchivePasswordStore.MaxLength)
+                    return Results.Json(new { error = $"The password is {ArchivePasswordStore.MaxLength} characters at most." }, statusCode: StatusCodes.Status400BadRequest);
+                passwords.Set(gameId, asked.Password);
+                return Results.NoContent();
+            });
+
+            // The emulators given to some retro games instead of their console's, and the games they play
+            app.MapGet("/retro/emulators", async (HttpRequest request, AdminCheck users, GameEmulatorStore emulators, CancellationToken ct) =>
+            {
+                var check = await users.CheckUserAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return emulators.Enabled ? Results.Json(emulators.Get()) : EmulatorsOff();
+            });
+
+            app.MapPut("/retro/emulators/{id}", async (string id, GameEmulatorStore.Emulator asked, HttpRequest request, AdminCheck admins, GameEmulatorStore emulators, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!emulators.Enabled)
+                    return EmulatorsOff();
+                var emulator = asked with { Id = id };
+                if (GameEmulatorStore.Invalid(emulator) is string invalid)
+                    return Results.Json(new { error = invalid }, statusCode: StatusCodes.Status400BadRequest);
+                emulators.Set(emulator);
+                return Results.NoContent();
+            });
+
+            app.MapDelete("/retro/emulators/{id}", async (string id, HttpRequest request, AdminCheck admins, GameEmulatorStore emulators, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!emulators.Enabled)
+                    return EmulatorsOff();
+                return emulators.Delete(id) ? Results.NoContent() : Results.NotFound();
+            });
+
+            app.MapPut("/retro/emulators/games/{romId:int}", async (int romId, GameEmulatorChoice asked, HttpRequest request, AdminCheck admins, GameEmulatorStore emulators, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!emulators.Enabled)
+                    return EmulatorsOff();
+                return emulators.SetGame(romId, string.IsNullOrEmpty(asked.Emulator) ? null : asked.Emulator)
+                    ? Results.NoContent()
+                    : Results.Json(new { error = "There is no such emulator." }, statusCode: StatusCodes.Status404NotFound);
+            });
+
+            app.MapPut("/hypervisor/text", async (HypervisorText asked, HttpRequest request, AdminCheck admins, HypervisorStore hypervisor, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!hypervisor.Enabled)
+                    return HypervisorOff();
+                if ((asked.Text ?? "").Length > 4000)
+                    return Results.Json(new { error = "The text is too long." }, statusCode: StatusCodes.Status400BadRequest);
+                hypervisor.SetText(asked.Text ?? "");
+                return Results.NoContent();
+            });
+
+            // Invitation codes: a new account is activated only with one, which then says who used it
+            app.MapGet("/invites", async (HttpRequest request, AdminCheck admins, InviteStore invites, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return invites.Enabled ? Results.Json(invites.List()) : InvitesOff();
+            });
+
+            app.MapPost("/invites", async (NewInvite asked, HttpRequest request, AdminCheck admins, InviteStore invites, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                if (!invites.Enabled)
+                    return InvitesOff();
+                string name = (asked.Name ?? "").Trim();
+                if (name.Length is 0 or > 60)
+                    return Results.Json(new { error = "Give the invitation a name (who it is for)." }, statusCode: StatusCodes.Status400BadRequest);
+                return Results.Json(invites.Create(name, check.User), statusCode: StatusCodes.Status201Created);
+            });
+
+            app.MapDelete("/invites/{code}", async (string code, HttpRequest request, AdminCheck admins, InviteStore invites, CancellationToken ct) =>
+            {
+                var check = await admins.CheckAsync(request, ct);
+                if (!check.Allowed)
+                    return Results.Json(new { error = check.Message }, statusCode: check.Status);
+                return invites.Delete(code) switch
+                {
+                    null => Results.NoContent(),
+                    "used" => Results.Json(new { error = "This invitation code was used: it stays, to tell who came with it." }, statusCode: StatusCodes.Status409Conflict),
+                    _ => Results.Json(new { error = "This invitation code no longer exists." }, statusCode: StatusCodes.Status404NotFound),
+                };
+            });
+
+            app.MapPost("/invites/redeem", async (RedeemInvite asked, InviteStore invites, GameVaultProxy gameVault, ILogger<InviteStore> logger, CancellationToken ct) =>
+            {
+                if (!invites.Enabled)
+                    return InvitesOff();
+                if (string.IsNullOrWhiteSpace(asked.Username) || InviteStore.Normalize(asked.Code).Length == 0)
+                    return Results.Json(new { error = "Type your username and your invitation code." }, statusCode: StatusCodes.Status400BadRequest);
+                // shortcut: no limit on wrong codes, 60 bits of code can not be guessed; add one if usernames must not be probed
+                if (invites.Reserve(asked.Code!) is not InviteStore.Invite invite)
+                    return Results.Json(new { error = "This invitation code is not valid or was already used." }, statusCode: StatusCodes.Status404NotFound);
+                try
+                {
+                    if (await gameVault.PendingUserAsync(asked.Username, ct) is not (int id, string username))
+                    {
+                        invites.Release(invite.Code);
+                        return Results.Json(new { error = "No account of this name waits for its activation." }, statusCode: StatusCodes.Status404NotFound);
+                    }
+                    await gameVault.ActivateAsync(id, ct);
+                    invites.Use(invite.Code, id, username);
+                    logger.LogInformation("Invitation {Name} activated the account {User} ({Id})", invite.Name, username, id);
+                    return Results.NoContent();
+                }
+                catch (Exception ex) when (ex is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException)
+                {
+                    invites.Release(invite.Code);
+                    logger.LogWarning(ex, "An invitation could not activate {User}", asked.Username);
+                    return Results.Json(new { error = "The game server could not activate the account." }, statusCode: StatusCodes.Status502BadGateway);
+                }
             });
 
             // The administrators see when each player last had the client open
@@ -480,27 +709,27 @@ namespace GameVault.Uploader
                         UploadStore.AppendResult.NoSpace => Results.Json(new { received, error = "Not enough free space on the server." }, statusCode: StatusCodes.Status507InsufficientStorage),
                         _ => Results.Json(new { received, error = $"A chunk can have at most {UploadStore.MaxChunkSize} bytes." }, statusCode: StatusCodes.Status413PayloadTooLarge),
                     };
-                }));
+                })).TakesUpTo(UploadStore.MaxChunkSize + 1024);
 
             app.MapPost("/uploads/{name}/complete", async (string name, long size, bool? overwrite, HttpRequest request, AdminCheck admins, UploadStore store, ILoggerFactory logs, CancellationToken ct) =>
-                await GuardedAsync(name, request, admins, ct, user =>
+                await GuardedAsync(name, request, admins, ct, async user =>
                 {
-                    var result = store.Complete(name, size, overwrite == true);
+                    var result = await store.CompleteAsync(name, size, overwrite == true);
                     if (result == UploadStore.CompleteResult.Completed)
                         logs.CreateLogger("Uploads").LogInformation("{User} published {Name}", user, name);
-                    return Task.FromResult(result switch
+                    return result switch
                     {
                         UploadStore.CompleteResult.Completed => Results.Json(new { name }, statusCode: StatusCodes.Status201Created),
                         UploadStore.CompleteResult.Exists => Results.Json(new { error = "A file with this name already exists on the server." }, statusCode: StatusCodes.Status409Conflict),
                         UploadStore.CompleteResult.WrongSize => Results.Json(new { error = "The upload is not complete." }, statusCode: StatusCodes.Status409Conflict),
                         _ => Results.Json(new { error = "There is no upload with this name." }, statusCode: StatusCodes.Status404NotFound),
-                    });
+                    };
                 }));
 
             app.MapDelete("/uploads/{name}", async (string name, HttpRequest request, AdminCheck admins, UploadStore store, CancellationToken ct) =>
-                await Guarded(name, request, admins, ct, () =>
+                await GuardedAsync(name, request, admins, ct, async _ =>
                 {
-                    store.Cancel(name);
+                    await store.CancelAsync(name);
                     return Results.NoContent();
                 }));
         }
@@ -594,6 +823,26 @@ namespace GameVault.Uploader
             }
         }
 
+        private static IResult Logo(HttpContext context, string? file)
+        {
+            if (file == null)
+                return Results.NotFound();
+            byte[] start = new byte[12];
+            using (FileStream stream = File.OpenRead(file))
+                stream.ReadAtLeast(start, start.Length, throwOnEndOfStream: false);
+            // Kept by the client too: a game's logo does not change
+            context.Response.Headers.CacheControl = "private, max-age=604800";
+            return Results.File(file, GameLogos.TypeOf(start) ?? "application/octet-stream");
+        }
+
+        private static IResult EmulatorsOff() => Results.Json(new { error = "Emulators by game are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        private static IResult ArchivePasswordsOff() => Results.Json(new { error = "Archive passwords are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        private static IResult HypervisorOff() => Results.Json(new { error = "Hypervisor notices are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        private static IResult InvitesOff() => Results.Json(new { error = "Invitation codes are not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
         private static string? Cut(string? text, int length) => text?.Trim() is { Length: > 0 } t ? t[..Math.Min(t.Length, length)] : null;
 
         private static async Task<IResult> GuardedAsync(string name, HttpRequest request, AdminCheck admins, CancellationToken ct, Func<string, Task<IResult>> action)
@@ -618,5 +867,15 @@ namespace GameVault.Uploader
     public sealed record RoomStream(bool On);
     public sealed record LanGame(bool Lan);
     public sealed record HiddenPlay(int? GameId);
-    public sealed record ProblemReport(string? Kind, int GameId, string? Platform, string? Title, string? Category, string? Details, string? Context);
+    public sealed record HypervisorGame(bool On);
+
+    public sealed record ArchivePassword(string? Password);
+
+    public sealed record HypervisorText(string? Text);
+
+    public sealed record GameEmulatorChoice(string? Emulator);
+
+    public sealed record NewInvite(string? Name);
+    public sealed record RedeemInvite(string? Code, string? Username);
+    public sealed record ProblemReport(string? Kind, int GameId, string? Platform, string? Title, string? Category, string? Details, string? Context, JsonElement? Diagnostic = null);
 }

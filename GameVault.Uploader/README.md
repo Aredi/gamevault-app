@@ -29,10 +29,17 @@ address (`SanctuaryService.Url` in the client, https://gamevaultupload.alexisdom
 | `ROMM_PUBLIC_URL` | - | RomM as the players reach it: a player can link their own RomM account in the client, then their retro saves go to RomM (otherwise to this service) |
 | `RETRO_SAVES_DIRECTORY` | `/data/retro-saves` | The players' saves of the retro games (one zip per player, and the last 10 versions), so they follow them from PC to PC |
 | `RETRO_PLAYERS_DIRECTORY` | `/data/retro-players` | The players' time on the retro games and their favorites (profiles, recent activity) |
+| `CHALLENGES_DIRECTORY` | `/data/challenges` | The challenge of each week and what the players did for it (the client's **Challenges** page) |
 | `ZEROTIER_CONTROLLER_URL` | - | The API of a [ZeroTier](https://github.com/zerotier/ZeroTierOne) 1.14.2 network controller (e.g. `http://zerotier-controller:9993`): the client's **LAN rooms** are off without it |
 | `ZEROTIER_API_SECRET` | - | The controller's API token (`ZEROTIER_API_SECRET` of its container, or its `authtoken.secret`) |
 | `ROOMS_DIRECTORY` | `/data/rooms` | The LAN rooms and the games playable in LAN |
-| `REPORTS_DIRECTORY` | `/data/reports` | The problems the players report on games (admin console) |
+| `REPORTS_DIRECTORY` | `/data/reports` | The problems the players report on games, with their diagnostics until they are resolved (admin console) |
+| `INVITES_DIRECTORY` | `/data/invites` | The invitation codes new accounts need (admin console) |
+| `HYPERVISOR_DIRECTORY` | `/data/hypervisor` | The games using a hypervisor and the text shown to who downloads them (admin console) |
+| `LOGOS_DIRECTORY` | `/data/logos` | The games' logos for the living-room mode, each fetched once (RomM's from ScreenScraper, SteamGridDB's) |
+| `STEAMGRIDDB_API_KEY` | none | A SteamGridDB key: the logos of the library's games, and of the retro games RomM has no logo for. Without it only RomM's logos are shown |
+| `EMULATORS_DIRECTORY` | `/data/emulators` | The emulators and recomps (programs that read a game's files) an administrator gives some retro games instead of their console's emulator (admin console, retro game page) |
+| `GAMEVAULT_API_KEY` | - | An administrator's API key of the GameVault server: activates the accounts that give an invitation code. The server needs `AUTH_API_KEY_ENABLED=true`, and `SERVER_ACCOUNT_ACTIVATION_DISABLED=false` so that new accounts wait for one |
 
 ## LAN rooms
 

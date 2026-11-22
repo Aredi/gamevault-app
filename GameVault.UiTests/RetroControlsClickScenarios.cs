@@ -75,6 +75,8 @@ namespace GameVault.UiTests
         public async Task EveryControl_AnswersTheMouseAndTheKeyboard()
         {
             await TestSession.GetAsync();
+            // A message of the scenario before, still shown in the corner, would cover the buttons under it
+            MainWindowViewModel.Instance.IsAppBarOpen = false;
             var (keyboards, pads, consoles, games) = (RetroArchManager.Keyboard, RetroArchManager.Pad, RetroArchManager.Controllers, RetroArchManager.GameControllers);
             try
             {

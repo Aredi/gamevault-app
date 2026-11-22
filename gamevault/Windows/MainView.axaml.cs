@@ -24,10 +24,15 @@ namespace gamevault.Windows
         private GameTimeTracker GameTimeTracker;
         private bool loaded;
 
+        /// <summary>The view on the screen (the PC's window or Android's), null before signing in.</summary>
+        internal static MainView? Current { get; private set; }
+
         public MainView()
         {
             InitializeComponent();
+            Current = this;
             this.DataContext = MainWindowViewModel.Instance;
+            uiLibraryHost.Content = MainWindowViewModel.Instance.Library;
             InitSidebar();
             // The Mac's and Android's versions: the PC games are Windows' (the library, the LAN rooms)
             uiNavLibrary.IsVisible = uiNavRooms.IsVisible = PlatformInfo.PlaysPcGames;
@@ -50,8 +55,114 @@ namespace gamevault.Windows
                     keysOf.BackRequested -= Back_Requested;
                 keysOf = null;
             };
+            InitCouch();
             InitBootTasks();
         }
+
+        private WindowState beforeCouch;
+        private bool opened;
+
+        /// <summary>The PC's window around the view; none on Android, whose app has the whole screen already.</summary>
+        private Window? Window => TopLevel.GetTopLevel(this) as Window;
+
+        /// <summary>The living-room mode: F11 or its button; its keys are the gamepad's while it is shown.</summary>
+        private void InitCouch()
+        {
+            uiCouch.LeaveRequested += LeaveCouch;
+            uiCouch.TextKeyboard = uiCouchKeys;
+            SizeChanged += (_, _) =>
+            {
+                if (uiCouch.IsVisible)
+                    ZoomForCouch();
+            };
+            AttachedToVisualTree += (_, _) =>
+            {
+                keysOf?.AddHandler(KeyDownEvent, Couch_KeyDown, RoutingStrategies.Tunnel);
+                if (Window is Window window)
+                    window.PropertyChanged += Window_PropertyChanged;
+                if (opened)
+                    return;
+                opened = true;
+                // Back in the mode after a change of profile made in it, whatever the new profile chose
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (UserControls.CouchUserControl.TakeComeBack() || UserControls.CouchUserControl.StartsHere)
+                        EnterCouch(welcome: true);
+                    UserControls.CouchUserControl.CloseSwitchCurtain();
+                });
+            };
+            DetachedFromVisualTree += (_, e) =>
+            {
+                (e.Root as TopLevel)?.RemoveHandler(KeyDownEvent, Couch_KeyDown);
+                if (e.Root is Window window)
+                    window.PropertyChanged -= Window_PropertyChanged;
+            };
+        }
+
+        private void Couch_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (CouchFocus.Activating)
+                return;
+            if (e.Key == Key.F11 && e.KeyModifiers == KeyModifiers.None)
+            {
+                if (uiCouch.IsVisible) LeaveCouch(); else EnterCouch();
+                e.Handled = true;
+            }
+            // Nothing under it gets the keyboard; a popup over it and a question with a text to type keep their own keys
+            else if (uiCouch.IsVisible && MainWindowViewModel.Instance.Popup == null && (DialogLayer.Children.Count == 0 || DialogService.Current is { Input: null }) && e.KeyModifiers == KeyModifiers.None)
+            {
+                uiCouch.HandleKey(e.Key);
+                e.Handled = true;
+            }
+        }
+
+        // Hidden in the tray or minimized, the mode is not on the screen: the system's notifications are shown again
+        private void Window_PropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+        {
+            if (e.Property == IsVisibleProperty || e.Property == Window.WindowStateProperty)
+                UserControls.CouchUserControl.Shown = uiCouch.IsVisible && sender is Window { IsVisible: true } window && window.WindowState != WindowState.Minimized;
+        }
+
+        internal bool IsCouchShown => uiCouch.IsVisible;
+
+        internal void EnterCouch(bool welcome = false)
+        {
+            if (uiCouch.IsVisible)
+                return;
+            MainWindowViewModel.Instance.ClosePopup();
+            uiQuickSearch.Close();
+            uiDesktop.IsVisible = false;
+            if (Window is Window window)
+            {
+                beforeCouch = window.WindowState == WindowState.FullScreen ? WindowState.Normal : window.WindowState;
+                window.WindowState = WindowState.FullScreen;
+            }
+            ZoomForCouch();
+            _ = uiCouch.OpenAsync(welcome);
+        }
+
+        /// <summary>The client's windows and questions are made for a desk: larger on a TV, as much as the screen is taller than them.</summary>
+        private void ZoomForCouch()
+        {
+            double zoom = uiCouch.IsVisible || !uiDesktop.IsVisible ? Math.Clamp(Bounds.Height / 820, 1, 1.7) : 1;
+            Avalonia.Media.ScaleTransform? scale = zoom > 1.01 ? new Avalonia.Media.ScaleTransform(zoom, zoom) : null;
+            uiPopupZoom.LayoutTransform = scale;
+            DialogLayer.RenderTransform = scale;
+            uiCouchKeys.RenderTransform = scale;
+        }
+
+        internal void LeaveCouch()
+        {
+            if (!uiCouch.IsVisible)
+                return;
+            uiCouch.Close();
+            uiDesktop.IsVisible = true;
+            if (Window is Window window)
+                window.WindowState = beforeCouch;
+            ZoomForCouch();
+        }
+
+        private void Couch_Click(object? sender, RoutedEventArgs e) => EnterCouch();
 
         private TopLevel? keysOf;
 
@@ -111,6 +222,21 @@ namespace gamevault.Windows
                 PipeServiceHandler.Instance.IsReadyForCommands = true;
             NewGamesNotifier.Start();
             RetroNewGamesNotifier.Start();
+            // The screenshots and videos taken in a game, kept with it (not in the tests: they would watch the real folders)
+            if (PipeServiceHandler.Instance != null)
+            {
+                GameCaptures.Start();
+                if (OperatingSystem.IsWindows())
+                {
+                    void Attach(object? sender, VisualTreeAttachmentEventArgs e)
+                    {
+                        AttachedToVisualTree -= Attach;
+                        if (e.Root is Window window)
+                            ScreenCapture.Attach(window);
+                    }
+                    AttachedToVisualTree += Attach;
+                }
+            }
             // Games asked from the web page ("Install on my PC")
             if (PipeServiceHandler.Instance != null && PlatformInfo.PlaysPcGames)
                 RemoteInstalls.Start();
@@ -120,6 +246,15 @@ namespace gamevault.Windows
             // Who is online and what they play (not in the tests: no desktop session there)
             if (PipeServiceHandler.Instance != null)
                 _ = ActivityService.Instance.StartAsync();
+            // The chat with the other players (when the service keeps one)
+            if (PipeServiceHandler.Instance != null)
+                ChatService.Instance.Start();
+            // The notices go left of the chat: over it they would hide what is being written
+            uiChatHost.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == IsVisibleProperty)
+                    uiToast.Margin = new Thickness(0, 0, uiChatHost.IsVisible ? 24 + uiChat.Width : 24, 24);
+            };
             // Savegames of games closed offline in a previous session
             Task.Run(async () =>
             {
@@ -178,6 +313,9 @@ namespace gamevault.Windows
                 case MainControl.Rooms:
                     MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Rooms;
                     break;
+                case MainControl.Challenges:
+                    MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.Challenges;
+                    break;
                 case MainControl.AdminConsole:
                     MainWindowViewModel.Instance.ActiveControl = MainWindowViewModel.Instance.AdminConsole;
                     break;
@@ -211,6 +349,9 @@ namespace gamevault.Windows
             await MainWindowViewModel.Instance.Library.GetGameInstalls().RestoreInstalledGames();
             await MainWindowViewModel.Instance.Downloads.RestoreDownloadedGames();
             RetroDownloads.Restore();
+            // The living-room mode's game themes, searched for in the background once the window is settled
+            if (LoginState.Success == state && GameThemes.PreloadAtStart)
+                _ = uiCouch.PreloadThemesAsync(TimeSpan.FromSeconds(30));
             LoginManager.Instance.InitOnlineTimer();
             MainWindowViewModel.Instance.UserAvatar = LoginManager.Instance.GetCurrentUser();
 
@@ -261,12 +402,23 @@ namespace gamevault.Windows
 
 
         #region Popups
+        private bool popupShown;
         private void InitPopupLayer()
         {
             MainWindowViewModel.Instance.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(MainWindowViewModel.Popup))
+                {
                     LayoutPopup();
+                    // Opened (not one replacing another): the page darkens and the panel grows to its size
+                    bool open = MainWindowViewModel.Instance.Popup != null;
+                    if (open && !popupShown)
+                    {
+                        Motion.FadeIn(uiPopupLayer);
+                        Motion.Settle(uiPopupFrame, fromScale: 0.96, durationMs: 260);
+                    }
+                    popupShown = open;
+                }
             };
             SizeChanged += (_, _) => LayoutPopup();
         }
@@ -341,7 +493,23 @@ namespace gamevault.Windows
             {
                 if (e.PropertyName == nameof(MainWindowViewModel.UserAvatar))
                     uiServerName.Text = ServerName();
+                else if (e.PropertyName is nameof(MainWindowViewModel.ActiveControlIndex) or nameof(MainWindowViewModel.ActiveControl))
+                    ShowCurrentSection();
             };
+        }
+
+        /// <summary>
+        /// A game's page (or another page opened from a section) is in no item of the menu: the section it was opened
+        /// from stays lit, so the player knows where they are. Clicking it goes back there, as it is not selected.
+        /// </summary>
+        private void ShowCurrentSection()
+        {
+            var vm = MainWindowViewModel.Instance;
+            // A section's own page shown without the menu (the downloads from the tray): its own item, not the last one chosen
+            int current = vm.ActiveControlIndex >= 0 || vm.ActiveControl == null ? -1 : (int)(vm.SectionOf(vm.ActiveControl) ?? vm.LastMainControl);
+            for (int i = 0; i < uiNavigation.ItemCount; i++)
+                if (uiNavigation.ContainerFromIndex(i) is ListBoxItem item)
+                    item.Classes.Set("current", i == current);
         }
         private void QuickSearch_Click(object? sender, RoutedEventArgs e) => uiQuickSearch.Open();
 
@@ -367,6 +535,13 @@ namespace gamevault.Windows
             catch { return ""; }
         }
         #endregion
+
+        private void Chat_Click(object? sender, RoutedEventArgs e)
+        {
+            MainWindowViewModel.Instance.IsChatOpen = !MainWindowViewModel.Instance.IsChatOpen;
+            if (MainWindowViewModel.Instance.IsChatOpen)
+                _ = ChatService.Instance.RefreshAsync();
+        }
 
         private void News_Click(object? sender, RoutedEventArgs e)
         {
@@ -413,6 +588,8 @@ namespace gamevault.Windows
 
         public void Dispose()
         {
+            if (Current == this)
+                Current = null;
             GameTimeTracker?.Stop();
             newsTimer?.Stop();
             if (backOnline != null)
@@ -430,6 +607,7 @@ namespace gamevault.Windows
             if (PipeServiceHandler.Instance != null)
                 PipeServiceHandler.Instance.IsReadyForCommands = false;
             _ = ActivityService.Instance.StopAsync();
+            ChatService.Instance.Stop();
             MainWindowViewModel.Instance.UserAvatar = null;
         }
     }

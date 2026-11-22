@@ -11,9 +11,14 @@ namespace GameVault.Uploader
         public const long MaxSize = 1L << 30;
         /// <summary>The versions kept before the current one, to go back to.</summary>
         public const int KeptVersions = 10;
+        /// <summary>A new set is refused past these: far more than any player's emulators, but a cap on a token's misuse.</summary>
+        public const int MaxSets = 200;
+        public const long MaxTotal = 20L << 30;
 
         private readonly string directory;
         private readonly ILogger<RetroSaveStore> logger;
+        /// <summary>One per player and set: two saves at once would both move the same current file to the history.</summary>
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> moving = new();
 
         public RetroSaveStore(UploaderOptions options, ILogger<RetroSaveStore> logger)
         {
@@ -61,6 +66,21 @@ namespace GameVault.Uploader
         public string? HistoryFile(int userId, string set, string name) =>
             History(userId, set).Any(v => v.Name == name) ? Path.Combine(HistoryOf(userId), name) : null;
 
+        /// <summary>Why the player may not start this set (one they do not have yet); null when they may.</summary>
+        public string? NewSetRefusal(int userId, string set)
+        {
+            string folder = Path.GetDirectoryName(FileOf(userId, set))!;
+            // A set being saved is in its history for a moment, not at its place
+            if (File.Exists(FileOf(userId, set)) || !Directory.Exists(folder) || History(userId, set).Count > 0)
+                return null;
+            if (Directory.GetFiles(folder, "*.zip").Length >= MaxSets)
+                return $"You already have {MaxSets} sets of retro saves.";
+            static long SizeOf(string file) { try { return new FileInfo(file).Length; } catch (FileNotFoundException) { return 0; } }
+            if (Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Sum(SizeOf) >= MaxTotal)
+                return $"Your retro saves already take {MaxTotal >> 30} GB.";
+            return null;
+        }
+
         /// <returns>When it was saved (unix ms); null when it is larger than <see cref="MaxSize"/>.</returns>
         public async Task<long?> SaveAsync(int userId, string set, Stream body, CancellationToken cancellationToken)
         {
@@ -81,16 +101,23 @@ namespace GameVault.Uploader
                         await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                     }
                 }
-                // The current one goes to the history (named by when it was saved)
-                if (File.Exists(file))
+                SemaphoreSlim gate = moving.GetOrAdd($"{userId}/{set}", _ => new SemaphoreSlim(1, 1));
+                await gate.WaitAsync(CancellationToken.None);
+                try
                 {
-                    string history = HistoryOf(userId);
-                    Directory.CreateDirectory(history);
-                    File.Move(file, Path.Combine(history, $"{set}-{new DateTimeOffset(File.GetLastWriteTimeUtc(file)).ToUnixTimeMilliseconds()}.zip"), overwrite: true);
-                    foreach (string old in Directory.GetFiles(history, $"{set}-*.zip").OrderByDescending(f => f, StringComparer.Ordinal).Skip(KeptVersions))
-                        File.Delete(old);
+                    // The current one goes to the history (named by when it was saved)
+                    if (File.Exists(file))
+                    {
+                        string history = HistoryOf(userId);
+                        Directory.CreateDirectory(history);
+                        File.Move(file, Path.Combine(history, $"{set}-{new DateTimeOffset(File.GetLastWriteTimeUtc(file)).ToUnixTimeMilliseconds()}.zip"), overwrite: true);
+                        // Its own versions only: "switch-2-*.zip" also names the Switch 2's sets ("switch-2-2777-...")
+                        foreach (Version old in History(userId, set).Skip(KeptVersions))
+                            File.Delete(Path.Combine(history, old.Name));
+                    }
+                    File.Move(part, file, overwrite: true);
                 }
-                File.Move(part, file, overwrite: true);
+                finally { gate.Release(); }
             }
             finally
             {

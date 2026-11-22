@@ -56,12 +56,6 @@
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Margin" Value="8,0" />
         </Style>
-        <Style Selector="ProgressBar.download">
-            <Setter Property="MinHeight" Value="6" />
-            <Setter Property="Height" Value="6" />
-            <Setter Property="CornerRadius" Value="3" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Line}" />
-        </Style>
         <Style Selector="TextBlock.info">
             <Setter Property="FontSize" Value="12.5" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
@@ -266,7 +260,7 @@
                             <Path Data="{StaticResource IconGameSettingsFolder}" Width="14" Height="14" />
                         </Button>
                         <Button Classes="round small" Click="DeleteFile_Click" ToolTip.Tip="{l:T 'Delete Download'}">
-                            <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="IndianRed" />
+                            <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="{DynamicResource Brush.Danger}" />
                         </Button>
                     </StackPanel>
 

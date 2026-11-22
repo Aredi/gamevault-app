@@ -87,6 +87,8 @@ namespace gamevault.Helper
         private static Dictionary<string, Play> plays = new();
         private static HashSet<string> favorites = new();
         private static readonly SemaphoreSlim loading = new(1, 1);
+        /// <summary>One at a time on the file of the plays not sent: a play kept while the others are sent is not written over.</summary>
+        private static readonly SemaphoreSlim pendingGate = new(1, 1);
 
         /// <summary>Not sent yet (the service could not be reached): sent with the next load.</summary>
         private static string PendingFile => Path.Combine(Path.GetDirectoryName(LoginManager.Instance.GetUserProfile().CollectionsFile)!, "retro-pending-plays.json");
@@ -133,16 +135,19 @@ namespace gamevault.Helper
             total.Minutes += minutes;
             total.LastPlayed = DateTime.UtcNow;
             Changed?.Invoke();
-            if (!await SendAsync(play))
+            int left = await SendAsync(play);
+            if (left > 0)
             {
                 // Kept for later: the time is not lost
+                await pendingGate.WaitAsync();
                 try
                 {
                     var pending = ReadPending();
-                    pending.Add(play);
+                    pending.Add(play with { Minutes = left });
                     File.WriteAllText(PendingFile, JsonSerializer.Serialize(pending));
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
+                finally { pendingGate.Release(); }
             }
         }
 
@@ -154,37 +159,45 @@ namespace gamevault.Helper
 
         private static async Task SendPendingAsync()
         {
-            var pending = ReadPending();
-            if (pending.Count == 0)
-                return;
-            var left = new List<Play>();
-            foreach (Play play in pending)
-                if (!await SendAsync(play))
-                    left.Add(play);
-            if (left.Count == 0)
-                File.Delete(PendingFile);
-            else
-                File.WriteAllText(PendingFile, JsonSerializer.Serialize(left));
+            await pendingGate.WaitAsync();
+            try
+            {
+                var pending = ReadPending();
+                if (pending.Count == 0)
+                    return;
+                var left = new List<Play>();
+                foreach (Play play in pending)
+                    if (await SendAsync(play) is > 0 and int minutes)
+                        left.Add(play with { Minutes = minutes });
+                if (left.Count == 0)
+                    File.Delete(PendingFile);
+                else
+                    File.WriteAllText(PendingFile, JsonSerializer.Serialize(left));
+            }
+            finally { pendingGate.Release(); }
         }
 
-        private static async Task<bool> SendAsync(Play play)
+        /// <returns>The minutes not sent: 0 when all were, else what is left of a long session sent in parts.</returns>
+        private static async Task<int> SendAsync(Play play)
         {
+            int left = play.Minutes;
             try
             {
                 // At most a day per call: a longer session is sent in parts
-                for (int left = play.Minutes; left > 0; left -= 1440)
+                for (; left > 0; left -= Math.Min(left, 1440))
                 {
                     var part = new { romId = play.RomId, platform = play.Platform, platformName = play.PlatformName, name = play.Name, cover = play.Cover, minutes = Math.Min(left, 1440) };
                     using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Post, "/retro/players/me/plays", RetroService.Json(part));
                     if (!response.IsSuccessStatusCode)
-                        return false;
+                        return left;
+                    await ChallengesService.ToldAsync(response);
                 }
-                return true;
+                return 0;
             }
             catch (Exception ex)
             {
                 Log.Ignored(ex);
-                return false;
+                return left;
             }
         }
 
@@ -231,6 +244,7 @@ namespace gamevault.Helper
             try
             {
                 using HttpResponseMessage response = await RetroService.SendAsync(HttpMethod.Put, $"/retro/players/me/achievements/{game.Platform.Slug}/{game.Id}", RetroService.Json(shared));
+                await ChallengesService.ToldAsync(response);
             }
             catch (Exception ex) { Log.Ignored(ex); }
         }

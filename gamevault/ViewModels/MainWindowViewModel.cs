@@ -19,8 +19,9 @@ namespace gamevault.ViewModels
         Community = 3,
         Activity = 4,
         Rooms = 5,
-        Settings = 6,
-        AdminConsole = 7
+        Challenges = 6,
+        Settings = 7,
+        AdminConsole = 8
     }
     internal class MainWindowViewModel : ViewModelBase
     {
@@ -28,11 +29,13 @@ namespace gamevault.ViewModels
         {
             m_Settings = new SettingsUserControl();
             m_Downloads = new DownloadsUserControl();
-            m_Library = new LibraryUserControl();
+            // Shown when it becomes the active page (never on a Mac)
+            m_Library = new LibraryUserControl { IsVisible = false };
             m_Retro = new RetroUserControl();
             m_Community = new CommunityUserControl();
             m_Activity = new ActivityUserControl();
             m_Rooms = new RoomsUserControl();
+            m_Challenges = new ChallengesUserControl();
             m_AdminConsole = new AdminConsoleUserControl();
         }
         #region Singleton
@@ -61,6 +64,27 @@ namespace gamevault.ViewModels
         {
             get => newsBadge;
             set { newsBadge = value; OnPropertyChanged(); }
+        }
+        private string chatBadge = "";
+        /// <summary>The chat's messages not read yet ("" when none).</summary>
+        public string ChatBadge
+        {
+            get => chatBadge;
+            set { chatBadge = value; OnPropertyChanged(); }
+        }
+        private bool isChatAvailable;
+        /// <summary>The service keeps a chat: its button shows.</summary>
+        public bool IsChatAvailable
+        {
+            get => isChatAvailable;
+            set { isChatAvailable = value; OnPropertyChanged(); }
+        }
+        private bool isChatOpen;
+        /// <summary>The friends and the conversations, on the right of the window.</summary>
+        public bool IsChatOpen
+        {
+            get => isChatOpen;
+            set { isChatOpen = value; OnPropertyChanged(); }
         }
         private bool m_IsAppBarOpen { get; set; }
         public bool IsAppBarOpen
@@ -123,6 +147,7 @@ namespace gamevault.ViewModels
         private CommunityUserControl m_Community { get; set; }
         private ActivityUserControl m_Activity { get; set; }
         private RoomsUserControl m_Rooms { get; set; }
+        private ChallengesUserControl m_Challenges { get; set; }
         private AdminConsoleUserControl m_AdminConsole { get; set; }
         #endregion
         public MainControl LastMainControl { get; set; }
@@ -148,8 +173,11 @@ namespace gamevault.ViewModels
                     m_ActiveControl.IsVisible = true;
                 }
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(TransitioningPage));
             }
         }
+        /// <summary>The library stays in the window, hidden: attaching it again took 350 ms at each return. The other pages come through the transition.</summary>
+        public UserControl? TransitioningPage => m_ActiveControl == m_Library ? null : m_ActiveControl;
         public Control Popup
         {
             get { return m_Popup; }
@@ -193,6 +221,7 @@ namespace gamevault.ViewModels
         }
         internal ActivityUserControl Activity => m_Activity;
         internal RoomsUserControl Rooms => m_Rooms;
+        internal ChallengesUserControl Challenges => m_Challenges;
         internal RetroUserControl Retro => m_Retro;
         internal AdminConsoleUserControl AdminConsole
         {
@@ -208,6 +237,11 @@ namespace gamevault.ViewModels
             ActiveControl = userControl;
             ActiveControlIndex = -1;
         }
+        /// <summary>The menu's section a page is, when it is one of them.</summary>
+        public MainControl? SectionOf(UserControl page) =>
+            page == m_Library ? MainControl.Library : page == m_Retro ? MainControl.Retro : page == m_Downloads ? MainControl.Downloads
+            : page == m_Community ? MainControl.Community : page == m_Activity ? MainControl.Activity : page == m_Rooms ? MainControl.Rooms
+            : page == m_Challenges ? MainControl.Challenges : page == m_Settings ? MainControl.Settings : page == m_AdminConsole ? MainControl.AdminConsole : null;
         public void UndoActiveControl()
         {
             ActiveControlIndex = (int)LastMainControl;

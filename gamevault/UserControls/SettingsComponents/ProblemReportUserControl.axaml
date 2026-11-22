@@ -5,14 +5,14 @@
              x:Class="gamevault.UserControls.SettingsComponents.ProblemReportUserControl"
              Focusable="True">
     <Grid>
-        <Grid Classes="hover" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Margin="0,8,10,0" ZIndex="1" Height="20" Width="20" Cursor="Hand" PointerReleased="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
-            <Path Fill="{DynamicResource Brush.Foreground}" Stroke="{DynamicResource Brush.Foreground}" Data="{DynamicResource IconClose}" />
-        </Grid>
-        <Border Background="{DynamicResource Brush.Background}" Padding="25" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="2" CornerRadius="10" Width="640">
+        <Button Classes="round small" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,14,14,0" ZIndex="1" Click="Close_Click" ToolTip.Tip="{l:T 'Close (Esc)'}">
+            <Path Data="m11.25 4.75l-6.5 6.5m0-6.5l6.5 6.5" Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="1.8" Fill="Transparent" Width="11" Height="11" Stretch="Uniform" />
+        </Button>
+        <Border Background="{DynamicResource Brush.Background}" Padding="28,22,28,24" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1" CornerRadius="18" Width="560">
             <StackPanel Spacing="12">
-                <TextBlock Text="{l:T 'Report a problem'}" FontSize="26" FontWeight="Bold" />
+                <TextBlock Classes="sectionTitle" Text="{l:T 'Report a problem'}" FontSize="22" />
                 <TextBlock TextWrapping="Wrap" FontSize="14" Text="{l:T 'Create a report to send to the administrator.'}" />
-                <TextBlock TextWrapping="Wrap" FontSize="13" Opacity="0.75" Text="{l:T 'Passwords, tokens and keys are never included.'}" />
+                <TextBlock TextWrapping="Wrap" FontSize="13" Classes="muted" Text="{l:T 'Passwords, tokens and keys are never included.'}" />
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <controls:IconButton x:Name="uiBtnCreate" Text="{l:T 'Create report'}" Icon="{DynamicResource IconGameSettingsSave}" IconMargin="0,0,5,2" MinWidth="170" Height="36" FontSize="15" Click="Create_Click" />
                     <controls:IconButton x:Name="uiBtnOpenFolder" Text="{l:T 'Open folder'}" Kind="Skeleton" MinWidth="140" Height="36" FontSize="15" Click="OpenFolder_Click" IsVisible="False" />

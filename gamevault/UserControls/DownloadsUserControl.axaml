@@ -25,12 +25,6 @@
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <!-- The retro downloads: drawn as the library's download cards -->
-        <Style Selector="ProgressBar.download">
-            <Setter Property="MinHeight" Value="6" />
-            <Setter Property="Height" Value="6" />
-            <Setter Property="CornerRadius" Value="3" />
-            <Setter Property="Background" Value="{DynamicResource Brush.Line}" />
-        </Style>
         <Style Selector="TextBlock.info">
             <Setter Property="FontSize" Value="12.5" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
@@ -75,7 +69,7 @@
                 <Button Classes="ghost small" Background="{DynamicResource Brush.Surface}" Click="DeleteAllDownloads_Click" ToolTip.Tip="{l:T 'Delete all Downloads'}"
                         IsVisible="{Binding DownloadedGames.Count, Converter={StaticResource greaterThanConv}, ConverterParameter=0}">
                     <StackPanel Orientation="Horizontal" Spacing="7">
-                        <Path Data="{StaticResource IconTrash}" Fill="IndianRed" Width="13" Height="13" />
+                        <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource Brush.Danger}" Width="13" Height="13" />
                         <TextBlock Text="{l:T 'Delete all'}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
@@ -85,10 +79,24 @@
         <!-- Nothing yet -->
         <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Margin="0,0,0,80"
                     IsVisible="{Binding IsEmpty}">
-            <Border Width="72" Height="72" CornerRadius="36" Background="{DynamicResource Brush.Surface}" HorizontalAlignment="Center">
-                <Path Data="{StaticResource IconArrowDown}" Fill="{DynamicResource Brush.Muted}" Stretch="Uniform" Width="28" Height="28" />
-            </Border>
+            <!-- The icon on a soft halo of the theme's accent: drawn once, nothing moves -->
+            <Panel Width="160" Height="120" HorizontalAlignment="Center">
+                <Ellipse Width="160" Height="120" Opacity="0.35">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="{DynamicResource GameVault.Colors.Accent}" Offset="0" />
+                            <GradientStop Color="Transparent" Offset="1" />
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Border Width="72" Height="72" CornerRadius="36" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="1"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Path Data="{StaticResource IconArrowDown}" Fill="{DynamicResource Brush.Accent}" Stretch="Uniform" Width="28" Height="28" />
+                </Border>
+            </Panel>
             <TextBlock Classes="sectionTitle" Text="{l:T 'Downloads empty'}" HorizontalAlignment="Center" />
+            <TextBlock Classes="muted" Text="{l:T 'The games you install show here, with how far they are.'}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="380" TextWrapping="Wrap" />
+            <Button Classes="action" Content="{l:T 'Browse the library'}" HorizontalAlignment="Center" Margin="0,8,0,0" Click="BrowseLibrary_Click" />
         </StackPanel>
 
         <ScrollViewer Grid.Row="1" Classes="page" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -142,7 +150,7 @@
                                                 <Path Data="{StaticResource IconGameSettingsFolder}" Width="14" Height="14" />
                                             </Button>
                                             <Button Classes="round small" Click="RetroCancel_Click" ToolTip.Tip="{l:T 'Cancel Download'}" IsVisible="{Binding !IsDone}">
-                                                <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="IndianRed" />
+                                                <Path Data="{StaticResource IconTrash}" Width="14" Height="14" Fill="{DynamicResource Brush.Danger}" />
                                             </Button>
                                         </StackPanel>
                                         <Button Classes="ghost small" HorizontalAlignment="Stretch" IsVisible="{Binding CanPause}" Click="RetroPauseResume_Click" Background="{DynamicResource Brush.Surface3}">

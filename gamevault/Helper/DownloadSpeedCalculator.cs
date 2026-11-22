@@ -62,4 +62,7 @@ namespace gamevault.Helper
             return speedAverage.Calculate();
         }
     }
+
+    /// <summary>Where a download is, in bytes: what came down, of how much, at what speed (bytes a second).</summary>
+    internal readonly record struct DownloadBytes(long Done, long Total, double PerSecond);
 }
