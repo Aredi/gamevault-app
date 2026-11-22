@@ -448,7 +448,9 @@ namespace gamevault.UserControls
                     Toggle("Theme of the selected game", s.Themes, v => s.Themes = v, "A moment on a game plays its music, found on YouTube, instead of the menus'."),
                     Choice("Music", nameof(CouchSettings.MusicTheme), "Calm, or night: lower and darker."),
                     Volume("Volume of the music", s.MusicVolume, v => s.MusicVolume = v, "Its loudness, under the sounds."),
-                },
+                }.Concat(Helper.Platform.PlatformInfo.IsAndroid
+                    ? new[] { Changed(HapticsOn ? Loc.T("Vibrations: on") : Loc.T("Vibrations: off"), "A short vibration at each move, firmer when something is chosen.", () => HapticsOn = !HapticsOn) }
+                    : Array.Empty<CouchLine>()).ToList(),
                 "start" => new List<CouchLine>
                 {
                     Changed(StartsHere ? Loc.T("At start: the living-room mode") : Loc.T("At start: the desktop"), "SanctuaryVault opens in this mode (a PC plugged to the TV).", () => StartsHere = !StartsHere),

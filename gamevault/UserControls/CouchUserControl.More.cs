@@ -460,6 +460,16 @@ namespace gamevault.UserControls
             };
             if (OperatingSystem.IsWindows())
                 lines.Add(Setting(Loc.F("Mouse with the right stick: {0}", YesNo(Settings.Mouse)), () => Settings.Mouse = !Settings.Mouse));
+            // Android: its Wi-Fi and Bluetooth panels (a controller to pair, a network to join)
+            if (Helper.Platform.MobilePlatform.Current is Helper.Platform.IMobilePlatform mobile)
+            {
+                lines.Add(Line(Loc.T("Wi-Fi"), () => mobile.OpenConnections("wifi")));
+                lines.Add(Line(Loc.T("Bluetooth"), () => mobile.OpenConnections("bluetooth")));
+                // The controller in the hands: its A and B, X and Y where Nintendo puts them
+                if (Helper.Platform.MobileGamepad.LastDevice is string pad)
+                    lines.Add(Setting(Loc.F("Nintendo layout for {0}: {1}", pad, YesNo(Helper.Platform.MobileGamepad.IsNintendo(pad))),
+                        () => Helper.Platform.MobileGamepad.SetNintendo(pad, !Helper.Platform.MobileGamepad.IsNintendo(pad))));
+            }
             // A PC's power; Android's is its own button
             if (!Helper.Platform.PlatformInfo.IsAndroid)
             {

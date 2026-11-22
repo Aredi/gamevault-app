@@ -102,7 +102,7 @@ namespace gamevault.Android
             if (e != null && platform?.OnKey(e) == true)
                 return true;
             // Outside a game, a controller's buttons are the living-room mode's (it reads them as a PC's gamepad)
-            if (e != null && FromController(e.Source, e.Device) && CouchButtonOf(e.KeyCode) is CouchButtons button)
+            if (e != null && FromController(e.Source, e.Device) && CouchButtonOf(Retro.Gamepads.Positional(e)) is CouchButtons button)
             {
                 if (e.Action is KeyEventActions.Down or KeyEventActions.Up)
                     MobileGamepad.Key(button, e.Action == KeyEventActions.Down, e.Device?.Name);

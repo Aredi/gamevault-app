@@ -53,6 +53,18 @@ namespace gamevault.Helper.Platform
         /// <summary>The device's sound: louder (1), lower (-1), on or off (0), with Android's own volume panel.</summary>
         void Volume(int direction);
 
+        /// <summary>The battery's charge (0 to 100) and whether it charges; null without a battery (a TV box).</summary>
+        (int Percent, bool Charging)? Battery { get; }
+
+        /// <summary>Android's panel of the Wi-Fi ("wifi") or the Bluetooth ("bluetooth"), over the app.</summary>
+        void OpenConnections(string kind);
+
+        /// <summary>The names of the controllers plugged now.</summary>
+        System.Collections.Generic.IReadOnlyList<string> Controllers { get; }
+
+        /// <summary>A short vibration (the living-room mode's moves): a tick, or a firmer one to confirm.</summary>
+        void Vibrate(bool firm);
+
         /// <summary>The core of the app's own player, downloaded once from libretro.</summary>
         Task EnsureCoreAsync(string core, Action<string> status);
 
@@ -72,6 +84,10 @@ namespace gamevault.Helper.Platform
 
     internal static class MobilePlatform
     {
+        /// <summary>"Battery 82 %", "Battery 82 %, charging"; empty without a battery.</summary>
+        public static string BatteryText => Current?.Battery is var (percent, charging)
+            ? charging ? Localization.Loc.F("Battery {0} %, charging", percent) : Localization.Loc.F("Battery {0} %", percent) : "";
+
         public static IMobilePlatform? Current { get; set; }
 
         /// <summary>The app is on the screen (not behind another app): Android's own "window is active".</summary>

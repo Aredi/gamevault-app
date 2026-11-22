@@ -174,11 +174,39 @@ namespace gamevault.ViewModels
             }
         }
 
+        /// <summary>The lists made by themselves, first among the collections: never played, most played, added lately.</summary>
+        internal static string[] SmartCollections => new[] { Loc.T("Never played"), Loc.T("Most played"), Loc.T("Recently added") };
+
+        /// <summary>When RomM got its newest games, by id (the service's /retro/latest).</summary>
+        private Dictionary<int, DateTime> recentlyAdded = new();
+        internal IReadOnlyDictionary<int, DateTime> RecentlyAdded => recentlyAdded;
+
+        public void SetRecentlyAdded(IEnumerable<(int Id, DateTime Added)> games)
+        {
+            recentlyAdded = games.GroupBy(g => g.Id).ToDictionary(g => g.Key, g => g.Max(x => x.Added));
+            if (ShowsACollection && Collections[Collection] == SmartCollections[2])
+                ApplyFilter();
+        }
+
+        /// <summary>The games of a list made by itself, in its own order; null for another collection.</summary>
+        private IEnumerable<RetroGame>? SmartCollection(string name, IEnumerable<RetroGame> games)
+        {
+            string[] smart = SmartCollections;
+            if (name == smart[0])
+                return games.Where(NeverPlayed);
+            if (name == smart[1])
+                return games.Where(g => g.MinutesPlayed > 0).OrderByDescending(g => g.MinutesPlayed);
+            if (name == smart[2])
+                return games.Where(g => recentlyAdded.ContainsKey(g.Id)).OrderByDescending(g => recentlyAdded[g.Id]);
+            return null;
+        }
+
         /// <summary>The collections again (one was created from a game).</summary>
         public void LoadCollections()
         {
             string? shown = Collection > 0 && Collection < Collections.Count ? Collections[Collection] : null;
             var names = new List<string> { Loc.T("All collections") };
+            names.AddRange(SmartCollections);
             try { names.AddRange(RetroLibrary.Collections.Load().Select(c => c.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)); }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
             names.AddRange(otherCollections.Keys.Where(n => !names.Contains(n)));
@@ -260,7 +288,10 @@ namespace gamevault.ViewModels
                 shown = shown.Where(g => g.IsFavorite);
             if (OnlyNeverPlayed)
                 shown = shown.Where(NeverPlayed);
-            if (ShowsACollection)
+            IEnumerable<RetroGame>? smart = ShowsACollection ? SmartCollection(Collections[Collection], shown) : null;
+            if (smart != null)
+                shown = smart;
+            else if (ShowsACollection)
             {
                 var members = otherCollections.TryGetValue(Collections[Collection], out HashSet<int>? others) ? others
                     : RetroLibrary.Collections.Load().FirstOrDefault(c => c.Name == Collections[Collection])?.GameIds.ToHashSet() ?? new();
@@ -282,6 +313,12 @@ namespace gamevault.ViewModels
             // Asked again each time this sort is chosen: the reviews change while the page is open
             if (SortBy == ByPlayersRating && ratings == null)
                 LoadRatings();
+            // A list made by itself keeps its own order (the most played first, the newest first), unless another sort is chosen
+            if (smart != null && SortBy == 0 && Collections[Collection] != SmartCollections[0])
+            {
+                Games = shown.ToList();
+                return;
+            }
             shown = SortBy switch
             {
                 1 => shown.OrderByDescending(g => g.Released ?? long.MinValue),

@@ -75,7 +75,17 @@ namespace gamevault.Android.Retro
         };
 
         /// <summary>A controller's button in the player's menu (only its RetroPad id).</summary>
-        public static int? MenuButtonOf(Keycode key) => ButtonOf(key);
+        public static int? MenuButtonOf(KeyEvent e) => ButtonOf(Positional(e));
+
+        /// <summary>The button by its place, as an Xbox's: a controller set to Nintendo's layout has A and B, X and Y swapped back.</summary>
+        public static Keycode Positional(KeyEvent e) => !Helper.Platform.MobileGamepad.IsNintendo(e.Device?.Name) ? e.KeyCode : e.KeyCode switch
+        {
+            Keycode.ButtonA => Keycode.ButtonB,
+            Keycode.ButtonB => Keycode.ButtonA,
+            Keycode.ButtonX => Keycode.ButtonY,
+            Keycode.ButtonY => Keycode.ButtonX,
+            Keycode key => key,
+        };
 
         private int PortOf(int deviceId)
         {
@@ -102,7 +112,7 @@ namespace gamevault.Android.Retro
             RetroPlayer? player = Player;
             // By the event's source: some handhelds' buttons come from a device Android does not list as a controller
             if (player == null || !(Has(e.Source, InputSourceType.Gamepad) || Has(e.Source, InputSourceType.Joystick) || IsController(e.Device))
-                || ButtonOf(e.KeyCode) is not int button)
+                || ButtonOf(Positional(e)) is not int button)
                 return false;
             int port = PortOf(e.DeviceId);
             if (port < 0)

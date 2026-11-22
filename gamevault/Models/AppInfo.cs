@@ -158,7 +158,11 @@ namespace gamevault.Models
         //Android: linking RomM was offered at the first retro game ("1", userconfig)
         RommOffered,
         //The retro page's sort, by its name in RetroViewModel.SortKeys
-        LastRetroSortBy
+        LastRetroSortBy,
+        //Android: the controllers (by name) with Nintendo's layout, A/B and X/Y swapped ("name|name", profileconfig)
+        NintendoControllers,
+        //Android: the living-room mode's vibrations ("0": off, profileconfig)
+        CouchHaptics
     }
     public static class Globals
     {

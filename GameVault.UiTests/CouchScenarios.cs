@@ -76,6 +76,37 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task TheMostPlayed_AndTheNeverPlayed_AreTabsOfTheirOwn()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            var couch = new CouchUserControl();
+            var window = new Window { Width = 1920, Height = 1080, Content = couch };
+            try
+            {
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
+                couch.Settings = new CouchSettings();
+                var nes = new RetroPlatform { Slug = "nes", Name = "NES" };
+                var kirby = new RetroGame { Id = 9301, Name = "Kirby", FileName = "Kirby.nes", Platform = nes };
+                var mario = new RetroGame { Id = 9302, Name = "Mario", FileName = "Mario.nes", Platform = nes, Rating = 90 };
+                await RetroLibrary.RecordPlayAsync(kirby, 30);
+                couch.Show(Array.Empty<Game>(), new List<RetroGame> { kirby, mario });
+
+                CouchTab most = couch.Tabs.Single(t => t.Name == Loc.T("Most played"));
+                Assert.Equal("Kirby", most.Items[0].Title);
+                CouchTab never = couch.Tabs.Single(t => t.Name == Loc.T("Never played"));
+                Assert.Contains(never.Items, i => i.Title == "Mario");
+                Assert.DoesNotContain(never.Items, i => i.Title == "Kirby");
+            }
+            finally
+            {
+                window.Close();
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task TheGames_AreMovedThroughWithTheGamepad_FromTheStripToAGamesScreenAndTheMenu()
         {
             var session = await TestSession.GetAsync();
@@ -92,8 +123,10 @@ namespace GameVault.UiTests
                 couch.Settings = new CouchSettings();
                 couch.Show(games, Retro());
 
-                // The tabs: the home, what is installed, the library, then each console; the first game selected
-                Assert.Equal(new[] { Loc.T("Home"), Loc.T("Installed games"), Loc.T("Library"), "NES" }, couch.Tabs.Select(t => t.Name));
+                // The tabs: the home, what is installed, the library, then each console; the first game selected (the lists made by
+                // themselves come when games were played in the tests before)
+                Assert.Equal(new[] { Loc.T("Home"), Loc.T("Installed games"), Loc.T("Library"), "NES" },
+                    couch.Tabs.Select(t => t.Name).Where(n => !gamevault.ViewModels.RetroViewModel.SmartCollections.Contains(n)));
                 Assert.True(couch.Tabs[0].IsSelected && couch.Current!.IsTile);
                 couch.Handle(CouchCommand.NextTab);
                 Assert.Equal("Hollow Tides", couch.Current!.Title);

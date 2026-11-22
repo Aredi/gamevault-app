@@ -1,4 +1,10 @@
+using GameVault.Core;
 using GameVault.Core.Couch;
+using gamevault.Helper;
+using gamevault.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace gamevault.Helper.Platform
 {
@@ -27,8 +33,33 @@ namespace gamevault.Helper.Platform
         /// <summary>The kind of the controller last used (CouchSettings.Xbox, PlayStation, Switch), from its name.</summary>
         public static string? Kind { get; private set; }
 
+        /// <summary>The name of the controller last used, for the living-room mode's "Nintendo layout" of it.</summary>
+        public static string? LastDevice { get; private set; }
+
+        private static HashSet<string>? nintendo;
+
+        /// <summary>
+        /// The controllers with Nintendo's layout (A on the right, B at the bottom): Android names their buttons as printed,
+        /// so the bottom one is B. Swapped back, the bottom button confirms on every controller, as on an Xbox's.
+        /// </summary>
+        public static bool IsNintendo(string? deviceName)
+        {
+            nintendo ??= Preferences.Get(AppConfigKey.NintendoControllers, ProfileManager.ProfileConfigFile)
+                .Split('|', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            return deviceName != null && nintendo.Contains(deviceName);
+        }
+
+        public static void SetNintendo(string deviceName, bool on)
+        {
+            IsNintendo(deviceName);
+            if (on) nintendo!.Add(deviceName); else nintendo!.Remove(deviceName);
+            Preferences.Set(AppConfigKey.NintendoControllers, string.Join("|", nintendo!), ProfileManager.ProfileConfigFile);
+        }
+
         public static void Key(CouchButtons button, bool down, string? deviceName)
         {
+            if (deviceName != null)
+                LastDevice = deviceName;
             keys = down ? keys | button : keys & ~button;
             if (down)
             {

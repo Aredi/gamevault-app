@@ -155,6 +155,25 @@ namespace gamevault.UserControls
                 Played.Add(sound);
             if (SoundsOn)
                 audio?.Play(sound);
+            // Android: a tick at each move, firmer when something is chosen (a handheld's feel)
+            if (Helper.Platform.MobilePlatform.Current is Helper.Platform.IMobilePlatform mobile && HapticsOn
+                && sound is CouchSound.Move or CouchSound.Tab or CouchSound.Edge or CouchSound.Accept or CouchSound.Open or CouchSound.Launch)
+                mobile.Vibrate(firm: sound is CouchSound.Accept or CouchSound.Open or CouchSound.Launch);
+        }
+
+        /// <summary>Android: the vibrations of the living-room mode, on unless turned off.</summary>
+        internal static bool HapticsOn
+        {
+            get
+            {
+                try { return Preferences.Get(AppConfigKey.CouchHaptics, ProfileManager.ProfileConfigFile) != "0"; }
+                catch (Exception ex) { Log.Ignored(ex); return true; }
+            }
+            set
+            {
+                try { Preferences.Set(AppConfigKey.CouchHaptics, value ? "1" : "0", ProfileManager.ProfileConfigFile); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
         }
 
         internal static bool SoundsOn
@@ -367,6 +386,19 @@ namespace gamevault.UserControls
                 tabs.Add(new CouchTab { Name = Loc.T("Library"), Items = Filtered(pc) });
             foreach (var platform in retro.GroupBy(i => i.Retro!.Platform.Name).OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
                 tabs.Add(new CouchTab { Name = platform.Key, Items = Filtered(platform.ToList()) });
+            // After the consoles, lists made by themselves, as the retro page's collections: the retro games played the most, the ones RomM got
+            // last, the best rated never played
+            var mostPlayed = retro.Where(i => i.Retro!.MinutesPlayed > 0).OrderByDescending(i => i.Retro!.MinutesPlayed).Take(24).ToList();
+            if (mostPlayed.Count > 0)
+                tabs.Add(new CouchTab { Name = Loc.T("Most played"), Items = mostPlayed });
+            var added = MainWindowViewModel.Instance.Retro.RecentlyAdded;
+            var recentlyAdded = retro.Where(i => added.ContainsKey(i.Retro!.Id)).OrderByDescending(i => added[i.Retro!.Id]).Take(24).ToList();
+            if (recentlyAdded.Count > 0)
+                tabs.Add(new CouchTab { Name = Loc.T("Recently added"), Items = recentlyAdded });
+            // (once something was played: before, it would be the whole library again)
+            var neverPlayed = retro.Where(i => ViewModels.RetroViewModel.NeverPlayed(i.Retro!)).OrderByDescending(i => i.Retro!.Rating ?? -1).Take(48).ToList();
+            if (neverPlayed.Count > 0 && mostPlayed.Count > 0)
+                tabs.Add(new CouchTab { Name = Loc.T("Never played"), Items = neverPlayed });
             genres = CouchFilter.Genres(pc.Concat(retro).Select(EntryOf));
             tabs.Insert(0, new CouchTab { Name = Loc.T("Home"), Items = HomeTiles(recent.FirstOrDefault()) });
 
@@ -1316,7 +1348,18 @@ namespace gamevault.UserControls
             uiDetailStatus.IsVisible = status.Length > 0;
         }
 
-        private void ShowClock() => uiClock.Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
+        private void ShowClock()
+        {
+            uiClock.Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
+            var battery = Helper.Platform.MobilePlatform.Current?.Battery;
+            uiBattery.IsVisible = battery != null;
+            if (battery is var (percent, charging))
+            {
+                uiBatteryText.Text = percent + " %";
+                uiBatteryLevel.Width = 20 * percent / 100.0;
+                uiBatteryCharging.IsVisible = charging;
+            }
+        }
 
         /// <summary>Twice a second: the time, a game installed or removed meanwhile, a retro game's progress.</summary>
         internal void Refresh()

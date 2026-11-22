@@ -178,8 +178,13 @@ namespace gamevault.UserControls
             try { others.AddRange((await RetroService.SeriesAsync()).Select(c => (Loc.F("{0} (series)", c.Name), (IEnumerable<int>)c.Games))); }
             catch (Exception ex) { Log.Ignored(ex); }
             ViewModel.SetOtherCollections(others);
+            try { ViewModel.SetRecentlyAdded((await RetroService.LatestAsync()).Where(g => g.AddedAt != null).Select(g => (g.Id, g.AddedAt!.Value))); }
+            catch (Exception ex) { Log.Ignored(ex); }
             Avalonia.Threading.Dispatcher.UIThread.Post(() => uiCollections.SelectedIndex = ViewModel.Collection);
         }
+
+        /// <summary>When RomM got its newest games, by id: the living-room mode's tab of them.</summary>
+        internal IReadOnlyDictionary<int, DateTime> RecentlyAdded => ViewModel.RecentlyAdded;
 
         /// <summary>The games of every platform, each asked once (the quick search, a collection, "All").</summary>
         internal async Task<List<RetroGame>> AllGamesAsync()

@@ -50,6 +50,23 @@ namespace gamevault.UserControls.SettingsComponents
             // RetroArch's run-ahead: the app's own player has none
             uiRunAhead.IsVisible = uiRunAheadNote.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
             AttachedToVisualTree += (_, _) => _ = RefreshAsync();
+            AttachedToVisualTree += (_, _) => ShowControllers();
+        }
+
+        /// <summary>Android: each controller plugged, with its Nintendo layout.</summary>
+        private void ShowControllers()
+        {
+            if (Helper.Platform.MobilePlatform.Current is not Helper.Platform.IMobilePlatform mobile)
+                return;
+            uiNintendo.IsVisible = true;
+            uiNintendoPads.Children.Clear();
+            foreach (string pad in mobile.Controllers)
+            {
+                var box = new CheckBox { Content = Loc.F("Nintendo layout: {0}", pad), IsChecked = Helper.Platform.MobileGamepad.IsNintendo(pad) };
+                box.IsCheckedChanged += (_, _) => Helper.Platform.MobileGamepad.SetNintendo(pad, box.IsChecked == true);
+                uiNintendoPads.Children.Add(box);
+            }
+            uiNintendoNone.IsVisible = uiNintendoPads.Children.Count == 0;
         }
 
         /// <summary>The consoles whose buttons were changed in Régler mes touches, and with what.</summary>

@@ -255,6 +255,49 @@ namespace gamevault.Android
 
         private bool couch;
 
+        public (int Percent, bool Charging)? Battery
+        {
+            get
+            {
+                if (activity.GetSystemService(Context.BatteryService) is not global::Android.OS.BatteryManager battery)
+                    return null;
+                int percent = battery.GetIntProperty((int)global::Android.OS.BatteryProperty.Capacity);
+                // A TV box answers 0, or the minimum int, or 100 while it is plugged without a battery
+                if (percent <= 0 || percent > 100)
+                    return null;
+                return (percent, battery.IsCharging);
+            }
+        }
+
+        public IReadOnlyList<string> Controllers => (global::Android.Views.InputDevice.GetDeviceIds() ?? Array.Empty<int>())
+            .Select(global::Android.Views.InputDevice.GetDevice)
+            .Where(d => d != null && !d.IsVirtual && ((d.Sources & global::Android.Views.InputSourceType.Gamepad) == global::Android.Views.InputSourceType.Gamepad
+                || (d.Sources & global::Android.Views.InputSourceType.Joystick) == global::Android.Views.InputSourceType.Joystick))
+            .Select(d => d!.Name ?? "").Where(n => n.Length > 0).Distinct().ToList();
+
+        public void Vibrate(bool firm)
+        {
+            try
+            {
+                // The window's own haptics (no permission): Android plays them only when the system's touch vibrations are on
+                activity.Window?.DecorView.PerformHapticFeedback(firm ? global::Android.Views.FeedbackConstants.Confirm : global::Android.Views.FeedbackConstants.ClockTick,
+                    global::Android.Views.FeedbackFlags.IgnoreGlobalSetting);
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        public void OpenConnections(string kind)
+        {
+            try
+            {
+                string action = kind == "wifi"
+                    ? Build.VERSION.SdkInt >= BuildVersionCodes.Q ? global::Android.Provider.Settings.Panel.ActionWifi : global::Android.Provider.Settings.ActionWifiSettings
+                    : global::Android.Provider.Settings.ActionBluetoothSettings;
+                activity.StartActivity(new Intent(action));
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
         public void Volume(int direction)
         {
             if (activity.GetSystemService(Context.AudioService) is global::Android.Media.AudioManager audio)
@@ -306,7 +349,7 @@ namespace gamevault.Android
                 return false;
             if (playerView?.IsMenuOpen == true)
             {
-                if (e.Action == global::Android.Views.KeyEventActions.Down && Retro.Gamepads.MenuButtonOf(e.KeyCode) is int button)
+                if (e.Action == global::Android.Views.KeyEventActions.Down && Retro.Gamepads.MenuButtonOf(e) is int button)
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() => playerView?.MenuButtonPressed(button));
                     return true;

@@ -2290,5 +2290,16 @@
   "Cloud saves (sent after a game, taken before)": "Sauvegardes cloud (envoyées après une partie, récupérées avant)",
   "Cloud saves off: the saves stay on this device": "Sauvegardes cloud désactivées : les sauvegardes restent sur cet appareil",
   "The 3DS needs OpenGL ES 3.2, which this device's GPU does not have.": "La 3DS a besoin d'OpenGL ES 3.2, que la puce graphique de cet appareil n'a pas.",
-  "On this device": "Sur cet appareil"
+  "On this device": "Sur cet appareil",
+  "Wi-Fi": "Wi-Fi",
+  "Bluetooth": "Bluetooth",
+  "Vibrations: on": "Vibrations : activées",
+  "Vibrations: off": "Vibrations : désactivées",
+  "A short vibration at each move, firmer when something is chosen.": "Une courte vibration à chaque déplacement, plus nette quand on choisit.",
+  "Nintendo layout for {0}: {1}": "Disposition Nintendo pour {0} : {1}",
+  "Nintendo layout: on a controller whose A is on the right, A and B (and X and Y) are swapped, so that the bottom button confirms.": "Disposition Nintendo : sur une manette dont le A est à droite, A et B (ainsi que X et Y) sont inversés, pour que le bouton du bas valide.",
+  "No controller is connected.": "Aucune manette n'est connectée.",
+  "Nintendo layout: {0}": "Disposition Nintendo : {0}",
+  "Battery {0} %": "Batterie {0} %",
+  "Battery {0} %, charging": "Batterie {0} %, en charge"
 }

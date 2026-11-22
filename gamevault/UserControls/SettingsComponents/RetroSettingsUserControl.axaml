@@ -33,6 +33,13 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <!-- Android: the controllers with Nintendo's layout (A on the right) -->
+                <StackPanel x:Name="uiNintendo" IsVisible="False" Spacing="4">
+                    <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,6"
+                               Text="{l:T 'Nintendo layout: on a controller whose A is on the right, A and B (and X and Y) are swapped, so that the bottom button confirms.'}" />
+                    <StackPanel x:Name="uiNintendoPads" Spacing="2" />
+                    <TextBlock x:Name="uiNintendoNone" Classes="muted" FontSize="13" Text="{l:T 'No controller is connected.'}" />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel Classes="section">

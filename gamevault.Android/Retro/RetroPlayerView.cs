@@ -87,7 +87,9 @@ namespace gamevault.Android.Retro
                     Spacing = 14,
                     Children =
                     {
-                        new TextBlock { Text = title, FontSize = 22, FontWeight = FontWeight.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 10) },
+                        new TextBlock { Text = title, FontSize = 22, FontWeight = FontWeight.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center },
+                        // The time and the battery, as a handheld's menu
+                        (menuStatus = new TextBlock { FontSize = 15, Foreground = Brushes.White, Opacity = 0.75, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 10) }),
                         resumeButton,
                         quitButton,
                     },
@@ -153,6 +155,8 @@ namespace gamevault.Android.Retro
             _ => Array.Empty<(string, string)>(),
         };
 
+        private TextBlock menuStatus = null!;
+
         public bool IsMenuOpen => menu.IsVisible;
 
         private void Back(object? sender, RoutedEventArgs e)
@@ -164,6 +168,8 @@ namespace gamevault.Android.Retro
         public void OpenMenu()
         {
             menu.IsVisible = true;
+            string battery = Helper.Platform.MobilePlatform.BatteryText;
+            menuStatus.Text = DateTime.Now.ToString("t", System.Globalization.CultureInfo.CurrentCulture) + (battery.Length > 0 ? "  ·  " + battery : "");
             menuChoice = 0;
             ShowChoice();
             player.Pause(true);
