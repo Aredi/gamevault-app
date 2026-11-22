@@ -129,6 +129,9 @@ namespace gamevault.Android.Retro
                 throw new InvalidOperationException(gamevault.Localization.Loc.T("The 3DS needs OpenGL ES 3.2, which this device's GPU does not have."));
             if (name.StartsWith("pcsx2_", StringComparison.Ordinal) && !GlContext.IsModern)
                 overrides["pcsx2_renderer"] = "Software (SW)";
+            // ARMSX2: OpenGL ES (the player has no Vulkan), the CPU without 3.2
+            if (name.StartsWith("armsx2_", StringComparison.Ordinal))
+                overrides["armsx2_renderer"] = GlContext.IsModern ? "OpenGL" : "Software";
             // LRPS2: free room next to it for its recompilers' maps
             library = (Path.GetFileName(file).StartsWith("pcsx2_", StringComparison.Ordinal) ? NearLoader.Load(file) : null) ?? NativeLibrary.Load(file);
             this.systemDirectory = Marshal.StringToCoTaskMemUTF8(systemDirectory);
