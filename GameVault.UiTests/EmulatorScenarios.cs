@@ -79,6 +79,67 @@ namespace GameVault.UiTests
         }
 
         [AvaloniaFact]
+        public async Task AGamesEmulatorWhoseLinkIsGone_IsToldToThePlayer_AndTheConsolesPlaysIfTheyWant()
+        {
+            var session = await TestSession.GetAsync();
+            SanctuaryService.Current = session.Server.Url;
+            // Its project removed: its link answers 404
+            string Catalog(int build)
+            {
+                string link = build == 0 ? $"{session.Server.Url}/gone/recomp.zip" : $"{session.Server.Url}/api/media/{build}";
+                return System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    emulators = new[] { new { id = "gone-recomp-test", name = "Gone Recompiled", console = "nes", kind = "recomp", windows = link, linux = link, mac = link, executable = "bin/run.sh" } },
+                    games = new Dictionary<string, string> { ["41"] = "gone-recomp-test" },
+                });
+            }
+            var game = new RetroGame { Id = 41, Name = "Gone", FileName = "Gone.nes", Platform = new RetroPlatform { Slug = "nes", Name = "NES" } };
+            var asked = new List<(string Own, string Console)>();
+            bool answer = false;
+            var ask = RetroPlay.AskConsoleInstead;
+            RetroPlay.AskConsoleInstead = (own, console) =>
+            {
+                asked.Add((own, console));
+                return Task.FromResult(answer);
+            };
+            string? installed = null;
+            try
+            {
+                session.Server.EmulatorsJson = Catalog(0);
+                await GameEmulators.LoadAsync();
+                RecompProgram recomp = GameEmulators.RecompOf(game)!;
+                installed = recomp.Layout.Directory;
+                Task<bool> Ready() => RetroPlay.ReadyOrSetAsideAsync(game, recomp.Name, () => recomp.Layout.IsInstalled, () => recomp.EnsureReadyAsync(_ => { }));
+
+                // Not wanted: the game is not started, and the player knows why
+                var refused = await Assert.ThrowsAsync<IOException>(Ready);
+                Assert.Equal(Loc.F("The link of {0} no longer works: tell the administrator.", "Gone Recompiled"), refused.Message);
+                Assert.Equal(("Gone Recompiled", "RetroArch"), Assert.Single(asked));
+                Assert.NotNull(GameEmulators.RecompOf(game));
+
+                // Wanted: the console's emulator plays it
+                answer = true;
+                Assert.False(await Ready());
+                Assert.Null(GameEmulators.RecompOf(game));
+                // Another link given: the game's own again
+                session.Server.Media[99962] = RecompBuild("1");
+                session.Server.EmulatorsJson = Catalog(99962);
+                await GameEmulators.LoadAsync();
+                Assert.NotNull(GameEmulators.RecompOf(game));
+            }
+            finally
+            {
+                RetroPlay.AskConsoleInstead = ask;
+                session.Server.Media.TryRemove(99962, out _);
+                if (installed != null && Directory.Exists(installed))
+                    Directory.Delete(installed, true);
+                session.Server.EmulatorsJson = "{\"emulators\":[],\"games\":{}}";
+                await GameEmulators.LoadAsync();
+                SanctuaryService.Current = SanctuaryService.Url;
+            }
+        }
+
+        [AvaloniaFact]
         public async Task ARecomp_IsInstalledAndStartedWithTheGamesFiles_AndKeepsItsSaves()
         {
             if (OperatingSystem.IsWindows())

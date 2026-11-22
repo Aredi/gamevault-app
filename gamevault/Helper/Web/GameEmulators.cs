@@ -50,6 +50,18 @@ namespace gamevault.Helper
         private static readonly ConcurrentDictionary<string, CustomSwitchEmulator> managers = new();
         private static readonly ConcurrentDictionary<string, RecompProgram> recomps = new();
 
+        /// <summary>The ones whose link no longer works, the player chose the console's instead: until another link is given, or the client restarts.</summary>
+        private static readonly ConcurrentDictionary<string, bool> gone = new();
+
+        private static string Link(Emulator emulator) => $"{emulator.Id}\n{emulator.Windows}\n{emulator.Linux}\n{emulator.Mac}";
+
+        /// <summary>The game's emulator (or recomp) set aside: its console's plays it.</summary>
+        public static void SetAside(RetroGame game)
+        {
+            if (IdOf(game) is string id && current!.Emulators.FirstOrDefault(e => e.Id == id) is Emulator emulator)
+                gone[Link(emulator)] = true;
+        }
+
         private static string Service => SanctuaryService.Current.TrimEnd('/');
 
         /// <summary>Null when the service offers none.</summary>
@@ -84,7 +96,7 @@ namespace gamevault.Helper
         /// <summary>The game's own emulator when it has a build for this system; else null (its console's plays it).</summary>
         public static StandaloneEmulator? For(RetroGame game)
         {
-            if (IdOf(game) is not string id || current!.Emulators.FirstOrDefault(e => e.Id == id && e.Console == game.Platform.Slug && !e.IsRecomp) is not Emulator emulator)
+            if (IdOf(game) is not string id || current!.Emulators.FirstOrDefault(e => e.Id == id && e.Console == game.Platform.Slug && !e.IsRecomp) is not Emulator emulator || gone.ContainsKey(Link(emulator)))
                 return null;
             if (StandaloneEmulator.Of(game.Platform.System) is not SwitchEmulator console)
                 return null;
@@ -95,7 +107,7 @@ namespace gamevault.Helper
         /// <summary>The game's recomp when it has a build for this system; else null (its emulator plays it).</summary>
         public static RecompProgram? RecompOf(RetroGame game)
         {
-            if (IdOf(game) is not string id || current!.Emulators.FirstOrDefault(e => e.Id == id && e.Console == game.Platform.Slug && e.IsRecomp) is not Emulator emulator)
+            if (IdOf(game) is not string id || current!.Emulators.FirstOrDefault(e => e.Id == id && e.Console == game.Platform.Slug && e.IsRecomp) is not Emulator emulator || gone.ContainsKey(Link(emulator)))
                 return null;
             var recomp = recomps.GetOrAdd($"{emulator.Id}\n{emulator.Name}\n{emulator.Windows}\n{emulator.Linux}\n{emulator.Mac}\n{emulator.Executable}\n{emulator.Arguments}", _ => new RecompProgram(emulator));
             return recomp.Layout.IsAvailable ? recomp : null;
