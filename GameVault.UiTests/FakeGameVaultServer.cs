@@ -155,6 +155,8 @@ namespace GameVault.UiTests
         public static readonly byte[] RetroRom = Encoding.ASCII.GetBytes("NES\x1A-test-rom");
         /// <summary>The NES game's file it serves (a real one for a device to play: see DevServer).</summary>
         public byte[] NesRom { get; set; } = RetroRom;
+        /// <summary>Games added to the NES list after Zelda (ids from 5000), for a long list to scroll on a device.</summary>
+        public int ExtraNesGames { get; set; }
         /// <summary>A PS1 game in two files, as RomM zips them.</summary>
         public static readonly byte[] RetroCdGame = Zip(("Castlevania.cue", "FILE \"Castlevania.bin\" BINARY"), ("Castlevania.bin", "track"));
         /// <summary>A PS3 game in its folder, as RomM zips it (not "multi" for RomM: one folder).</summary>
@@ -593,7 +595,8 @@ namespace GameVault.UiTests
                     await response.OutputStream.WriteAsync(current.Zip);
                 else if (path == "/retro/platforms/3/games")
                     await Json(response, new[] { new { id = 40, name = "Zelda", fileName = "Zelda (E).nes", size = NesRom.LongLength, cover = (string?)null, summary = "A sword" } }
-                        .Concat(NesBrokenGame ? new[] { new { id = 41, name = "Readme", fileName = "Readme.txt", size = 4L, cover = (string?)null, summary = "Not a game" } } : []));
+                        .Concat(NesBrokenGame ? new[] { new { id = 41, name = "Readme", fileName = "Readme.txt", size = 4L, cover = (string?)null, summary = "Not a game" } } : [])
+                        .Concat(Enumerable.Range(0, ExtraNesGames).Select(i => new { id = 5000 + i, name = $"Game {i:000}", fileName = $"Game {i:000}.nes", size = NesRom.LongLength, cover = (string?)null, summary = "A game" })));
                 else if (path == "/retro/games/41/content")
                 {
                     response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''Readme.txt");

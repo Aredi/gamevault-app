@@ -106,7 +106,8 @@
                     </Button>
                 </StackPanel>
             </Border>
-            <TextBlock x:Name="uiVersion" Classes="mMuted" FontSize="12" HorizontalAlignment="Center" />
+            <!-- Held: the frames per second and the time of each frame over the screen (to measure the scrolling) -->
+            <TextBlock x:Name="uiVersion" Classes="mMuted" FontSize="12" HorizontalAlignment="Center" Padding="16" Background="Transparent" />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

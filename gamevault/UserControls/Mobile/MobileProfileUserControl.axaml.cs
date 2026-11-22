@@ -20,6 +20,17 @@ namespace gamevault.UserControls.Mobile
                 uiServer.Text = SettingsViewModel.Instance.ServerUrl;
                 uiVersion.Text = "SanctuaryVault " + SettingsViewModel.Instance.Version;
             };
+            uiVersion.Holding += (_, _) => ToggleFrameRate();
+            uiVersion.DoubleTapped += (_, _) => ToggleFrameRate();
+        }
+
+        /// <summary>Avalonia's own counters over the screen: frames per second, the time of the layout and of the rendering.</summary>
+        private void ToggleFrameRate()
+        {
+            if (TopLevel.GetTopLevel(this) is not TopLevel screen)
+                return;
+            var shown = Avalonia.Rendering.RendererDebugOverlays.Fps | Avalonia.Rendering.RendererDebugOverlays.LayoutTimeGraph | Avalonia.Rendering.RendererDebugOverlays.RenderTimeGraph;
+            screen.RendererDiagnostics.DebugOverlays = screen.RendererDiagnostics.DebugOverlays == shown ? Avalonia.Rendering.RendererDebugOverlays.None : shown;
         }
 
         private static void Open(MainControl page) => MainWindowViewModel.Instance.SetActiveControl(page);

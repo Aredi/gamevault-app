@@ -32,6 +32,9 @@ namespace gamevault.UserControls
             InitializeComponent();
             ViewModel = new RetroGameViewModel(game);
             DataContext = ViewModel;
+            // A phone's GPU: no blur nor masks redrawn at each frame of the scrolling
+            if (Helper.Platform.PlatformInfo.IsAndroid)
+                LightArtwork();
             uiCaptures.Game = GameCaptures.RetroKey(game);
             uiReviews.Game = SocialService.GameKey(game);
             uiMods.Game = game;
@@ -225,6 +228,44 @@ namespace gamevault.UserControls
                 ViewModel.SavesText = $"{local} · {cloud} · {RetroCloudSaves.Destination}";
             }
             catch (Exception ex) { Log.Ignored(ex); }
+        }
+
+        /// <summary>
+        /// Android: the artwork without its live blur and its masks (each frame of a scrolling drew them again): a small copy
+        /// of the picture stretched smoothly looks as soft, and the gradient over it fades it into the page.
+        /// </summary>
+        private void LightArtwork()
+        {
+            uiArtwork.Effect = null;
+            uiArtworkPanel.OpacityMask = null;
+            uiArtworkTint.OpacityMask = null;
+            uiArtworkTint.IsVisible = false;
+            uiCoverFrame.BoxShadow = default;
+            Avalonia.Media.RenderOptions.SetBitmapInterpolationMode(uiArtwork, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality);
+            void Show()
+            {
+                if (ViewModel.Game.Banner is not Avalonia.Media.Imaging.Bitmap banner || banner.PixelSize.Width < 2)
+                {
+                    uiArtwork.Source = null;
+                    return;
+                }
+                int width = Math.Min(48, banner.PixelSize.Width);
+                try { uiArtwork.Source = banner.CreateScaledBitmap(new PixelSize(width, Math.Max(1, banner.PixelSize.Height * width / banner.PixelSize.Width))); }
+                catch (Exception ex)
+                {
+                    Log.Ignored(ex);
+                    uiArtwork.Source = banner;
+                }
+            }
+            void Changed(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+            {
+                if (e.PropertyName == nameof(RetroGame.Banner))
+                    Avalonia.Threading.Dispatcher.UIThread.Post(Show);
+            }
+            // Only while the page is shown: the game outlives it
+            AttachedToVisualTree += (_, _) => ViewModel.Game.PropertyChanged += Changed;
+            DetachedFromVisualTree += (_, _) => ViewModel.Game.PropertyChanged -= Changed;
+            Show();
         }
 
         private bool? narrowLayout;

@@ -18,6 +18,9 @@ namespace GameVault.UiTests
             // A real NES game to play (SV_DEV_SERVER_NES: a .nes file, e.g. the 240p test suite)
             if (Environment.GetEnvironmentVariable("SV_DEV_SERVER_NES") is { Length: > 0 } nes)
                 server.NesRom = File.ReadAllBytes(nes);
+            // A long list to scroll (SV_DEV_SERVER_GAMES: how many more NES games)
+            if (int.TryParse(Environment.GetEnvironmentVariable("SV_DEV_SERVER_GAMES"), out int more))
+                server.ExtraNesGames = more;
             server.Users[1] = FakeGameVaultServer.Admin;
             server.Users[2] = new User { ID = 2, Username = "Léa", Role = PERMISSION_ROLE.USER, Activated = true };
             server.Users[3] = new User { ID = 3, Username = "Hugo", Role = PERMISSION_ROLE.USER, Activated = true };

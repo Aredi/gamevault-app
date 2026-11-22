@@ -43,7 +43,13 @@ namespace gamevault.Windows
             {
                 if (e.PropertyName is nameof(MainWindowViewModel.IsChatOpen) or nameof(MainWindowViewModel.ActiveControl))
                     MarkMobileTab();
+                if (e.PropertyName == nameof(MainWindowViewModel.ActiveControl) && MainWindowViewModel.Instance.ActiveControl is Control page)
+                    LighterOnceShown(page);
+                else if (e.PropertyName == nameof(MainWindowViewModel.Popup) && MainWindowViewModel.Instance.Popup is Control popup)
+                    LighterOnceShown(popup);
             };
+            LighterOnceShown(uiPopupFrame);
+            LighterOnceShown(uiToast);
         }
 
         /// <summary>At the bottom of a phone; a rail on the left of a wide screen (a foldable open, a tablet).</summary>
@@ -75,6 +81,20 @@ namespace gamevault.Windows
         {
             if ((sender as Control)?.Tag is string name && Enum.TryParse(name, out MobileTab tab))
                 ShowMobileTab(tab);
+        }
+
+        /// <summary>
+        /// A phone's GPU: the soft shadows (blurred again at each frame of a scrolling) taken off a page once it is laid out;
+        /// the cards and the borders stay.
+        /// </summary>
+        private static void LighterOnceShown(Control root)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                foreach (Border border in Avalonia.VisualTree.VisualExtensions.GetSelfAndVisualDescendants(root).OfType<Border>())
+                    if (border.BoxShadow.Count > 0)
+                        border.BoxShadow = default;
+            }, Avalonia.Threading.DispatcherPriority.Loaded);
         }
 
         /// <summary>A tab: its page, and the pages opened from it come back to it.</summary>

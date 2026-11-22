@@ -99,8 +99,8 @@ namespace gamevault.UserControls.Mobile
             var layout = (UniformGridLayout)uiGrid.Layout!;
             layout.MinItemWidth = card + 10;
             layout.MinItemHeight = card * 4 / 3 + 34;
-            uiGrid.ItemTemplate = new FuncDataTemplate<RetroGame>((game, _) =>
-                game == null ? new Panel() : MobileCards.Cover(game, cardWidth, Open, ShowSheet, ratio: 4 / 3.0), supportsRecycling: false);
+            // Recycled: the cards that leave the screen take the games that come into it
+            uiGrid.ItemTemplate = new FuncDataTemplate<RetroGame>((_, _) => new MobileCoverCard(cardWidth, 4 / 3.0, Open, ShowSheet), supportsRecycling: true);
             ShowGames();
         }
 

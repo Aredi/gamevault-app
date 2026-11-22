@@ -113,3 +113,56 @@ namespace gamevault.UserControls.Mobile
         private static double Distance(Point a, Point b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
     }
 }
+
+namespace gamevault.UserControls.Mobile
+{
+    /// <summary>
+    /// A game's cover in the grid, kept and given the next game as the list scrolls (its game is its DataContext): built
+    /// once, not at each row that comes into sight.
+    /// </summary>
+    internal sealed class MobileCoverCard : Avalonia.Controls.Border
+    {
+        private readonly Avalonia.Controls.TextBlock tag = new();
+
+        public MobileCoverCard(double width, double ratio, System.Action<RetroGame> open, System.Action<RetroGame>? hold)
+        {
+            var image = new Avalonia.Controls.Image { Stretch = Avalonia.Media.Stretch.UniformToFill };
+            image.Bind(Avalonia.Controls.Image.SourceProperty, new Avalonia.Data.Binding(nameof(RetroGame.CoverImage)));
+            var name = new Avalonia.Controls.TextBlock
+            {
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap, FontWeight = Avalonia.Media.FontWeight.Bold, FontSize = 13, Margin = new Avalonia.Thickness(10),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom, MaxLines = 3, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
+            };
+            name.Bind(Avalonia.Controls.TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(RetroGame.Name)));
+            name.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(RetroGame.CoverImage)) { Converter = Avalonia.Data.Converters.ObjectConverters.IsNull });
+            var download = new Avalonia.Controls.Border
+            {
+                Width = 26, Height = 26, CornerRadius = new Avalonia.CornerRadius(13), Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#80000000")),
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, Margin = new Avalonia.Thickness(7),
+                Child = new Avalonia.Controls.Shapes.Path
+                {
+                    Data = Avalonia.Media.Geometry.Parse("M11 4h2v8.2l3.3-3.3 1.4 1.4L12 16l-5.7-5.7 1.4-1.4 3.3 3.3zM5 18h14v2H5z"),
+                    Fill = Avalonia.Media.Brushes.White, Width = 13, Height = 13, Stretch = Avalonia.Media.Stretch.Uniform,
+                },
+            };
+            download.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(RetroGame.Installed)) { Converter = Avalonia.Data.Converters.BoolConverters.Not });
+            var cover = new Avalonia.Controls.Border
+            {
+                Classes = { "mCover" }, Width = width, Height = width * ratio,
+                Child = new Avalonia.Controls.Panel { Children = { name, image, new Avalonia.Controls.Border { Classes = { "mTag" }, Child = tag }, download } },
+            };
+            var title = new Avalonia.Controls.TextBlock { FontSize = 12.5, FontWeight = Avalonia.Media.FontWeight.SemiBold, TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis };
+            title.Bind(Avalonia.Controls.TextBlock.TextProperty, new Avalonia.Data.Binding(nameof(RetroGame.Name)));
+            var card = new Avalonia.Controls.StackPanel { Width = width, Spacing = 6, Children = { cover, title } };
+            Child = MobileCards.Pressable(card, () => { if (DataContext is RetroGame game) open(game); },
+                hold == null ? null : () => { if (DataContext is RetroGame game) hold(game); });
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+        }
+
+        protected override void OnDataContextChanged(System.EventArgs e)
+        {
+            base.OnDataContextChanged(e);
+            tag.Text = DataContext is RetroGame game ? MobileCards.ShortName(game.Platform) : "";
+        }
+    }
+}

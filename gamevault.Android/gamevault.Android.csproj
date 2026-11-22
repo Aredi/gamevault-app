@@ -28,9 +28,22 @@
 		<AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
 		<!-- The views bind by reflection (compiled bindings are off): no trimming of the app's own types -->
 		<TrimMode>partial</TrimMode>
+	</PropertyGroup>
+
+	<!-- Smooth from the first scroll: the whole app compiled ahead of time (no code compiled while a list moves) -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<RunAOTCompilation>true</RunAOTCompilation>
+		<AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+	</PropertyGroup>
+	<PropertyGroup>
 		<NoWarn>$(NoWarn);CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8618;CS8619;CS8620;CS8622;CS8625;CS8629;CS8632;CA1416;CA1422;XA4211;IL2026;IL2104;IL3053</NoWarn>
 		<WarningsAsErrors>$(WarningsAsErrors);CS0067;CS0168;CS0169;CS0414;CS0649;CS1998;CS4014;CS8509;CS8612;CS8767;CA2022</WarningsAsErrors>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- A larger young generation for the garbage collector: fewer pauses while the pages scroll -->
+		<AndroidEnvironment Include="environment.txt" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<Compile Include="..\gamevault\**\*.cs" Exclude="..\gamevault\obj\**;..\gamevault\bin\**;..\gamevault\Program.cs" Link="Shared\%(RecursiveDir)%(Filename)%(Extension)" />

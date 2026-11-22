@@ -57,7 +57,7 @@
                     <StackPanel>
                         <TextBlock Classes="mMuted" Margin="20,12" TextWrapping="Wrap" Text="{Binding Message}" IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         <uc:ProgressRing IsActive="{Binding Loading}" IsVisible="{Binding Loading}" Width="32" Height="32" HorizontalAlignment="Center" Margin="0,24" />
-                        <ItemsRepeater x:Name="uiGrid" Margin="12,8,12,96">
+                        <ItemsRepeater x:Name="uiGrid" Margin="12,8,12,96" VerticalCacheLength="4">
                             <ItemsRepeater.Layout>
                                 <UniformGridLayout ItemsStretch="Uniform" MinItemWidth="116" MinItemHeight="200" MinRowSpacing="14" MinColumnSpacing="0" />
                             </ItemsRepeater.Layout>

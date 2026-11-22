@@ -39,12 +39,46 @@ namespace gamevault.Android
             };
             global::Android.Runtime.AndroidEnvironment.UnhandledExceptionRaiser += (_, e) => App.WriteErrorLog(e.Exception);
             Avalonia.Threading.Dispatcher.UIThread.Post(LogLastExit, Avalonia.Threading.DispatcherPriority.Background);
+            HighestRefreshRate();
             if (!platform.HasStorageAccess)
                 platform.RequestStorageAccess();
             // Android draws the app behind its bars and its keyboard: their room, in the app's units, each time the layout changes
             Window!.DecorView.ViewTreeObserver!.GlobalLayout += (_, _) => ApplySafeArea();
         }
 
+
+        /// <summary>
+        /// The screen at its fastest (120 Hz on a phone that has it): without asking, Android may keep the app's surface at
+        /// 60 Hz, and the scrolling looks jerky next to the system's. Asked again when the screen changes (a foldable opened).
+        /// </summary>
+        private void HighestRefreshRate()
+        {
+            try
+            {
+                var display = Build.VERSION.SdkInt >= BuildVersionCodes.R ? Display : WindowManager?.DefaultDisplay;
+                if (display?.GetMode() is not global::Android.Views.Display.Mode current || Window is not global::Android.Views.Window window)
+                    return;
+                var fastest = (display.GetSupportedModes() ?? Array.Empty<global::Android.Views.Display.Mode>())
+                    .Where(m => m.PhysicalWidth == current.PhysicalWidth && m.PhysicalHeight == current.PhysicalHeight)
+                    .OrderByDescending(m => m.RefreshRate).FirstOrDefault();
+                if (fastest == null)
+                    return;
+                var attributes = window.Attributes!;
+                if (attributes.PreferredDisplayModeId == fastest.ModeId)
+                    return;
+                attributes.PreferredDisplayModeId = fastest.ModeId;
+                attributes.PreferredRefreshRate = fastest.RefreshRate;
+                window.Attributes = attributes;
+                GameVault.Core.Log.Info($"Screen: {fastest.RefreshRate:0} Hz asked ({current.RefreshRate:0} Hz before)");
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
+        public override void OnConfigurationChanged(global::Android.Content.Res.Configuration newConfig)
+        {
+            base.OnConfigurationChanged(newConfig);
+            HighestRefreshRate();
+        }
 
         /// <summary>The app's last end, when it was not a normal one, in the log (a problem report sends it).</summary>
         private void LogLastExit()
