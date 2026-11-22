@@ -6,8 +6,8 @@
              Focusable="True">
     <!-- The challenge of the week, who completed it, and the weeks before: a page of its own, under Community -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="40,24,40,40" MaxWidth="920" Spacing="22">
-            <Grid ColumnDefinitions="*,Auto">
+        <StackPanel x:Name="uiPage" Margin="40,24,40,40" MaxWidth="920" Spacing="22">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="10">
                 <TextBlock Classes="pageTitle" Text="{l:T 'Challenges'}" VerticalAlignment="Center" />
                 <Button x:Name="uiChoose" Grid.Column="1" Classes="ghost" IsVisible="False" Click="Choose_Click" Content="{l:T 'Choose the challenge'}" />
             </Grid>
@@ -27,7 +27,7 @@
                             </Border>
                         </Button>
                         <StackPanel Grid.Column="1" Spacing="8">
-                            <Grid ColumnDefinitions="*,Auto">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
                                 <TextBlock Classes="eyebrow" Text="{l:T 'Challenge of the week'}" />
                                 <TextBlock x:Name="uiLeft" Grid.Column="1" Classes="muted" FontSize="12.5" />
                             </Grid>
@@ -56,12 +56,12 @@
                                         </Border>
                                         <StackPanel Grid.Column="2" Margin="14,0,18,0" Spacing="5" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" />
-                                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Fraction}" Height="4" IsVisible="{Binding HasBar}" />
-                                            <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="12" IsVisible="{Binding !HasBar}" />
+                                            <ProgressBar Minimum="0" Maximum="1" Value="{Binding Fraction}" Height="4" MinWidth="0" IsVisible="{Binding HasBar}" />
+                                            <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding !HasBar}" />
                                         </StackPanel>
-                                        <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Center">
+                                        <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Center" MaxWidth="{Binding $parent[local:ChallengesUserControl].ValueWidth}">
                                             <TextBlock Text="{Binding Value}" FontSize="13.5" FontWeight="SemiBold" HorizontalAlignment="Right" />
-                                            <TextBlock Text="{Binding Done}" Classes="muted" FontSize="12" HorizontalAlignment="Right" IsVisible="{Binding Done, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <TextBlock Text="{Binding Done}" Classes="muted" FontSize="12" HorizontalAlignment="Right" TextAlignment="Right" TextWrapping="Wrap" IsVisible="{Binding Done, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                         </StackPanel>
                                     </Grid>
                                 </Button>

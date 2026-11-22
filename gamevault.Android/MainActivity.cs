@@ -26,7 +26,7 @@ namespace gamevault.Android
             base.OnCreate(savedInstanceState);
             if (!platform.HasStorageAccess)
                 platform.RequestStorageAccess();
-            // Android draws the app behind its bars: their room, in the app's units, each time the layout changes
+            // Android draws the app behind its bars and its keyboard: their room, in the app's units, each time the layout changes
             Window!.DecorView.ViewTreeObserver!.GlobalLayout += (_, _) => ApplySafeArea();
         }
 
@@ -36,7 +36,9 @@ namespace gamevault.Android
             var insets = Window?.DecorView.RootWindowInsets;
             if (insets == null || Build.VERSION.SdkInt < BuildVersionCodes.R)
                 return;
-            var bars = insets.GetInsets(global::Android.Views.WindowInsets.Type.SystemBars() | global::Android.Views.WindowInsets.Type.DisplayCutout());
+            // The keyboard too: the text being typed (a chat message) stays above it
+            var bars = insets.GetInsets(global::Android.Views.WindowInsets.Type.SystemBars() | global::Android.Views.WindowInsets.Type.DisplayCutout()
+                | global::Android.Views.WindowInsets.Type.Ime());
             double density = Resources!.DisplayMetrics!.Density;
             var padding = new Avalonia.Thickness(bars.Left / density, bars.Top / density, bars.Right / density, bars.Bottom / density);
             if (padding == safeArea)

@@ -11,6 +11,8 @@ namespace gamevault.Windows
         /// <summary>Completes with true once the main window has been created, false if the window was closed.</summary>
         public Task<bool> Completion => View.Completion;
 
+        internal void OpenProfileEdit(Models.UserProfile profile) => View.OpenProfileEdit(profile);
+
         /// <summary>A step that waits for the player (a profile to choose, a password): not just loading.</summary>
         internal event System.Action? NeedsThePlayer
         {

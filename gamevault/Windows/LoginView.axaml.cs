@@ -106,6 +106,8 @@ namespace gamevault.Windows
             {
                 bool narrow = e.NewSize.Width > 0 && e.NewSize.Width < 720;
                 uiArtSide.IsVisible = !narrow;
+                // Back and "Save and Login" side by side: saving without signing in stays on a wider screen
+                uiSaveOnly.IsVisible = !narrow;
                 uiLoginColumns.ColumnDefinitions[0].Width = narrow ? new GridLength(0) : new GridLength(360);
             };
         }

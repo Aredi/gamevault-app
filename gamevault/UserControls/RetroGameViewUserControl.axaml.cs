@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
@@ -240,6 +241,14 @@ namespace gamevault.UserControls
             uiContent.Margin = narrow ? new Thickness(24, top, 24, 40) : new Thickness(44, top, 44, 48);
             uiTitle.FontSize = width < 900 ? 32 : narrow ? 40 : 50;
             uiCoverFrame.Width = width < 700 ? 120 : narrow ? 160 : 220;
+            // A phone held upright: the cover above, the title and the buttons under it on the whole width
+            bool stacked = width > 0 && width < 600;
+            uiContent.Margin = stacked ? new Thickness(16, top, 16, 30) : uiContent.Margin;
+            uiCoverFrame.HorizontalAlignment = stacked ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+            Grid.SetRow(uiHeaderInfo, stacked ? 1 : 0);
+            Grid.SetColumn(uiHeaderInfo, stacked ? 0 : 1);
+            Grid.SetColumnSpan(uiHeaderInfo, stacked ? 2 : 1);
+            uiHeaderInfo.Margin = stacked ? new Thickness(0, 18, 0, 0) : new Thickness(30, 0, 0, 4);
             if (narrowLayout == narrow)
                 return;
             narrowLayout = narrow;

@@ -23,7 +23,7 @@ using GameVault.Core.Library;
 
 namespace gamevault.UserControls
 {
-    public partial class CommunityUserControl : UserControl
+    public partial class CommunityUserControl : UserControl, IGoesBack
     {
         private CommunityViewModel ViewModel { get; set; }
         private int forceShowId = -1;
@@ -32,6 +32,17 @@ namespace gamevault.UserControls
         public CommunityUserControl()
         {
             InitializeComponent();
+            // A narrow page (a phone): the players, then the one tapped on the whole page
+            SizeChanged += (_, e) =>
+            {
+                narrow = e.NewSize.Width > 0 && e.NewSize.Width < 700;
+                ApplyLayout();
+            };
+            uiSelectUser.Tapped += (_, _) =>
+            {
+                showsProfile = true;
+                ApplyLayout();
+            };
             ViewModel = new CommunityViewModel();
             this.DataContext = ViewModel;
             Loaded += UserControl_Loaded;
@@ -105,6 +116,44 @@ namespace gamevault.UserControls
                 }
             }
         }
+        private bool narrow, showsProfile;
+
+        private void ApplyLayout()
+        {
+            bool profile = !narrow || showsProfile;
+            uiPlayers.IsVisible = !narrow || !showsProfile;
+            uiProfile.IsVisible = profile;
+            Grid.SetColumn(uiProfile, narrow ? 0 : 1);
+            Grid.SetColumnSpan(uiProfile, narrow ? 2 : 1);
+            Grid.SetColumnSpan(uiPlayers, narrow ? 2 : 1);
+            uiPlayers.BorderThickness = new Avalonia.Thickness(0, 0, narrow ? 0 : 1, 0);
+            uiBackToPlayers.IsVisible = narrow && showsProfile;
+            uiProfileContent.Margin = narrow ? new Avalonia.Thickness(16, 120, 16, 30) : new Avalonia.Thickness(36, 150, 36, 40);
+            // The player's name beside a smaller avatar, the buttons and the sorting under them
+            uiAvatar.Width = uiAvatar.Height = narrow ? 84 : 124;
+            uiAvatar.CornerRadius = new Avalonia.CornerRadius(narrow ? 42 : 62);
+            uiUserName.FontSize = narrow ? 26 : 34;
+            uiWhoActions.Margin = narrow ? new Avalonia.Thickness(0, 12, 0, 0) : new Avalonia.Thickness(0, 0, 0, 10);
+            foreach (Control under in new Control[] { uiWhoActions, uiSortRow })
+            {
+                Grid.SetRow(under, narrow ? 1 : 0);
+                Grid.SetColumn(under, narrow ? 0 : under == uiWhoActions ? 2 : 1);
+                Grid.SetColumnSpan(under, narrow ? 3 : 1);
+                under.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+            }
+        }
+
+        private void BackToPlayers_Click(object? sender, RoutedEventArgs e) => GoBack();
+
+        public bool GoBack()
+        {
+            if (!narrow || !showsProfile)
+                return false;
+            showsProfile = false;
+            ApplyLayout();
+            return true;
+        }
+
         private async void Users_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             try

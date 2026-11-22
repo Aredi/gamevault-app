@@ -189,6 +189,12 @@ namespace gamevault.Windows
                 uiQuickSearch.Close();
             else if (MainWindowViewModel.Instance.Popup != null)
                 MainWindowViewModel.Instance.ClosePopup();
+            else if (uiChatHost.IsVisible && uiChat.GoBack())
+            {
+            }
+            else if (MainWindowViewModel.Instance.ActiveControl is IGoesBack page && page.GoBack())
+            {
+            }
             else if (MainWindowViewModel.Instance.ActiveControlIndex < 0)
                 MainWindowViewModel.Instance.UndoActiveControl();
             else
@@ -240,20 +246,31 @@ namespace gamevault.Windows
             // Games asked from the web page ("Install on my PC")
             if (PipeServiceHandler.Instance != null && PlatformInfo.PlaysPcGames)
                 RemoteInstalls.Start();
+            // Not in the tests (no desktop session there); Android has no pipe, but a real session
+            bool live = PipeServiceHandler.Instance != null || PlatformInfo.IsAndroid;
             // Requests of the player that were added or refused
-            if (PipeServiceHandler.Instance != null)
+            if (live)
                 GameRequestsService.Start();
-            // Who is online and what they play (not in the tests: no desktop session there)
-            if (PipeServiceHandler.Instance != null)
+            // Who is online and what they play
+            if (live)
                 _ = ActivityService.Instance.StartAsync();
             // The chat with the other players (when the service keeps one)
-            if (PipeServiceHandler.Instance != null)
+            if (live)
                 ChatService.Instance.Start();
             // The notices go left of the chat: over it they would hide what is being written
             uiChatHost.PropertyChanged += (_, e) =>
             {
                 if (e.Property == IsVisibleProperty)
-                    uiToast.Margin = new Thickness(0, 0, uiChatHost.IsVisible ? 24 + uiChat.Width : 24, 24);
+                    uiToast.Margin = new Thickness(0, 0, uiChatHost.IsVisible && !chatOverPage ? 24 + uiChat.Width : 24, 24);
+            };
+            // A narrow screen (a phone held upright): the chat over the page, on its whole width, else beside it
+            SizeChanged += (_, e) =>
+            {
+                chatOverPage = e.NewSize.Width > 0 && e.NewSize.Width < 760;
+                Grid.SetColumn(uiChatHost, chatOverPage ? 1 : 2);
+                Grid.SetColumnSpan(uiChatHost, chatOverPage ? 2 : 1);
+                uiChat.Width = chatOverPage ? double.NaN : 320;
+                uiChatHost.ZIndex = chatOverPage ? 1 : 0;
             };
             // Savegames of games closed offline in a previous session
             Task.Run(async () =>
@@ -481,6 +498,7 @@ namespace gamevault.Windows
 
         #region Sidebar
         private bool sidebarFoldedByUser;
+        private bool chatOverPage;
         private void InitSidebar()
         {
             try { sidebarFoldedByUser = Preferences.Get(AppConfigKey.SidebarFolded, ProfileManager.ProfileConfigFile) == "1"; }

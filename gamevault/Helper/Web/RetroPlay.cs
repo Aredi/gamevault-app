@@ -130,9 +130,8 @@ namespace gamevault.Helper
         /// The libretro core of Android, or null when the console has none there (PS3, Switch, Xbox: their emulators are
         /// other programs).
         /// </summary>
-        internal static string? AndroidCore(RetroSystem system) => system.Core switch
+        internal static string? AndroidCore(RetroSystem system) => system.IsStandalone ? null : system.Core switch
         {
-            "rpcs3" or "eden" or "xemu" => null,
             // Azahar is the PC's: Android has Citra's core, its origin
             "azahar" => "citra",
             string core => core,

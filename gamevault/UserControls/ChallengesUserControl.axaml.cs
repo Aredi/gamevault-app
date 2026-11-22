@@ -56,10 +56,28 @@ namespace gamevault.UserControls
         private DateTime usersLoadedAt;
         private Game? pcGame;
 
+        public static readonly Avalonia.StyledProperty<double> ValueWidthProperty =
+            Avalonia.AvaloniaProperty.Register<ChallengesUserControl, double>(nameof(ValueWidth), double.PositiveInfinity);
+        /// <summary>The width of the rankings' values (a phone: their dates wrap rather than cover the names).</summary>
+        public double ValueWidth { get => GetValue(ValueWidthProperty); set => SetValue(ValueWidthProperty, value); }
+
         public ChallengesUserControl()
         {
             InitializeComponent();
             uiAllTime.ItemTemplate = uiBoard.ItemTemplate;
+            // A narrow page (a phone): the button and the days left under the titles, the margins smaller
+            SizeChanged += (_, e) =>
+            {
+                bool narrow = e.NewSize.Width > 0 && e.NewSize.Width < 600;
+                uiPage.Margin = narrow ? new Avalonia.Thickness(16, 20, 16, 30) : new Avalonia.Thickness(40, 24, 40, 40);
+                foreach (Control under in new Control[] { uiChoose, uiLeft })
+                {
+                    Grid.SetRow(under, narrow ? 1 : 0);
+                    Grid.SetColumn(under, narrow ? 0 : 1);
+                    under.HorizontalAlignment = narrow ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
+                }
+                ValueWidth = narrow ? 120 : double.PositiveInfinity;
+            };
             // Fresh each time the page is opened (the page host attaches the page it shows)
             AttachedToVisualTree += (_, _) =>
             {

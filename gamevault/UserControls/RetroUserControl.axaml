@@ -28,7 +28,7 @@
         <Border Grid.RowSpan="2" Height="620" VerticalAlignment="Top" IsHitTestVisible="False" Background="{Binding AmbientBrush}" />
 
         <!-- ===== Toolbar ===== -->
-        <StackPanel Grid.Row="0" Margin="28,20,28,6" Spacing="14">
+        <StackPanel x:Name="uiHeader" Grid.Row="0" Margin="28,20,28,6" Spacing="14">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <TextBlock Classes="pageTitle" Text="{l:T 'Consoles and retro'}" VerticalAlignment="Center" />

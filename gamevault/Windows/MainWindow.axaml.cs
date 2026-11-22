@@ -37,6 +37,11 @@ namespace gamevault.Windows
             }
         }
 
+        // The living-room mode is the view's
+        internal bool IsCouchShown => View.IsCouchShown;
+        internal void EnterCouch(bool welcome = false) => View.EnterCouch(welcome);
+        internal void LeaveCouch() => View.LeaveCouch();
+
         public void Dispose()
         {
             View.Dispose();

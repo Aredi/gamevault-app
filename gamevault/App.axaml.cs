@@ -180,12 +180,13 @@ namespace gamevault
                 mainWindow.Show();
         }
 
-        /// <summary>The login pages are made for the PC's 720×500 window: scaled down to a phone's screen.</summary>
+        /// <summary>The login pages on the screen of the Android app, as large as the PC's window at most.</summary>
         private static Control FitLogin(LoginView login)
         {
-            login.Width = 720;
-            login.Height = 500;
-            var frame = new Border { Child = new Viewbox { Child = login, StretchDirection = Avalonia.Media.StretchDirection.DownOnly } };
+            // The whole screen; on a phone held upright the covers' column goes and the forms take the width
+            login.MaxWidth = 1100;
+            login.MaxHeight = 760;
+            var frame = new Border { Child = login };
             frame.Bind(Border.BackgroundProperty, frame.GetResourceObservable("Brush.Background2"));
             return frame;
         }

@@ -134,14 +134,14 @@
 
                 <StackPanel x:Name="uiContent" Margin="44,250,44,48" MaxWidth="1500" Spacing="26">
                     <!-- Header: cover, title, actions -->
-                    <Grid ColumnDefinitions="Auto,*">
+                    <Grid x:Name="uiHeader" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
                         <Border x:Name="uiCoverFrame" Width="220" CornerRadius="14" ClipToBounds="True" VerticalAlignment="Bottom"
                                 BoxShadow="0 30 60 -20 #E6000000" Background="{DynamicResource Brush.Surface}">
                             <local:AspectBox Ratio="{Binding Game.CoverRatio}">
                                 <Image Source="{Binding Game.CoverImage}" Stretch="Uniform" />
                             </local:AspectBox>
                         </Border>
-                        <StackPanel Grid.Column="1" Margin="30,0,0,4" VerticalAlignment="Bottom" Spacing="12">
+                        <StackPanel x:Name="uiHeaderInfo" Grid.Column="1" Margin="30,0,0,4" VerticalAlignment="Bottom" Spacing="12">
                             <ScrollViewer HorizontalAlignment="Left" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Border Classes="chip" Background="{DynamicResource Brush.Glass}">

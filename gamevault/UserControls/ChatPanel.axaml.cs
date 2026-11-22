@@ -485,6 +485,18 @@ namespace gamevault.UserControls
             catch (Exception ex) { MainWindowViewModel.Instance.AppBarText = WebExceptionHelper.TryGetServerMessage(ex); }
         }
 
+        /// <summary>Android's back button: from a conversation back to the list, else the panel closed. False when it is closed.</summary>
+        internal bool GoBack()
+        {
+            if (!MainWindowViewModel.Instance.IsChatOpen)
+                return false;
+            if (model.Open != null || model.IsAddingPlayers || model.IsPickingGame)
+                Back_Click(null, new RoutedEventArgs());
+            else
+                MainWindowViewModel.Instance.IsChatOpen = false;
+            return true;
+        }
+
         private void Back_Click(object? sender, RoutedEventArgs e)
         {
             model.Open = null;

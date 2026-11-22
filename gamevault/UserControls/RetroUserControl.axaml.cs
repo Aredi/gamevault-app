@@ -20,7 +20,8 @@ namespace gamevault.UserControls
     public partial class RetroUserControl : UserControl
     {
         internal RetroViewModel ViewModel { get; } = new();
-        private const double CardWidth = 170;
+        private const double CardWidth = 170, NarrowCardWidth = 116;
+        private RetroPlatform? sizedFor;
         internal IEnumerable<RetroGame> Shown => ViewModel.Games;
         private Task? loading;
         /// <summary>Set when the service can not be reached: the games installed on this PC, found on disk.</summary>
@@ -45,6 +46,9 @@ namespace gamevault.UserControls
             uiSortLabel.IsVisible = !isNarrow;
             uiCollections.MinWidth = isNarrow ? 130 : 170;
             uiSort.MinWidth = isNarrow ? 120 : 160;
+            uiHeader.Margin = isNarrow ? new Thickness(16, 16, 16, 6) : new Thickness(28, 20, 28, 6);
+            uiGames.Margin = isNarrow ? new Thickness(6, 0) : new Thickness(20, 0);
+            SizeCards(sizedFor);
         }
 
         public RetroUserControl()
@@ -131,6 +135,9 @@ namespace gamevault.UserControls
                     failure = Loc.T("You are not logged in or offline");
             }
             catch (Exception ex) { failure = WebExceptionHelper.TryGetServerMessage(ex); }
+            // Android plays with libretro cores: not the consoles of the PC's own emulators (PS3, Switch, Xbox)
+            if (PlatformInfo.IsAndroid)
+                platforms = platforms?.Where(p => !p.System.IsStandalone).ToList();
             offlineGames = null;
             if (failure != null || platforms == null)
             {
@@ -255,9 +262,12 @@ namespace gamevault.UserControls
         /// <param name="platform">None: all the platforms (their boxes are mostly 3:4).</param>
         internal void SizeCards(RetroPlatform? platform)
         {
+            sizedFor = platform;
+            // A phone: two cards side by side, not one stretched over the width
+            double width = narrow == true ? NarrowCardWidth : CardWidth;
             var layout = (UniformGridLayout)uiGames.Layout!;
-            layout.MinItemWidth = CardWidth + 16;
-            layout.MinItemHeight = CardWidth * (platform?.System.CoverRatio ?? 4 / 3.0) + 70;
+            layout.MinItemWidth = width + 16;
+            layout.MinItemHeight = width * (platform?.System.CoverRatio ?? 4 / 3.0) + 70;
             uiGames.Classes.Set("all", platform == null);
         }
 

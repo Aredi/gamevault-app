@@ -117,9 +117,9 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="260,*">
+    <Grid x:Name="uiColumns" ColumnDefinitions="260,*">
         <!-- Players of the server -->
-        <Border Grid.Column="0" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0">
+        <Border x:Name="uiPlayers" Grid.Column="0" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Classes="pageTitle" Text="{l:T 'Community'}" Margin="22,20,22,4" />
                 <TextBlock DockPanel.Dock="Top" Classes="muted" FontSize="13" Margin="22,0,22,14"
@@ -179,7 +179,12 @@
         </Border>
 
         <!-- Profile -->
-        <Panel Grid.Column="1">
+        <Panel x:Name="uiProfile" Grid.Column="1">
+            <!-- A phone: back to the players (Android's back button too) -->
+            <Button x:Name="uiBackToPlayers" Classes="round" ZIndex="1" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
+                    Click="BackToPlayers_Click" ToolTip.Tip="{l:T 'Back'}">
+                <Path Data="{StaticResource IconChevronLeft}" Width="12" Height="12" Stretch="Uniform" Fill="{DynamicResource Brush.Foreground}" />
+            </Button>
             <ScrollViewer x:Name="uiProgressScrollView" Classes="page" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <Panel>
                     <!-- Banner -->
@@ -197,15 +202,15 @@
                         </Border>
                     </Panel>
 
-                    <StackPanel Margin="36,150,36,40" MaxWidth="1300" Spacing="26">
+                    <StackPanel x:Name="uiProfileContent" Margin="36,150,36,40" MaxWidth="1300" Spacing="26">
                         <!-- Who -->
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                            <Border Width="124" Height="124" CornerRadius="62" ClipToBounds="True" BorderThickness="4" BorderBrush="{Binding AccentColor, Converter={StaticResource accentBrushConv}}"
+                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                            <Border x:Name="uiAvatar" Width="124" Height="124" CornerRadius="62" ClipToBounds="True" BorderThickness="4" BorderBrush="{Binding AccentColor, Converter={StaticResource accentBrushConv}}"
                                     Background="{DynamicResource Brush.Surface3}" BoxShadow="0 18 40 -14 #CC000000">
                                 <local:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding CurrentShownUser}" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="22,0,0,8" VerticalAlignment="Bottom" Spacing="6">
-                                <TextBlock Classes="display" FontSize="34" Text="{Binding CurrentShownUser.Username}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="uiUserName" Classes="display" FontSize="34" Text="{Binding CurrentShownUser.Username}" TextTrimming="CharacterEllipsis" />
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Border Background="{DynamicResource Brush.Accent3}" CornerRadius="10" Padding="10,3">
                                         <TextBlock Text="{Binding CurrentShownUser.Role, Converter={StaticResource roleNameConv}}" FontSize="12" FontWeight="Bold" />
@@ -234,7 +239,7 @@
                                 <TextBlock x:Name="uiTagline" Text="{Binding Tagline}" IsVisible="{Binding Tagline, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                            FontSize="15" FontStyle="Italic" Opacity="0.9" TextWrapping="Wrap" MaxLines="2" />
                             </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom" Margin="0,0,0,10">
+                            <StackPanel x:Name="uiWhoActions" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom" Margin="0,0,0,10">
                                 <Button Classes="round small" x:Name="uiBtnReloadUser" ToolTip.Tip="{l:T 'Reload current user (F5)'}">
                                     <Path Data="{StaticResource IconReload}" Width="14" Height="14" />
                                 </Button>
@@ -510,9 +515,9 @@
 
                         <!-- All their games -->
                         <StackPanel Spacing="12">
-                            <Grid ColumnDefinitions="*,Auto">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="8">
                                 <TextBlock Classes="sectionTitle" Text="{l:T 'All their games'}" />
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <StackPanel x:Name="uiSortRow" Grid.Column="1" Orientation="Horizontal" Spacing="8">
                                     <TextBlock Classes="muted" Text="{l:T 'Sort by'}" FontSize="13" VerticalAlignment="Center" />
                                     <ComboBox x:Name="uiSortBy" ItemsSource="{Binding SortBy}" MinHeight="32" SelectionChanged="SortBy_SelectionChanged">
                                         <ComboBox.ItemTemplate>
