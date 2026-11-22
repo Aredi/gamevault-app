@@ -2,6 +2,8 @@ using Android.App;
 using Android.Content.PM;
 using Android.OS;
 using Android.Views;
+using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Android;
 using gamevault.Helper.Platform;
@@ -26,12 +28,56 @@ namespace gamevault.Android
             platform = new AndroidPlatform(this);
             MobilePlatform.Current = platform;
             base.OnCreate(savedInstanceState);
+            // A crash outside the UI thread (it ends the app) kept for the next problem report; then why Android ended the
+            // app last time (a crash in native code, too little memory, frozen): nothing in the app sees those
+            AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            {
+                if (e.ExceptionObject is Exception ex)
+                    App.WriteErrorLog(ex);
+            };
+            global::Android.Runtime.AndroidEnvironment.UnhandledExceptionRaiser += (_, e) => App.WriteErrorLog(e.Exception);
+            Avalonia.Threading.Dispatcher.UIThread.Post(LogLastExit, Avalonia.Threading.DispatcherPriority.Background);
             if (!platform.HasStorageAccess)
                 platform.RequestStorageAccess();
             // Android draws the app behind its bars and its keyboard: their room, in the app's units, each time the layout changes
             Window!.DecorView.ViewTreeObserver!.GlobalLayout += (_, _) => ApplySafeArea();
         }
 
+
+        /// <summary>The app's last end, when it was not a normal one, in the log (a problem report sends it).</summary>
+        private void LogLastExit()
+        {
+            if (Build.VERSION.SdkInt < BuildVersionCodes.R || GetSystemService(ActivityService) is not ActivityManager manager)
+                return;
+            try
+            {
+                var exit = manager.GetHistoricalProcessExitReasons(PackageName, 0, 5)?.FirstOrDefault(e => e.ProcessName == PackageName);
+                // The app's own process (not its web pages'), told once
+                var seen = GetSharedPreferences("exits", global::Android.Content.FileCreationMode.Private)!;
+                if (exit == null || seen.GetLong("last", 0) == exit.Timestamp)
+                    return;
+                seen.Edit()!.PutLong("last", exit.Timestamp)!.Apply();
+                // Too little memory, a crash (.NET's or native), frozen, failed to start, too much of the device used
+                string? reason = exit.Reason switch { 3 => "low memory", 4 => "crash", 5 => "native crash", 6 => "not responding", 7 => "failed to start", 9 => "too many resources", _ => null };
+                if (reason == null)
+                    return;
+                string text = $"Last exit: {reason} at {DateTimeOffset.FromUnixTimeMilliseconds(exit.Timestamp).LocalDateTime}, "
+                    + $"status {exit.Status}, memory {exit.Pss / 1024} MB (rss {exit.Rss / 1024} MB): {exit.Description}";
+                // The native crash's tombstone, or the frozen app's threads (Android 11 and later)
+                using var trace = exit.TraceInputStream;
+                if (trace != null)
+                {
+                    using var reader = new System.IO.StreamReader(trace);
+                    char[] buffer = new char[100_000];
+                    int read = reader.ReadBlock(buffer, 0, buffer.Length);
+                    // A native crash's tombstone is binary: its readable parts (the functions, the libraries) kept
+                    text += "\n" + new string(buffer.Take(read).Select(c => c == '\n' || !char.IsControl(c) ? c : ' ').ToArray());
+                }
+                GameVault.Core.Log.Info(text);
+                App.WriteErrorLog(new Exception(text));
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
 
         private Avalonia.Thickness safeArea;
         private void ApplySafeArea()

@@ -208,21 +208,27 @@ namespace gamevault
             mainWindow.Dispose();
         }
 
-        public void LogUnhandledException(Exception e)
+        /// <summary>The error in its own file (a problem report takes them) and in the log.</summary>
+        public static void WriteErrorLog(Exception e)
         {
-            if (handlingFatalError)
-                return;
-            handlingFatalError = true;
             try
             {
                 Directory.CreateDirectory(ProfileManager.ErrorLogDir);
                 string errorLogPath = Path.Combine(ProfileManager.ErrorLogDir, $"SanctuaryVault_ErrorLog_{DateTime.Now:yyyyMMddHHmmssfff}.txt");
                 string errorMessage = $"MESSAGE:\n{e.Message}\nINNER_EXCEPTION:{e.InnerException?.Message}";
-                string errorStackTrace = $"STACK_TRACE:\n{e.StackTrace}";
-                File.WriteAllText(errorLogPath, errorMessage + "\n" + errorStackTrace);
+                // The whole exception: the inner one's stack too
+                File.WriteAllText(errorLogPath, errorMessage + "\nSTACK_TRACE:\n" + e);
             }
             catch (Exception ignored) { Log.Ignored(ignored); }
             Log.Error(e, "Unhandled exception");
+        }
+
+        public void LogUnhandledException(Exception e)
+        {
+            if (handlingFatalError)
+                return;
+            handlingFatalError = true;
+            WriteErrorLog(e);
 
             if (SingleView != null)
             {
