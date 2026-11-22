@@ -228,6 +228,9 @@ namespace gamevault.UserControls
         private static readonly TimeSpan TypingShown = TimeSpan.FromSeconds(5);
 
         private readonly ChatPanelModel model = new();
+
+        /// <summary>The players, who plays and who is online first (the phone's home shows them).</summary>
+        internal IReadOnlyList<ChatEntry> Friends => model.Friends;
         private readonly Dictionary<int, User> users = new();
         private DateTime usersLoadedAt;
         /// <summary>Who writes where, until when (the live link says it every 3 s while they write).</summary>

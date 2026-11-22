@@ -1,0 +1,138 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:uc="clr-namespace:gamevault.UserControls"
+             xmlns:m="clr-namespace:gamevault.UserControls.Mobile"
+             x:Class="gamevault.UserControls.Mobile.MobileHomeUserControl">
+    <!-- The phone's home: the game to resume in large, what is going on, the challenge, the friends -->
+    <ScrollViewer x:Name="uiScroll" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="0" Margin="0,0,0,24">
+            <!-- Who, and the search and the news at hand -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12" Margin="20,12,20,10">
+                <Border Width="42" Height="42" CornerRadius="21" ClipToBounds="True" Background="{DynamicResource Brush.Accent}">
+                    <uc:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding UserAvatar}" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock x:Name="uiGreeting" Classes="mMuted" FontSize="12.5" />
+                    <TextBlock Text="{Binding UserAvatar.Username}" FontFamily="{DynamicResource Font.Display}" FontWeight="Bold" FontSize="17" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Button Grid.Column="2" Classes="mIcon" Click="Search_Click" ToolTip.Tip="{l:T 'Search'}">
+                    <Path Data="{DynamicResource M.Search}" />
+                </Button>
+                <Button Grid.Column="3" Classes="mIcon" Click="News_Click" ToolTip.Tip="{l:T 'News'}">
+                    <Panel>
+                        <Path Data="{DynamicResource M.Bell}" />
+                        <Border Width="9" Height="9" CornerRadius="5" Background="{DynamicResource Brush.Danger}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                IsVisible="{Binding NewsBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </Panel>
+                </Button>
+            </Grid>
+
+            <!-- The game to resume -->
+            <Border x:Name="uiHero" Margin="16,6,16,0" Height="300" CornerRadius="26" ClipToBounds="True" Background="{DynamicResource Brush.Surface}" IsVisible="False"
+                    Cursor="Hand" PointerReleased="Hero_PointerReleased">
+                <Panel>
+                    <Image x:Name="uiHeroImage" Stretch="UniformToFill" />
+                    <Border>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                <GradientStop Offset="0.15" Color="#0011101E" />
+                                <GradientStop Offset="0.55" Color="#8C11101E" />
+                                <GradientStop Offset="1" Color="#F511101E" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <StackPanel VerticalAlignment="Bottom" Margin="18,0,18,18" Spacing="4">
+                        <TextBlock x:Name="uiHeroEyebrow" Classes="mEyebrow" />
+                        <TextBlock x:Name="uiHeroTitle" Classes="mHero" />
+                        <TextBlock x:Name="uiHeroInfo" Classes="mMuted" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="uiHeroStatus" FontSize="12.5" Foreground="#C9C4FF" TextWrapping="Wrap" IsVisible="False" />
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
+                            <Button x:Name="uiHeroPlay" Classes="mLight" Click="HeroPlay_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Path Data="{DynamicResource M.Play}" />
+                                    <TextBlock x:Name="uiHeroPlayText" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="mGhost" Width="48" Padding="0" Click="HeroOpen_Click" ToolTip.Tip="{l:T 'Open its page'}">
+                                <Path Data="{DynamicResource M.More}" />
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Panel>
+            </Border>
+
+            <!-- Nothing played yet -->
+            <Border x:Name="uiStart" Classes="mCard" Margin="16,6,16,0" IsVisible="False">
+                <StackPanel Spacing="10">
+                    <TextBlock Classes="mSection" Text="{l:T 'Welcome to SanctuaryVault'}" />
+                    <TextBlock Classes="mMuted" TextWrapping="Wrap" Text="{l:T 'Your consoles and retro games, saved in the cloud and played on this phone. Pick a game to start.'}" />
+                    <Button Classes="mPrimary" HorizontalAlignment="Left" Click="Games_Click" Content="{l:T 'See the games'}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Played lately -->
+            <Grid x:Name="uiContinueHeader" ColumnDefinitions="*,Auto" Margin="20,24,20,12">
+                <TextBlock Classes="mSection" Text="{l:T 'Continue'}" />
+                <Button Grid.Column="1" Classes="link" Click="Games_Click" Content="{l:T 'See all'}" />
+            </Grid>
+            <ScrollViewer x:Name="uiContinueScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="uiContinue" Margin="20,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="12" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- The challenge of the week -->
+            <Grid x:Name="uiChallengeHeader" ColumnDefinitions="*,Auto" Margin="20,24,20,12" IsVisible="False">
+                <TextBlock Classes="mSection" Text="{l:T 'Challenge of the week'}" />
+                <Button Grid.Column="1" Classes="link" Click="Challenges_Click" Content="{l:T 'Ranking'}" />
+            </Grid>
+            <Border x:Name="uiChallenge" Margin="16,0" CornerRadius="20" Padding="16" BorderBrush="#4D7C73E6" BorderThickness="1" IsVisible="False"
+                    Cursor="Hand" PointerReleased="Challenge_PointerReleased">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Offset="0" Color="#2A2457" />
+                        <GradientStop Offset="1" Color="{DynamicResource GameVault.Colors.Background2}" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                    <Border Width="52" Height="52" CornerRadius="16" Background="{DynamicResource Brush.Accent3}">
+                        <Path Data="{DynamicResource M.Trophy}" Fill="#F5B544" Width="26" Height="26" Stretch="Uniform" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock x:Name="uiChallengeText" FontWeight="Bold" FontSize="15" TextWrapping="Wrap" />
+                        <TextBlock x:Name="uiChallengeMine" Classes="mMuted" FontSize="12.5" TextWrapping="Wrap" />
+                        <ProgressBar x:Name="uiChallengeBar" Minimum="0" Maximum="1" Height="6" MinWidth="0" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- RomM's newest games -->
+            <Grid x:Name="uiLatestHeader" ColumnDefinitions="*,Auto" Margin="20,24,20,12" IsVisible="False">
+                <TextBlock Classes="mSection" Text="{l:T 'Recently added'}" />
+            </Grid>
+            <ScrollViewer x:Name="uiLatestScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="False">
+                <ItemsControl x:Name="uiLatest" Margin="20,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="12" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- The friends online -->
+            <Grid x:Name="uiFriendsHeader" ColumnDefinitions="*,Auto" Margin="20,24,20,12" IsVisible="False">
+                <TextBlock Classes="mSection" Text="{l:T 'Friends online'}" />
+                <Button Grid.Column="1" Classes="link" Click="Social_Click" Content="{l:T 'Messages'}" />
+            </Grid>
+            <ScrollViewer x:Name="uiFriendsScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="False">
+                <ItemsControl x:Name="uiFriends" Margin="20,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

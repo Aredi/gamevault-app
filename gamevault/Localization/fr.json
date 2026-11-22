@@ -2318,5 +2318,21 @@
   "{0} (not installed)": "{0} (pas installé)",
   "Playing with {0}": "En jeu avec {0}",
   "{0} could not be started: install it again, or choose the app's own player in Settings > Retro.": "{0} n'a pas pu démarrer : réinstallez-le, ou choisissez le lecteur de l'appli dans Paramètres > Rétro.",
-  "Next disc (now {0} of {1})": "Disque suivant (actuellement {0} sur {1})"
+  "Next disc (now {0} of {1})": "Disque suivant (actuellement {0} sur {1})",
+  "Good evening": "Bonsoir",
+  "Hello": "Bonjour",
+  "Open its page": "Ouvrir sa fiche",
+  "Welcome to SanctuaryVault": "Bienvenue sur SanctuaryVault",
+  "Your consoles and retro games, saved in the cloud and played on this phone. Pick a game to start.": "Vos consoles et jeux rétro, sauvegardés dans le cloud et joués sur ce téléphone. Choisissez un jeu pour commencer.",
+  "See the games": "Voir les jeux",
+  "Ranking": "Classement",
+  "Friends online": "Amis en ligne",
+  "#{0}": "{0}ᵉ",
+  "Games": "Jeux",
+  "At random": "Au hasard",
+  "Choose a game: its page opens here.": "Choisissez un jeu : sa fiche s'ouvre ici.",
+  "Downloaded in the background": "Téléchargé en arrière-plan",
+  "Show in the lists again": "Réafficher dans les listes",
+  "In landscape, with a controller": "En paysage, à la manette",
+  "Social": "Social"
 }

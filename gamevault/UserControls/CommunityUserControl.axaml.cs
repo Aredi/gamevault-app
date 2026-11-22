@@ -101,11 +101,17 @@ namespace gamevault.UserControls
             ViewModel = new CommunityViewModel();
             this.DataContext = ViewModel;
         }
-        internal void ShowUser(User userToShow)
+        /// <param name="alone">On a phone: their profile on the whole page at once, not the list of the players.</param>
+        internal void ShowUser(User userToShow, bool alone = false)
         {
             if (userToShow != null)
             {
                 forceShowId = userToShow.ID;
+                if (alone)
+                {
+                    showsProfile = true;
+                    ApplyLayout();
+                }
                 if (MainWindowViewModel.Instance.ActiveControl == MainWindowViewModel.Instance.Community)
                 {
                     _ = InitUserList();

@@ -242,8 +242,16 @@ namespace gamevault.ViewModels
             page == m_Library ? MainControl.Library : page == m_Retro ? MainControl.Retro : page == m_Downloads ? MainControl.Downloads
             : page == m_Community ? MainControl.Community : page == m_Activity ? MainControl.Activity : page == m_Rooms ? MainControl.Rooms
             : page == m_Challenges ? MainControl.Challenges : page == m_Settings ? MainControl.Settings : page == m_AdminConsole ? MainControl.AdminConsole : null;
+        /// <summary>The phone's tab (its home, its games...) the pages opened from it go back to; none on a computer.</summary>
+        internal UserControl? MobileReturn { get; set; }
+
         public void UndoActiveControl()
         {
+            if (MobileReturn != null && ActiveControl != MobileReturn)
+            {
+                SetActiveControl(MobileReturn);
+                return;
+            }
             ActiveControlIndex = (int)LastMainControl;
         }
     }

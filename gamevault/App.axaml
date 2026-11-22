@@ -6,6 +6,8 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://gamevault/Resources/Assets/Styles.axaml" />
+        <!-- The phone's pages (Android): their own look -->
+        <StyleInclude Source="avares://gamevault/UserControls/Mobile/MobileStyles.axaml" />
     </Application.Styles>
     <Application.Resources>
         <ResourceDictionary>

@@ -1,0 +1,112 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:gamevault.Localization"
+             xmlns:uc="clr-namespace:gamevault.UserControls"
+             xmlns:conv="clr-namespace:gamevault.Converter"
+             x:Class="gamevault.UserControls.Mobile.MobileProfileUserControl">
+    <UserControl.Resources>
+        <conv:PermissionRoleConverter x:Key="permissionRoleConv" />
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="Button.mRow TextBlock.rowText">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Styles>
+    <!-- The phone's profile: who is signed in, then what the menu of the computer had (downloads, settings, the living-room mode...) -->
+    <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="16,12,16,32" Spacing="16" MaxWidth="640">
+            <TextBlock Classes="mTitle" Text="{l:T 'Profile'}" Margin="4,0,0,0" />
+
+            <!-- Who -->
+            <Button Classes="mRow" Padding="0" Click="MyProfile_Click">
+                <Border Classes="mCard">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                        <Border Width="64" Height="64" CornerRadius="32" ClipToBounds="True" Background="{DynamicResource Brush.Accent}">
+                            <uc:CacheImage ImageCacheType="UserAvatar" Stretch="UniformToFill" Data="{Binding UserAvatar}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{Binding UserAvatar.Username}" FontFamily="{DynamicResource Font.Display}" FontWeight="Bold" FontSize="20" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="uiServer" Classes="mMuted" FontSize="13" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Classes="mMuted" FontSize="12.5" Foreground="{DynamicResource Brush.Danger}" Text="{l:T 'Offline'}" IsVisible="{Binding IsOffline}" />
+                        </StackPanel>
+                        <Path Grid.Column="2" Data="{DynamicResource M.Back}" Fill="{DynamicResource Brush.Foreground}" Opacity="0.4" Width="10" Height="16" Stretch="Uniform" RenderTransform="rotate(180deg)" />
+                    </Grid>
+                </Border>
+            </Button>
+
+            <Border Classes="mCard" Padding="8,4">
+                <StackPanel>
+                    <Button Classes="mRow" Click="Downloads_Click">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.Download}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="rowText" Text="{l:T 'Downloads'}" />
+                        </Grid>
+                    </Button>
+                    <Button Classes="mRow" Click="Activity_Click">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.Pulse}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="rowText" Text="{l:T 'Recent activity'}" />
+                        </Grid>
+                    </Button>
+                    <Button Classes="mRow" Click="Community_Click">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.People}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="rowText" Text="{l:T 'Community'}" />
+                        </Grid>
+                    </Button>
+                    <Button Classes="mRow" Click="News_Click">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.News}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="rowText" Text="{l:T 'News'}" />
+                            <Border Grid.Column="2" Background="{DynamicResource Brush.Danger}" CornerRadius="10" Padding="7,1" VerticalAlignment="Center"
+                                    IsVisible="{Binding NewsBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="{Binding NewsBadge}" FontSize="11" FontWeight="Bold" Foreground="White" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="mCard" Padding="8,4">
+                <StackPanel>
+                    <Button Classes="mRow" Click="Couch_Click">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.Tv}" /></Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Classes="rowText" Text="{l:T 'Living-room mode'}" />
+                                <TextBlock Classes="mMuted" FontSize="12.5" Text="{l:T 'In landscape, with a controller'}" />
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+                    <Button Classes="mRow" Click="Settings_Click">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.Settings}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="rowText" Text="{l:T 'Settings'}" />
+                        </Grid>
+                    </Button>
+                    <Button Classes="mRow" Click="Admin_Click" IsVisible="{Binding UserAvatar, Converter={StaticResource permissionRoleConv}}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.Shield}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="rowText" Text="{l:T 'Admin Console'}" />
+                        </Grid>
+                    </Button>
+                    <Button Classes="mRow" Click="Problem_Click">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.Bug}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="rowText" Text="{l:T 'Report a problem'}" />
+                        </Grid>
+                    </Button>
+                    <Button Classes="mRow" Click="ChangeProfile_Click">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                            <Border Classes="mRowIcon"><Path Data="{DynamicResource M.Logout}" /></Border>
+                            <TextBlock Grid.Column="1" Classes="rowText" Text="{l:T 'Change of profile'}" />
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </Border>
+            <TextBlock x:Name="uiVersion" Classes="mMuted" FontSize="12" HorizontalAlignment="Center" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

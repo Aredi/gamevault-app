@@ -1,0 +1,218 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Styles.Resources>
+        <StreamGeometry x:Key="M.Home">M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z</StreamGeometry>
+        <StreamGeometry x:Key="M.Games">M4 4h6v7H4zM14 4h6v4h-6zM14 11h6v9h-6zM4 14h6v6H4z</StreamGeometry>
+        <StreamGeometry x:Key="M.Chat">M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z</StreamGeometry>
+        <StreamGeometry x:Key="M.Trophy">M7 3h10v6a5 5 0 0 1-10 0zM5 4h2v2.5a3 3 0 0 1-2-2.5zM17 4h2a3 3 0 0 1-2 2.5zM11 14h2v4h3v3H8v-3h3z</StreamGeometry>
+        <StreamGeometry x:Key="M.User">M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM4 21a8 8 0 0 1 16 0z</StreamGeometry>
+        <StreamGeometry x:Key="M.Search">M10.5 3a7.5 7.5 0 0 1 6 12l4.2 4.2-1.5 1.5-4.2-4.2A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z</StreamGeometry>
+        <StreamGeometry x:Key="M.Bell">M6 16v-5a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0z</StreamGeometry>
+        <StreamGeometry x:Key="M.Play">M8 5v14l11-7z</StreamGeometry>
+        <StreamGeometry x:Key="M.More">M12 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4z</StreamGeometry>
+        <StreamGeometry x:Key="M.Download">M11 4h2v8.2l3.3-3.3 1.4 1.4L12 16l-5.7-5.7 1.4-1.4 3.3 3.3zM5 18h14v2H5z</StreamGeometry>
+        <StreamGeometry x:Key="M.Tv">M3 5h18v12H3zm2 2v8h14V7zM8 19h8v2H8z</StreamGeometry>
+        <StreamGeometry x:Key="M.Dice">M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z</StreamGeometry>
+        <StreamGeometry x:Key="M.Bookmark">M6 3h12v18l-6-4-6 4z</StreamGeometry>
+        <StreamGeometry x:Key="M.Send">M3 11 21 3l-8 18-2-8z</StreamGeometry>
+        <StreamGeometry x:Key="M.Hide">M3.3 2 22 20.7 20.7 22l-3.5-3.5A11 11 0 0 1 12 20C5 20 1 12 1 12a20 20 0 0 1 4.5-5.4L2 3.3zM12 4c7 0 11 8 11 8a19 19 0 0 1-3 4.1L8.4 4.6A11 11 0 0 1 12 4zM9.5 10.8a3 3 0 0 0 3.7 3.7z</StreamGeometry>
+        <StreamGeometry x:Key="M.Settings">M10.3 2h3.4l.5 2.6a8 8 0 0 1 1.9 1.1l2.5-.9 1.7 3-2 1.7a8 8 0 0 1 0 2.2l2 1.7-1.7 3-2.5-.9a8 8 0 0 1-1.9 1.1l-.5 2.6h-3.4l-.5-2.6a8 8 0 0 1-1.9-1.1l-2.5.9-1.7-3 2-1.7a8 8 0 0 1 0-2.2l-2-1.7 1.7-3 2.5.9a8 8 0 0 1 1.9-1.1zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z</StreamGeometry>
+        <StreamGeometry x:Key="M.News">M4 4h13v4h3v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2 2v12h11V6zm2 2h7v2H8zm0 4h7v2H8z</StreamGeometry>
+        <StreamGeometry x:Key="M.Bug">M8 6a4 4 0 0 1 8 0h2v2l-2 1v2h3v2h-3v2l2 1v2h-2a6 6 0 0 1-8 0H6v-2l2-1v-2H5v-2h3V9L6 8V6zm3 4v8h2v-8z</StreamGeometry>
+        <StreamGeometry x:Key="M.Logout">M14 4h6v16h-6v-2h4V6h-4zM9 7l1.4 1.4L8.8 10H16v2H8.8l1.6 1.6L9 15l-4-4z</StreamGeometry>
+        <StreamGeometry x:Key="M.People">M9 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM2 20a7 7 0 0 1 14 0zM16 5a3.5 3.5 0 1 1 0 7 6 6 0 0 0 0-7zM18 13a6 6 0 0 1 4 7h-4a8 8 0 0 0-2-6z</StreamGeometry>
+        <StreamGeometry x:Key="M.Pulse">M2 12h4l3-7 4 14 3-7h6v2h-4.7L13 20 9 7l-1.7 5z</StreamGeometry>
+        <StreamGeometry x:Key="M.Shield">M12 2 20 5v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5z</StreamGeometry>
+        <StreamGeometry x:Key="M.Cloud">M7 18a5 5 0 0 1-.4-10A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z</StreamGeometry>
+        <StreamGeometry x:Key="M.Back">M15.4 4.6 8 12l7.4 7.4-1.4 1.4L5.2 12 14 3.2z</StreamGeometry>
+    </Styles.Resources>
+
+    <!-- The phone's pages (Android): large titles, cards, chips and buttons for the thumb, the client's colors and fonts -->
+
+    <Style Selector="TextBlock.mTitle">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Display}" />
+        <Setter Property="FontWeight" Value="ExtraBold" />
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="LetterSpacing" Value="-0.4" />
+    </Style>
+    <Style Selector="TextBlock.mSection">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Display}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="18" />
+    </Style>
+    <Style Selector="TextBlock.mEyebrow">
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="1.6" />
+        <Setter Property="Foreground" Value="#7C73E6" />
+    </Style>
+    <Style Selector="TextBlock.mHero">
+        <Setter Property="FontFamily" Value="{DynamicResource Font.Display}" />
+        <Setter Property="FontWeight" Value="ExtraBold" />
+        <Setter Property="FontSize" Value="25" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="MaxLines" Value="2" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.mMuted">
+        <Setter Property="Opacity" Value="0.62" />
+        <Setter Property="FontSize" Value="13.5" />
+    </Style>
+
+    <Style Selector="Border.mCard">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="CornerRadius" Value="20" />
+        <Setter Property="Padding" Value="16" />
+    </Style>
+
+    <!-- Buttons: the whole button is the target, at least 48 high -->
+    <Style Selector="Button.mPrimary, Button.mLight, Button.mGhost">
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Padding" Value="22,0" />
+        <Setter Property="CornerRadius" Value="24" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.mPrimary">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.mPrimary:pointerover /template/ ContentPresenter, Button.mPrimary:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#6359D0" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.mLight">
+        <Setter Property="Background" Value="#F6F5FA" />
+        <Setter Property="Foreground" Value="#11101E" />
+    </Style>
+    <Style Selector="Button.mLight:pointerover /template/ ContentPresenter, Button.mLight:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#E3E1EE" />
+        <Setter Property="Foreground" Value="#11101E" />
+    </Style>
+    <Style Selector="Button.mGhost">
+        <Setter Property="Background" Value="#1AFFFFFF" />
+    </Style>
+    <Style Selector="Button.mIcon">
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="CornerRadius" Value="22" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.mIcon Path, Button.mPrimary Path, Button.mLight Path, Button.mGhost Path">
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Fill" Value="{Binding $parent[Button].Foreground}" />
+    </Style>
+
+    <!-- Chips: a platform, a list -->
+    <Style Selector="ToggleButton.mChip">
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="CornerRadius" Value="18" />
+        <Setter Property="FontSize" Value="13.5" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style Selector="ToggleButton.mChip:checked /template/ ContentPresenter">
+        <Setter Property="Background" Value="#F6F5FA" />
+        <Setter Property="Foreground" Value="#11101E" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <!-- A cover: rounded, its console's tag at the top left -->
+    <Style Selector="Border.mCover">
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="ClipToBounds" Value="True" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+    </Style>
+    <Style Selector="Border.mTag">
+        <Setter Property="Background" Value="#73000000" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="Margin" Value="7" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.mTag > TextBlock">
+        <Setter Property="FontSize" Value="9.5" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="0.6" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- A line of a list (the profile's, a sheet's) -->
+    <Style Selector="Button.mRow">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="4,12" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.mRow Border.mRowIcon">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="40" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+    </Style>
+    <Style Selector="Button.mRow Border.mRowIcon > Path">
+        <Setter Property="Width" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- The navigation bar at the bottom (a rail on the left, unfolded) -->
+    <Style Selector="Button.mNav">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0,6" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="Opacity" Value="0.45" />
+    </Style>
+    <Style Selector="Button.mNav:pointerover /template/ ContentPresenter, Button.mNav:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.mNav.on">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.mNav Border.mNavPill">
+        <Setter Property="Width" Value="56" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="CornerRadius" Value="15" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mNav.on Border.mNavPill">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent3}" />
+    </Style>
+    <Style Selector="Button.mNav Path">
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Fill" Value="{DynamicResource Brush.Foreground}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.mNav TextBlock">
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+</Styles>

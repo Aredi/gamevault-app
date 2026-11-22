@@ -56,6 +56,7 @@ namespace gamevault.Windows
                 keysOf = null;
             };
             InitCouch();
+            InitMobile();
             InitBootTasks();
         }
 
@@ -206,6 +207,12 @@ namespace gamevault.Windows
             }
             else if (MainWindowViewModel.Instance.ActiveControl is IGoesBack page && page.GoBack())
             {
+            }
+            else if (IsMobile && MainWindowViewModel.Instance.ActiveControl == MainWindowViewModel.Instance.MobileReturn)
+            {
+                // A tab's own page: home first, and from home the app goes to the background (Android's)
+                if (!MobileBack())
+                    return;
             }
             else if (MainWindowViewModel.Instance.ActiveControlIndex < 0)
                 MainWindowViewModel.Instance.UndoActiveControl();
@@ -358,6 +365,12 @@ namespace gamevault.Windows
                 return;
             loaded = true;
             MainWindowViewModel.Instance.SetActiveControl(PlatformInfo.PlaysPcGames ? MainControl.Library : MainControl.Retro);
+            // The phone opens on its home
+            if (IsMobile)
+            {
+                PlaceMobileNav(Bounds.Width);
+                ShowMobileTab(MobileTab.Home);
+            }
             LoginState state = LoginManager.Instance.GetState();
             if (LoginState.Success == state)
             {

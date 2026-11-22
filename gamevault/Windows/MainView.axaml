@@ -189,7 +189,7 @@
     </UserControl.Styles>
 
     <Panel>
-        <Grid x:Name="uiDesktop" ColumnDefinitions="Auto,*,Auto">
+        <Grid x:Name="uiDesktop" ColumnDefinitions="Auto,*,Auto" RowDefinitions="*,Auto">
             <!-- Navigation bar -->
             <Border x:Name="uiSidebar" Grid.Column="0" Background="{DynamicResource Brush.Background2}" BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,0,1,0" ClipToBounds="True">
                 <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
@@ -392,6 +392,51 @@
                 </Panel.IsVisible>
                 <uc:ChatPanel x:Name="uiChat" />
             </Panel>
+
+            <!-- The phone (Android): its tabs at the bottom, a rail on the left when unfolded -->
+            <Border x:Name="uiMobileNav" Grid.Row="1" Grid.ColumnSpan="3" IsVisible="False" Background="{DynamicResource Brush.Background2}"
+                    BorderBrush="{DynamicResource Brush.Line}" BorderThickness="0,1,0,0">
+                <UniformGrid x:Name="uiMobileTabs" Rows="1" Margin="4,6,4,8">
+                    <Button x:Name="uiTabHome" Classes="mNav" Click="MobileTab_Click" Tag="Home">
+                        <StackPanel>
+                            <Border Classes="mNavPill"><Path Data="{DynamicResource M.Home}" /></Border>
+                            <TextBlock Text="{l:T 'Home'}" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="uiTabGames" Classes="mNav" Click="MobileTab_Click" Tag="Games">
+                        <StackPanel>
+                            <Border Classes="mNavPill"><Path Data="{DynamicResource M.Games}" /></Border>
+                            <TextBlock Text="{l:T 'Games'}" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="uiTabSocial" Classes="mNav" Click="MobileTab_Click" Tag="Social">
+                        <StackPanel>
+                            <Border Classes="mNavPill">
+                                <Panel>
+                                    <Path Data="{DynamicResource M.Chat}" />
+                                    <Border Background="{DynamicResource Brush.Danger}" CornerRadius="8" MinWidth="16" Height="16" Padding="4,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-4,6,0" IsVisible="{Binding ChatBadge, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                        <TextBlock Text="{Binding ChatBadge}" FontSize="10" FontWeight="Bold" Foreground="White" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                </Panel>
+                            </Border>
+                            <TextBlock Text="{l:T 'Social'}" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="uiTabChallenges" Classes="mNav" Click="MobileTab_Click" Tag="Challenges">
+                        <StackPanel>
+                            <Border Classes="mNavPill"><Path Data="{DynamicResource M.Trophy}" /></Border>
+                            <TextBlock Text="{l:T 'Challenges'}" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="uiTabProfile" Classes="mNav" Click="MobileTab_Click" Tag="Profile">
+                        <StackPanel>
+                            <Border Classes="mNavPill"><Path Data="{DynamicResource M.User}" /></Border>
+                            <TextBlock Text="{l:T 'Profile'}" />
+                        </StackPanel>
+                    </Button>
+                </UniformGrid>
+            </Border>
         </Grid>
 
         <!-- The living-room mode covers the desktop; the popups and the messages stay over it -->
