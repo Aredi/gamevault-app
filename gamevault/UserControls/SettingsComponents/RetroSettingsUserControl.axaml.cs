@@ -53,11 +53,41 @@ namespace gamevault.UserControls.SettingsComponents
             AttachedToVisualTree += (_, _) => ShowControllers();
         }
 
+        /// <summary>Android: for each console an emulator app can play, the app's own player or one of them.</summary>
+        private void ShowEmulatorApps(Helper.Platform.IMobilePlatform mobile)
+        {
+            uiEmulatorApps.IsVisible = true;
+            uiEmulatorAppsList.Children.Clear();
+            foreach (RetroSystem system in RetroSystems.All.Values.Where(s => !s.IsStandalone).OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase))
+            {
+                var emulators = Helper.Platform.AndroidEmulators.Of(system.Slug).ToList();
+                if (emulators.Count == 0)
+                    continue;
+                var names = new List<string> { Loc.T("The app's own player") };
+                names.AddRange(emulators.Select(e => mobile.IsInstalled(e) ? e.Name : Loc.F("{0} (not installed)", e.Name)));
+                var chosen = Helper.Platform.AndroidEmulators.ChosenFor(system.Slug, mobile);
+                var box = new ComboBox { ItemsSource = names, MaxWidth = 320, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, SelectedIndex = chosen == null ? 0 : emulators.IndexOf(chosen) + 1 };
+                box.SelectionChanged += (_, _) =>
+                {
+                    if (box.SelectedIndex < 0)
+                        return;
+                    // Not installed: the app's own player goes on, until it is
+                    Helper.Platform.AndroidEmulators.Choose(system.Slug, box.SelectedIndex == 0 ? null : emulators[box.SelectedIndex - 1].Id);
+                };
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("120,*"), ColumnSpacing = 10 };
+                row.Children.Add(new TextBlock { Text = system.Name, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, TextWrapping = Avalonia.Media.TextWrapping.Wrap });
+                Grid.SetColumn(box, 1);
+                row.Children.Add(box);
+                uiEmulatorAppsList.Children.Add(row);
+            }
+        }
+
         /// <summary>Android: each controller plugged, with its Nintendo layout.</summary>
         private void ShowControllers()
         {
             if (Helper.Platform.MobilePlatform.Current is not Helper.Platform.IMobilePlatform mobile)
                 return;
+            ShowEmulatorApps(mobile);
             uiNintendo.IsVisible = true;
             uiNintendoPads.Children.Clear();
             foreach (string pad in mobile.Controllers)

@@ -2301,5 +2301,22 @@
   "No controller is connected.": "Aucune manette n'est connectée.",
   "Nintendo layout: {0}": "Disposition Nintendo : {0}",
   "Battery {0} %": "Batterie {0} %",
-  "Battery {0} %, charging": "Batterie {0} %, en charge"
+  "Battery {0} %, charging": "Batterie {0} %, en charge",
+  "Hidden": "Masqués",
+  "The games hidden from the lists: open one to show it again": "Les jeux masqués des listes : ouvrez-en un pour le réafficher",
+  "Hide from the lists": "Masquer des listes",
+  "All regions": "Toutes les régions",
+  "All franchises": "Toutes les franchises",
+  "Applications": "Applications",
+  "The other apps of this device": "Les autres applis de l'appareil",
+  "Quick settings": "Réglages rapides",
+  "Theme of the selected game: {0}": "Thème du jeu sélectionné : {0}",
+  "Animations: {0}": "Animations : {0}",
+  "Emulator of each console": "Émulateur de chaque console",
+  "The app plays every console itself; an emulator app installed on this device (DuckStation, Dolphin, melonDS...) can play one instead. Its saves stay in it, and a game of several files (a CD with its tracks) needs a single-file copy (.chd, .iso).": "L'appli joue elle-même à chaque console ; une appli d'émulation installée sur cet appareil (DuckStation, Dolphin, melonDS...) peut en jouer une à sa place. Ses sauvegardes restent chez elle, et un jeu en plusieurs fichiers (un CD et ses pistes) demande une copie en un seul fichier (.chd, .iso).",
+  "The app's own player": "Le lecteur de l'appli",
+  "{0} (not installed)": "{0} (pas installé)",
+  "Playing with {0}": "En jeu avec {0}",
+  "{0} could not be started: install it again, or choose the app's own player in Settings > Retro.": "{0} n'a pas pu démarrer : réinstallez-le, ou choisissez le lecteur de l'appli dans Paramètres > Rétro.",
+  "Next disc (now {0} of {1})": "Disque suivant (actuellement {0} sur {1})"
 }

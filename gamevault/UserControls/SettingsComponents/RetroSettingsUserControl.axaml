@@ -33,13 +33,6 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <!-- Android: the controllers with Nintendo's layout (A on the right) -->
-                <StackPanel x:Name="uiNintendo" IsVisible="False" Spacing="4">
-                    <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,6"
-                               Text="{l:T 'Nintendo layout: on a controller whose A is on the right, A and B (and X and Y) are swapped, so that the bottom button confirms.'}" />
-                    <StackPanel x:Name="uiNintendoPads" Spacing="2" />
-                    <TextBlock x:Name="uiNintendoNone" Classes="muted" FontSize="13" Text="{l:T 'No controller is connected.'}" />
-                </StackPanel>
             </StackPanel>
 
             <StackPanel Classes="section">
@@ -144,6 +137,20 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <!-- Android: an emulator app per console instead of the app's own player -->
+                <StackPanel x:Name="uiEmulatorApps" IsVisible="False" Spacing="6" Margin="0,4,0,14">
+                    <TextBlock FontSize="14" FontWeight="SemiBold" Text="{l:T 'Emulator of each console'}" />
+                    <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap"
+                               Text="{l:T 'The app plays every console itself; an emulator app installed on this device (DuckStation, Dolphin, melonDS...) can play one instead. Its saves stay in it, and a game of several files (a CD with its tracks) needs a single-file copy (.chd, .iso).'}" />
+                    <StackPanel x:Name="uiEmulatorAppsList" Spacing="6" />
+                </StackPanel>
+                <!-- Android: the controllers with Nintendo's layout (A on the right) -->
+                <StackPanel x:Name="uiNintendo" IsVisible="False" Spacing="4">
+                    <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,6"
+                               Text="{l:T 'Nintendo layout: on a controller whose A is on the right, A and B (and X and Y) are swapped, so that the bottom button confirms.'}" />
+                    <StackPanel x:Name="uiNintendoPads" Spacing="2" />
+                    <TextBlock x:Name="uiNintendoNone" Classes="muted" FontSize="13" Text="{l:T 'No controller is connected.'}" />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel Classes="section">

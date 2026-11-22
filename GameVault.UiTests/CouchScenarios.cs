@@ -208,7 +208,9 @@ namespace GameVault.UiTests
                 // The menu: the start in this mode is kept, the desktop is asked back
                 couch.Handle(CouchCommand.Menu);
                 Assert.True(couch.uiMenu.IsVisible);
-                Assert.Equal(8, couch.MenuLines.Count);
+                // (over a retro game's screen: its "Hide from the lists" too)
+                Assert.Equal(9, couch.MenuLines.Count);
+                Assert.Contains(couch.MenuLines, l => l.Text == Loc.T("Hide from the lists"));
                 Capture(window, "4-menu");
                 // Its settings: the start in this mode; B goes back to the menu
                 CouchUserControl.StartsHere = false;
@@ -238,7 +240,8 @@ namespace GameVault.UiTests
                 Assert.True(couch.uiMenu.IsVisible);
                 bool left = false;
                 couch.LeaveRequested += () => left = true;
-                for (int line = 0; line < 5; line++)
+                int desktop = couch.MenuLines.FindIndex(l => l.Text == Loc.T("Back to the desktop"));
+                for (int line = 0; line < desktop; line++)
                     couch.Handle(CouchCommand.Down);
                 couch.Handle(CouchCommand.Accept);
                 Assert.True(left);
@@ -252,6 +255,11 @@ namespace GameVault.UiTests
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                     Dispatcher.UIThread.RunJobs();
                     Control control = find() ?? throw new InvalidOperationException("Nothing to click");
+                    // A long menu scrolls: the line in sight first, as a mouse would scroll to it
+                    control.BringIntoView();
+                    Dispatcher.UIThread.RunJobs();
+                    AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                    Dispatcher.UIThread.RunJobs();
                     var point = control.TranslatePoint(new Avalonia.Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
                     window.MouseDown(point, MouseButton.Left);
                     window.MouseUp(point, MouseButton.Left);
@@ -1397,7 +1405,9 @@ namespace GameVault.UiTests
                 return Task.FromResult<string?>(search.StartsWith("Zelda") ? null : "video-" + search.Length);
             };
             GameThemes.PreloadPause = TimeSpan.Zero;
-            File.Delete(GameThemes.File);
+            // (its folder is made by the first theme kept: not there when this test runs first)
+            if (File.Exists(GameThemes.File))
+                File.Delete(GameThemes.File);
             GameThemes.Forget();
             try
             {

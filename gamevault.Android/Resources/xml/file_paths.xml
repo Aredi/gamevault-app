@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
 	<cache-path name="retroarch" path="retroarch/" />
+	<!-- The games, wherever their folder is (the phone, a memory card), for the emulator apps -->
+	<root-path name="root" path="." />
 </paths>

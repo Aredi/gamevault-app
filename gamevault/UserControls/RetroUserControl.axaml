@@ -83,6 +83,7 @@
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyInstalled}" Content="{l:T 'Installed'}" />
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyFavorites}" Content="{l:T 'Bookmarks'}" />
                     <ToggleButton Classes="chip" IsChecked="{Binding OnlyNeverPlayed}" Content="{l:T 'Never played'}" />
+                    <ToggleButton Classes="chip" IsChecked="{Binding OnlyHidden}" Content="{l:T 'Hidden'}" ToolTip.Tip="{l:T 'The games hidden from the lists: open one to show it again'}" />
                     <ToggleButton Classes="chip" IsChecked="{Binding ShowFilters}" Content="{l:T 'Filters'}" />
                 </WrapPanel>
                 </ScrollViewer>
@@ -91,6 +92,8 @@
                 <ComboBox x:Name="uiGenres" MinWidth="170" MinHeight="32" ItemsSource="{Binding Genres}" SelectedIndex="{Binding Genre}" />
                 <ComboBox MinWidth="160" MinHeight="32" ItemsSource="{Binding PlayerOptions}" SelectedIndex="{Binding Players}" />
                 <ComboBox x:Name="uiDecades" MinWidth="140" MinHeight="32" ItemsSource="{Binding Decades}" SelectedIndex="{Binding Decade}" />
+                <ComboBox MinWidth="140" MaxWidth="220" MinHeight="32" ItemsSource="{Binding Regions}" SelectedIndex="{Binding Region}" />
+                <ComboBox MinWidth="160" MaxWidth="260" MinHeight="32" ItemsSource="{Binding Franchises}" SelectedIndex="{Binding Franchise}" />
                 <ComboBox MinWidth="130" MinHeight="32" ItemsSource="{Binding RatingOptions}" SelectedIndex="{Binding Rating}" />
                 <Button Classes="link" VerticalAlignment="Center" Click="ClearFilters_Click" IsVisible="{Binding HasFilters}" Content="{l:T 'Clear'}" />
             </WrapPanel>

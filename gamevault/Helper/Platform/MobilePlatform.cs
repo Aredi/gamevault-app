@@ -65,6 +65,17 @@ namespace gamevault.Helper.Platform
         /// <summary>A short vibration (the living-room mode's moves): a tick, or a firmer one to confirm.</summary>
         void Vibrate(bool firm);
 
+        /// <summary>The device's other apps (the ones of its app drawer): their name and package, by name.</summary>
+        System.Collections.Generic.IReadOnlyList<(string Name, string Package)> Apps { get; }
+
+        void OpenApp(string package);
+
+        /// <summary>One of the emulator's packages is installed.</summary>
+        bool IsInstalled(AndroidEmulator emulator);
+
+        /// <summary>The game in the emulator app; completes once SanctuaryVault is back on the screen.</summary>
+        Task PlayExternalAsync(AndroidEmulator emulator, string rom);
+
         /// <summary>The core of the app's own player, downloaded once from libretro.</summary>
         Task EnsureCoreAsync(string core, Action<string> status);
 

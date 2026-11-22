@@ -162,7 +162,11 @@ namespace gamevault.Models
         //Android: the controllers (by name) with Nintendo's layout, A/B and X/Y swapped ("name|name", profileconfig)
         NintendoControllers,
         //Android: the living-room mode's vibrations ("0": off, profileconfig)
-        CouchHaptics
+        CouchHaptics,
+        //The retro games hidden from the lists, without deleting them ("nes:40|snes:12", userconfig)
+        HiddenRetroGames,
+        //Android: the emulator app chosen per console ("psx=duckstation|ps2=nethersx2", profileconfig); none: the app's own player
+        AndroidEmulators
     }
     public static class Globals
     {

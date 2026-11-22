@@ -203,6 +203,35 @@ namespace gamevault.Helper
 
         public static bool IsFavorite(RetroGame game) => favorites.Contains(Key(game));
 
+        private static HashSet<string>? hidden;
+        private static string? hiddenOf;
+
+        /// <summary>Hidden from the lists (not deleted, not from RomM): this profile's, kept on this device.</summary>
+        public static bool IsHidden(RetroGame game) => Hidden().Contains(Key(game));
+
+        public static void SetHidden(RetroGame game, bool hide)
+        {
+            HashSet<string> keys = Hidden();
+            if (hide) keys.Add(Key(game)); else keys.Remove(Key(game));
+            try { Preferences.Set(Models.AppConfigKey.HiddenRetroGames, string.Join("|", keys), LoginManager.Instance.GetUserProfile().UserConfigFile); }
+            catch (Exception ex) { Log.Ignored(ex); }
+            Changed?.Invoke();
+        }
+
+        private static HashSet<string> Hidden()
+        {
+            string? file = null;
+            try { file = LoginManager.Instance.GetUserProfile().UserConfigFile; }
+            catch (Exception ex) { Log.Ignored(ex); }
+            // Read again for another profile
+            if (hidden == null || hiddenOf != file)
+            {
+                hiddenOf = file;
+                hidden = file == null ? new() : Preferences.Get(Models.AppConfigKey.HiddenRetroGames, file).Split('|', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            }
+            return hidden;
+        }
+
         public static async Task SetFavoriteAsync(RetroGame game, bool favorite)
         {
             if (favorite)

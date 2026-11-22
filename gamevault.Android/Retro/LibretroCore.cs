@@ -232,6 +232,28 @@ namespace gamevault.Android.Retro
                 return ((delegate* unmanaged[Cdecl]<IntPtr, nuint, byte>)Export("retro_unserialize"))((IntPtr)data, (nuint)state.Length) != 0;
         }
 
+        // set_eject_state, get_eject_state, get_image_index, set_image_index, get_num_images, replace_image_index, add_image_index
+        private IntPtr[]? diskControl;
+
+        /// <summary>The game's discs (an .m3u's), 0 when the core has no disc control.</summary>
+        public int DiscCount => diskControl is { } d && d[4] != IntPtr.Zero ? (int)((delegate* unmanaged[Cdecl]<uint>)d[4])() : 0;
+
+        /// <summary>The disc in the console, from 0.</summary>
+        public int Disc => diskControl is { } d && d[2] != IntPtr.Zero ? (int)((delegate* unmanaged[Cdecl]<uint>)d[2])() : 0;
+
+        /// <summary>Another disc, as a console's: the tray opened, the disc changed, the tray closed. On the player's thread.</summary>
+        public bool ChangeDisc(int index)
+        {
+            if (diskControl is not { } d || d[0] == IntPtr.Zero || d[3] == IntPtr.Zero || index < 0 || index >= DiscCount)
+                return false;
+            var eject = (delegate* unmanaged[Cdecl]<byte, byte>)d[0];
+            if (eject(1) == 0)
+                return false;
+            bool changed = ((delegate* unmanaged[Cdecl]<uint, byte>)d[3])((uint)index) != 0;
+            eject(0);
+            return changed;
+        }
+
         private bool gameLoaded;
 
         /// <summary>The game unloaded: only a loaded one (unloading after a failed load crashes some cores).</summary>
@@ -291,9 +313,17 @@ namespace gamevault.Android.Retro
                     case 6:// SET_MESSAGE
                     case 8:// SET_PERFORMANCE_LEVEL
                     case 11:// SET_INPUT_DESCRIPTORS
-                    case 13:// SET_DISK_CONTROL_INTERFACE
                     case 35:// SET_CONTROLLER_INFO
                     case 44:// SET_SERIALIZATION_QUIRKS
+                        return true;
+                    case 13:// SET_DISK_CONTROL_INTERFACE: the discs of a game on several (an .m3u)
+                        diskControl = new ReadOnlySpan<IntPtr>((void*)data, 7).ToArray();
+                        return true;
+                    case 57:// GET_DISK_CONTROL_INTERFACE_VERSION
+                        *(uint*)data = 1;
+                        return true;
+                    case 58:// SET_DISK_CONTROL_EXT_INTERFACE: the same, its first seven functions
+                        diskControl = new ReadOnlySpan<IntPtr>((void*)data, 7).ToArray();
                         return true;
                     case 9:// GET_SYSTEM_DIRECTORY
                         *(IntPtr*)data = systemDirectory;

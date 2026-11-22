@@ -17,9 +17,31 @@
 		<package android:name="com.retroarch" />
 		<package android:name="com.retroarch.aarch64" />
 		<package android:name="com.retroarch.ra32" />
+		<!-- The emulator apps a console can be played with instead of the app's own player -->
+		<package android:name="com.github.stenzek.duckstation" />
+		<package android:name="xyz.aethersx2.android" />
+		<package android:name="xyz.aethersx2.tturnip" />
+		<package android:name="xyz.aethersx2.cturnip" />
+		<package android:name="org.dolphinemu.dolphinemu" />
+		<package android:name="org.mm.jr" />
+		<package android:name="org.dolphinemu.mmjr" />
+		<package android:name="me.magnum.melonds" />
+		<package android:name="me.magnum.melondualds" />
+		<package android:name="com.dsemu.drastic" />
+		<package android:name="it.dbtecno.pizzaboygbapro" />
+		<package android:name="it.dbtecno.pizzaboygba" />
+		<package android:name="com.explusalpha.Snes9xPlus" />
+		<package android:name="org.azahar_emu.azahar" />
+		<package android:name="io.github.lime3ds.android" />
+		<package android:name="org.citra.citra_emu" />
 		<intent>
 			<action android:name="android.intent.action.VIEW" />
 			<data android:scheme="https" />
+		</intent>
+		<!-- The living-room mode starts the device's other apps (SanctuaryVault as the home screen of a handheld) -->
+		<intent>
+			<action android:name="android.intent.action.MAIN" />
+			<category android:name="android.intent.category.LAUNCHER" />
 		</intent>
 	</queries>
 	<application android:label="SanctuaryVault" android:icon="@mipmap/icon" android:requestLegacyExternalStorage="true" android:usesCleartextTraffic="true">

@@ -286,6 +286,38 @@ namespace gamevault.Android
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
         }
 
+        public IReadOnlyList<(string Name, string Package)> Apps
+        {
+            get
+            {
+                try
+                {
+                    var launcher = new Intent(Intent.ActionMain).AddCategory(Intent.CategoryLauncher);
+                    var pm = activity.PackageManager!;
+                    return (pm.QueryIntentActivities(launcher, 0) ?? new List<ResolveInfo>())
+                        .Select(r => (Name: r.LoadLabel(pm)?.ToString() ?? "", Package: r.ActivityInfo?.PackageName ?? ""))
+                        .Where(a => a.Name.Length > 0 && a.Package.Length > 0 && a.Package != activity.PackageName)
+                        .DistinctBy(a => a.Package)
+                        .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+                }
+                catch (Exception ex)
+                {
+                    GameVault.Core.Log.Ignored(ex);
+                    return Array.Empty<(string, string)>();
+                }
+            }
+        }
+
+        public void OpenApp(string package)
+        {
+            try
+            {
+                if (activity.PackageManager!.GetLaunchIntentForPackage(package) is Intent open)
+                    activity.StartActivity(open);
+            }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+        }
+
         public void OpenConnections(string kind)
         {
             try
@@ -360,6 +392,54 @@ namespace gamevault.Android
         }
 
         public bool OnMotion(global::Android.Views.MotionEvent e) => player != null && playerView?.IsMenuOpen != true && gamepads != null && gamepads.OnMotion(e);
+
+        public bool IsInstalled(AndroidEmulator emulator) => emulator.Packages.Any(IsPackageInstalled);
+
+        private bool IsPackageInstalled(string package)
+        {
+            try
+            {
+                activity.PackageManager!.GetPackageInfo(package, 0);
+                return true;
+            }
+            catch (PackageManager.NameNotFoundException) { return false; }
+        }
+
+        /// <summary>
+        /// As ES-DE starts it: its activity, the game's address in its data or its extra. The address is the app's own
+        /// (its file provider), readable by the emulator for this start: a game of one file (a game of several, a CD's
+        /// .cue and its tracks, is not read past its first file).
+        /// </summary>
+        public Task PlayExternalAsync(AndroidEmulator emulator, string rom)
+        {
+            var game = FileProvider.GetUriForFile(activity, activity.PackageName + ".fileprovider", new Java.IO.File(rom))!;
+            foreach (string activityName in emulator.Activities)
+            {
+                string package = activityName.Split('/')[0], name = activityName.Split('/')[1];
+                if (!IsPackageInstalled(package))
+                    continue;
+                var intent = new Intent(emulator.Action ?? Intent.ActionView);
+                intent.SetComponent(new ComponentName(package, name.StartsWith('.') ? package + name : name));
+                if (emulator.Category != null)
+                    intent.AddCategory(emulator.Category);
+                if (emulator.GameExtra is string extra)
+                {
+                    intent.PutExtra(extra, game.ToString());
+                    // The grant follows the address in the clip as in the data
+                    intent.ClipData = ClipData.NewRawUri("", game);
+                }
+                else
+                    intent.SetData(game);
+                foreach (var (key, value) in emulator.Flags ?? Array.Empty<(string, bool)>())
+                    intent.PutExtra(key, value);
+                intent.AddFlags(ActivityFlags.NewTask | ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
+                if (emulator.ClearTask)
+                    intent.AddFlags(ActivityFlags.ClearTask | ActivityFlags.ClearTop);
+                try { return StartAndWaitAsync(intent); }
+                catch (ActivityNotFoundException ex) { GameVault.Core.Log.Ignored(ex); }
+            }
+            throw new InvalidOperationException(Loc.F("{0} could not be started: install it again, or choose the app's own player in Settings > Retro.", emulator.Name));
+        }
 
         /// <summary>Another app's page, until SanctuaryVault is back on the screen.</summary>
         private Task StartAndWaitAsync(Intent intent)

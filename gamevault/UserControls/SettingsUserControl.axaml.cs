@@ -110,6 +110,13 @@ namespace gamevault.UserControls
                 uiTabControl.TabStripPlacement = narrow ? Avalonia.Controls.Dock.Top : Avalonia.Controls.Dock.Left;
                 uiTabControl.Margin = narrow ? new Avalonia.Thickness(20, 0, 0, 0) : new Avalonia.Thickness(28, 0, 0, 0);
                 uiVersion.IsVisible = !narrow;
+                // A phone: the search under the title, on the whole width
+                bool phone = e.NewSize.Width > 0 && e.NewSize.Width < 600;
+                Grid.SetRow(uiSearch, phone ? 1 : 0);
+                Grid.SetColumn(uiSearch, phone ? 0 : 1);
+                Grid.SetColumnSpan(uiSearch, phone ? 2 : 1);
+                uiSearch.HorizontalAlignment = phone ? Avalonia.Layout.HorizontalAlignment.Stretch : Avalonia.Layout.HorizontalAlignment.Right;
+                uiSearch.MinWidth = phone ? 0 : 220;
             };
             ViewModel = SettingsViewModel.Instance;
             this.DataContext = ViewModel;

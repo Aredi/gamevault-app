@@ -339,6 +339,14 @@ namespace gamevault.Helper
                     }));
                     File.Delete(compressed);
                 }
+            // A game on several discs: a playlist of them, started from its first, the next one chosen in the game's menu
+            if (DiscPlaylist.AppliesTo(Game.Platform.System) && Directory.Exists(Folder)
+                && DiscPlaylist.Discs(Directory.EnumerateFiles(Folder, "*", SearchOption.AllDirectories)) is IReadOnlyList<string> discs)
+            {
+                string folder = Path.GetDirectoryName(discs[0])!;
+                string name = string.Concat(Game.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) || c is ':' or '?' or '*' ? '_' : c));
+                File.WriteAllText(Path.Combine(folder, (name.Length > 0 ? name : "game") + ".m3u"), DiscPlaylist.Content(folder, discs));
+            }
             // xemu reads no full dump of an Xbox disc: its game's partition alone
             if (Game.Platform.System.IsXemu)
             {
@@ -363,7 +371,8 @@ namespace gamevault.Helper
             {
                 // Android: the core of the app's own player and the BIOS; RetroArch for Android (GameCube, Wii, 3DS) comes with
                 // the first game, never the PC's RetroArch
-                if (RetroPlay.AndroidCore(Game.Platform.System) is string core && mobile.PlaysBuiltIn(core))
+                if (RetroPlay.AndroidCore(Game.Platform.System) is string core && mobile.PlaysBuiltIn(core)
+                    && Helper.Platform.AndroidEmulators.ChosenFor(Game.Platform.System.Slug, mobile) == null)
                 {
                     await mobile.EnsureCoreAsync(core, Preparing);
                     await RetroArchManager.EnsureSystemFilesAsync(Game.Platform, Preparing);

@@ -368,7 +368,8 @@ namespace gamevault.UserControls
             HashSet<int> installed = InstalledPc();
             var records = InstallViewModel.Instance.PlayRecords;
             List<CouchItem> pc = ByTitle(pcGames, g => g.SortTitle is { Length: > 0 } sort ? sort : g.Title ?? "").Select(g => new CouchItem { Pc = g, Installed = installed.Contains(g.ID) }).ToList();
-            List<CouchItem> retro = ByTitle(retroGames, g => g.Name).Select(g => new CouchItem { Retro = g, Installed = g.Installed }).ToList();
+            // The games hidden from the lists stay out (the retro page's "Hidden" filter shows them again)
+            List<CouchItem> retro = ByTitle(retroGames.Where(g => !g.IsHidden), g => g.Name).Select(g => new CouchItem { Retro = g, Installed = g.Installed }).ToList();
 
             var tabs = new List<CouchTab>();
             // What was played last comes first, as on a console
@@ -647,6 +648,7 @@ namespace gamevault.UserControls
                 Key.Home => CouchCommand.PreviousLetter, Key.End => CouchCommand.NextLetter,
                 Key.F10 => CouchCommand.Menu,
                 Key.F3 => CouchCommand.Search,
+                Key.F4 => CouchCommand.QuickSettings,
                 _ => null,
             };
             if (command == null)
@@ -1163,7 +1165,7 @@ namespace gamevault.UserControls
                 },
             };
             if (!Searching && screen == CouchScreen.Home)
-                Hints = Hints.Concat(new[] { new CouchStat("BACK", Loc.T("Quick access")), new CouchStat("L3", Loc.T("Filters")) }).ToArray();
+                Hints = Hints.Concat(new[] { new CouchStat("BACK", Loc.T("Quick access")), new CouchStat("L3", Loc.T("Filters")), new CouchStat("R3", Loc.T("Quick settings")) }).ToArray();
             // A game left running behind the mode: the way back to it, first
             if (!Searching && screen != CouchScreen.Menu && GameBehind != null && OperatingSystem.IsWindows() && Settings.Overlay)
                 Hints = new[] { new CouchStat("START BACK", Loc.T("Back to the game")) }.Concat(Hints).ToArray();

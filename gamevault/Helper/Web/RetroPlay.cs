@@ -153,6 +153,12 @@ namespace gamevault.Helper
                 game.Status = why;
                 return;
             }
+            // An emulator app chosen for the console (Settings > Retro) plays it instead of the app's own player
+            if (Platform.AndroidEmulators.ChosenFor(game.Platform.System.Slug, mobile) is Platform.AndroidEmulator emulator)
+            {
+                await PlayExternalAsync(mobile, game, emulator, rom);
+                return;
+            }
             if (mobile.PlaysBuiltIn(core))
             {
                 await PlayBuiltInAsync(mobile, game, core, rom, stateSlot);
@@ -182,6 +188,40 @@ namespace gamevault.Helper
                     ? Loc.F("RetroArch closed at once: if the game did not start, download the core '{0}' in RetroArch (Main Menu > Online Updater > Core Downloader), then press Play again.", core)
                     : "";
             }
+            catch (Exception ex)
+            {
+                Log.Ignored(ex);
+                game.Status = Loc.F("Failed: {0}", WebExceptionHelper.TryGetServerMessage(ex));
+            }
+            finally { game.Busy = false; }
+        }
+
+        /// <summary>
+        /// Android, an emulator app (DuckStation, Dolphin...) until SanctuaryVault is back on the screen: the play time
+        /// counted, the friends told; its saves are its own (not the cloud's).
+        /// </summary>
+        private static async Task PlayExternalAsync(Platform.IMobilePlatform mobile, RetroGame game, Platform.AndroidEmulator emulator, string rom)
+        {
+            game.Busy = true;
+            try
+            {
+                await RetroArchManager.EnsureSystemFilesAsync(game.Platform, text => game.Status = text);
+                game.Status = Loc.F("Playing with {0}", emulator.Name);
+                ActivityService.Instance.SetRetroPlaying(game);
+                Raise(Started, game);
+                DateTime started = DateTime.UtcNow;
+                await mobile.PlayExternalAsync(emulator, rom);
+                Raise(Closed, game);
+                ActivityService.Instance.SetRetroPlaying(null);
+                await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
+                if (RommAccount.IsLinked)
+                {
+                    try { await RommAccount.PlayedAsync(game.Id); }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
+                game.Status = "";
+            }
+            catch (RetroArchManager.MissingBiosException ex) { game.Status = WebExceptionHelper.TryGetServerMessage(ex); }
             catch (Exception ex)
             {
                 Log.Ignored(ex);

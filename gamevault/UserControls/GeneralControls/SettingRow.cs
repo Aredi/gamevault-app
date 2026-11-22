@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 
 namespace gamevault.UserControls
 {
@@ -15,6 +16,37 @@ namespace gamevault.UserControls
             AvaloniaProperty.Register<SettingRow, string?>(nameof(Hint));
 
         protected override System.Type StyleKeyOverride => typeof(SettingRow);
+
+        private ContentPresenter? content;
+        private bool? stacked;
+
+        protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+        {
+            base.OnApplyTemplate(e);
+            content = e.NameScope.Find<ContentPresenter>("PART_Content");
+            stacked = null;
+            Stack(Bounds.Width);
+        }
+
+        protected override void OnSizeChanged(SizeChangedEventArgs e)
+        {
+            base.OnSizeChanged(e);
+            Stack(e.NewSize.Width);
+        }
+
+        /// <summary>A narrow page (a phone): the control under the title, on its own line, not squeezing it to a column of letters.</summary>
+        private void Stack(double width)
+        {
+            bool narrow = width > 0 && width < 480;
+            if (content == null || stacked == narrow)
+                return;
+            stacked = narrow;
+            Grid.SetRow(content, narrow ? 1 : 0);
+            Grid.SetColumn(content, narrow ? 0 : 1);
+            Grid.SetColumnSpan(content, narrow ? 2 : 1);
+            content.HorizontalAlignment = narrow ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Stretch;
+            content.Margin = narrow ? new Thickness(0, 8, 0, 0) : default;
+        }
 
         public string? Title
         {

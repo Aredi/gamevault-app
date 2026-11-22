@@ -90,13 +90,13 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" MinHeight="{TemplateBinding MinHeight}">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20" VerticalAlignment="Center">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="20" VerticalAlignment="Center">
                         <StackPanel VerticalAlignment="Center" Spacing="2">
                             <TextBlock Text="{TemplateBinding Title}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
                             <TextBlock Classes="muted" Text="{TemplateBinding Hint}" FontSize="12.5" TextWrapping="Wrap"
                                        IsVisible="{TemplateBinding Hint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                         </StackPanel>
-                        <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+                        <ContentPresenter Name="PART_Content" Grid.Column="1" Content="{TemplateBinding Content}" VerticalAlignment="Center" />
                     </Grid>
                 </Border>
             </ControlTemplate>

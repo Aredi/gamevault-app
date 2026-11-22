@@ -22,6 +22,8 @@ namespace GameVault.Core.Couch
         Quick,
         /// <summary>A click of the left stick: the order and the filters of the games.</summary>
         Filter,
+        /// <summary>A click of the right stick when it is not the mouse's: the quick settings (sounds, music, vibrations).</summary>
+        QuickSettings,
     }
 
     /// <summary>The buttons held on the gamepads at one moment.</summary>

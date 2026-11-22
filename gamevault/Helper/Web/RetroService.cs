@@ -119,6 +119,13 @@ namespace gamevault.Helper
             set { if (value != IsFavorite) _ = RetroLibrary.SetFavoriteAsync(this, value); OnPropertyChanged(); }
         }
 
+        [JsonIgnore]
+        public bool IsHidden
+        {
+            get => RetroLibrary.IsHidden(this);
+            set { if (value != IsHidden) RetroLibrary.SetHidden(this, value); OnPropertyChanged(); }
+        }
+
         /// <summary>The time played or the favorites changed.</summary>
         public void RefreshPlayer()
         {

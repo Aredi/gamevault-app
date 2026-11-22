@@ -12,6 +12,8 @@ using GameVault.Core.Couch;
 namespace gamevault.Android
 {
     /// <summary>SanctuaryVault on Android: the desktop client's views in one screen, turned as the phone is (a game asks for landscape).</summary>
+    // It can be chosen as the device's home screen (a handheld, a TV box): Android's settings, Default apps
+    [IntentFilter(new[] { global::Android.Content.Intent.ActionMain }, Categories = new[] { global::Android.Content.Intent.CategoryHome, global::Android.Content.Intent.CategoryDefault })]
     [Activity(Label = "SanctuaryVault", Theme = "@style/SanctuaryTheme", Icon = "@mipmap/icon", MainLauncher = true,
         LaunchMode = LaunchMode.SingleTask, ScreenOrientation = ScreenOrientation.Unspecified,
         ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode | ConfigChanges.ScreenLayout

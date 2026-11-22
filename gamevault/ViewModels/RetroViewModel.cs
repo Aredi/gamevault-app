@@ -71,6 +71,10 @@ namespace gamevault.ViewModels
         private bool onlyFavorites;
         public bool OnlyFavorites { get => onlyFavorites; set { onlyFavorites = value; OnPropertyChanged(); ApplyFilter(); } }
 
+        private bool onlyHidden;
+        /// <summary>The games hidden from the lists, to show one again; else they are left out.</summary>
+        public bool OnlyHidden { get => onlyHidden; set { onlyHidden = value; OnPropertyChanged(); ApplyFilter(); } }
+
         private bool onlyNeverPlayed;
         /// <summary>The games not started yet: what is left to discover.</summary>
         public bool OnlyNeverPlayed { get => onlyNeverPlayed; set { onlyNeverPlayed = value; OnPropertyChanged(); ApplyFilter(); } }
@@ -106,6 +110,14 @@ namespace gamevault.ViewModels
         private List<string> genres = new();
         /// <summary>"All genres", then the genres of the games shown, the most common first.</summary>
         public List<string> Genres { get => genres; private set { genres = value; OnPropertyChanged(); } }
+        private List<string> regions = new(), franchises = new();
+        /// <summary>"All regions", then the regions of the games shown (RomM's: Europe, USA, Japan...), the most common first.</summary>
+        public List<string> Regions { get => regions; private set { regions = value; OnPropertyChanged(); } }
+        /// <summary>"All franchises", then the games' franchises (Mario, Zelda...), by name.</summary>
+        public List<string> Franchises { get => franchises; private set { franchises = value; OnPropertyChanged(); } }
+        private int region, franchise;
+        public int Region { get => region; set { if (value < 0 || value == region) return; region = value; OnPropertyChanged(); FiltersChanged(); } }
+        public int Franchise { get => franchise; set { if (value < 0 || value == franchise) return; franchise = value; OnPropertyChanged(); FiltersChanged(); } }
         private List<string> decades = new();
         public List<string> Decades { get => decades; private set { decades = value; OnPropertyChanged(); } }
 
@@ -117,7 +129,7 @@ namespace gamevault.ViewModels
 
         private bool showFilters;
         public bool ShowFilters { get => showFilters; set { showFilters = value; OnPropertyChanged(); } }
-        public bool HasFilters => Genre > 0 || Players > 0 || Decade > 0 || Rating > 0;
+        public bool HasFilters => Genre > 0 || Players > 0 || Decade > 0 || Rating > 0 || Region > 0 || Franchise > 0;
 
         private void FiltersChanged()
         {
@@ -127,7 +139,9 @@ namespace gamevault.ViewModels
 
         public void ClearFilters()
         {
-            genre = players = decade = rating = 0;
+            genre = players = decade = rating = region = franchise = 0;
+            OnPropertyChanged(nameof(Region));
+            OnPropertyChanged(nameof(Franchise));
             OnPropertyChanged(nameof(Genre));
             OnPropertyChanged(nameof(Players));
             OnPropertyChanged(nameof(Decade));
@@ -146,6 +160,18 @@ namespace gamevault.ViewModels
         {
             string? shownGenre = Genre > 0 && Genre < Genres.Count ? Genres[Genre] : null;
             string? shownDecade = Decade > 0 && Decade < Decades.Count ? Decades[Decade] : null;
+            string? shownRegion = Region > 0 && Region < Regions.Count ? Regions[Region] : null;
+            string? shownFranchise = Franchise > 0 && Franchise < Franchises.Count ? Franchises[Franchise] : null;
+            var regionNames = AllGames.SelectMany(g => g.Regions).GroupBy(r => r, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(r => r.Count()).Select(r => r.Key).Prepend(Loc.T("All regions")).ToList();
+            var franchiseNames = AllGames.SelectMany(g => g.Franchises).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(f => f, StringComparer.CurrentCultureIgnoreCase).Prepend(Loc.T("All franchises")).ToList();
+            region = shownRegion != null ? Math.Max(0, regionNames.IndexOf(shownRegion)) : 0;
+            franchise = shownFranchise != null ? Math.Max(0, franchiseNames.IndexOf(shownFranchise)) : 0;
+            Regions = regionNames;
+            Franchises = franchiseNames;
+            OnPropertyChanged(nameof(Region));
+            OnPropertyChanged(nameof(Franchise));
             var genreNames = AllGames.SelectMany(g => g.Genres).GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
                 .OrderByDescending(g => g.Count()).Select(g => g.Key).Prepend(Loc.T("All genres")).ToList();
             var decadeNames = AllGames.Select(DecadeOf).OfType<int>().Distinct().OrderBy(d => d)
@@ -284,6 +310,7 @@ namespace gamevault.ViewModels
                     || GameVault.Core.Library.QuickMatch.Normalize(g.FileName).Contains(text, StringComparison.Ordinal));
             if (OnlyInstalled)
                 shown = shown.Where(g => g.Installed);
+            shown = shown.Where(g => g.IsHidden == OnlyHidden);
             if (OnlyFavorites)
                 shown = shown.Where(g => g.IsFavorite);
             if (OnlyNeverPlayed)
@@ -306,6 +333,10 @@ namespace gamevault.ViewModels
                 3 => shown.Where(g => g.Modes.Contains("Co-operative", StringComparer.OrdinalIgnoreCase)),
                 _ => shown,
             };
+            if (Region > 0 && Region < Regions.Count)
+                shown = shown.Where(g => g.Regions.Contains(Regions[Region], StringComparer.OrdinalIgnoreCase));
+            if (Franchise > 0 && Franchise < Franchises.Count)
+                shown = shown.Where(g => g.Franchises.Contains(Franchises[Franchise], StringComparer.OrdinalIgnoreCase));
             if (Decade > 0 && Decade < Decades.Count)
                 shown = shown.Where(g => DecadeOf(g) is int d && Loc.F("{0}s", d) == Decades[Decade]);
             if (Rating > 0)

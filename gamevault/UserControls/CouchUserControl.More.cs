@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace gamevault.UserControls
 {
     /// <summary>The menus of the living-room mode.</summary>
-    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Challenge, Friends, News, InstallLocation }
+    internal enum CouchMenu { Main, Quick, Filter, Settings, Stats, Achievements, Custom, Downloads, Challenge, Friends, News, InstallLocation, Apps, QuickSettings }
 
     /// <summary>
     /// The menu shown over a game (Start + Back, Windows): a small window always in front, moved through with the
@@ -195,6 +195,9 @@ namespace gamevault.UserControls
             Add("downloads", Loc.T("Downloads"), DownloadsText(), () => Do(() => ShowMenu(CouchMenu.Downloads)));
             Add("news", Loc.T("News"), Loc.T("What is new on the server"), OpenNewsAsync);
             Add("stats", Loc.T("Statistics"), Loc.T("Your games and your play time"), () => Do(() => ShowMenu(CouchMenu.Stats)));
+            // Android (SanctuaryVault as a handheld's home screen): the device's other apps
+            if (Helper.Platform.MobilePlatform.Current != null)
+                Add("apps", Loc.T("Applications"), Loc.T("The other apps of this device"), () => Do(() => ShowMenu(CouchMenu.Apps)));
             foreach (CouchApp app in Settings.Apps)
                 Add("app:" + app.Path, app.Name, Loc.T("Application"), () => Do(() => CouchSystem.Open(app)));
             return home;
@@ -277,6 +280,8 @@ namespace gamevault.UserControls
             CouchMenu.Friends => Loc.T("Friends"),
             CouchMenu.News => Loc.T("News"),
             CouchMenu.InstallLocation => Loc.T("Where should the game be installed?"),
+            CouchMenu.Apps => Loc.T("Applications"),
+            CouchMenu.QuickSettings => Loc.T("Quick settings"),
             _ => Loc.T("Living-room mode"),
         };
 
@@ -306,6 +311,16 @@ namespace gamevault.UserControls
             }
             if (command is CouchCommand.Quick)
                 return true;
+            // R3: the sounds and the music at hand, without the settings' pages
+            if (command is CouchCommand.QuickSettings)
+            {
+                if (!inMenu)
+                {
+                    Play(CouchSound.Panel);
+                    ShowMenu(CouchMenu.QuickSettings);
+                }
+                return true;
+            }
             if (command is CouchCommand.Filter)
             {
                 if (Navigator.Screen == CouchScreen.Home)
@@ -361,6 +376,9 @@ namespace gamevault.UserControls
                 CouchMenu.Friends => FriendsLines(),
                 CouchMenu.News => NewsLines(),
                 CouchMenu.InstallLocation => InstallLocationLines(),
+                CouchMenu.QuickSettings => QuickSettingsLines(),
+                CouchMenu.Apps => (Helper.Platform.MobilePlatform.Current?.Apps ?? Array.Empty<(string, string)>())
+                    .Select(app => Line(app.Name, () => Helper.Platform.MobilePlatform.Current!.OpenApp(app.Package))).Append(Line(Loc.T("Close"), CloseMenu)).ToList(),
                 _ => MainLines(),
             };
             Navigator.MenuCount = MenuLines.Count;
@@ -444,9 +462,33 @@ namespace gamevault.UserControls
                 Line(Loc.T("Change of profile"), () => { CloseMenu(); ShowLogin(); }),
                 new() { Text = Loc.T("Quit SanctuaryVault"), Run = () => App.Instance.ExitApp() },
             };
+            // Over a retro game's screen: hidden from the lists (the retro page's "Hidden" filter shows it again)
+            if (uiDetails.IsVisible && Current?.Retro is RetroGame shown)
+                lines.Insert(lines.Count - 3, Line(Loc.T("Hide from the lists"), () =>
+                {
+                    shown.IsHidden = true;
+                    CloseMenu();
+                    Handle(CouchCommand.Back);
+                    Show(all.Where(i => i.Pc != null).Select(i => i.Pc!), all.Where(i => i.Retro != null).Select(i => i.Retro!));
+                }));
             // A game left running behind: going back to it comes first
             if (GameBehind is string game)
                 lines.Insert(0, Line(Loc.F("Back to {0}", game), BackToGameBehind));
+            return lines;
+        }
+
+        private List<CouchLine> QuickSettingsLines()
+        {
+            var lines = new List<CouchLine>
+            {
+                Setting(SoundsOn ? Loc.T("Sounds: on") : Loc.T("Sounds: off"), () => SoundsOn = !SoundsOn),
+                Setting(Loc.F("Music in the menus: {0}", YesNo(Settings.Music)), () => Settings.Music = !Settings.Music),
+                Setting(Loc.F("Theme of the selected game: {0}", YesNo(Settings.Themes)), () => Settings.Themes = !Settings.Themes),
+                Setting(Loc.F("Animations: {0}", YesNo(Settings.Animations)), () => Settings.Animations = !Settings.Animations),
+            };
+            if (Helper.Platform.PlatformInfo.IsAndroid)
+                lines.Add(Setting(HapticsOn ? Loc.T("Vibrations: on") : Loc.T("Vibrations: off"), () => HapticsOn = !HapticsOn));
+            lines.Add(Line(Loc.T("Close"), CloseMenu));
             return lines;
         }
 
@@ -1002,7 +1044,14 @@ namespace gamevault.UserControls
                     BackToGameBehind();
             }
             comboHeld = combo;
+            // R3 opens the quick settings, unless the right stick is the mouse (its click is the mouse's)
+            bool r3 = held.HasFlag(CouchButtons.RightStick);
+            if (r3 && !r3Held && listen && !(Settings.Mouse && OperatingSystem.IsWindows()))
+                Handle(CouchCommand.QuickSettings);
+            r3Held = r3;
         }
+
+        private bool r3Held;
 
         /// <summary>
         /// Start and Back together: both held now, or one held now and the other a moment ago (read every 33 ms behind a

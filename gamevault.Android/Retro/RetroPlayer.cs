@@ -123,6 +123,14 @@ namespace gamevault.Android.Retro
                     for (int port = 0; port < 4; port++)
                         tappedThisFrame[port] = Interlocked.Exchange(ref tapped[port], 0);
                     ApplyOptions();
+                    // The disc asked for in the menu, between two frames
+                    if (Interlocked.Exchange(ref discWanted, -1) is int disc and >= 0 && core.ChangeDisc(disc))
+                        GameVault.Core.Log.Info($"{game.Name}: disc {disc + 1}");
+                    if (frame % 30 == 0)
+                    {
+                        Discs = core.DiscCount;
+                        CurrentDisc = core.Disc;
+                    }
                     core.Run();
                     UpdateGeometry();
                     // "Resume": the state is put back once the game ran a frame, as RetroArch does
@@ -391,6 +399,18 @@ namespace gamevault.Android.Retro
             }
         }
         private byte[]? startState;
+        private int discWanted = -1;
+
+        /// <summary>The game's discs (several: the menu offers the next one), and the one in the console, from 0.</summary>
+        public int Discs { get; private set; }
+        public int CurrentDisc { get; private set; }
+
+        /// <summary>The next disc (after the last, the first), changed by the player's thread.</summary>
+        public void NextDisc()
+        {
+            if (Discs > 1)
+                Interlocked.Exchange(ref discWanted, (CurrentDisc + 1) % Discs);
+        }
 
         /// <summary>Quit: where the game is (quick resume), with its picture, as RetroArch's ".auto" state.</summary>
         private void WriteState()

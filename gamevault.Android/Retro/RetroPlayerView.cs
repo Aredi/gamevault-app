@@ -39,7 +39,7 @@ namespace gamevault.Android.Retro
         private readonly TouchPad pad;
         private readonly Button menuButton;
         private readonly Border menu;
-        private readonly Button resumeButton, quitButton;
+        private readonly Button resumeButton, discButton, quitButton;
         private long shown = -1;
         /// <summary>The screen the view is on, while it is.</summary>
         private TopLevel? screen;
@@ -74,6 +74,9 @@ namespace gamevault.Android.Retro
 
             resumeButton = MenuButton(Loc.T("Resume"));
             resumeButton.Click += (_, _) => CloseMenu();
+            // A game on several discs: the next one, as a console's tray
+            discButton = MenuButton("");
+            discButton.Click += (_, _) => NextDisc();
             quitButton = MenuButton(Loc.T("Quit the game"));
             quitButton.Click += (_, _) => Quit?.Invoke();
             menu = new Border
@@ -91,6 +94,7 @@ namespace gamevault.Android.Retro
                         // The time and the battery, as a handheld's menu
                         (menuStatus = new TextBlock { FontSize = 15, Foreground = Brushes.White, Opacity = 0.75, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 10) }),
                         resumeButton,
+                        discButton,
                         quitButton,
                     },
                 },
@@ -170,6 +174,8 @@ namespace gamevault.Android.Retro
             menu.IsVisible = true;
             string battery = Helper.Platform.MobilePlatform.BatteryText;
             menuStatus.Text = DateTime.Now.ToString("t", System.Globalization.CultureInfo.CurrentCulture) + (battery.Length > 0 ? "  ·  " + battery : "");
+            discButton.IsVisible = player.Discs > 1;
+            discButton.Content = Loc.F("Next disc (now {0} of {1})", player.CurrentDisc + 1, player.Discs);
             menuChoice = 0;
             ShowChoice();
             player.Pause(true);
@@ -184,24 +190,41 @@ namespace gamevault.Android.Retro
         /// <summary>The menu with a controller: up and down choose, the bottom button (or Start) confirms.</summary>
         public void MenuButtonPressed(int button)
         {
+            Button[] choices = Choices;
             if (button is RetroPlayer.Up or RetroPlayer.Down)
             {
-                menuChoice = button == RetroPlayer.Up ? 0 : 1;
+                menuChoice = Math.Clamp(menuChoice + (button == RetroPlayer.Up ? -1 : 1), 0, choices.Length - 1);
                 ShowChoice();
             }
             else if (button is RetroPlayer.B or RetroPlayer.Start)
             {
-                if (menuChoice == 0) CloseMenu(); else Quit?.Invoke();
+                Button chosen = choices[Math.Clamp(menuChoice, 0, choices.Length - 1)];
+                if (chosen == resumeButton) CloseMenu();
+                else if (chosen == discButton) NextDisc();
+                else Quit?.Invoke();
             }
             else if (button == RetroPlayer.A)
                 CloseMenu();
         }
 
+        /// <summary>The menu's buttons shown, from the top.</summary>
+        private Button[] Choices => new[] { resumeButton, discButton, quitButton }.Where(b => b.IsVisible).ToArray();
+
         private void ShowChoice()
         {
-            resumeButton.BorderBrush = menuChoice == 0 ? Brushes.White : Brushes.Transparent;
-            quitButton.BorderBrush = menuChoice == 1 ? Brushes.White : Brushes.Transparent;
-            resumeButton.BorderThickness = quitButton.BorderThickness = new Thickness(2);
+            Button[] choices = Choices;
+            for (int i = 0; i < choices.Length; i++)
+            {
+                choices[i].BorderBrush = i == menuChoice ? Brushes.White : Brushes.Transparent;
+                choices[i].BorderThickness = new Thickness(2);
+            }
+        }
+
+        /// <summary>The next disc goes in, and the game goes on.</summary>
+        private void NextDisc()
+        {
+            player.NextDisc();
+            CloseMenu();
         }
 
         /// <summary>A finger on the game's picture: the console's touch screen (the DS's bottom screen), in libretro's coordinates.</summary>

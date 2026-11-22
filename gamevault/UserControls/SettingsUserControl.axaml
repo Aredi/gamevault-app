@@ -93,7 +93,7 @@
         </Style>
     </UserControl.Styles>
     <Grid RowDefinitions="Auto,*">
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="24" Margin="28,20,28,14">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="24" Margin="28,20,28,14">
             <TextBlock Classes="pageTitle" Text="{l:T 'Settings'}" VerticalAlignment="Center" />
             <TextBox Grid.Column="1" x:Name="uiSearch" Classes="search" Watermark="{l:T 'Search a setting'}" MaxWidth="420" HorizontalAlignment="Right" MinWidth="220" Height="38"
                      TextChanged="Search_TextChanged" KeyDown="Search_KeyDown" />
