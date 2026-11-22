@@ -392,7 +392,7 @@ namespace gamevault.Android.Retro
         }
         private byte[]? startState;
 
-        /// <summary>Quit: where the game is, in RetroArch's first slot, with its picture (its page offers to resume from it).</summary>
+        /// <summary>Quit: where the game is (quick resume), with its picture, as RetroArch's ".auto" state.</summary>
         private void WriteState()
         {
             if (game.StateFile == null || core == null)

@@ -65,7 +65,7 @@ namespace gamevault.Helper.Platform
     /// <param name="SystemDirectory">The BIOS and the cores' files.</param>
     /// <param name="SaveFile">The cartridge's or memory card's save, read before and written after.</param>
     /// <param name="Language">RetroArch's name of the console's language ("French"...).</param>
-    /// <param name="StateFile">Where the game's state is kept when it is quit (RetroArch's first slot), for "Resume".</param>
+    /// <param name="StateFile">Where the game's state is kept when it is quit (quick resume, RetroArch's ".auto" state), or none.</param>
     /// <param name="StartState">A save state the game starts from, or none.</param>
     internal sealed record BuiltInGame(string Name, string Platform, string Core, string Rom, string SystemDirectory, string SaveFile, string Language,
         string? StateFile = null, string? StartState = null);

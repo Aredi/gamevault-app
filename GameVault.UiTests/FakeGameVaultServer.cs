@@ -153,6 +153,8 @@ namespace GameVault.UiTests
         /// <summary>Game requests sent through the service (to the RomM-ComM bot): name of the game.</summary>
         public ConcurrentQueue<string> GameRequests { get; } = new();
         public static readonly byte[] RetroRom = Encoding.ASCII.GetBytes("NES\x1A-test-rom");
+        /// <summary>The NES game's file it serves (a real one for a device to play: see DevServer).</summary>
+        public byte[] NesRom { get; set; } = RetroRom;
         /// <summary>A PS1 game in two files, as RomM zips them.</summary>
         public static readonly byte[] RetroCdGame = Zip(("Castlevania.cue", "FILE \"Castlevania.bin\" BINARY"), ("Castlevania.bin", "track"));
         /// <summary>A PS3 game in its folder, as RomM zips it (not "multi" for RomM: one folder).</summary>
@@ -263,9 +265,10 @@ namespace GameVault.UiTests
         /// <summary>Delay between two chunks of a download, to keep downloads running for a while.</summary>
         public TimeSpan ChunkDelay { get; set; } = TimeSpan.Zero;
 
-        public FakeGameVaultServer()
+        /// <param name="fixedPort">A port of its own (a device kept signed in to it), else a free one.</param>
+        public FakeGameVaultServer(int? fixedPort = null)
         {
-            int port = FreePort();
+            int port = fixedPort ?? FreePort();
             Url = $"http://127.0.0.1:{port}";
             listener.Prefixes.Add(Url + "/");
             listener.Start();
@@ -589,7 +592,7 @@ namespace GameVault.UiTests
                 else if ((match = Regex.Match(path, @"^/retro/saves/([a-z0-9-]+)$")).Success && RetroSaves.TryGetValue(match.Groups[1].Value, out var current))
                     await response.OutputStream.WriteAsync(current.Zip);
                 else if (path == "/retro/platforms/3/games")
-                    await Json(response, new[] { new { id = 40, name = "Zelda", fileName = "Zelda (E).nes", size = RetroRom.LongLength, cover = (string?)null, summary = "A sword" } }
+                    await Json(response, new[] { new { id = 40, name = "Zelda", fileName = "Zelda (E).nes", size = NesRom.LongLength, cover = (string?)null, summary = "A sword" } }
                         .Concat(NesBrokenGame ? new[] { new { id = 41, name = "Readme", fileName = "Readme.txt", size = 4L, cover = (string?)null, summary = "Not a game" } } : []));
                 else if (path == "/retro/games/41/content")
                 {
@@ -601,8 +604,8 @@ namespace GameVault.UiTests
                 {
                     response.ContentType = "application/octet-stream";
                     response.AddHeader("Content-Disposition", "attachment; filename*=UTF-8''Zelda%20%28E%29.nes");
-                    response.ContentLength64 = RetroRom.LongLength;
-                    await response.OutputStream.WriteAsync(RetroRom);
+                    response.ContentLength64 = NesRom.LongLength;
+                    await response.OutputStream.WriteAsync(NesRom);
                 }
                 // RomM: the device pairing (pending once, then approved) and the player's saves
                 else if (path == "/api/auth/device/init")

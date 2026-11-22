@@ -213,13 +213,16 @@ namespace gamevault.Helper
                 // The friends see it in their chat and the community page, as on a PC
                 ActivityService.Instance.SetRetroPlaying(game);
                 Raise(Started, game);
-                // Its state where RetroArch keeps its first slot: the game's page offers to resume from it, as on a PC
-                string states = System.IO.Path.Combine(RetroArchManager.Layout.StatesDirectory(RetroArchManager.Player),
-                    RetroArchManager.Layout.SaveFolderName(game.Platform.System.Core));
-                string stem = System.IO.Path.Combine(states, System.IO.Path.GetFileNameWithoutExtension(rom) + ".state");
-                string? startState = stateSlot is int slot ? (slot == 0 ? stem : stem + slot) : null;
+                // Quick resume (Settings > Retro), as RetroArch on a PC: a state saved on quitting, loaded at the next start; a
+                // save state chosen on the game's page comes first
+                string stem = System.IO.Path.Combine(RetroArchManager.Layout.StatesDirectory(RetroArchManager.Player),
+                    RetroArchManager.Layout.SaveFolderName(game.Platform.System.Core), System.IO.Path.GetFileNameWithoutExtension(rom) + ".state");
+                bool resumes = RetroArchManager.QuickResume && RetroComfort.ResumeCores.Contains(core);
+                string? autoState = resumes ? stem + ".auto" : null;
+                string? startState = stateSlot is int slot ? (slot == 0 ? stem : stem + slot)
+                    : autoState != null && System.IO.File.Exists(autoState) ? autoState : null;
                 _ = WhenClosedAsync(mobile.PlayBuiltInAsync(new Platform.BuiltInGame(game.Name, game.Platform.Slug, core, rom,
-                    RetroArchManager.Layout.SystemDirectory, saveFile, RetroArchManager.LanguageOf(game), stem, startState)), game, before);
+                    RetroArchManager.Layout.SystemDirectory, saveFile, RetroArchManager.LanguageOf(game), autoState, startState)), game, before);
             }
             catch (RetroArchManager.MissingBiosException ex)
             {

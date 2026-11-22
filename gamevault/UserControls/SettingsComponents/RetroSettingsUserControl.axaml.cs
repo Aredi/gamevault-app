@@ -47,6 +47,8 @@ namespace gamevault.UserControls.SettingsComponents
             InitializeComponent();
             // Android: not the PC's RetroArch, no file manager
             uiRetroArchSection.IsVisible = uiControls.IsVisible = uiSavesFolders.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
+            // RetroArch's run-ahead: the app's own player has none
+            uiRunAhead.IsVisible = uiRunAheadNote.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
             AttachedToVisualTree += (_, _) => _ = RefreshAsync();
         }
 
