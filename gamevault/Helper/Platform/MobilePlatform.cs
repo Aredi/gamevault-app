@@ -70,6 +70,9 @@ namespace gamevault.Helper.Platform
 
         void OpenApp(string package);
 
+        /// <summary>The device's pictures folder for the games' screenshots (Pictures/SanctuaryVault).</summary>
+        string CapturesDirectory { get; }
+
         /// <summary>One of the emulator's packages is installed.</summary>
         bool IsInstalled(AndroidEmulator emulator);
 
@@ -90,8 +93,10 @@ namespace gamevault.Helper.Platform
     /// <param name="Language">RetroArch's name of the console's language ("French"...).</param>
     /// <param name="StateFile">Where the game's state is kept when it is quit (quick resume, RetroArch's ".auto" state), or none.</param>
     /// <param name="StartState">A save state the game starts from, or none.</param>
+    /// <param name="SlotFile">The save state of the in-game menu (RetroArch's first slot: the game's page lists it).</param>
+    /// <param name="CaptureFolder">Where the in-game menu's screenshots go; <paramref name="Captured"/> is told each one.</param>
     internal sealed record BuiltInGame(string Name, string Platform, string Core, string Rom, string SystemDirectory, string SaveFile, string Language,
-        string? StateFile = null, string? StartState = null);
+        string? StateFile = null, string? StartState = null, string? SlotFile = null, string? CaptureFolder = null, System.Action<string>? Captured = null);
 
     internal static class MobilePlatform
     {

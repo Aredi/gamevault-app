@@ -173,19 +173,22 @@
                             <TextBlock Text="{Binding Subtitle}" FontSize="15" Opacity="0.85" TextWrapping="Wrap" />
                             <!-- Actions -->
                             <WrapPanel Margin="0,6,0,0" IsEnabled="{Binding !Game.Busy}">
-                                <Button Classes="action" Height="48" Padding="24,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="InstallAndPlay_Click" IsVisible="{Binding !Game.Installed}"
+                                <!-- Play: at the bottom of a phone instead -->
+                                <StackPanel x:Name="uiInlinePlay" Orientation="Horizontal">
+                                <Button x:Name="uiInstallPlay" Classes="action" Height="48" Padding="24,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="InstallAndPlay_Click" IsVisible="{Binding !Game.Installed}"
                                         ToolTip.Tip="{l:T 'Download, install and start the game'}">
                                     <StackPanel Orientation="Horizontal" Spacing="9">
                                         <Path Data="{StaticResource IconPlay}" Width="18" Height="18" />
                                         <TextBlock Text="{l:T 'Install &amp; Play'}" FontSize="15" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <Button Classes="action" Height="48" Padding="30,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="Play_Click" IsVisible="{Binding Game.Installed}">
+                                <Button x:Name="uiPlay" Classes="action" Height="48" Padding="30,0" Margin="0,0,10,10" Background="{Binding AccentBrush}" Click="Play_Click" IsVisible="{Binding Game.Installed}">
                                     <StackPanel Orientation="Horizontal" Spacing="9">
                                         <Path Data="{StaticResource IconPlay}" Width="18" Height="18" />
                                         <TextBlock Text="{l:T 'Play'}" FontSize="15" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+                                </StackPanel>
                                 <Button x:Name="uiUpdate" Classes="ghost" Height="48" Margin="0,0,10,10" Click="Update_Click" ToolTip.Tip="{l:T 'RomM has an update of this game that this PC does not: it is added to the installed game'}">
                                     <Button.IsVisible>
                                         <MultiBinding Converter="{x:Static BoolConverters.And}">
@@ -588,8 +591,44 @@
             </Panel>
         </ScrollViewer>
 
+        <!-- A phone: Play (or Install and play) held at the bottom, wherever the page is scrolled -->
+        <Border x:Name="uiPlayBar" IsVisible="False" VerticalAlignment="Bottom" Padding="16,22,16,14" IsEnabled="{Binding !Game.Busy}">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#0011101E" />
+                    <GradientStop Offset="0.35" Color="{DynamicResource GameVault.Colors.Background}" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <StackPanel Spacing="6">
+                <TextBlock Text="{Binding Game.Status}" Classes="mMuted" FontSize="12.5" TextWrapping="Wrap" HorizontalAlignment="Center"
+                           IsVisible="{Binding Game.Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <Button Classes="mGhost" Width="56" Height="56" CornerRadius="28" Padding="0" Click="Recommend_Click" ToolTip.Tip="{l:T 'Recommend to a friend'}">
+                        <Path Data="{DynamicResource M.Send}" />
+                    </Button>
+                    <Button Grid.Column="1" Classes="mPrimary" Height="56" CornerRadius="28" HorizontalAlignment="Stretch" Click="InstallAndPlay_Click" IsVisible="{Binding !Game.Installed}">
+                        <StackPanel Orientation="Horizontal" Spacing="9">
+                            <Path Data="{DynamicResource M.Play}" />
+                            <TextBlock Text="{l:T 'Install and play'}" FontSize="16.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="1" Classes="mPrimary" Height="56" CornerRadius="28" HorizontalAlignment="Stretch" Click="Play_Click" IsVisible="{Binding Game.Installed}">
+                        <StackPanel Orientation="Horizontal" Spacing="9">
+                            <Path Data="{DynamicResource M.Play}" />
+                            <TextBlock Text="{l:T 'Play'}" FontSize="16.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- A phone: back, a round button over the picture -->
+        <Button x:Name="uiRoundBack" Classes="mIcon" IsVisible="False" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="14,10,0,0" Background="#66000000" Click="Back_Click">
+            <Path Data="{DynamicResource M.Back}" />
+        </Button>
+
         <!-- Back, always reachable -->
-        <Button Classes="ghost small" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="22,18,0,0" Click="Back_Click" ToolTip.Tip="{l:T 'Back (Esc)'}">
+        <Button x:Name="uiBack" Classes="ghost small" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="22,18,0,0" Click="Back_Click" ToolTip.Tip="{l:T 'Back (Esc)'}">
             <StackPanel Orientation="Horizontal" Spacing="6">
                 <Path Data="{StaticResource IconChevronLeft}" Width="14" Height="14" />
                 <TextBlock Text="{l:T 'Back'}" VerticalAlignment="Center" />

@@ -262,7 +262,9 @@ namespace gamevault.Helper
                 string? startState = stateSlot is int slot ? (slot == 0 ? stem : stem + slot)
                     : autoState != null && System.IO.File.Exists(autoState) ? autoState : null;
                 _ = WhenClosedAsync(mobile.PlayBuiltInAsync(new Platform.BuiltInGame(game.Name, game.Platform.Slug, core, rom,
-                    RetroArchManager.Layout.SystemDirectory, saveFile, RetroArchManager.LanguageOf(game), autoState, startState)), game, before);
+                    RetroArchManager.Layout.SystemDirectory, saveFile, RetroArchManager.LanguageOf(game), autoState, startState,
+                    // The in-game menu's state in RetroArch's first slot (the game's page lists it), its screenshots with the game's
+                    SlotFile: stem, CaptureFolder: mobile.CapturesDirectory, Captured: path => GameCaptures.Add(GameCaptures.RetroKey(game), path))), game, before);
             }
             catch (RetroArchManager.MissingBiosException ex)
             {

@@ -308,6 +308,8 @@ namespace gamevault.Android
             }
         }
 
+        public string CapturesDirectory => Path.Combine(AndroidEnvironment.GetExternalStoragePublicDirectory(AndroidEnvironment.DirectoryPictures)!.AbsolutePath, "SanctuaryVault");
+
         public void OpenApp(string package)
         {
             try

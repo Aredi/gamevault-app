@@ -2334,5 +2334,17 @@
   "Downloaded in the background": "Téléchargé en arrière-plan",
   "Show in the lists again": "Réafficher dans les listes",
   "In landscape, with a controller": "En paysage, à la manette",
-  "Social": "Social"
+  "Social": "Social",
+  "State saved": "État sauvegardé",
+  "The state could not be saved": "L'état n'a pas pu être sauvegardé",
+  "State loaded": "État chargé",
+  "The state could not be loaded": "L'état n'a pas pu être chargé",
+  "Screenshot taken": "Capture d'écran enregistrée",
+  "The screenshot could not be taken": "La capture d'écran n'a pas pu être prise",
+  "Save the state": "Sauvegarder l'état",
+  "Load a state": "Charger un état",
+  "When it was quit": "Quand le jeu a été quitté",
+  "Saved in the menu": "Sauvegardé depuis le menu",
+  "Take a screenshot": "Capture d'écran",
+  "Select + Start": "Select + Start"
 }

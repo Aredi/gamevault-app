@@ -249,6 +249,13 @@ namespace gamevault.UserControls
             Grid.SetColumn(uiHeaderInfo, stacked ? 0 : 1);
             Grid.SetColumnSpan(uiHeaderInfo, stacked ? 2 : 1);
             uiHeaderInfo.Margin = stacked ? new Thickness(0, 18, 0, 0) : new Thickness(30, 0, 0, 4);
+            // A phone: Play held at the bottom, a round back over the picture, the room for them kept at the page's end
+            bool phone = stacked && Helper.Platform.PlatformInfo.IsAndroid;
+            uiPlayBar.IsVisible = uiRoundBack.IsVisible = phone;
+            uiBack.IsVisible = !phone;
+            uiInlinePlay.IsVisible = !phone;
+            if (phone)
+                uiContent.Margin = new Thickness(uiContent.Margin.Left, uiContent.Margin.Top, uiContent.Margin.Right, 120);
             if (narrowLayout == narrow)
                 return;
             narrowLayout = narrow;

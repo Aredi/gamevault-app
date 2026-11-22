@@ -8,6 +8,8 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using gamevault.Localization;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
@@ -39,7 +41,10 @@ namespace gamevault.Android.Retro
         private readonly TouchPad pad;
         private readonly Button menuButton;
         private readonly Border menu;
-        private readonly Button resumeButton, discButton, quitButton;
+        private readonly StackPanel menuRows = new() { Spacing = 4 };
+        private readonly Border menuPanel;
+        private readonly TextBlock menuTitle, notice;
+        private readonly List<(Button Row, Action Run)> rows = new();
         private long shown = -1;
         /// <summary>The screen the view is on, while it is.</summary>
         private TopLevel? screen;
@@ -72,38 +77,48 @@ namespace gamevault.Android.Retro
             };
             menuButton.Click += (_, _) => OpenMenu();
 
-            resumeButton = MenuButton(Loc.T("Resume"));
-            resumeButton.Click += (_, _) => CloseMenu();
-            // A game on several discs: the next one, as a console's tray
-            discButton = MenuButton("");
-            discButton.Click += (_, _) => NextDisc();
-            quitButton = MenuButton(Loc.T("Quit the game"));
-            quitButton.Click += (_, _) => Quit?.Invoke();
+            // The menu: a panel on the side of the paused game (in the middle, upright), its lines rebuilt each time it opens
+            menuTitle = new TextBlock { Text = title, FontSize = 19, FontWeight = FontWeight.Bold, Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, MaxLines = 2 };
+            menuStatus = new TextBlock { FontSize = 13, Foreground = Brushes.White, Opacity = 0.65, Margin = new Thickness(0, 2, 0, 12) };
+            menuPanel = new Border
+            {
+                Width = 340,
+                Background = new SolidColorBrush(Color.FromArgb(0xF0, 0x11, 0x10, 0x1E)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF)),
+                Padding = new Thickness(20, 22),
+                Child = new ScrollViewer
+                {
+                    VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden,
+                    Content = new StackPanel { Children = { menuTitle, menuStatus, menuRows } },
+                },
+            };
             menu = new Border
             {
                 IsVisible = false,
-                Background = new SolidColorBrush(Color.FromArgb(0xCC, 0, 0, 0)),
-                Child = new StackPanel
-                {
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Spacing = 14,
-                    Children =
-                    {
-                        new TextBlock { Text = title, FontSize = 22, FontWeight = FontWeight.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center },
-                        // The time and the battery, as a handheld's menu
-                        (menuStatus = new TextBlock { FontSize = 15, Foreground = Brushes.White, Opacity = 0.75, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 10) }),
-                        resumeButton,
-                        discButton,
-                        quitButton,
-                    },
-                },
+                Background = new SolidColorBrush(Color.FromArgb(0x8C, 0, 0, 0)),
+                Child = menuPanel,
             };
+            menu.PointerPressed += (_, e) =>
+            {
+                // A tap beside the panel: back to the game
+                if (e.Source == menu)
+                    CloseMenu();
+            };
+            // What a line of the menu did (a state saved, a screenshot taken), a moment at the top
+            notice = new TextBlock { FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White };
+            noticeBox = new Border
+            {
+                IsVisible = false, CornerRadius = new CornerRadius(18), Padding = new Thickness(16, 8), Margin = new Thickness(0, 16, 0, 0),
+                Background = new SolidColorBrush(Color.FromArgb(0xE6, 0x4F, 0x46, 0xAF)), HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top, Child = notice,
+            };
+            player.Done += text => Dispatcher.UIThread.Post(() => Notice(text));
 
             Children.Add(picture);
             Children.Add(pad);
             Children.Add(menuButton);
             Children.Add(menu);
+            Children.Add(noticeBox);
 
             AttachedToVisualTree += (_, _) =>
             {
@@ -123,16 +138,84 @@ namespace gamevault.Android.Retro
             };
         }
 
-        private static Button MenuButton(string text) => new()
+        private readonly Border noticeBox;
+        private Avalonia.Threading.DispatcherTimer? noticeTimer;
+
+        private void Notice(string text)
         {
-            Content = text,
-            MinWidth = 260,
-            Height = 48,
-            FontSize = 18,
-            HorizontalContentAlignment = HorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
+            notice.Text = text;
+            noticeBox.IsVisible = true;
+            noticeTimer?.Stop();
+            noticeTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2.2) };
+            noticeTimer.Tick += (_, _) =>
+            {
+                noticeTimer!.Stop();
+                noticeBox.IsVisible = false;
+            };
+            noticeTimer.Start();
+        }
+
+        /// <summary>A line of the menu: its icon, its text, a picture (a state's) under it.</summary>
+        private void Row(string icon, string text, Action run, Bitmap? picture = null, string? hint = null)
+        {
+            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { new TextBlock { Text = text, FontSize = 15.5, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White } } };
+            if (hint != null)
+                words.Children.Add(new TextBlock { Text = hint, FontSize = 12, Foreground = Brushes.White, Opacity = 0.6 });
+            var line = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = 12 };
+            line.Children.Add(new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(icon), Fill = Brushes.White, Width = 20, Height = 20, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center });
+            Grid.SetColumn(words, 1);
+            line.Children.Add(words);
+            if (picture != null)
+            {
+                var image = new Border { Width = 72, Height = 48, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = new Image { Source = picture, Stretch = Stretch.UniformToFill } };
+                Grid.SetColumn(image, 2);
+                line.Children.Add(image);
+            }
+            var button = new Button
+            {
+                Content = line, MinHeight = 48, Padding = new Thickness(12, 8), CornerRadius = new CornerRadius(14), BorderThickness = new Thickness(0),
+                Background = Brushes.Transparent, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            };
+            button.Click += (_, _) => run();
+            rows.Add((button, run));
+            menuRows.Children.Add(button);
+        }
+
+        private const string IconPlay = "M8 5v14l11-7z", IconSave = "M5 3h11l3 3v15H5zm3 0v5h7V3zm0 11v7h8v-7z",
+            IconLoad = "M12 4a8 8 0 1 1-7.4 5h2.2A6 6 0 1 0 12 6V9L7.5 5 12 1z", IconCamera = "M9 4h6l2 3h3v12H4V7h3zm3 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
+            IconDisc = "M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18zm0 6.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", IconQuit = "M14 4h6v16h-6v-2h4V6h-4zM9 7l1.4 1.4L8.8 10H16v2H8.8l1.6 1.6L9 15l-4-4z";
+
+        /// <summary>The menu's lines, as the game is now: its states with their pictures, its discs.</summary>
+        private void BuildMenu()
+        {
+            rows.Clear();
+            menuRows.Children.Clear();
+            Row(IconPlay, Loc.T("Resume"), CloseMenu);
+            Row(IconSave, Loc.T("Save the state"), () =>
+            {
+                player.SaveSlot();
+                CloseMenu();
+            });
+            foreach (var (path, saved, auto) in player.States())
+            {
+                Bitmap? picture = null;
+                try { picture = File.Exists(path + ".png") ? new Bitmap(path + ".png") : null; }
+                catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+                Row(IconLoad, Loc.T("Load a state"), () =>
+                {
+                    player.LoadState(path);
+                    CloseMenu();
+                }, picture, (auto ? Loc.T("When it was quit") : Loc.T("Saved in the menu")) + " · " + Converter.RelativeDate.Format(saved.ToUniversalTime()));
+            }
+            Row(IconCamera, Loc.T("Take a screenshot"), () =>
+            {
+                player.Capture();
+                CloseMenu();
+            });
+            if (player.Discs > 1)
+                Row(IconDisc, Loc.F("Next disc (now {0} of {1})", player.CurrentDisc + 1, player.Discs), NextDisc);
+            Row(IconQuit, Loc.T("Quit the game"), () => Quit?.Invoke(), hint: Loc.T("Select + Start"));
+        }
 
         /// <summary>The touch pad (and the menu button) shows while no controller is there.</summary>
         public void ShowTouchPad(bool show)
@@ -159,7 +242,7 @@ namespace gamevault.Android.Retro
             _ => Array.Empty<(string, string)>(),
         };
 
-        private TextBlock menuStatus = null!;
+        private readonly TextBlock menuStatus;
 
         public bool IsMenuOpen => menu.IsVisible;
 
@@ -171,11 +254,17 @@ namespace gamevault.Android.Retro
 
         public void OpenMenu()
         {
-            menu.IsVisible = true;
             string battery = Helper.Platform.MobilePlatform.BatteryText;
             menuStatus.Text = DateTime.Now.ToString("t", System.Globalization.CultureInfo.CurrentCulture) + (battery.Length > 0 ? "  ·  " + battery : "");
-            discButton.IsVisible = player.Discs > 1;
-            discButton.Content = Loc.F("Next disc (now {0} of {1})", player.CurrentDisc + 1, player.Discs);
+            BuildMenu();
+            // Landscape: on the right of the game, on the whole height; upright: a card in the middle
+            bool landscape = Bounds.Width > Bounds.Height;
+            menuPanel.HorizontalAlignment = landscape ? HorizontalAlignment.Right : HorizontalAlignment.Center;
+            menuPanel.VerticalAlignment = landscape ? VerticalAlignment.Stretch : VerticalAlignment.Center;
+            menuPanel.CornerRadius = landscape ? new CornerRadius(0) : new CornerRadius(24);
+            menuPanel.BorderThickness = landscape ? new Thickness(1, 0, 0, 0) : new Thickness(1);
+            menuPanel.MaxHeight = landscape ? double.PositiveInfinity : Bounds.Height - 80;
+            menu.IsVisible = true;
             menuChoice = 0;
             ShowChoice();
             player.Pause(true);
@@ -190,34 +279,24 @@ namespace gamevault.Android.Retro
         /// <summary>The menu with a controller: up and down choose, the bottom button (or Start) confirms.</summary>
         public void MenuButtonPressed(int button)
         {
-            Button[] choices = Choices;
             if (button is RetroPlayer.Up or RetroPlayer.Down)
             {
-                menuChoice = Math.Clamp(menuChoice + (button == RetroPlayer.Up ? -1 : 1), 0, choices.Length - 1);
+                menuChoice = Math.Clamp(menuChoice + (button == RetroPlayer.Up ? -1 : 1), 0, rows.Count - 1);
                 ShowChoice();
             }
             else if (button is RetroPlayer.B or RetroPlayer.Start)
-            {
-                Button chosen = choices[Math.Clamp(menuChoice, 0, choices.Length - 1)];
-                if (chosen == resumeButton) CloseMenu();
-                else if (chosen == discButton) NextDisc();
-                else Quit?.Invoke();
-            }
+                rows[Math.Clamp(menuChoice, 0, rows.Count - 1)].Run();
             else if (button == RetroPlayer.A)
                 CloseMenu();
         }
 
-        /// <summary>The menu's buttons shown, from the top.</summary>
-        private Button[] Choices => new[] { resumeButton, discButton, quitButton }.Where(b => b.IsVisible).ToArray();
-
+        /// <summary>The line a controller is on: the client's accent behind it.</summary>
         private void ShowChoice()
         {
-            Button[] choices = Choices;
-            for (int i = 0; i < choices.Length; i++)
-            {
-                choices[i].BorderBrush = i == menuChoice ? Brushes.White : Brushes.Transparent;
-                choices[i].BorderThickness = new Thickness(2);
-            }
+            for (int i = 0; i < rows.Count; i++)
+                rows[i].Row.Background = i == menuChoice ? new SolidColorBrush(Color.FromRgb(0x4F, 0x46, 0xAF)) : Brushes.Transparent;
+            if (menuChoice < rows.Count)
+                rows[menuChoice].Row.BringIntoView();
         }
 
         /// <summary>The next disc goes in, and the game goes on.</summary>

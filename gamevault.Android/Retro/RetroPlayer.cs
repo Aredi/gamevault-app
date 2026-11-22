@@ -1,4 +1,5 @@
 using Android.Media;
+using gamevault.Localization;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -123,6 +124,8 @@ namespace gamevault.Android.Retro
                     for (int port = 0; port < 4; port++)
                         tappedThisFrame[port] = Interlocked.Exchange(ref tapped[port], 0);
                     ApplyOptions();
+                    // What the menu asked (a state, a screenshot), between two frames
+                    Interlocked.Exchange(ref pending, null)?.Invoke();
                     // The disc asked for in the menu, between two frames
                     if (Interlocked.Exchange(ref discWanted, -1) is int disc and >= 0 && core.ChangeDisc(disc))
                         GameVault.Core.Log.Info($"{game.Name}: disc {disc + 1}");
@@ -415,36 +418,102 @@ namespace gamevault.Android.Retro
         /// <summary>Quit: where the game is (quick resume), with its picture, as RetroArch's ".auto" state.</summary>
         private void WriteState()
         {
-            if (game.StateFile == null || core == null)
-                return;
+            if (game.StateFile != null)
+                WriteStateTo(game.StateFile);
+        }
+
+        /// <summary>The game's state and its picture (the file + ".png", as RetroArch's): true once written.</summary>
+        private bool WriteStateTo(string path)
+        {
+            if (core == null)
+                return false;
             try
             {
                 if (core.SaveState() is not byte[] state)
-                    return;
-                Directory.CreateDirectory(Path.GetDirectoryName(game.StateFile)!);
-                File.WriteAllBytes(game.StateFile, state);
-                int width, height;
-                int[] pixels;
-                lock (Frame)
-                {
-                    width = Frame.Width;
-                    height = Frame.Height;
-                    pixels = Frame.Pixels[..(width * height)];
-                }
-                if (width == 0 || height == 0)
-                    return;
-                // RGBA bytes are 0xAABBGGRR; Android's pictures 0xAARRGGBB
-                for (int i = 0; i < pixels.Length; i++)
-                {
-                    int p = pixels[i];
-                    pixels[i] = (p & unchecked((int)0xFF00FF00)) | ((p >> 16) & 0xFF) | ((p & 0xFF) << 16);
-                }
-                using var picture = global::Android.Graphics.Bitmap.CreateBitmap(pixels, width, height, global::Android.Graphics.Bitmap.Config.Argb8888!);
-                using var file = File.Create(game.StateFile + ".png");
-                picture!.Compress(global::Android.Graphics.Bitmap.CompressFormat.Png!, 100, file);
+                    return false;
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllBytes(path, state);
+                WritePicture(path + ".png");
+                return true;
             }
-            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+            catch (Exception ex)
+            {
+                GameVault.Core.Log.Ignored(ex);
+                return false;
+            }
         }
+
+        /// <summary>The last picture of the game, as a PNG.</summary>
+        private bool WritePicture(string path)
+        {
+            int width, height;
+            int[] pixels;
+            lock (Frame)
+            {
+                width = Frame.Width;
+                height = Frame.Height;
+                if (width == 0 || height == 0)
+                    return false;
+                pixels = Frame.Pixels[..(width * height)];
+            }
+            // RGBA bytes are 0xAABBGGRR; Android's pictures 0xAARRGGBB
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                int p = pixels[i];
+                pixels[i] = (p & unchecked((int)0xFF00FF00)) | ((p >> 16) & 0xFF) | ((p & 0xFF) << 16);
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            using var picture = global::Android.Graphics.Bitmap.CreateBitmap(pixels, width, height, global::Android.Graphics.Bitmap.Config.Argb8888!);
+            using var file = File.Create(path);
+            picture!.Compress(global::Android.Graphics.Bitmap.CompressFormat.Png!, 100, file);
+            return true;
+        }
+
+        private Action? pending;
+
+        /// <summary>Said once something asked from the menu is done (the state saved, the screenshot taken), on the player's thread.</summary>
+        public event Action<string>? Done;
+
+        /// <summary>The menu's save state, in its slot (the game's page lists it).</summary>
+        public void SaveSlot()
+        {
+            if (game.SlotFile is string slot)
+                pending = () => Done?.Invoke(WriteStateTo(slot) ? Loc.T("State saved") : Loc.T("The state could not be saved"));
+        }
+
+        /// <summary>The game back where a state was saved (its slot's, or the one kept when it was quit).</summary>
+        public void LoadState(string path) => pending = () =>
+        {
+            bool loaded = false;
+            try { loaded = File.Exists(path) && core!.LoadState(File.ReadAllBytes(path)); }
+            catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+            Done?.Invoke(loaded ? Loc.T("State loaded") : Loc.T("The state could not be loaded"));
+        };
+
+        /// <summary>The picture of the game now, in the device's pictures (and the game's captures).</summary>
+        public void Capture()
+        {
+            if (game.CaptureFolder is not string folder)
+                return;
+            pending = () =>
+            {
+                string name = string.Concat(game.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+                string path = Path.Combine(folder, $"{name} {DateTime.Now:yyyy-MM-dd HH-mm-ss}.png");
+                bool taken = false;
+                try { taken = WritePicture(path); }
+                catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
+                if (taken)
+                    game.Captured?.Invoke(path);
+                Done?.Invoke(taken ? Loc.T("Screenshot taken") : Loc.T("The screenshot could not be taken"));
+            };
+        }
+
+        /// <summary>The states the menu can load: the one kept when the game was quit, the menu's own; the newest first.</summary>
+        public System.Collections.Generic.IReadOnlyList<(string Path, DateTime Saved, bool Auto)> States() =>
+            new[] { (game.StateFile, true), (game.SlotFile, false) }
+                .Where(s => s.Item1 != null && File.Exists(s.Item1))
+                .Select(s => (s.Item1!, File.GetLastWriteTime(s.Item1!), s.Item2))
+                .OrderByDescending(s => s.Item2).ToList();
 
         private void WriteSaveWhilePaused()
         {
