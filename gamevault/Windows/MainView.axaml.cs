@@ -12,6 +12,7 @@ using gamevault.Models;
 using gamevault.UserControls;
 using gamevault.ViewModels;
 using System;
+using System.Linq;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -44,6 +45,7 @@ namespace gamevault.Windows
                 keysOf = TopLevel.GetTopLevel(this);
                 keysOf?.AddHandler(KeyDownEvent, ClosePopup_KeyDown);
                 keysOf?.AddHandler(KeyDownEvent, QuickSearch_KeyDown, RoutingStrategies.Tunnel);
+                keysOf?.AddHandler(KeyDownEvent, MobileEscape_KeyDown, RoutingStrategies.Tunnel);
                 if (keysOf != null)
                     keysOf.BackRequested += Back_Requested;
             };
@@ -51,6 +53,7 @@ namespace gamevault.Windows
             {
                 keysOf?.RemoveHandler(KeyDownEvent, ClosePopup_KeyDown);
                 keysOf?.RemoveHandler(KeyDownEvent, QuickSearch_KeyDown);
+                keysOf?.RemoveHandler(KeyDownEvent, MobileEscape_KeyDown);
                 if (keysOf != null)
                     keysOf.BackRequested -= Back_Requested;
                 keysOf = null;
@@ -188,12 +191,34 @@ namespace gamevault.Windows
             // A game over the pages has its own menu
             if (App.Instance.OverScreen != null)
                 return;
+            e.Handled = GoBack();
+        }
+
+        private DateTime lastBackAt;
+
+        /// <summary>
+        /// One step back (Android's back button and gesture, a mouse's back button): true when it was taken here, false when
+        /// it is left to the system (home on a phone: the app to the background). One press comes twice on Android, as Escape
+        /// then as Back (or as Back alone): the second within a moment of the first is the same press.
+        /// </summary>
+        private bool GoBack()
+        {
+            DateTime last = new[] { lastBackAt, DialogService.LastClosedAt, MainWindowViewModel.Instance.PopupClosedAt }.Max();
+            if (DateTime.UtcNow - last < TimeSpan.FromMilliseconds(350))
+                return true;
+            bool taken = Step();
+            if (taken)
+                lastBackAt = DateTime.UtcNow;
+            return taken;
+        }
+
+        private bool Step()
+        {
             // A question: Back answers it as "No" (the app is not left under it)
             if (DialogLayer.Children.Count > 0)
             {
                 DialogService.Current?.Cancel();
-                e.Handled = true;
-                return;
+                return true;
             }
             // The living-room mode: B (its own way back, then its menu to leave it)
             if (uiCouch.IsVisible)
@@ -202,8 +227,7 @@ namespace gamevault.Windows
                     MainWindowViewModel.Instance.ClosePopup();
                 else
                     uiCouch.Handle(GameVault.Core.Couch.CouchCommand.Back);
-                e.Handled = true;
-                return;
+                return true;
             }
             if (uiQuickSearch.IsVisible)
                 uiQuickSearch.Close();
@@ -218,8 +242,7 @@ namespace gamevault.Windows
             else if (IsMobile && MainWindowViewModel.Instance.ActiveControl == MainWindowViewModel.Instance.MobileReturn)
             {
                 // A tab's own page: home first, and from home the app goes to the background (Android's)
-                if (!MobileBack())
-                    return;
+                return MobileBack();
             }
             // A phone: any other page (the settings, the downloads, a game's...) back to the tab it was opened from
             else if (IsMobile)
@@ -227,8 +250,19 @@ namespace gamevault.Windows
             else if (MainWindowViewModel.Instance.ActiveControlIndex < 0)
                 MainWindowViewModel.Instance.UndoActiveControl();
             else
+                return false;
+            return true;
+        }
+
+        /// <summary>
+        /// A phone: Android's back button comes first as Escape to the control with the focus (a text box kept it, and Back
+        /// was never seen): taken before it, as Back.
+        /// </summary>
+        private void MobileEscape_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (!IsMobile || e.Key != Key.Escape || e.KeyModifiers != KeyModifiers.None || App.Instance.OverScreen != null || uiCouch.IsVisible)
                 return;
-            e.Handled = true;
+            e.Handled = GoBack();
         }
 
         /// <summary>Ctrl+K (⌘K on a Mac) opens the quick search from any page</summary>
@@ -485,6 +519,13 @@ namespace gamevault.Windows
                 return;
             double width = Math.Max(0, Bounds.Width), height = Math.Max(0, Bounds.Height);
             popup.Margin = new Thickness(0);
+            uiPopupScroll.VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled;
+            popup.MaxWidth = double.PositiveInfinity;
+            if (IsMobile && popup is not MediaSlider and not TrailerPopup)
+            {
+                MobilePopup(popup, width, height);
+                return;
+            }
             if (popup is MediaSlider)
             {
                 uiPopupFrame.Background = null;

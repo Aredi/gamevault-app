@@ -111,6 +111,9 @@ namespace gamevault.Helper
         }
 
         private static readonly List<OpenDialog> open = new();
+
+        /// <summary>When a question was last answered: Android's Back comes as Escape (which answers it) then as Back.</summary>
+        internal static DateTime LastClosedAt { get; private set; }
         /// <summary>The question in front, null when none is asked.</summary>
         internal static OpenDialog? Current => open.Count > 0 ? open[^1] : null;
 
@@ -174,11 +177,13 @@ namespace gamevault.Helper
         {
             var tcs = new TaskCompletionSource<DialogOutcome>();
 
-            TextBox? inputBox = input ? new TextBox { Text = settings.DefaultText, Margin = new Thickness(0, 15, 0, 0), MinWidth = 300 } : null;
+            TextBox? inputBox = input ? new TextBox { Text = settings.DefaultText, Margin = new Thickness(0, 15, 0, 0) } : null;
 
-            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 10, Margin = new Thickness(0, 22, 0, 0) };
+            // The answers on the right; on a phone too narrow for them side by side, they go to the next line
+            var buttons = new WrapPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, -10, 0) };
 
-            var content = new StackPanel { Width = 520 };
+            // At most 520 wide: a phone's screen less its margins
+            var content = new StackPanel { MaxWidth = 520 };
             if (!string.IsNullOrEmpty(title))
             {
                 content.Children.Add(new TextBlock
@@ -212,9 +217,10 @@ namespace gamevault.Helper
                 CornerRadius = new CornerRadius(18),
                 BoxShadow = BoxShadows.Parse("0 30 80 -20 #E6000000"),
                 Padding = new Thickness(28, 24),
+                Margin = new Thickness(16),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Child = content,
+                Child = new ScrollViewer { Content = content, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled },
             };
             var overlay = new Panel
             {
@@ -237,6 +243,7 @@ namespace gamevault.Helper
             {
                 if (tcs.Task.IsCompleted)
                     return;
+                LastClosedAt = DateTime.UtcNow;
                 if (tracked != null)
                     open.Remove(tracked);
                 if (layer != null)
@@ -256,6 +263,7 @@ namespace gamevault.Helper
                     MinWidth = 100,
                     Height = 38,
                     Padding = new Thickness(16, 0),
+                    Margin = new Thickness(0, 8, 10, 0),
                     Kind = primary ? ButtonKind.Primary : ButtonKind.Skeleton,
                     BorderThickness = new Thickness(primary ? 0 : 1),
                 };

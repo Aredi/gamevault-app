@@ -15,6 +15,33 @@ namespace gamevault.Android
     {
         private const string Channel = "downloads";
 
+        // Android ends the app when a service started in the foreground stops before it says so (a small game downloaded in
+        // a moment): a stop asked before then waits for it
+        private static readonly object gate = new();
+        private static bool foreground, stopWanted;
+
+        /// <summary>Stops the service, or once it is in the foreground when it is not yet.</summary>
+        public static void Stop(Context context)
+        {
+            lock (gate)
+            {
+                if (!foreground)
+                {
+                    stopWanted = true;
+                    return;
+                }
+                foreground = false;
+            }
+            context.StopService(new Intent(context, typeof(DownloadService)));
+        }
+
+        /// <summary>A new start: a stop asked before it no longer holds.</summary>
+        public static void Starting()
+        {
+            lock (gate)
+                stopWanted = false;
+        }
+
         public override IBinder? OnBind(Intent? intent) => null;
 
         public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
@@ -33,6 +60,16 @@ namespace gamevault.Android
                 StartForeground(1, notification, ForegroundService.TypeDataSync);
             else
                 StartForeground(1, notification);
+            bool stop;
+            lock (gate)
+            {
+                foreground = !stopWanted;
+                stop = stopWanted;
+                stopWanted = false;
+            }
+            // The downloads ended meanwhile
+            if (stop)
+                StopSelf();
             return StartCommandResult.NotSticky;
         }
     }

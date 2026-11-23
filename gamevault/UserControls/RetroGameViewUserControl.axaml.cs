@@ -295,6 +295,8 @@ namespace gamevault.UserControls
             uiPlayBar.IsVisible = uiRoundBack.IsVisible = phone;
             uiBack.IsVisible = !phone;
             uiInlinePlay.IsVisible = !phone;
+            // Said once, in the bar at the bottom
+            uiStatusPill.MaxHeight = phone ? 0 : double.PositiveInfinity;
             if (phone)
                 uiContent.Margin = new Thickness(uiContent.Margin.Left, uiContent.Margin.Top, uiContent.Margin.Right, 120);
             if (narrowLayout == narrow)

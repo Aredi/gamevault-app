@@ -97,6 +97,25 @@ namespace gamevault.Windows
             }, Avalonia.Threading.DispatcherPriority.Loaded);
         }
 
+        /// <summary>
+        /// A phone: a panel made for a computer (a fixed width, scaled down to fit before: unreadable) on the whole screen
+        /// at its own size, as narrow as the screen and scrolled when it is taller. Back closes it.
+        /// </summary>
+        private void MobilePopup(Control popup, double width, double height)
+        {
+            uiPopupFit.Margin = new Thickness(0);
+            uiPopupFrame.CornerRadius = new CornerRadius(0);
+            uiPopupFrame.BorderThickness = new Thickness(0);
+            uiPopupFrame.Background = (Avalonia.Media.IBrush?)this.FindResource("Brush.Background");
+            uiPopupFrame.Width = width;
+            uiPopupFrame.Height = height;
+            uiPopupScroll.VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto;
+            popup.Width = double.NaN;
+            popup.Height = double.NaN;
+            popup.MaxWidth = width;
+            popup.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+        }
+
         /// <summary>A tab: its page, and the pages opened from it come back to it.</summary>
         internal void ShowMobileTab(MobileTab tab)
         {

@@ -160,7 +160,7 @@ namespace gamevault.Android.Retro
         {
             var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { new TextBlock { Text = text, FontSize = 15.5, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White } } };
             if (hint != null)
-                words.Children.Add(new TextBlock { Text = hint, FontSize = 12, Foreground = Brushes.White, Opacity = 0.6 });
+                words.Children.Add(new TextBlock { Text = hint, FontSize = 12, Foreground = Brushes.White, Opacity = 0.6, TextWrapping = TextWrapping.Wrap });
             var line = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = 12 };
             line.Children.Add(new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(icon), Fill = Brushes.White, Width = 20, Height = 20, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center });
             Grid.SetColumn(words, 1);

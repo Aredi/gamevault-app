@@ -191,8 +191,13 @@ namespace gamevault.ViewModels
         {
             Popup = userControl;
         }
+        /// <summary>When a popup was last closed: Android's Back comes as Escape (which closes it) then as Back.</summary>
+        internal DateTime PopupClosedAt { get; private set; }
+
         public void ClosePopup()
         {
+            if (Popup != null)
+                PopupClosedAt = DateTime.UtcNow;
             Popup = null;
             if (ActiveControl != null)
             {

@@ -162,6 +162,7 @@ namespace gamevault.Android
                     if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
                         && activity.CheckSelfPermission(global::Android.Manifest.Permission.PostNotifications) != Permission.Granted)
                         activity.RequestPermissions(new[] { global::Android.Manifest.Permission.PostNotifications }, 2);
+                    DownloadService.Starting();
                     activity.StartForegroundService(new Intent(activity, typeof(DownloadService)));
                 }
                 catch (Exception ex) { GameVault.Core.Log.Error(ex, "The downloads' service did not start"); }
@@ -182,7 +183,7 @@ namespace gamevault.Android
 
         private void StopDownloadService()
         {
-            try { activity.StopService(new Intent(activity, typeof(DownloadService))); }
+            try { DownloadService.Stop(activity); }
             catch (Exception ex) { GameVault.Core.Log.Ignored(ex); }
         }
 

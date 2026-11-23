@@ -44,7 +44,24 @@ namespace gamevault.Localization
 
         /// <summary>The translation of <paramref name="english"/>.</summary>
         public static string T(string? english) =>
-            english == null ? "" : texts.TryGetValue(english, out string? translated) && !string.IsNullOrEmpty(translated) ? translated : english;
+            english == null ? "" : OnDevice(texts.TryGetValue(english, out string? translated) && !string.IsNullOrEmpty(translated) ? translated : english);
+
+        /// <summary>Android: the texts written for a computer say "this device" instead of "this PC".</summary>
+        private static string OnDevice(string text)
+        {
+            if (!OperatingSystem.IsAndroid() || !text.Contains("PC", StringComparison.Ordinal))
+                return text;
+            foreach (var (pc, device) in DeviceWords)
+                text = text.Replace(pc, device, StringComparison.Ordinal);
+            return text;
+        }
+
+        private static readonly (string Pc, string Device)[] DeviceWords =
+        {
+            ("de ce PC", "de cet appareil"), ("sur ce PC", "sur cet appareil"), ("de ce PC", "de cet appareil"), ("celles de ce PC", "celles de cet appareil"),
+            ("ce PC", "cet appareil"), ("Ce PC", "Cet appareil"), ("d'un autre PC", "d'un autre appareil"), ("des autres PC", "des autres appareils"),
+            ("this PC", "this device"), ("This PC", "This device"), ("another PC", "another device"), ("other PCs", "other devices"),
+        };
 
         /// <summary>The translation of a format text ("'{0}' is installed") filled with <paramref name="values"/>.</summary>
         /// <summary>

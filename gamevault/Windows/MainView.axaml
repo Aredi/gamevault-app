@@ -452,7 +452,10 @@
                 <!-- Larger in the living-room mode: read from the couch -->
                 <LayoutTransformControl x:Name="uiPopupZoom">
                     <Border x:Name="uiPopupFrame" CornerRadius="18" ClipToBounds="True" BoxShadow="0 30 80 -20 #E6000000">
-                        <ContentControl Content="{Binding Popup}" />
+                        <!-- A phone: the panel on the whole screen, at its own size, scrolled (a computer: no scrolling here) -->
+                        <ScrollViewer x:Name="uiPopupScroll" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
+                            <ContentControl Content="{Binding Popup}" />
+                        </ScrollViewer>
                     </Border>
                 </LayoutTransformControl>
             </Viewbox>
