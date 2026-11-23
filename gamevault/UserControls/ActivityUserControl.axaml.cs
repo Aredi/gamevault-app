@@ -22,6 +22,12 @@ namespace gamevault.UserControls
         public ActivityUserControl()
         {
             InitializeComponent();
+            // A phone: narrower margins, and the page's name (no menu shows it)
+            if (Helper.Platform.PlatformInfo.IsAndroid)
+            {
+                uiRoot.Margin = new Avalonia.Thickness(16, 12, 16, 96);
+                uiRoot.Children.Insert(0, new TextBlock { Classes = { "mTitle" }, Text = Localization.Loc.T("Recent activity"), Margin = new Avalonia.Thickness(4, 0, 0, 12) });
+            }
             // Fresh each time the page is opened (the page host attaches the page it shows)
             // A friend's recommendation, or a reaction on the player's line: shown at once
             SocialService.RecommendationReceived += received => { if (IsAttached) _ = LoadAsync(); };

@@ -39,6 +39,29 @@ namespace gamevault.UserControls
             ViewModel = new AdminConsoleViewModel();
             this.DataContext = ViewModel;
             Loaded += UserControl_Loaded;
+            // A phone: the counters two by two, the table's lines without their heading (the names on a line of their own)
+            SizeChanged += (_, e) =>
+            {
+                bool narrow = e.NewSize.Width < 560;
+                uiTiles.Rows = narrow ? 2 : 1;
+                uiTiles.Columns = narrow ? 2 : 0;
+                uiUsersHeader.IsVisible = e.NewSize.Width >= 520;
+                // ...and the top of the page scrolls with the rest (fixed, it would leave the list a third of the screen)
+                if (narrow && uiTop.Parent == uiPage)
+                {
+                    uiPage.Children.Remove(uiTop);
+                    uiTop.Margin = new Avalonia.Thickness(0, 12, 0, 14);
+                    uiBody.Children.Insert(0, uiTop);
+                    uiBody.Margin = new Avalonia.Thickness(16, 0, 16, 96);
+                }
+                else if (!narrow && uiTop.Parent == uiBody)
+                {
+                    uiBody.Children.Remove(uiTop);
+                    uiTop.Margin = new Avalonia.Thickness(28, 20, 28, 14);
+                    uiPage.Children.Insert(0, uiTop);
+                    uiBody.Margin = new Avalonia.Thickness(28, 0, 28, 28);
+                }
+            };
             KeyDown += Reload_Click;
             uiBtnReload.PointerReleased += Reload_Click;
             PropertyChanged += (_, e) =>

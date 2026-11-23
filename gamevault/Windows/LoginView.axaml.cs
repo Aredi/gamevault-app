@@ -99,6 +99,25 @@ namespace gamevault.Windows
                     NeedsThePlayer?.Invoke();
             };
             AttachedToVisualTree += LoginView_Loaded;
+            // Android's back (the gesture, Escape before it): the step before, the app left only from the profiles
+            if (Helper.Platform.PlatformInfo.IsAndroid)
+            {
+                TopLevel? keysOf = null;
+                AttachedToVisualTree += (_, _) =>
+                {
+                    keysOf = TopLevel.GetTopLevel(this);
+                    keysOf?.AddHandler(KeyDownEvent, Escape_KeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+                    if (keysOf != null)
+                        keysOf.BackRequested += Back_Requested;
+                };
+                DetachedFromVisualTree += (_, _) =>
+                {
+                    keysOf?.RemoveHandler(KeyDownEvent, Escape_KeyDown);
+                    if (keysOf != null)
+                        keysOf.BackRequested -= Back_Requested;
+                    keysOf = null;
+                };
+            }
             AttachedToVisualTree += (_, _) => _ = LoadArtWallAsync();
             DetachedFromVisualTree += (_, _) => ClearArtWall();
             // A narrow screen (a phone held upright): the forms alone, without the covers' column
@@ -243,6 +262,34 @@ namespace gamevault.Windows
             }
             catch (Exception ex) { ViewModel.AppBarText = ex is InvalidOperationException ? ex.Message : WebExceptionHelper.TryGetServerMessage(ex); }
             finally { ((Control)sender).IsEnabled = true; }
+        }
+
+        private DateTime lastBackAt;
+
+        private void Back_Requested(object? sender, RoutedEventArgs e) => e.Handled = StepBack();
+
+        private void Escape_KeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+        {
+            if (e.Key == Avalonia.Input.Key.Escape && e.KeyModifiers == Avalonia.Input.KeyModifiers.None)
+                e.Handled = StepBack();
+        }
+
+        /// <summary>The step before this one; false on the profiles (the app is left). Escape then the gesture: one step.</summary>
+        private bool StepBack()
+        {
+            if (DateTime.UtcNow - lastBackAt < TimeSpan.FromMilliseconds(350))
+                return true;
+            LoginStep? before = (LoginStep)ViewModel.LoginStepIndex switch
+            {
+                LoginStep.SignIn or LoginStep.SignUp => LoginStep.SignInOrSignUp,
+                LoginStep.SignInOrSignUp or LoginStep.EditProfile or LoginStep.PendingActivation or LoginStep.Settings => LoginStep.ChooseProfile,
+                _ => null,
+            };
+            if (before == null)
+                return false;
+            lastBackAt = DateTime.UtcNow;
+            ViewModel.LoginStepIndex = (int)before;
+            return true;
         }
 
         private void Back_Click(object sender, RoutedEventArgs e)

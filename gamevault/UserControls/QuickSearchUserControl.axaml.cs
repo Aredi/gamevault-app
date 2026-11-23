@@ -51,7 +51,32 @@ namespace gamevault.UserControls
                 await SearchServer(uiQuery.Text ?? "");
             };
             uiQuery.AddHandler(KeyDownEvent, Query_KeyDown, RoutingStrategies.Tunnel);
+            if (Helper.Platform.PlatformInfo.IsAndroid)
+                PhoneLayout();
         }
+
+        /// <summary>A phone: the whole screen (the keyboard takes its lower half), no keys to tell, a word to close it.</summary>
+        private void PhoneLayout()
+        {
+            uiCard.Width = double.NaN;
+            uiCard.MaxHeight = double.PositiveInfinity;
+            uiCard.Margin = new Avalonia.Thickness(0);
+            uiCard.CornerRadius = new Avalonia.CornerRadius(0);
+            uiCard.BorderThickness = new Avalonia.Thickness(0);
+            uiCard.BoxShadow = default;
+            uiCard.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch;
+            uiCard.Bind(Border.BackgroundProperty, this.GetResourceObservable("Brush.Background"));
+            uiTop.Margin = new Avalonia.Thickness(18, 14, 8, 10);
+            uiTop.MinHeight = 52;
+            uiEscKey.IsVisible = uiKeys.IsVisible = false;
+            uiCancel.IsVisible = true;
+            Styles.Add(new Avalonia.Styling.Style(x => Avalonia.Styling.Selectors.OfType(x, typeof(ListBoxItem)))
+            {
+                Setters = { new Avalonia.Styling.Setter(PaddingProperty, new Avalonia.Thickness(10, 10)) },
+            });
+        }
+
+        private void Cancel_Click(object? sender, RoutedEventArgs e) => Close();
 
         /// <summary>The retro games, read once per opening (the installed ones are found on disk).</summary>
         private List<QuickSearchItem> retroGames = new();

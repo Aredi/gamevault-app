@@ -49,6 +49,9 @@ namespace gamevault.UserControls.SettingsComponents
             uiRetroArchSection.IsVisible = uiControls.IsVisible = uiSavesFolders.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
             // RetroArch's run-ahead: the app's own player has none
             uiRunAhead.IsVisible = uiRunAheadNote.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
+            // RetroArch's picture (CRT look, definition, 16:9): the app's own player does not read it
+            uiPictureSection.IsVisible = !Helper.Platform.PlatformInfo.IsAndroid;
+            SizeChanged += (_, e) => uiRoot.Margin = e.NewSize.Width < 600 ? new Avalonia.Thickness(4, 0, 12, 40) : new Avalonia.Thickness(36, 0, 28, 40);
             AttachedToVisualTree += (_, _) => _ = RefreshAsync();
             AttachedToVisualTree += (_, _) => ShowControllers();
         }
@@ -136,7 +139,7 @@ namespace gamevault.UserControls.SettingsComponents
                 var files = Directory.Exists(folder) ? Directory.EnumerateFiles(folder).Select(Path.GetFileName).Where(f => !f!.StartsWith('.')).ToList() : new();
                 return new BiosRow(system.Name,
                     files.Count > 0 ? Loc.F("On this PC: {0}", string.Join(", ", files)) : Loc.T("Not downloaded yet"));
-            }).Concat(RetroSystems.All.Values.Where(s => s.IsStandalone).Select(s => new BiosRow(s.Name, StandaloneEmulator.Of(s)!.FirmwareState))).ToList();
+            }).Concat(RetroSystems.All.Values.Where(s => s.IsStandalone && !Helper.Platform.PlatformInfo.IsAndroid).Select(s => new BiosRow(s.Name, StandaloneEmulator.Of(s)!.FirmwareState))).ToList();
 
             await RefreshRommAsync();
             RefreshAchievements();

@@ -90,7 +90,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Spacing="6">
                         <TextBlock Classes="pageTitle" Text="{l:T 'Who is playing?'}" />
-                        <TextBlock Classes="muted" FontSize="14" Text="{l:T 'Choose a profile to open your library.'}" />
+                        <TextBlock Classes="muted" FontSize="14" Text="{l:T 'Choose a profile to open your library.'}" TextWrapping="Wrap" />
                     </StackPanel>
                     <Button Grid.Column="1" Classes="round" VerticalAlignment="Top" Click="LoginWindowSettings_Click" ToolTip.Tip="{l:T 'Client Settings'}">
                         <Path Data="{StaticResource IconInstalledGamesSettings}" Stretch="None" Width="NaN" Height="NaN" />
@@ -168,8 +168,8 @@
                     <TextBlock Classes="label" Text="{l:T 'Specify Your Server URL'}" />
                     <Panel>
                         <TextBox Text="{Binding LoginUser.ServerUrl}" Watermark="https://gamevault.example.com" TextChanged="ServerUrlInput_TextChanged" KeyDown="UserLoginTextBox_KeyDown" />
-                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource Brush.Success}" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding LoginServerInfo.IsAvailable}" />
-                        <Path Data="{StaticResource IconErrorCircle}" Fill="{DynamicResource Brush.Danger}" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
+                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource Brush.Success}" Margin="0,0,12,0" Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding LoginServerInfo.IsAvailable}" />
+                        <Path Data="{StaticResource IconErrorCircle}" Fill="{DynamicResource Brush.Danger}" Margin="0,0,12,0" Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
                               IsVisible="{Binding LoginServerInfo.HasError}" ToolTip.Tip="{Binding LoginServerInfo.ErrorMessage}" />
                     </Panel>
                     <!-- The server signs in through an identity provider (Authentik, with the Plex accounts): one click -->
@@ -217,8 +217,8 @@
                     <TextBlock Classes="label" Text="{l:T 'Specify Your Server URL'}" />
                     <Panel>
                         <TextBox Text="{Binding SignupUser.ServerUrl}" Tag="signup" TextChanged="ServerUrlInput_TextChanged" KeyDown="UserRegistrationTextBox_KeyDown" />
-                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource Brush.Success}" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding SignUpServerInfo.IsAvailable}" />
-                        <Path Data="{StaticResource IconErrorCircle}" Fill="{DynamicResource Brush.Danger}" Margin="0,0,-30,0" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
+                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource Brush.Success}" Margin="0,0,12,0" Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding SignUpServerInfo.IsAvailable}" />
+                        <Path Data="{StaticResource IconErrorCircle}" Fill="{DynamicResource Brush.Danger}" Margin="0,0,12,0" Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Right" VerticalAlignment="Center" Cursor="Help"
                               IsVisible="{Binding SignUpServerInfo.HasError}" ToolTip.Tip="{Binding SignUpServerInfo.ErrorMessage}" />
                     </Panel>
                     <StackPanel>

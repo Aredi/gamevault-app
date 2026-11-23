@@ -126,7 +126,7 @@
                                 <local:SettingRow Title="{l:T 'Launch SanctuaryVault on Computer Startup'}" IsVisible="{Binding PlaysPcGames}">
                                     <ToggleSwitch x:Name="uiAutostartToggle" />
                                 </local:SettingRow>
-                                <local:SettingRow Title="{l:T 'Minimize SanctuaryVault to System Tray on Startup'}">
+                                <local:SettingRow x:Name="uiTrayRow" Title="{l:T 'Minimize SanctuaryVault to System Tray on Startup'}">
                                     <ToggleSwitch IsChecked="{Binding BackgroundStart}" />
                                 </local:SettingRow>
                                 <local:SettingRow Title="{l:T 'Auto-Load Library from Server on Startup'}" IsVisible="{Binding PlaysPcGames}">
@@ -161,7 +161,7 @@
                                     </Grid>
                                 </Button>
                                 <local:IconButton Text="{l:T 'Uninstall Theme'}" Kind="Danger" IsEnabled="{Binding IsCommunityThemeSelected}" FontSize="15" Icon="{StaticResource IconTrash}" IconMargin="0,0,5,2" Height="38" Click="UninstallTheme_Click" />
-                                <local:IconButton Text="{l:T 'Open Theme Folder'}" FontSize="15" Icon="{StaticResource IconGameSettingsFolder}" IconMargin="0,0,5,2" Height="38" Click="OpenThemeFolder_Click" />
+                                <local:IconButton x:Name="uiThemeFolder" Text="{l:T 'Open Theme Folder'}" FontSize="15" Icon="{StaticResource IconGameSettingsFolder}" IconMargin="0,0,5,2" Height="38" Click="OpenThemeFolder_Click" />
                             </WrapPanel>
                         </Border>
                         <StackPanel IsVisible="{Binding PlaysPcGames}">
@@ -286,7 +286,7 @@
                         <!-- The root folders: the retro games' too (GameVault/Retro), so on a Mac as well -->
                         <TextBlock Classes="h1" Text="{l:T 'File System'}" />
                         <StackPanel>
-                            <TextBlock Text="{l:T 'Root Directories (the games go in a subfolder)'}" Margin="0,2,0,2" FontSize="15" />
+                            <TextBlock Text="{l:T 'Root Directories (the games go in a subfolder)'}" Margin="0,2,0,2" FontSize="15" TextWrapping="Wrap" />
                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding RootDirectories}">
                                     <ItemsControl.ItemTemplate>
@@ -388,7 +388,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="36,0,28,40" MaxWidth="820" Spacing="4">
                         <TextBlock Classes="h1" Text="{l:T 'Integrations'}" />
-                        <Border Classes="group" HorizontalAlignment="Stretch">
+                        <Border x:Name="uiDiscord" Classes="group" HorizontalAlignment="Stretch">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Data="{StaticResource IconGameSettingsDiscord}" Fill="{DynamicResource Brush.Foreground}" VerticalAlignment="Center" />

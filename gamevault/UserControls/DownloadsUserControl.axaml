@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:l="clr-namespace:gamevault.Localization"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:helper="clr-namespace:gamevault.Helper"
              xmlns:conv="clr-namespace:gamevault.Converter"
              xmlns:local="clr-namespace:gamevault.UserControls"
              x:Class="gamevault.UserControls.DownloadsUserControl">
@@ -33,7 +34,7 @@
     </UserControl.Styles>
     <Grid RowDefinitions="Auto,*">
         <!-- Header: title, what is going on, delete everything -->
-        <Grid Grid.Row="0" Margin="28,20,28,16" ColumnDefinitions="Auto,*,Auto">
+        <Grid Grid.Row="0" Margin="28,20,28,16" ColumnDefinitions="Auto,*,Auto" helper:NarrowLayout.Stacks="600">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                 <TextBlock Classes="pageTitle" Text="{l:T 'Downloads'}" />
                 <TextBlock Classes="muted" FontSize="14" VerticalAlignment="Center" Margin="0,4,0,0" Text="{Binding TotalCount, Converter={StaticResource countConv}, ConverterParameter='{}{0} game|{0} games'}"

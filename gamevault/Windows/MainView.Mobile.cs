@@ -50,6 +50,13 @@ namespace gamevault.Windows
             };
             LighterOnceShown(uiPopupFrame);
             LighterOnceShown(uiToast);
+            // The keyboard open (a message, a search): the bar at the bottom goes away, the text field keeps the room
+            AttachedToVisualTree += (_, _) =>
+            {
+                if (TopLevel.GetTopLevel(this)?.InputPane is { } pane)
+                    pane.StateChanged += (_, e) =>
+                        uiMobileNav.IsVisible = rail || e.NewState != Avalonia.Controls.Platform.InputPaneState.Open;
+            };
         }
 
         /// <summary>At the bottom of a phone; a rail on the left of a wide screen (a foldable open, a tablet).</summary>

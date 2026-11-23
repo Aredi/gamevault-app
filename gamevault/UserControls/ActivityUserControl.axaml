@@ -15,7 +15,7 @@
     </UserControl.Styles>
     <!-- What the players of the server played lately: a page of its own, under Community -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
+        <StackPanel x:Name="uiRoot" Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
             <!-- The games the friends recommend to the player: put away with the cross -->
             <StackPanel x:Name="uiRecommendationsSection" IsVisible="False" Spacing="8" Margin="0,0,0,24">
                 <TextBlock Classes="sectionTitle" Text="{l:T 'Recommended by your friends'}" />

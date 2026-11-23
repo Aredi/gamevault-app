@@ -335,7 +335,14 @@ namespace gamevault.UserControls
 
         private static RetroDownload? RetroOf(object? sender) => (sender as Control)?.DataContext as RetroDownload;
 
-        private void BrowseLibrary_Click(object? sender, RoutedEventArgs e) => MainWindowViewModel.Instance.SetActiveControl(MainControl.Library);
+        private void BrowseLibrary_Click(object? sender, RoutedEventArgs e)
+        {
+            // The Mac and Android have no library of PC games: their consoles' games (a phone's tab of them)
+            if (Windows.MainView.Current is { IsMobile: true } mobile)
+                mobile.ShowMobileTab(Windows.MobileTab.Games);
+            else
+                MainWindowViewModel.Instance.SetActiveControl(Helper.Platform.PlatformInfo.PlaysPcGames ? MainControl.Library : MainControl.Retro);
+        }
 
         private void RetroOpenFolder_Click(object? sender, RoutedEventArgs e)
 

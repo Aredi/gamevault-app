@@ -110,6 +110,10 @@ namespace gamevault.UserControls
                 uiTabControl.TabStripPlacement = narrow ? Avalonia.Controls.Dock.Top : Avalonia.Controls.Dock.Left;
                 uiTabControl.Margin = narrow ? new Avalonia.Thickness(20, 0, 0, 0) : new Avalonia.Thickness(28, 0, 0, 0);
                 uiVersion.IsVisible = !narrow;
+                // A phone: each tab's settings closer to the screen's edges
+                foreach (TabItem tab in uiTabControl.Items.OfType<TabItem>())
+                    if (tab.Content is ScrollViewer { Content: StackPanel page })
+                        page.Margin = narrow ? new Avalonia.Thickness(4, 0, 12, 40) : new Avalonia.Thickness(36, 0, 28, 40);
                 // A phone: the search under the title, on the whole width
                 bool phone = e.NewSize.Width > 0 && e.NewSize.Width < 600;
                 Grid.SetRow(uiSearch, phone ? 1 : 0);
@@ -118,6 +122,9 @@ namespace gamevault.UserControls
                 uiSearch.HorizontalAlignment = phone ? Avalonia.Layout.HorizontalAlignment.Stretch : Avalonia.Layout.HorizontalAlignment.Right;
                 uiSearch.MinWidth = phone ? 0 : 220;
             };
+            // Android: no tray to start in, no Discord to tell
+            if (Helper.Platform.PlatformInfo.IsAndroid)
+                uiTrayRow.IsVisible = uiDiscord.IsVisible = uiThemeFolder.IsVisible = false;
             ViewModel = SettingsViewModel.Instance;
             this.DataContext = ViewModel;
             uiForkLink.Tag = AppRepository.ReleasesPage.Replace("/releases", "");
