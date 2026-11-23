@@ -80,7 +80,8 @@ namespace gamevault.Helper
 
         /// <summary>
         /// macOS's notification, by AppleScript (the texts as its arguments, never in the script).
-        /// shortcut: shown as Script Editor's, without the game's picture; the app's own notifications need it signed by Apple.
+        /// shortcut: shown as Script Editor's, without the game's picture; the app's own notifications need it signed by Apple:
+        /// move to UNUserNotificationCenter once the Mac build is signed and notarized.
         /// </summary>
         private static async Task ShowOnMacAsync(string title, string message)
         {

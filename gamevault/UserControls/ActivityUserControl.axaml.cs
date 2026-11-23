@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using GameVault.Core;
@@ -22,6 +23,8 @@ namespace gamevault.UserControls
         public ActivityUserControl()
         {
             InitializeComponent();
+            // The lines as wide as the window lets them, up to a readable width
+            uiScroll.SizeChanged += (_, e) => uiPage.Width = Math.Clamp(e.NewSize.Width - 80, 0, 760);
             // Fresh each time the page is opened (the page host attaches the page it shows)
             // A friend's recommendation, or a reaction on the player's line: shown at once
             SocialService.RecommendationReceived += received => { if (IsAttached) _ = LoadAsync(); };
@@ -146,19 +149,32 @@ namespace gamevault.UserControls
                 await ReactAsync(item, chip.Emoji);
         }
 
-        /// <summary>"+": the reactions offered.</summary>
+        /// <summary>The emojis offered last (the tests look at it).</summary>
+        internal Flyout? Picker { get; private set; }
+
+        /// <summary>"Réagir": the emojis offered in a row, the player's own lit (picked again: taken away).</summary>
         private void AddReaction_Click(object? sender, RoutedEventArgs e)
         {
             if (sender is not Button button || LineOf(button) is not ActivityFeedItem item)
                 return;
-            var menu = new MenuFlyout();
+            var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 2 };
+            var flyout = Picker = new Flyout { Content = row, Placement = PlacementMode.BottomEdgeAlignedRight };
             foreach (string emoji in SocialService.Emojis)
             {
-                var choice = new MenuItem { Header = emoji };
-                choice.Click += async (_, _) => await ReactAsync(item, emoji);
-                menu.Items.Add(choice);
+                var choice = new Button { Content = emoji };
+                choice.Classes.Add("pick");
+                if (emoji.All(char.IsAsciiLetterOrDigit))
+                    choice.Classes.Add("text");
+                if (item.MyEmoji == emoji)
+                    choice.Classes.Add("mine");
+                choice.Click += async (_, _) =>
+                {
+                    flyout.Hide();
+                    await ReactAsync(item, emoji);
+                };
+                row.Children.Add(choice);
             }
-            menu.ShowAt(button);
+            flyout.ShowAt(button);
         }
 
         internal static async Task ReactAsync(ActivityFeedItem item, string emoji)

@@ -47,8 +47,13 @@ namespace gamevault.UserControls
                  List<string> allDirectoriesFromRootDirectories = new List<string>();
                  foreach (DirectoryEntry dirEntry in SettingsViewModel.Instance.RootDirectories)
                  {
-                     if (Directory.Exists(Path.Combine(dirEntry.Uri, "GameVault", "Downloads")))
-                         allDirectoriesFromRootDirectories.AddRange(Directory.GetDirectories(Path.Combine(dirEntry.Uri, "GameVault", "Downloads")));
+                     // A disk gone or a folder without the rights: the other disks' downloads still come back
+                     try
+                     {
+                         if (Directory.Exists(Path.Combine(dirEntry.Uri, "GameVault", "Downloads")))
+                             allDirectoriesFromRootDirectories.AddRange(Directory.GetDirectories(Path.Combine(dirEntry.Uri, "GameVault", "Downloads")));
+                     }
+                     catch (Exception ex) { Log.Error(ex, $"Reading the downloads of {dirEntry.Uri}"); }
                  }
                  Dictionary<int, string> foundPathsById = new Dictionary<int, string>();
                  foreach (string dir in allDirectoriesFromRootDirectories)
@@ -182,18 +187,19 @@ namespace gamevault.UserControls
         /// Downloads the server's current build of an installed game and installs it over the installation
         /// (saves, settings and the Wine prefix stay).
         /// </summary>
-        public async Task UpdateGame(Game game)
+        /// <returns>True when the update was queued.</returns>
+        public async Task<bool> UpdateGame(Game game)
         {
             KeyValuePair<Game, string> installed = InstallViewModel.Instance.InstalledGames.FirstOrDefault(g => g.Key.ID == game.ID);
             if (installed.Key == null || !Directory.Exists(installed.Value))
             {
                 MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is not installed", game.Title);
-                return;
+                return false;
             }
             if (!LoginManager.Instance.IsLoggedIn())
             {
                 MainWindowViewModel.Instance.AppBarText = Loc.T("You are not logged in or offline");
-                return;
+                return false;
             }
             GameDownloadUserControl? existing = DownloadsViewModel.Instance.DownloadedGames.FirstOrDefault(d => d.GetGameId() == game.ID);
             if (existing != null)
@@ -201,7 +207,7 @@ namespace gamevault.UserControls
                 if (existing.IsBusy() || DownloadQueue.IsWaiting(existing))
                 {
                     MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is already being downloaded", game.Title);
-                    return;
+                    return false;
                 }
                 // The archive of the old version is not needed anymore
                 DownloadQueue.Remove(existing);
@@ -211,14 +217,15 @@ namespace gamevault.UserControls
             // <root>/GameVault/Installations/(id)Title
             string? root = Directory.GetParent(installed.Value)?.Parent?.Parent?.FullName;
             if (root == null)
-                return;
+                return false;
             if (!IsEnoughDriveSpaceAvailable(Convert.ToInt64(game.Size), root))
             {
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Not enough space available to update '{0}'", game.Title);
-                return;
+                return false;
             }
             DownloadsViewModel.Instance.DownloadedGames.Insert(0, new GameDownloadUserControl(game, root, true, installed.Value, isUpdate: true));
             MainWindowViewModel.Instance.AppBarText = Loc.F("'{0}' is updated{1}, your saves and settings are kept", game.Title, (string.IsNullOrEmpty(game.Version) ? "" : Loc.F(" to {0}", game.Version)));
+            return true;
         }
         /// <param name="unattended">Asked from elsewhere (remote install): nobody answers questions, the last
         /// install location is used and a game already downloaded stays as it is.</param>
@@ -322,7 +329,9 @@ namespace gamevault.UserControls
                 {
                     for (int count = DownloadsViewModel.Instance.DownloadedGames.Count - 1; count >= 0; count--)
                     {
-                        await DownloadsViewModel.Instance.DownloadedGames[count].DeleteFile(false);
+                        var download = DownloadsViewModel.Instance.DownloadedGames[count];
+                        if (!download.IsBusy() && !download.IsQueued())
+                            await download.DeleteFile(false);
                     }
                 }
                 catch (Exception ignored) { Log.Ignored(ignored); }

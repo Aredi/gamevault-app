@@ -267,6 +267,16 @@ namespace GameVault.Core.Retro
             return roots.Count == 1 ? new() { (roots[0].Item1, title) } : roots;
         }
 
+        /// <summary>Whether a mod's folder in its archive is under one named after another version of the game ("1.4.2", "v142").</summary>
+        private static bool ForAnotherVersion(string extracted, string directory, string? version)
+        {
+            if (version == null)
+                return false;
+            var named = Path.GetRelativePath(extracted, directory).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Where(part => Regex.IsMatch(part, @"(?i)^v?\d+[._ -]\d+(?:[._ -]\d+)?$|^v\d{3,4}$")).ToList();
+            return named.Count > 0 && !named.Any(part => Names(part, version));
+        }
+
         public static string FolderName(string name)
         {
             var invalid = Path.GetInvalidFileNameChars().Concat(new[] { '/', '\\', ':', '*', '?', '"', '<', '>', '|' }).ToHashSet();
@@ -280,10 +290,13 @@ namespace GameVault.Core.Retro
         /// archive's folders are most often parts that go together (Unbreakable Equipment's four). One installed again
         /// takes its place.
         /// </summary>
-        /// <returns>The folders put; none when the archive holds no mod Eden reads.</returns>
-        public static List<string> Install(SwitchLayout layout, string titleId, string extracted, string title, int modId, int fileId)
+        /// <param name="version">The game's version: an archive's folders for another one ("1.4.2/Cam") are put turned off.</param>
+        /// <returns>The folders put; none when the archive holds no mod Eden reads (the one installed is then kept).</returns>
+        public static List<string> Install(SwitchLayout layout, string titleId, string extracted, string title, int modId, int fileId, string? version = null)
         {
             var roots = ModRoots(extracted, title);
+            if (roots.Count == 0)
+                return new();
             var list = List(layout);
             // The mod installed again: its previous file goes
             foreach (Listed old in list.Where(l => l.Game == titleId && l.ModId == modId).ToList())
@@ -296,10 +309,14 @@ namespace GameVault.Core.Retro
             for (int i = 0; i < roots.Count; i++)
             {
                 // Two of the archive's folders of one name ("1.2.1/UltraCam", "1.4.2/UltraCam"): the second is "UltraCam 2"
+                // A folder of that name put by hand is not ours to replace: this one gets another name
+                bool Taken(string name) => put.Contains(name, StringComparer.OrdinalIgnoreCase)
+                    || !list.Any(l => l.Game == titleId && l.Folder.Equals(name, StringComparison.OrdinalIgnoreCase))
+                        && (Directory.Exists(Path.Combine(LoadDirectory(layout, titleId), name)) || Directory.Exists(Path.Combine(OffDirectory(layout, titleId), name)));
                 string folder = FolderName(roots[i].Name);
-                for (int n = 2; put.Contains(folder, StringComparer.OrdinalIgnoreCase); n++)
+                for (int n = 2; Taken(folder); n++)
                     folder = FolderName($"{roots[i].Name} {n}");
-                string target = Path.Combine(LoadDirectory(layout, titleId), folder);
+                string target = Path.Combine(ForAnotherVersion(extracted, roots[i].Directory, version) ? OffDirectory(layout, titleId) : LoadDirectory(layout, titleId), folder);
                 Delete(Path.Combine(LoadDirectory(layout, titleId), folder));
                 Delete(Path.Combine(OffDirectory(layout, titleId), folder));
                 // Another mod of this name (two "60 FPS"): this one takes its place
@@ -316,7 +333,7 @@ namespace GameVault.Core.Retro
         /// <summary>Turns a mod on or off: its folder goes where Eden reads it, or beside.</summary>
         public static void SetEnabled(SwitchLayout layout, string titleId, string folder, bool enabled)
         {
-            string on = Path.Combine(LoadDirectory(layout, titleId), FolderName(folder)), off = Path.Combine(OffDirectory(layout, titleId), FolderName(folder));
+            string on = Path.Combine(LoadDirectory(layout, titleId), Checked(folder)), off = Path.Combine(OffDirectory(layout, titleId), Checked(folder));
             (string from, string to) = enabled ? (off, on) : (on, off);
             if (!Directory.Exists(from))
                 return;
@@ -327,12 +344,17 @@ namespace GameVault.Core.Retro
 
         public static void Remove(SwitchLayout layout, string titleId, string folder)
         {
-            Delete(Path.Combine(LoadDirectory(layout, titleId), FolderName(folder)));
-            Delete(Path.Combine(OffDirectory(layout, titleId), FolderName(folder)));
+            Delete(Path.Combine(LoadDirectory(layout, titleId), Checked(folder)));
+            Delete(Path.Combine(OffDirectory(layout, titleId), Checked(folder)));
             var list = List(layout);
             if (list.RemoveAll(l => l.Game == titleId && l.Folder.Equals(folder, StringComparison.OrdinalIgnoreCase)) > 0)
                 Save(layout, list);
         }
+
+        /// <summary>A mod's folder as <see cref="Installed"/> names it (one put by hand keeps its own name): one folder, never a path.</summary>
+        private static string Checked(string folder) =>
+            folder.Length > 0 && folder is not ("." or "..") && Path.GetFileName(folder) == folder && folder.IndexOfAny(new[] { '/', '\\' }) < 0
+                ? folder : throw new ArgumentException($"Not a mod's folder: {folder}", nameof(folder));
 
         private static void Delete(string directory)
         {

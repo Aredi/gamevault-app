@@ -137,22 +137,21 @@ namespace GameVault.Uploader
         #endregion
 
         #region Recommendations
-        public enum Refusal { None, TooMany }
-
-        public (Recommendation? Made, Refusal Refused) Recommend(int from, string fromName, int to, ChatStore.SharedGame game, string? note)
+        /// <returns>Null when the player made <see cref="RecommendationsPerDay"/> today.</returns>
+        public Recommendation? Recommend(int from, string fromName, int to, ChatStore.SharedGame game, string? note)
         {
             lock (gate)
             {
                 Data all = Loaded();
                 DateTimeOffset now = Clock();
                 if (all.Recommendations.Count(r => r.From == from && now - r.At < TimeSpan.FromDays(1)) >= RecommendationsPerDay)
-                    return (null, Refusal.TooMany);
+                    return null;
                 // The same game to the same friend again: the newer one only
                 all.Recommendations.RemoveAll(r => r.From == from && r.To == to && r.Game.Key == game.Key);
                 var made = new Recommendation(Guid.NewGuid().ToString("N"), from, fromName, to, game, note, now);
                 all.Recommendations.Add(made);
                 Save(all);
-                return (made, Refusal.None);
+                return made;
             }
         }
 

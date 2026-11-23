@@ -69,7 +69,8 @@ namespace gamevault.Helper
         /// <summary>For an administrator: the games of the players who hide them, by player.</summary>
         private Dictionary<int, PlayerActivity> hidden = new();
         private int? playing;
-        private bool started;
+        /// <summary>Cancelled on sign-out: the loops of a sign-in stop before those of the next one start.</summary>
+        private System.Threading.CancellationTokenSource? run;
         private Dictionary<int, RetroActivity> retro = new();
         private Dictionary<int, PlayerStatus> statuses = new();
         private DateTimeOffset? playingSince;
@@ -194,15 +195,16 @@ namespace gamevault.Helper
         }
 
         /// <summary>Every 15 s: is the player away; each minute: the status said, the others' read.</summary>
-        private async Task StatusBeatAsync()
+        private async Task StatusBeatAsync(System.Threading.CancellationToken stop)
         {
             int beats = 0;
-            while (started)
+            while (!stop.IsCancellationRequested)
             {
                 await SendStatusAsync();
                 if (beats++ % 4 == 0)
                     await ReadStatusesAsync();
-                await Task.Delay(TimeSpan.FromSeconds(15));
+                if (!await WaitAsync(TimeSpan.FromSeconds(15), stop))
+                    return;
             }
         }
 
@@ -243,9 +245,9 @@ namespace gamevault.Helper
         }
 
         /// <summary>The retro games played, read each minute (the live link of the chat brings the changes sooner).</summary>
-        private async Task ReadRetroAsync()
+        private async Task ReadRetroAsync(System.Threading.CancellationToken stop)
         {
-            while (started)
+            while (!stop.IsCancellationRequested)
             {
                 try
                 {
@@ -255,7 +257,8 @@ namespace gamevault.Helper
                         ApplyRetro(System.Text.Json.JsonSerializer.Deserialize<List<RetroActivity>>(await response.Content.ReadAsStringAsync()), replaceAll: true);
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
-                await Task.Delay(TimeSpan.FromMinutes(1));
+                if (!await WaitAsync(TimeSpan.FromMinutes(1), stop))
+                    return;
             }
         }
 
@@ -315,11 +318,11 @@ namespace gamevault.Helper
 
         public async Task StartAsync()
         {
-            if (started)
+            if (run != null)
                 return;
-            started = true;
-            _ = ReadRetroAsync();
-            _ = StatusBeatAsync();
+            System.Threading.CancellationToken stop = (run = new System.Threading.CancellationTokenSource()).Token;
+            _ = ReadRetroAsync(stop);
+            _ = StatusBeatAsync(stop);
             try
             {
                 User? me = LoginManager.Instance.GetCurrentUser();
@@ -338,7 +341,7 @@ namespace gamevault.Helper
                 socket.OnConnected += async (_, _) => await SendMineAsync();
                 socket.OnDisconnected += (_, _) => Apply(new List<PlayerActivity>(), replaceAll: true);
                 if (me.Role == PERMISSION_ROLE.ADMIN)
-                    _ = ReadHiddenAsync();
+                    _ = ReadHiddenAsync(stop);
                 await socket.ConnectAsync();
             }
             catch (Exception ex)
@@ -381,9 +384,9 @@ namespace gamevault.Helper
         }
 
         /// <summary>An administrator's client: the hidden games each minute, while it is started.</summary>
-        private async Task ReadHiddenAsync()
+        private async Task ReadHiddenAsync(System.Threading.CancellationToken stop)
         {
-            while (started)
+            while (!stop.IsCancellationRequested)
             {
                 try
                 {
@@ -393,7 +396,8 @@ namespace gamevault.Helper
                         ApplyHidden(System.Text.Json.JsonSerializer.Deserialize<List<PlayerActivity>>(await response.Content.ReadAsStringAsync()));
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
-                await Task.Delay(TimeSpan.FromMinutes(1));
+                if (!await WaitAsync(TimeSpan.FromMinutes(1), stop))
+                    return;
             }
         }
 
@@ -438,9 +442,17 @@ namespace gamevault.Helper
             Avalonia.Threading.Dispatcher.UIThread.Post(() => Changed?.Invoke());
         }
 
+        /// <summary>False when stopped meanwhile.</summary>
+        private static async Task<bool> WaitAsync(TimeSpan time, System.Threading.CancellationToken stop)
+        {
+            try { await Task.Delay(time, stop); return true; }
+            catch (OperationCanceledException) { return false; }
+        }
+
         public async Task StopAsync()
         {
-            started = false;
+            run?.Cancel();
+            run = null;
             try
             {
                 if (socket != null)

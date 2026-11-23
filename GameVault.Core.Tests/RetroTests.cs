@@ -55,6 +55,9 @@ namespace GameVault.Core.Tests
             return cia;
         }
 
+        /// <summary>Where <see cref="Cia"/> writes its content's record.</summary>
+        private const int CiaChunk = 0x2040 + 0xA00 + 0x380 + 4 + 0x13C + 0xC4 + 64 * 0x24;
+
         [Fact]
         public async Task ADecryptedCia_GivesItsMainContent_AndAnEncryptedOneIsSaidSo()
         {
@@ -65,6 +68,13 @@ namespace GameVault.Core.Tests
             Assert.Equal(CiaReader.Verdict.Encrypted, CiaReader.Inspect(Cia(titleKeyEncrypted: true, true), playable.Length).Verdict);
             Assert.Equal(CiaReader.Verdict.NotACia, CiaReader.Inspect(new byte[0x400], 0x400).Verdict);
             Assert.Equal(CiaReader.Verdict.TooShort, CiaReader.Inspect(playable.AsSpan(0, 0x100), playable.Length).Verdict);
+            // A damaged size (2^63 and more reads negative, or past the file): not a CIA, not replaced by an empty game
+            foreach (ulong size in new[] { 0x8000000000000400UL, 0UL, (ulong)playable.Length })
+            {
+                byte[] broken = Cia(false, true);
+                BinaryPrimitives.WriteUInt64BigEndian(broken.AsSpan(CiaChunk + 8), size);
+                Assert.Equal(CiaReader.Verdict.NotACia, CiaReader.Inspect(broken, broken.Length).Verdict);
+            }
 
             Directory.CreateDirectory(root);
             string cia = Path.Combine(root, "Game.cia");
@@ -148,6 +158,10 @@ namespace GameVault.Core.Tests
                 Assert.Equal("pc2 save", new StreamReader(kept.GetEntry("saves/Mesen/Zelda (E).srm")!.Open()).ReadToEnd());
             Assert.False(second.IsOlderThan(1000));
             Assert.False(second.ChangedSinceSync);
+
+            // An error page in place of the zip: the saves here are left as they were
+            Assert.Throws<InvalidDataException>(() => second.Unpack(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("<html>502 Bad Gateway</html>"))));
+            Assert.Equal("pc1 save", File.ReadAllText(Path.Combine(root, "pc2", "saves", "Mesen", "Zelda (E).srm")));
         }
 
         [Fact]

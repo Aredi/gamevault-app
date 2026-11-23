@@ -228,7 +228,8 @@ namespace GameVault.Core.Retro
                 this.file = file;
                 byte[] head = ReadAt(file, start, 24);
                 int exponent = head[11], count = BinaryPrimitives.ReadInt32LittleEndian(head.AsSpan(12));
-                if (exponent is < 14 or > 32 || count < 0)
+                // Each block's size is 4 bytes of the file: more blocks than that can not be (nor be allocated for)
+                if (exponent is < 14 or > 30 || count < 0 || count > (end - start - 24) / 4)
                     throw new InvalidDataException("Damaged NCZBLOCK header");
                 blockSize = 1L << exponent;
                 decompressed = BinaryPrimitives.ReadInt64LittleEndian(head.AsSpan(16));
@@ -253,8 +254,17 @@ namespace GameVault.Core.Retro
                 if (id == offsets.Length - 1 && decompressed % blockSize > 0)
                     size = decompressed % blockSize;
                 byte[] stored = ReadAt(file, offsets[id], sizes[id]);
-                using (var zstd = new Decompressor())
-                    current = sizes[id] < size ? zstd.Unwrap(stored).ToArray() : stored;
+                if (sizes[id] < size)
+                {
+                    // Into the block's own size, never the size its frame claims
+                    var block = new byte[size];
+                    using (var zstd = new Decompressor())
+                        if (zstd.Unwrap(stored, block) != size)
+                            throw new InvalidDataException("Damaged NCZBLOCK block");
+                    current = block;
+                }
+                else
+                    current = stored;
                 currentId = id;
                 return current;
             }

@@ -128,6 +128,19 @@ namespace GameVault.Core.Tests
         }
 
         [Fact]
+        public void Catalog_LeavesOutReleasesWithoutChecksum()
+        {
+            string json = """
+            [ { "tag_name": "GE-Proton11-8", "assets": [
+                  { "name": "GE-Proton11-8-x86_64.tar.gz", "browser_download_url": "https://x/x.tar.gz", "size": 1 } ] },
+              { "tag_name": "11.20", "assets": [
+                  { "name": "wine-11.20-amd64-wow64.tar.xz", "browser_download_url": "https://x/wow", "size": 1 } ] } ]
+            """;
+            Assert.Empty(ToolCatalog.Parse(ToolFlavor.GeProton, json));
+            Assert.Empty(ToolCatalog.Parse(ToolFlavor.Wine, json));
+        }
+
+        [Fact]
         public void Catalog_ParsesWineBuilds_PickingTheWow64Archive()
         {
             string json = """

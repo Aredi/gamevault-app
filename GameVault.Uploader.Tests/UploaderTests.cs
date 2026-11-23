@@ -189,6 +189,10 @@ namespace GameVault.Uploader.Tests
                 // A game in a folder: RomM names the file it sends
                 "/api/roms/41" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 41, fs_name = "Bleach [RBLP8P]" }) },
                 "/api/roms/41/content/Bleach%20%5BRBLP8P%5D" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(Rom) { Headers = { ContentDisposition = new("attachment") { FileNameStar = "RBLP8P.wbfs" } } } },
+                // A Switch game's folder with its update: one of its files, asked by its id
+                "/api/roms/44" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 44, fs_name = "Zelda TOTK", full_path = "switch/Zelda TOTK", files = new[] { new { id = 901, file_name = "update.nsp", full_path = "switch/Zelda TOTK/update/update.nsp", file_size_bytes = Rom.Length, category = "update" } } }) },
+                "/api/roms/901/files/content/update.nsp" => Part(request),
+                "/api/roms/902/files/content/secret.nsp" => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[] { 6, 6, 6 }) },
                 // A PS3 game's folder: RomM zips it as it sends it
                 "/api/roms/43" => new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = 43, fs_name = "Infamous", has_nested_single_file = true }) },
                 "/api/roms/43/content/Infamous" => Part(request),
@@ -748,6 +752,16 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(FakeRomm.Rom[4..], await part.Content.ReadAsByteArrayAsync());
             Assert.Equal(4, part.Content.Headers.ContentRange!.From);
             Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/games/42/content")).StatusCode);
+            // A file of a game in a folder, in parts too; a file of another game (or none) is not reached through this one
+            HttpResponseMessage update = await player.GetAsync("/retro/games/44/files/901/content");
+            Assert.Equal(FakeRomm.Rom, await update.Content.ReadAsByteArrayAsync());
+            Assert.Equal("update.nsp", update.Content.Headers.ContentDisposition!.FileNameStar);
+            using var updatePart = new HttpRequestMessage(HttpMethod.Get, "/retro/games/44/files/901/content");
+            updatePart.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(4, null);
+            Assert.Equal(FakeRomm.Rom[4..], await (await player.SendAsync(updatePart)).Content.ReadAsByteArrayAsync());
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/games/40/files/901/content")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await player.GetAsync("/retro/games/44/files/902/content")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await Client(null).GetAsync("/retro/games/44/files/901/content")).StatusCode);
             Assert.Equal("RBLP8P.wbfs", (await player.GetAsync("/retro/games/41/content")).Content.Headers.ContentDisposition!.FileNameStar);
             // A zip RomM makes while sending (a folder): never asked in parts, which RomM can not answer in time
             using var zipPart = new HttpRequestMessage(HttpMethod.Get, "/retro/games/43/content");
@@ -1349,6 +1363,41 @@ namespace GameVault.Uploader.Tests
         }
 
         [Fact]
+        public async Task RetroSaves_PastTheTotal_TheOldestVersionsGo_ThenTheSetsThatStillTakeItAllAreRefused()
+        {
+            var store = factory.Services.GetRequiredService<RetroSaveStore>();
+            long total = store.Total;
+            string mine = Path.Combine(retroSaves, "2");
+            try
+            {
+                // Another test's 200 small sets may be there too
+                store.Total = 10_000;
+                Directory.CreateDirectory(Path.Combine(mine, "history"));
+                File.WriteAllBytes(Path.Combine(mine, "full.zip"), new byte[4000]);
+                string old = Path.Combine(mine, "history", "full-1000.zip"), newer = Path.Combine(mine, "history", "full-2000.zip");
+                File.WriteAllBytes(old, new byte[4000]);
+                File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddDays(-2));
+                File.WriteAllBytes(newer, new byte[4000]);
+                var player = Client("user");
+                // An existing set: the oldest version goes, the save is taken
+                HttpResponseMessage taken = await player.PutAsync("/retro/saves/full", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4 }));
+                Assert.True(taken.IsSuccessStatusCode, await taken.Content.ReadAsStringAsync() + " " + string.Join(",", Directory.GetFiles(mine, "*", SearchOption.AllDirectories).Select(f => $"{Path.GetFileName(f)}={new FileInfo(f).Length}")));
+                Assert.False(File.Exists(old));
+                // The current saves alone take it all: refused, existing set or not
+                File.WriteAllBytes(Path.Combine(mine, "big.zip"), new byte[20_000]);
+                HttpResponseMessage refused = await player.PutAsync("/retro/saves/big", new ByteArrayContent(new byte[] { 0x50, 0x4B, 3, 4 }));
+                Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+                Assert.Contains("GB", await refused.Content.ReadAsStringAsync());
+            }
+            finally
+            {
+                store.Total = total;
+                foreach (string made in new[] { "full.zip", "big.zip" }.Select(f => Path.Combine(mine, f)).Concat(Directory.GetFiles(Path.Combine(mine, "history"), "full-*.zip")))
+                    File.Delete(made);
+            }
+        }
+
+        [Fact]
         public async Task TheWebPage_IsAlsoServedUnderTheGameVaultSite()
         {
             var noRedirect = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -1388,7 +1437,7 @@ namespace GameVault.Uploader.Tests
             Assert.Equal(HttpStatusCode.OK, (await Client(null).GetAsync("/app.js")).StatusCode);
             // The invitation, without signing in
             string invite = await Client(null).GetStringAsync("/invite");
-            Assert.Contains("Rejoins SanctuaryVault", invite);
+            Assert.Contains("Rejoignez SanctuaryVault", invite);
             Assert.Contains("releases/latest/download/GameVault-win-Setup.exe", invite);
 
             var bad = await Client(null).PostAsJsonAsync("/auth/login", new { username = "admin", password = "wrong" });

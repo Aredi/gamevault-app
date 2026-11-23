@@ -62,7 +62,8 @@ namespace gamevault.Helper.Integrations
                 string opened = Path.Combine(work, "opened");
                 await OpenAsync(archive, opened);
                 progress?.Report(0.95);
-                List<string> put = await Task.Run(() => SwitchMods.Install(emulator.Layout, id, opened, mod.Name, mod.Id, file.Id), ct);
+                string? version = VersionOf(game);
+                List<string> put = await Task.Run(() => SwitchMods.Install(emulator.Layout, id, opened, mod.Name, mod.Id, file.Id, version), ct);
                 if (put.Count == 0)
                     throw new InvalidDataException(Loc.T("This mod can not be installed for Eden: it needs a tool of its own, or is not made for an emulator."));
                 progress?.Report(1);

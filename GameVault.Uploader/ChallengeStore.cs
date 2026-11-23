@@ -262,7 +262,10 @@ namespace GameVault.Uploader
             }
         }
 
-        /// <summary>The achievements of a retro game as they are now: the ones earned this week count.</summary>
+        /// <summary>
+        /// The newest achievements of a retro game (the client sends its last 20): the ones earned this week count, added
+        /// to the ones told before, so more than 20 in a week count. Two earned in the same second count as two.
+        /// </summary>
         /// <returns>Whether the player just completed the challenge.</returns>
         public bool SetUnlocks(int userId, string username, string key, IEnumerable<DateTime> dates)
         {
@@ -270,14 +273,15 @@ namespace GameVault.Uploader
             {
                 Week week = Current();
                 DateTime start = StartOf(week.Id), end = start.AddDays(7);
-                List<DateTime> earned = dates.Select(date => date.ToUniversalTime()).Where(date => date >= start && date < end).Distinct().Order().ToList();
-                if (earned.Count == 0 && !(week.Players.TryGetValue(userId, out Entry? had) && had.Unlocks.ContainsKey(key)))
+                List<DateTime> told = dates.Select(date => date.ToUniversalTime()).Where(date => date >= start && date < end).ToList();
+                if (told.Count == 0)
                     return false;
                 Entry entry = EntryOf(week, userId, username);
-                if (earned.Count == 0)
-                    entry.Unlocks.Remove(key);
-                else
-                    entry.Unlocks[key] = earned;
+                // By date, the most told at once: the same list sent again adds nothing
+                var known = entry.Unlocks.GetValueOrDefault(key) ?? new();
+                entry.Unlocks[key] = known.Concat(told).Distinct()
+                    .SelectMany(date => Enumerable.Repeat(date, Math.Max(known.Count(d => d == date), told.Count(d => d == date))))
+                    .Order().ToList();
                 bool done = Settle(week, entry);
                 Write(WeekFile(week.Id), week);
                 return done;

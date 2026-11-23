@@ -47,7 +47,8 @@ namespace GameVault.Core.Retro
                 return new Content(Verdict.TooShort);
             ushort type = BinaryPrimitives.ReadUInt16BigEndian(start[(int)(chunk + 6)..]);
             long size = (long)BinaryPrimitives.ReadUInt64BigEndian(start[(int)(chunk + 8)..]);
-            if (content + size > fileSize)
+            // A size of 2^63 or more reads negative: no content, the CIA would become an empty .cxi
+            if (size <= 0 || size > fileSize - content)
                 return new Content(Verdict.NotACia);
             // Encrypted with the title key (the content is then unreadable), or an NCCH without the NoCrypto flag
             bool readable = (type & 1) == 0 && start.Slice((int)content + 0x100, 4).SequenceEqual("NCCH"u8);

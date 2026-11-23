@@ -16,11 +16,13 @@ namespace GameVault.Uploader
         private const string CodeLetters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
         private readonly string file;
+        private readonly ILogger<RoomStore> logger;
         /// <summary>Held across the controller's calls: a room and its network change together.</summary>
         private readonly SemaphoreSlim writing = new(1, 1);
 
         public RoomStore(UploaderOptions options, ILogger<RoomStore> logger)
         {
+            this.logger = logger;
             Enabled = ProfileStore.IsWritable(options.RoomsDirectory, out string error);
             if (!Enabled)
                 logger.LogWarning("LAN rooms are off: {Directory} can not be written ({Error}). Mount a volume there to offer them.", options.RoomsDirectory, error);
@@ -88,7 +90,14 @@ namespace GameVault.Uploader
                     return (Outcome.TooMany, null);
                 string network = await controller.CreateNetworkAsync(name, subnet, ct);
                 string ip = $"10.147.{subnet}.1";
-                await controller.AuthorizeAsync(network, nodeId, ip, ct);
+                try { await controller.AuthorizeAsync(network, nodeId, ip, ct); }
+                catch
+                {
+                    // No room points to it: not left in the controller
+                    try { await controller.DeleteNetworkAsync(network, CancellationToken.None); }
+                    catch (Exception ex) { logger.LogWarning(ex, "The network {Network} of a room not made could not be deleted", network); }
+                    throw;
+                }
                 string code;
                 do code = new string(Enumerable.Range(0, 6).Select(_ => CodeLetters[RandomNumberGenerator.GetInt32(CodeLetters.Length)]).ToArray());
                 while (state.Rooms.Any(r => r.Code == code));
@@ -183,7 +192,8 @@ namespace GameVault.Uploader
         /// <summary>
         /// The library's games not read yet on PCGamingWiki, read in the background one by one, each saved as it comes.
         /// shortcut: at most one pass per 10 minutes and per process, started by a player opening the LAN games; a
-        /// game the wiki did not answer for is read again at the next pass.
+        /// game the wiki did not answer for is read again at the next pass. Move it to one timer for the service once it
+        /// runs in several processes, or the LAN games list stays incomplete more than a day.
         /// </summary>
         public void Detect(Func<Task<List<GameVaultProxy.GameSummary>>> games, PcGamingWiki wiki, ILogger logger)
         {

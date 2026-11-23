@@ -22,17 +22,8 @@ namespace GameVault.Uploader
 
         private static IResult Bad(string error) => Results.Json(new { error }, statusCode: StatusCodes.Status400BadRequest);
 
-        private static async Task<(IResult? Refused, AdminCheck.Result Player)> PlayerAsync(HttpRequest request, AdminCheck users, SocialStore social, CancellationToken ct)
-        {
-            var check = await users.CheckUserAsync(request, ct);
-            if (!check.Allowed)
-                return (Results.Json(new { error = check.Message }, statusCode: check.Status), check);
-            if (!social.Enabled)
-                return (Results.Json(new { error = "Reactions, recommendations and reviews are not kept by this server." }, statusCode: StatusCodes.Status503ServiceUnavailable), check);
-            if (check.Id <= 0)
-                return (Results.Json(new { error = "GameVault did not say who this player is." }, statusCode: StatusCodes.Status401Unauthorized), check);
-            return (null, check);
-        }
+        private static Task<(IResult? Refused, AdminCheck.Result Player)> PlayerAsync(HttpRequest request, AdminCheck users, SocialStore social, CancellationToken ct) =>
+            ChatEndpoints.PlayerAsync(request, users, social.Enabled, "Reactions, recommendations and reviews are not kept by this server.", ct);
 
         /// <summary>The player a line of the activity is about: the second part of its key.</summary>
         internal static int OwnerOf(string item) => int.Parse(item.Split(':')[1]);
@@ -60,6 +51,9 @@ namespace GameVault.Uploader
                 if (body.Emoji != null && !SocialStore.Emojis.Contains(body.Emoji))
                     return Bad($"A reaction is one of {string.Join(" ", SocialStore.Emojis)}.");
                 int owner = OwnerOf(body.Item!);
+                // No one's line: nobody to tell, nothing to keep
+                if (owner <= 0)
+                    return Bad("This line of the activity is not known.");
                 if (owner == player.Id)
                     return Bad("Your own activity takes no reaction from you.");
                 var (put, changed, tooMany) = social.React(body.Item!, owner, player.Id, player.User, body.Emoji);
@@ -79,14 +73,15 @@ namespace GameVault.Uploader
                     return refused;
                 if (body.To <= 0 || body.To == player.Id)
                     return Bad("A game is recommended to another player.");
-                if (body.Game == null || ChatEndpoints.Checked(body.Game) is string wrong)
+                if (body.Game == null)
                     return Bad("A game needs its id and its title (200 characters at most); a retro game its platform.");
+                if (ChatEndpoints.Checked(body.Game) is string wrong)
+                    return Bad(wrong);
                 string? note = body.Note?.Trim() is { Length: > 0 } text ? text : null;
                 if (note is { Length: > SocialStore.MaxNote })
                     return Bad($"A note has {SocialStore.MaxNote} characters at most.");
                 body.Game.Invite = false;
-                var (made, refusal) = social.Recommend(player.Id, player.User, body.To, body.Game, note);
-                if (made == null)
+                if (social.Recommend(player.Id, player.User, body.To, body.Game, note) is not SocialStore.Recommendation made)
                     return Results.Json(new { error = $"{SocialStore.RecommendationsPerDay} recommendations a day at most." }, statusCode: StatusCodes.Status429TooManyRequests);
                 await hub.SendAsync(new[] { body.To }, new { type = "recommendation", recommendation = made });
                 return Results.Json(made, statusCode: StatusCodes.Status201Created);

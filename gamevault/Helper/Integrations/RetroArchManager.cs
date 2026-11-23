@@ -378,19 +378,19 @@ namespace gamevault.Helper
             }
         }
 
-        internal static async Task DownloadAsync(string url, string file, Action<double> progress)
+        internal static async Task DownloadAsync(string url, string file, Action<double> progress, CancellationToken cancellationToken = default)
         {
-            using HttpResponseMessage response = await HttpClients.Shared.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            using HttpResponseMessage response = await HttpClients.Shared.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
             long total = response.Content.Headers.ContentLength ?? 0;
-            await using Stream body = await response.Content.ReadAsStreamAsync();
+            await using Stream body = await response.Content.ReadAsStreamAsync(cancellationToken);
             await using FileStream target = File.Create(file);
             byte[] buffer = new byte[1 << 16];
             long done = 0, shown = 0;
             int read;
-            while ((read = await body.ReadAsync(buffer)) > 0)
+            while ((read = await body.ReadAsync(buffer, cancellationToken)) > 0)
             {
-                await target.WriteAsync(buffer.AsMemory(0, read));
+                await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                 done += read;
                 // Every 2 MB: enough for the percentage
                 if (total > 0 && done - shown > 2 << 20)

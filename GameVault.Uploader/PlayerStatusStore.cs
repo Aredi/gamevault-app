@@ -25,8 +25,6 @@ namespace GameVault.Uploader
             return changed;
         }
 
-        public void Forget(int userId) => statuses.TryRemove(userId, out _);
-
         /// <summary>As the others see it: an invisible player is offline, without their game.</summary>
         public static Status Shown(Status status) =>
             status.State == "invisible" ? status with { State = "offline", GameId = null, GameSince = null } : status;

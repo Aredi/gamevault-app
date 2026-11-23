@@ -224,6 +224,8 @@ namespace gamevault.UserControls
             string gameSortByFilter = ViewModel.SelectedGameFilterSortBy.Value;
             string gameOrderByFilter = (bool)uiFilterOrderBy.IsChecked ? "DESC" : "ASC";
             ViewModel.GameCards.Clear();
+            // The old search's next page must not be added to this one while it loads
+            ViewModel.NextPage = null;
 
             // Collections, played / never played and sorting by play data are resolved here,
             // then sent to the server as a list of game ids.
@@ -296,7 +298,7 @@ namespace gamevault.UserControls
                 if (gameResult.Data.Length > 0)
                 {
                     ViewModel.NextPage = gameResult.Links.Next;
-                    await ProcessGamesData(gameResult);
+                    ProcessGamesData(gameResult, currentSearchToken);
                 }
                 if (ViewModel.SelectedGame == null || !ViewModel.GameCards.Any(g => g?.ID == ViewModel.SelectedGame.ID))
                     ViewModel.SelectedGame = ViewModel.GameCards.FirstOrDefault();
@@ -341,18 +343,13 @@ namespace gamevault.UserControls
                 return null;
             }
         }
-        private async Task ProcessGamesData(PaginatedData<Game> gameResult)
+        /// <summary>Adds the games of a page, unless another search started since it was asked (its cards would mix in).</summary>
+        private void ProcessGamesData(PaginatedData<Game> gameResult, Guid search)
         {
-            await Task.Run(() =>
-            {
-                foreach (Game game in gameResult.Data)
-                {
-                    Dispatcher.UIThread.Invoke(delegate
-                    {
-                        ViewModel.GameCards.Add(game);
-                    });
-                }
-            });
+            if (search != searchCancellationToken)
+                return;
+            foreach (Game game in gameResult.Data)
+                ViewModel.GameCards.Add(game);
         }
         private void Hyperlink_RequestNavigate(object? sender, RoutedEventArgs e)
         {
@@ -441,7 +438,14 @@ namespace gamevault.UserControls
                 if (scrollBlocked == false && ViewModel.NextPage != null && scrollPercentage > 90)
                 {
                     scrollBlocked = true;
+                    Guid search = searchCancellationToken;
                     PaginatedData<Game>? gameResult = await GetGamesData(ViewModel.NextPage);
+                    // A new search meanwhile: this page is of the old one, and its next page too
+                    if (search != searchCancellationToken)
+                    {
+                        scrollBlocked = false;
+                        return;
+                    }
                     ViewModel.NextPage = gameResult?.Links.Next;
                     if (gameResult == null || gameResult.Data == null)
                     {
@@ -449,7 +453,7 @@ namespace gamevault.UserControls
                         scrollBlocked = false;
                         return;
                     }
-                    await ProcessGamesData(gameResult);
+                    ProcessGamesData(gameResult, search);
                     scrollBlocked = false;
                 }
             }

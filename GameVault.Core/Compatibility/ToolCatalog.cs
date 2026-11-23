@@ -76,7 +76,8 @@ namespace GameVault.Core.Compatibility
                     archive = assets.FirstOrDefault(a => a.Name == expected);
                     checksum = assets.FirstOrDefault(a => a.Name == "sha256sums.txt").Url;
                 }
-                if (string.IsNullOrEmpty(archive.Name))
+                // A release without its checksum list is not offered: nothing could tell its archive is the one published
+                if (string.IsNullOrEmpty(archive.Name) || string.IsNullOrEmpty(checksum))
                     continue;
                 string folder = archive.Name.Replace(".tar.gz", "").Replace(".tar.xz", "");
                 // GE-Proton archives are named after the release, newer ones carry an architecture suffix
@@ -142,13 +143,14 @@ namespace GameVault.Core.Compatibility
                     }
                 }
 
-                if (tool.ChecksumUrl != null)
-                {
-                    string list = await HttpClients.Shared.GetStringAsync(tool.ChecksumUrl, cancellationToken);
-                    string? expected = FindChecksum(list, tool.ArchiveName);
-                    if (expected != null && !await VerifyAsync(archive, expected, cancellationToken))
-                        throw new InvalidDataException($"Checksum mismatch for {tool.ArchiveName}, the download is corrupted.");
-                }
+                // Never installed unchecked (it runs every Windows game)
+                if (tool.ChecksumUrl == null)
+                    throw new InvalidDataException($"No checksum is published for {tool.ArchiveName}: not installed.");
+                string list = await HttpClients.Shared.GetStringAsync(tool.ChecksumUrl, cancellationToken);
+                string expected = FindChecksum(list, tool.ArchiveName)
+                    ?? throw new InvalidDataException($"The checksum list does not name {tool.ArchiveName}: not installed.");
+                if (!await VerifyAsync(archive, expected, cancellationToken))
+                    throw new InvalidDataException($"Checksum mismatch for {tool.ArchiveName}, the download is corrupted.");
 
                 // tar handles .tar.gz and .tar.xz; extracting next to the target keeps the move atomic
                 string extract = Path.Combine(work, "extract");

@@ -108,7 +108,7 @@ namespace GameVault.Uploader
                 var (refused, id) = await SaverAsync(set, context.Request, users, saves, ct);
                 if (refused != null)
                     return refused;
-                if (saves.NewSetRefusal(id, set) is string full)
+                if (saves.Refusal(id, set) is string full)
                     return Results.Json(new { error = full }, statusCode: StatusCodes.Status409Conflict);
                 return await saves.SaveAsync(id, set, context.Request.Body, ct) is long savedAt
                     ? Results.Json(new { savedAt })
@@ -236,7 +236,7 @@ namespace GameVault.Uploader
                         return Results.Json(new { error = "Give the room a name." }, statusCode: StatusCodes.Status400BadRequest);
                     if (!RoomStore.IsValidNodeId(asked.NodeId))
                         return Results.Json(new { error = "This PC's ZeroTier address is missing." }, statusCode: StatusCodes.Status400BadRequest);
-                    var (outcome, room) = await rooms.CreateAsync(zeroTier, player.Id, player.User, asked.NodeId!, name, asked.GameId > 0 ? asked.GameId : null, GameTitle(asked.GameTitle), asked.Public, ct);
+                    var (outcome, room) = await rooms.CreateAsync(zeroTier, player.Id, player.User, asked.NodeId!, name, asked.GameId > 0 ? asked.GameId : null, Cut(asked.GameTitle, 200), asked.Public, ct);
                     return outcome == RoomStore.Outcome.Done
                         ? Results.Json(RoomJson(room!, player.Id), statusCode: StatusCodes.Status201Created)
                         : Results.Json(new { error = $"At most {RoomStore.MaxRoomsPerOwner} rooms per player: leave one first." }, statusCode: StatusCodes.Status409Conflict);
@@ -262,7 +262,7 @@ namespace GameVault.Uploader
 
             app.MapPut("/rooms/{roomId}/game", (string roomId, RoomGame asked, HttpContext context, AdminCheck users, RoomStore rooms, ZeroTierController zeroTier, CancellationToken ct) =>
                 AsRoomPlayerAsync(context, users, rooms, zeroTier, ct, async player =>
-                    await rooms.SetGameAsync(player.Id, roomId, asked.GameId > 0 ? asked.GameId : null, GameTitle(asked.GameTitle)) switch
+                    await rooms.SetGameAsync(player.Id, roomId, asked.GameId > 0 ? asked.GameId : null, Cut(asked.GameTitle, 200)) switch
                     {
                         RoomStore.Outcome.Done => Results.NoContent(),
                         RoomStore.Outcome.NotOwner => Results.Json(new { error = "Only the room's owner chooses its game." }, statusCode: StatusCodes.Status403Forbidden),
@@ -752,8 +752,6 @@ namespace GameVault.Uploader
                 members = room.Members.Select(m => new { userId = m.UserId, userName = m.UserName, nodeId = m.NodeId, ip = m.Ip }),
             };
         }
-
-        private static string? GameTitle(string? title) => title?.Trim() is { Length: > 0 } t ? t[..Math.Min(t.Length, 200)] : null;
 
         private static async Task<IResult> AsRetroPlayerAsync(HttpRequest request, AdminCheck users, RetroPlayerStore players, CancellationToken ct, Func<AdminCheck.Result, IResult> action)
         {

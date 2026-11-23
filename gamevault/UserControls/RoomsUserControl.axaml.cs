@@ -128,7 +128,11 @@ namespace gamevault.UserControls
             if (shownGame != room.GameId)
             {
                 shownGame = room.GameId;
-                uiCover.Data = room.GameId is int gameId ? await GameAsync(gameId) : null;
+                var cover = room.GameId is int gameId ? await GameAsync(gameId) : null;
+                // Another room picked while its game was read: that one is shown, not this one
+                if (selectedId != room.Id)
+                    return;
+                uiCover.Data = cover;
             }
             uiMembers.ItemsSource = room.Members.Select(m =>
             {

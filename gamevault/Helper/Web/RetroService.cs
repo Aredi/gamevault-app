@@ -458,7 +458,13 @@ namespace gamevault.Helper
                     {
                         progress(Loc.F("Decompressing the Switch game... {0}%", 0));
                         string compressed = downloaded;
-                        downloaded = await Task.Run(() => SwitchCompressed.Decompress(compressed, d => progress(Loc.F("Decompressing the Switch game... {0}%", (int)(d * 100)))));
+                        // Told when the percent changes, not at each block (a 5 GB update has 80,000)
+                        int shown = 0;
+                        downloaded = await Task.Run(() => SwitchCompressed.Decompress(compressed, d =>
+                        {
+                            if ((int)(d * 100) is int percent && percent != shown)
+                                progress(Loc.F("Decompressing the Switch game... {0}%", shown = percent));
+                        }));
                     }
                     string target = Path.Combine(folder, Path.GetDirectoryName(update.Path) ?? "", Path.GetFileName(downloaded));
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);

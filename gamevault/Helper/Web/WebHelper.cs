@@ -72,27 +72,27 @@ namespace gamevault.Helper
         #region BASE REQUESTS
         internal static async Task<string> BaseGetAsync(string url)
         {
-            var response = await BaseHttpClient.GetAsync(url);
+            using var response = await BaseHttpClient.GetAsync(url);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             return await response.Content.ReadAsStringAsync();
         }
         internal static async Task<string> BasePostAsync(string url, string payload)
         {
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            var response = await BaseHttpClient.PostAsync(url, content);
+            using var response = await BaseHttpClient.PostAsync(url, content);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             return await response.Content.ReadAsStringAsync();
         }
         internal static async Task<string> BaseSendRequest(HttpRequestMessage request)
         {
-            var response = await BaseHttpClient.SendAsync(request);
+            using var response = await BaseHttpClient.SendAsync(request);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             return await response.Content.ReadAsStringAsync();
         }
         #endregion
         internal static async Task<string> GetAsync(string url)
         {
-            var response = await HttpClient.GetAsync(url, AdditionalRequestHeaders);
+            using var response = await HttpClient.GetAsync(url, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             return await response.Content.ReadAsStringAsync();
         }
@@ -110,7 +110,7 @@ namespace gamevault.Helper
         internal static async Task<string> PostAsync(string url, string payload)
         {
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            var response = await HttpClient.PostAsync(url, content, AdditionalRequestHeaders);
+            using var response = await HttpClient.PostAsync(url, content, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             return await response.Content.ReadAsStringAsync();
         }
@@ -147,13 +147,13 @@ namespace gamevault.Helper
         internal static async Task<string> PutAsync(string url, string payload)
         {
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            var response = await HttpClient.PutAsync(url, content, AdditionalRequestHeaders);
+            using var response = await HttpClient.PutAsync(url, content, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             return await response.Content.ReadAsStringAsync();
         }
         internal static async Task<string> DeleteAsync(string url)
         {
-            var response = await HttpClient.DeleteAsync(url, AdditionalRequestHeaders);
+            using var response = await HttpClient.DeleteAsync(url, AdditionalRequestHeaders);
             await WebExceptionHelper.EnsureSuccessStatusCode(response);
             return await response.Content.ReadAsStringAsync();
         }
@@ -202,7 +202,7 @@ namespace gamevault.Helper
                 string mimeType = MimeTypeHelper.GetMimeType(fileName);
                 imageContent.Headers.ContentType = new MediaTypeHeaderValue(mimeType);
                 formData.Add(imageContent, "file", fileName);
-                var response = await HttpClient.PostAsync(apiUrl, formData, mixedHeaders);
+                using var response = await HttpClient.PostAsync(apiUrl, formData, mixedHeaders);
                 await WebExceptionHelper.EnsureSuccessStatusCode(response);
                 var responseContent = await response.Content.ReadAsStringAsync();
                 return responseContent;

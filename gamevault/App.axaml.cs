@@ -67,8 +67,11 @@ namespace gamevault
 #endif
             Dispatcher.UIThread.UnhandledException += (s, e) =>
             {
+#if DEBUG
+                // The app stops: nothing of it left running
                 ProcessShepherd.Instance.KillAllChildProcesses();
-#if !DEBUG
+#else
+                // The app goes on: the extractions and save restores under way go on too
                 e.Handled = true;
                 LogUnhandledException(e.Exception);
 #endif

@@ -140,7 +140,8 @@ namespace gamevault.UserControls
                 .OrderByDescending(p => p.PlayingNow)
                 .ThenByDescending(p => p.LastPlayedAt)
                 .ToArray();
-            ViewModel.CurrentUserProgress = game.Progresses.FirstOrDefault(p => p.User?.ID == me) ?? new Progress { MinutesPlayed = 0, State = State.UNPLAYED.ToString() };
+            // Also called at each activity change: the state the player just picked (not in the game read before) stays
+            ViewModel.CurrentUserProgress = game.Progresses.FirstOrDefault(p => p.User?.ID == me) ?? ViewModel.CurrentUserProgress ?? new Progress { MinutesPlayed = 0, State = State.UNPLAYED.ToString() };
         }
 
         private void ActivityChanged() => Dispatcher.UIThread.Post(() =>
@@ -227,8 +228,9 @@ namespace gamevault.UserControls
             if (ViewModel.Game == null)
                 return;
             ((Control)sender).IsEnabled = false;
-            await MainWindowViewModel.Instance.Downloads.UpdateGame(ViewModel.Game);
-            ViewModel.IsUpdateAvailable = false;
+            // Not queued (offline, no space...): the button stays to try again
+            if (await MainWindowViewModel.Instance.Downloads.UpdateGame(ViewModel.Game))
+                ViewModel.IsUpdateAvailable = false;
             ((Control)sender).IsEnabled = true;
         }
         #endregion
@@ -252,11 +254,10 @@ namespace gamevault.UserControls
         {
             Back();
         }
-        private async void Screenshot_Click(object? sender, RoutedEventArgs e)
+        private void Screenshot_Click(object? sender, RoutedEventArgs e)
         {
             if (((Control)sender!).DataContext is string url)
                 ViewModel.SelectedScreenshot = url;
-            await Task.CompletedTask;
         }
         /// <summary>The page takes the color of the cover; narrow windows stack the columns.</summary>
         private void InitLayout()

@@ -1,3 +1,4 @@
+using Avalonia.VisualTree;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
@@ -51,6 +52,18 @@ namespace GameVault.UiTests
                 // The player reacts, then changes their mind (one reaction each), then takes it away
                 await ActivityUserControl.ReactAsync(line, "GG");
                 Shot(window, "1-activity");
+                // "Réagir" offers the emojis in a row
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                Button add = page.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("add") && b.DataContext == line);
+                add.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Dispatcher.UIThread.RunJobs();
+                Shot(window, "2-react-picker");
+                var picks = Assert.IsType<StackPanel>(page.Picker!.Content).Children.OfType<Button>().ToList();
+                Assert.Equal(SocialService.Emojis, picks.Select(b => (string)b.Content!));
+                Assert.Contains("mine", picks[0].Classes);// GG, the player's
+                page.Picker.Hide();
+                Dispatcher.UIThread.RunJobs();
                 Assert.Equal(new[] { "GG 1", "🔥 1" }, line.Reactions.Select(r => r.Text));
                 Assert.Equal("GG", line.MyEmoji);
                 await ActivityUserControl.ReactAsync(line, "🔥");

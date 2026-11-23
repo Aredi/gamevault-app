@@ -21,9 +21,9 @@ namespace GameVault.Core.Diagnostics
             // JSON web tokens anywhere (header.payload.signature)
             (new Regex(@"\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}"), Hidden),
             // "password": "...", "access_token": "..." in JSON
-            (new Regex(@"(""(?:[a-z_]*password|access_token|refresh_token|api_key|apikey|token|secret)""\s*:\s*)""[^""]*""", RegexOptions.IgnoreCase), "$1\"" + Hidden + "\""),
-            // key=value lines and query parameters
-            (new Regex(@"\b((?:[A-Za-z]*Password|SessionToken|ApiKey|api_key|access_token|refresh_token|token|secret)\s*[=:]\s*)[^\s&;,""]+", RegexOptions.IgnoreCase), "$1" + Hidden),
+            (new Regex(@"(""[a-z0-9_]*(?:password|token|api_?key|secret)""\s*:\s*)""[^""]*""", RegexOptions.IgnoreCase), "$1\"" + Hidden + "\""),
+            // key=value lines and query parameters, prefixed keys too (RetroArch's cheevos_password = "..."), quoted or not
+            (new Regex(@"(?<![A-Za-z0-9])([A-Za-z0-9_]*(?:password|token|api_?key|secret)\s*[=:]\s*)(?:""[^""\r\n]*""|'[^'\r\n]*'|[^\s&;,""']+)", RegexOptions.IgnoreCase), "$1" + Hidden),
             // https://user:password@host
             (new Regex(@"(\b[a-z][a-z0-9+.-]*://)[^/\s:@]+:[^/\s@]+@", RegexOptions.IgnoreCase), "$1" + Hidden + "@"),
             // X-Otp and similar one-time values in logged headers

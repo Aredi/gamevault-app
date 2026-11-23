@@ -70,21 +70,24 @@ namespace GameVault.Uploader
             if (game.Kind != "retro" || !RetroPlayerStore.IsValidKey($"{game.Platform}:{game.Id}"))
                 return "A game is \"pc\", or \"retro\" with its platform.";
             game.PlatformName = game.PlatformName?.Trim() is { Length: > 0 } name ? name[..Math.Min(name.Length, 80)] : null;
-            // Its cover goes through /retro/media: a path of RomM's, nothing else
-            if (game.Cover is { } cover && (cover.Length > 300 || cover.Contains("..") || cover.Contains("://") || cover.Contains('\\')))
-                game.Cover = null;
+            // Its cover goes through /retro/media: a path of RomM's, nothing else (the challenges' rule)
+            game.Cover = RommProxy.IsMedia(game.Cover) ? game.Cover : null;
             if (game.CoverVersion is { Length: > 64 })
                 game.CoverVersion = null;
             return null;
         }
 
-        private static async Task<(IResult? Refused, AdminCheck.Result Player)> PlayerAsync(HttpRequest request, AdminCheck users, ChatStore chat, CancellationToken ct)
+        private static Task<(IResult? Refused, AdminCheck.Result Player)> PlayerAsync(HttpRequest request, AdminCheck users, ChatStore chat, CancellationToken ct) =>
+            PlayerAsync(request, users, chat.Enabled, "The chat is not available on this server.", ct);
+
+        /// <summary>The player asking, signed in and known by their id, when the feature is on (else why not).</summary>
+        internal static async Task<(IResult? Refused, AdminCheck.Result Player)> PlayerAsync(HttpRequest request, AdminCheck users, bool enabled, string off, CancellationToken ct)
         {
             var check = await users.CheckUserAsync(request, ct);
             if (!check.Allowed)
                 return (Results.Json(new { error = check.Message }, statusCode: check.Status), check);
-            if (!chat.Enabled)
-                return (Results.Json(new { error = "The chat is not available on this server." }, statusCode: StatusCodes.Status503ServiceUnavailable), check);
+            if (!enabled)
+                return (Results.Json(new { error = off }, statusCode: StatusCodes.Status503ServiceUnavailable), check);
             if (check.Id <= 0)
                 return (Results.Json(new { error = "GameVault did not say who this player is." }, statusCode: StatusCodes.Status401Unauthorized), check);
             return (null, check);

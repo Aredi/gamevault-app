@@ -224,6 +224,10 @@ namespace GameVault.Uploader
             await CopyAsync(file, response, cancellationToken);
         }
 
+        /// <summary>The player's download limit (in bytes a second, 0 for none), as the client tells it in kB/s.</summary>
+        private static long SpeedLimit(HttpRequest request) =>
+            long.TryParse(request.Headers["X-Download-Speed-Limit"], out long kilobytes) && kilobytes > 0 ? kilobytes * 1000 : 0;
+
         public async Task MediaAsync(string path, HttpResponse response, CancellationToken cancellationToken)
         {
             if (!MediaPath().IsMatch(path))
@@ -255,8 +259,7 @@ namespace GameVault.Uploader
             // RomM names what it sends: the file in a game's folder (Wii), or the zip of a game in several files
             response.Headers.ContentDisposition = (file.Content.Headers.ContentDisposition ?? new ContentDispositionHeaderValue("attachment") { FileNameStar = name }).ToString();
             // The client's download limit (Settings), in kB/s as the GameVault server takes it
-            long limit = long.TryParse(request.Headers["X-Download-Speed-Limit"], out long kilobytes) && kilobytes > 0 ? kilobytes * 1000 : 0;
-            await CopyAsync(file, response, cancellationToken, limit);
+            await CopyAsync(file, response, cancellationToken, SpeedLimit(request));
         }
 
         /// <summary>
@@ -296,8 +299,7 @@ namespace GameVault.Uploader
                 content.Headers.TryAddWithoutValidation("Range", request.Headers.Range.ToString());
             using HttpResponseMessage file = await SendAsync(content, cancellationToken);
             response.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") { FileNameStar = name }.ToString();
-            long limit = long.TryParse(request.Headers["X-Download-Speed-Limit"], out long kilobytes) && kilobytes > 0 ? kilobytes * 1000 : 0;
-            await CopyAsync(file, response, cancellationToken, limit);
+            await CopyAsync(file, response, cancellationToken, SpeedLimit(request));
         }
 
         /// <param name="bytesPerSecond">0: as fast as it goes.</param>

@@ -175,8 +175,12 @@ namespace GameVault.Core.Retro
         /// The game's saves replaced (all go to a backup first) by a zip of its files (in place of all but the main
         /// save) and/or its main save, written where the emulator reads it (a folder of the saves, named after the game).
         /// </summary>
+        /// <exception cref="InvalidDataException">The zip can not be read (an error page in its place): nothing is touched.</exception>
         public string? Replace(Stream? zip, (string Folder, string Extension, byte[] Content)? main)
         {
+            // Read before anything is deleted: what came may not be a zip
+            using ZipArchive? archive = zip == null ? null : new ZipArchive(zip, ZipArchiveMode.Read, leaveOpen: true);
+            List<ZipArchiveEntry> entries = archive?.Entries.Where(e => e.Name.Length > 0).ToList() ?? new();
             string? backup = null;
             var current = Entries();
             if (current.Count > 0)
@@ -204,10 +208,9 @@ namespace GameVault.Core.Retro
                     File.WriteAllBytes(target, content);
                 }
             }
-            if (zip == null)
+            if (archive == null)
                 return backup;
-            using var archive = new ZipArchive(zip, ZipArchiveMode.Read, leaveOpen: true);
-            foreach (ZipArchiveEntry entry in archive.Entries.Where(e => e.Name.Length > 0))
+            foreach (ZipArchiveEntry entry in entries)
             {
                 string[] parts = entry.FullName.Split('/', 2);
                 var root = roots.FirstOrDefault(r => r.Prefix == parts[0]);

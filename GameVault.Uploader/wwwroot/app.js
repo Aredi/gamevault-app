@@ -78,7 +78,8 @@ function buildFileName(title, version, type, year, earlyAccess, extension) {
   const clean = cleanTitle(title);
   if (!clean) return "";
   let name = clean;
-  if (version && version.trim()) name += ` (v${version.trim().replace(/^[vV]+/, "").replace(/\(/g, "[").replace(/\)/g, "]")})`;
+  const tag = versionTag(version);
+  if (tag) name += ` (${tag})`;
   if (earlyAccess) name += " (EA)";
   name += ` (${type})`;
   const y = parseInt(year, 10);
@@ -86,7 +87,11 @@ function buildFileName(title, version, type, year, earlyAccess, extension) {
   return name + extension;
 }
 
-const versionTag = version => (version && version.trim() ? "v" + version.trim().replace(/^[vV]+/, "").replace(/\(/g, "[").replace(/\)/g, "]") : null);
+// Cleaned as the title: "1.0/hotfix" or "1:2" would make a path, or a name Windows refuses
+function versionTag(version) {
+  const clean = version ? cleanTitle(version.trim().replace(/^[vV]+/, "")) : "";
+  return clean ? "v" + clean : null;
+}
 
 function normalize(name) {
   if (!name || !name.trim()) return "";
@@ -383,7 +388,7 @@ function showRemoteChoices(games) {
 async function askRemote(game) {
   const deviceId = $("remoteDevice").value;
   const device = remoteDevices.find(d => d.id === deviceId);
-  if (!device) { remoteStatus("Choisis d’abord un de tes PC.", "error"); return; }
+  if (!device) { remoteStatus("Choisissez d’abord un de vos PC.", "error"); return; }
   const added = await api("remote/installs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ gameId: game.id, title: game.title, deviceId }) });
   if (!added.ok) { remoteStatus(await errorOf(added), "error"); return; }
   localStorage.setItem("sv.device", deviceId);
@@ -412,11 +417,14 @@ async function offerAskedGame() {
   const response = await api("games/" + id);
   if (!response.ok) return;
   showRemoteChoices([await response.json()]);
-  remoteStatus("Choisis le PC puis clique sur le jeu.");
+  remoteStatus("Choisissez le PC puis cliquez sur le jeu.");
   $("remote").scrollIntoView();
 }
 
 // ---- Screens ----
+// Signed out here: the GameVault page's sign-in of that moment is not taken again on reload (a new one is)
+const SITE_LEFT = "sv.leftSite";
+
 function signOut() {
   tokens.clear();
   show("publish", false); show("remote", false); show("who", false);
@@ -424,7 +432,8 @@ function signOut() {
 }
 
 async function start() {
-  if (!tokens.access && !await refreshTokens(localStorage.getItem(SITE_REFRESH))) { signOut(); return; }
+  const site = localStorage.getItem(SITE_REFRESH);
+  if (!tokens.access && !await refreshTokens(site && site !== localStorage.getItem(SITE_LEFT) ? site : null)) { signOut(); return; }
   try {
     const response = await api("me");
     if (!response.ok) { signOut(); return; }
@@ -466,7 +475,11 @@ $("loginForm").addEventListener("submit", async event => {
   }
 });
 
-$("logout").onclick = signOut;
+$("logout").onclick = () => {
+  const site = localStorage.getItem(SITE_REFRESH);
+  if (site) localStorage.setItem(SITE_LEFT, site);
+  signOut();
+};
 $("file").onchange = () => chooseFile($("file").files[0]);
 const drop = $("drop");
 drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });

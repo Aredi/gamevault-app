@@ -10,12 +10,16 @@ on:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
 
+# Each job gets only what it needs below
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 env:
   VPK_VERSION: 1.2.161
+  # Ludusavi (cloud saves), pinned: a new release is checked here before the clients get it
+  LUDUSAVI_VERSION: v0.31.0
+  LUDUSAVI_LINUX_SHA256: 7322ff45d41eae7ae064a80d8c9ecccc5b8fb6fc090a603a66369cd4b054068d
+  LUDUSAVI_WIN64_SHA256: f47a8ad8c708f01d2eb124704973beffab205e292f5287a10fc4a101f8d68706
 
 jobs:
   linux:
@@ -33,7 +37,8 @@ jobs:
         run: dotnet publish gamevault/gamevault.csproj --configuration Release --runtime linux-x64 --self-contained true -p:PublishReadyToRun=true -p:Version=${{ github.ref_name }} --output publish/GameVault
       - name: Bundle Ludusavi (cloud saves)
         run: |
-          gh release download --repo mtkennerly/ludusavi --pattern '*-linux.tar.gz' --output ludusavi.tar.gz
+          gh release download "$LUDUSAVI_VERSION" --repo mtkennerly/ludusavi --pattern '*-linux.tar.gz' --output ludusavi.tar.gz
+          echo "$LUDUSAVI_LINUX_SHA256  ludusavi.tar.gz" | sha256sum -c -
           mkdir -p publish/GameVault/Lib/savegame
           tar -xzf ludusavi.tar.gz -C publish/GameVault/Lib/savegame
           chmod +x publish/GameVault/gamevault publish/GameVault/Lib/savegame/ludusavi
@@ -70,7 +75,8 @@ jobs:
       - name: Bundle Ludusavi (cloud saves)
         shell: bash
         run: |
-          gh release download --repo mtkennerly/ludusavi --pattern '*-win64.zip' --output ludusavi.zip
+          gh release download "$LUDUSAVI_VERSION" --repo mtkennerly/ludusavi --pattern '*-win64.zip' --output ludusavi.zip
+          echo "$LUDUSAVI_WIN64_SHA256  ludusavi.zip" | sha256sum -c -
           mkdir -p publish/GameVault/Lib/savegame
           7z x -y ludusavi.zip -opublish/GameVault/Lib/savegame
       - name: Setup.exe (Velopack)
@@ -129,6 +135,9 @@ jobs:
     # ghcr.io/<owner>/gamevault-uploader:<version> and :latest, for the server next to GameVault
     if: github.repository == 'Aredi/gamevault-app'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - name: Build and push the GameVault Uploader image
@@ -144,13 +153,16 @@ jobs:
     # A Mac job that fails, or finds no runner (1.40.6), must not hold back Windows and Linux
     if: ${{ !cancelled() && needs.linux.result == 'success' && needs.windows.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
       - name: Publish release
-        uses: softprops/action-gh-release@v2
+        # Pinned to the commit of v2: a moved tag cannot change what publishes the release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: dist/*
           generate_release_notes: true

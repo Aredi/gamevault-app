@@ -7,6 +7,14 @@ namespace GameVault.Core.Tests
     /// <summary>An update fetches only the files of the new zip that changed.</summary>
     public class ZipDeltaTests : IDisposable
     {
+        [Theory]
+        [InlineData("data/f", true)]
+        [InlineData("data./f", false)]
+        [InlineData("data /f", false)]
+        [InlineData("f.", false)]
+        [InlineData("../f", false)]
+        public void APath_IsPlainOnlyWhenWindowsReadsItTheSame(string path, bool plain) => Assert.Equal(plain, ZipDelta.IsPlain(path));
+
         private readonly string root = Path.Combine(Path.GetTempPath(), $"gv-delta-{Guid.NewGuid():N}");
         private string Installation => Path.Combine(root, "installation");
         private string Files => Path.Combine(Installation, "Files");

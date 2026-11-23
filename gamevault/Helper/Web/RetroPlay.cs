@@ -182,61 +182,79 @@ namespace gamevault.Helper
         private static async Task WhenRecompClosedAsync(Process process, RecompProgram recomp, RetroGame game)
         {
             DateTime started = DateTime.UtcNow;
-            try { await recomp.WhenClosedAsync(process); }
-            catch (Exception ex) { Log.Ignored(ex); }
-            Raise(Closed, game);
-            DiscordHelper.Instance.RetroStopped();
-            ActivityService.Instance.SetRetroPlaying(null);
-            await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
-            if (RommAccount.IsLinked)
+            try
             {
-                try { await RommAccount.PlayedAsync(game.Id); }
+                try { await recomp.WhenClosedAsync(process); }
                 catch (Exception ex) { Log.Ignored(ex); }
+                Raise(Closed, game);
+                DiscordHelper.Instance.RetroStopped();
+                ActivityService.Instance.SetRetroPlaying(null);
+                await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
+                if (RommAccount.IsLinked)
+                {
+                    try { await RommAccount.PlayedAsync(game.Id); }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                }
             }
-            game.Status = "";
-            game.Busy = false;
+            catch (Exception ex) { Log.Error(ex); }
+            finally
+            {
+                // Whatever failed after it closed, the game can be played again
+                game.Status = "";
+                game.Busy = false;
+                process.Dispose();
+            }
         }
 
         /// <summary>Busy while it runs (not started twice, not deleted under RetroArch), then its time counted and its saves sent; told when it died at its start.</summary>
         internal static async Task WhenClosedAsync(Process process, RetroGame game, System.Collections.Generic.Dictionary<string, long> before)
         {
-            DateTime started = DateTime.UtcNow;
-            await process.WaitForExitAsync();
-            Raise(Closed, game);
-            TimeSpan ran = DateTime.UtcNow - started;
-            string? failure = FailureOf(process.ExitCode, ran, StandaloneEmulator.Of(game)?.Name ?? "RetroArch");
-            if (failure != null)
-            {
-                Log.Info($"{game.Name}: {failure}");
-                MainWindowViewModel.Instance.AppBarText = failure;
-                game.Failure = new GameFailure(failure, process.ExitCode, (int)ran.TotalSeconds, started);
-            }
-            DiscordHelper.Instance.RetroStopped();
-            ActivityService.Instance.SetRetroPlaying(null);
             try
             {
-                // What the game wrote outside the files named after it (a memory card) is its saves from now on
-                RetroCloudSaves.Of(game).Track(before);
-            }
-            catch (Exception ex) { Log.Ignored(ex); }
-            // Counted as the library's games: the minutes of the session, on the profile and in the activity
-            await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
-            game.Status = Loc.T("Sending the saves...");
-            await RetroCloudSaves.SendAsync(game);
-            // RomM's "last played", and the achievements RetroArch unlocked
-            if (RommAccount.IsLinked)
-            {
-                try { await RommAccount.PlayedAsync(game.Id); }
-                catch (Exception ex) { Log.Ignored(ex); }
-                if (StandaloneEmulator.Of(game) == null)
+                DateTime started = DateTime.UtcNow;
+                await process.WaitForExitAsync();
+                Raise(Closed, game);
+                TimeSpan ran = DateTime.UtcNow - started;
+                string? failure = FailureOf(process.ExitCode, ran, StandaloneEmulator.Of(game)?.Name ?? "RetroArch");
+                if (failure != null)
                 {
-                    await RetroAchievementsAccount.SyncRommAsync();
-                    await RetroAchievementsAccount.ShareAsync(game);
-                    Raise(Synced, game);
+                    Log.Info($"{game.Name}: {failure}");
+                    MainWindowViewModel.Instance.AppBarText = failure;
+                    game.Failure = new GameFailure(failure, process.ExitCode, (int)ran.TotalSeconds, started);
+                }
+                DiscordHelper.Instance.RetroStopped();
+                ActivityService.Instance.SetRetroPlaying(null);
+                try
+                {
+                    // What the game wrote outside the files named after it (a memory card) is its saves from now on
+                    RetroCloudSaves.Of(game).Track(before);
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
+                // Counted as the library's games: the minutes of the session, on the profile and in the activity
+                await RetroLibrary.RecordPlayAsync(game, (int)Math.Round((DateTime.UtcNow - started).TotalMinutes));
+                game.Status = Loc.T("Sending the saves...");
+                await RetroCloudSaves.SendAsync(game);
+                // RomM's "last played", and the achievements RetroArch unlocked
+                if (RommAccount.IsLinked)
+                {
+                    try { await RommAccount.PlayedAsync(game.Id); }
+                    catch (Exception ex) { Log.Ignored(ex); }
+                    if (StandaloneEmulator.Of(game) == null)
+                    {
+                        await RetroAchievementsAccount.SyncRommAsync();
+                        await RetroAchievementsAccount.ShareAsync(game);
+                        Raise(Synced, game);
+                    }
                 }
             }
-            game.Status = "";
-            game.Busy = false;
+            catch (Exception ex) { Log.Error(ex); }
+            finally
+            {
+                // Whatever failed after it closed, the game can be played again
+                game.Status = "";
+                game.Busy = false;
+                process.Dispose();
+            }
         }
 
         private static string? FailureOf(int exitCode, TimeSpan ran, string emulator) => EmulatorExit.Of(exitCode, ran) switch

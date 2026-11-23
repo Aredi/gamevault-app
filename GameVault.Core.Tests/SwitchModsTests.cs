@@ -143,10 +143,35 @@ namespace GameVault.Core.Tests
                 Assert.Equal(new[] { "Free Cam · Cam" }, Install(eden, game, other, "Free Cam · Cam", 6, 6));
                 Assert.Equal(6, Assert.Single(Installed(eden, game), m => m.Folder == "Free Cam · Cam").ModId);
 
-                // Nothing Eden reads: nothing put
+                // Nothing Eden reads: nothing put, and the mod's file installed before stays
                 string none = Path.Combine(root, "x4");
                 Directory.CreateDirectory(Path.Combine(none, "mod.tkcl"));
                 Assert.Empty(Install(eden, game, none, "TKMM only", 3, 3));
+                Assert.Empty(Install(eden, game, none, "UltraCam: 4K", 480138, 2));
+                Assert.Contains(Installed(eden, game), m => m.ModId == 480138 && m.Enabled);
+
+                // A folder put by hand of the same name stays: the mod gets another
+                Directory.CreateDirectory(Path.Combine(eden.UserDirectory, "load", game, "60 FPS", "exefs"));
+                string sixty = Path.Combine(root, "x7");
+                Directory.CreateDirectory(Path.Combine(sixty, "romfs"));
+                Assert.Equal(new[] { "60 FPS 2" }, Install(eden, game, sixty, "60 FPS", 7, 7));
+                Assert.Contains(Installed(eden, game), m => m.Folder == "60 FPS" && m.ModId == null);
+
+                // A folder per version of the game: the game's on, the others off
+                string perVersion = Path.Combine(root, "x8");
+                Directory.CreateDirectory(Path.Combine(perVersion, "1.2.1", "Cam", "exefs"));
+                Directory.CreateDirectory(Path.Combine(perVersion, "v142", "Cam", "exefs"));
+                Assert.Equal(new[] { "Cams · Cam", "Cams · Cam 2" }, Install(eden, game, perVersion, "Cams", 8, 8, "1.2.1"));
+                Assert.Equal(new[] { true, false }, Installed(eden, game).Where(m => m.ModId == 8).OrderBy(m => m.Folder).Select(m => m.Enabled));
+
+                // Put by hand with a long name, of two spaces: turned off and taken away as it is named
+                string hand = "TOTK 60fps + Dynamic Resolution  + No blur v1.2.1 by ChucksFeedAndSeed (exefs and romfs together)";
+                Directory.CreateDirectory(Path.Combine(eden.UserDirectory, "load", game, hand, "exefs"));
+                SetEnabled(eden, game, hand, false);
+                Assert.Contains(Installed(eden, game), m => m.Folder == hand && !m.Enabled);
+                Remove(eden, game, hand);
+                Assert.DoesNotContain(Installed(eden, game), m => m.Folder == hand);
+                Assert.Throws<ArgumentException>(() => Remove(eden, game, ".."));
 
                 Remove(eden, game, "UltraCam 4K");
                 Assert.DoesNotContain(Installed(eden, game), m => m.ModId == 480138);

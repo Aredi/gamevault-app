@@ -105,6 +105,7 @@ namespace gamevault.UserControls
                 }
             }
         }
+        private int userRequest;
         private async void Users_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             try
@@ -143,7 +144,11 @@ namespace gamevault.UserControls
                 {
                     userUrl = @$"{SettingsViewModel.Instance.ServerUrl}/api/users/me";
                 }
+                int request = ++userRequest;
                 string currentShownUser = await WebHelper.GetAsync(userUrl);
+                // Another player picked while this one was read: theirs is shown, not this late answer
+                if (request != userRequest)
+                    return;
                 ViewModel.CurrentShownUser = JsonSerializer.Deserialize<User>(currentShownUser);
                 await LoadProfileAsync();
                 ViewModel.LoadingUser = false;
@@ -255,7 +260,11 @@ namespace gamevault.UserControls
                 {
                     userUrl = @$"{SettingsViewModel.Instance.ServerUrl}/api/users/me";
                 }
+                int request = ++userRequest;
                 string currentShownUser = await WebHelper.GetAsync(userUrl);
+                // Another player picked while this one was read: theirs is shown, not this late answer
+                if (request != userRequest)
+                    return;
                 ViewModel.CurrentShownUser = JsonSerializer.Deserialize<User>(currentShownUser);
                 ApplySort(uiSortBy.SelectedItem as string);
                 ProfileService.Forget(currentUserId);

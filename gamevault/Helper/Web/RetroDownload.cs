@@ -29,6 +29,8 @@ namespace gamevault.Helper
         public bool PlayWhenDone { get; set; }
 
         private HttpClientDownloadWithProgress? client;
+        /// <summary>The 7-Zip opening the download, stopped by a cancel.</summary>
+        private SevenZipHelper? unpacking;
         private DownloadSpeedCalculator speed = new();
         private DateTime startTime;
         private bool paused, cancelled, downloaded;
@@ -183,13 +185,15 @@ namespace gamevault.Helper
             IsActive = false;
             DownloadQueue.Advance();
             DownloadsViewModel.Instance.RetroDownloads.Remove(this);
-            _ = Task.Run(async () =>
-            {
-                // The download loop lets the file go first
-                await Task.Delay(1500);
-                try { Directory.Delete(Folder, true); }
-                catch (Exception ex) { Log.Ignored(ex); }
-            });
+            unpacking?.Cancel();
+            // Being prepared (unpacked, decompressed): the folder goes once the step stopped, else 7-Zip writes in it again
+            if (!IsPreparing)
+                _ = Task.Run(async () =>
+                {
+                    // The download loop lets the file go first
+                    await Task.Delay(1500);
+                    DeleteFolder();
+                });
             State = "";
             IsPaused = false;
             foreach (RetroGame game in watchers)
@@ -198,6 +202,16 @@ namespace gamevault.Helper
                 game.Status = "";
                 game.Refresh();
             }
+        }
+
+        private void DeleteFolder()
+        {
+            try
+            {
+                if (Directory.Exists(Folder))
+                    Directory.Delete(Folder, true);
+            }
+            catch (Exception ex) { Log.Ignored(ex); }
         }
 
         private string Metadata => Path.Combine(Folder, RetroService.DownloadMetadata);
@@ -238,6 +252,11 @@ namespace gamevault.Helper
                 IsPreparing = true;
                 await PrepareAsync();
                 IsPreparing = false;
+                if (cancelled)
+                {
+                    await Task.Run(DeleteFolder);
+                    return;
+                }
                 IsDone = true;
                 State = Loc.T("Ready to play");
                 Toast(Loc.T("Download Complete"));
@@ -255,7 +274,10 @@ namespace gamevault.Helper
             catch (Exception ex)
             {
                 Log.Ignored(ex);
+                bool wasPreparing = IsPreparing;
                 IsActive = IsPreparing = false;
+                if (cancelled && wasPreparing)
+                    await Task.Run(DeleteFolder);
                 if (paused || cancelled)
                     return;
                 IsFailed = true;
@@ -297,10 +319,15 @@ namespace gamevault.Helper
             if ((Game.Multi || Game.Platform.System.IsStandalone) && Path.GetExtension(downloaded).ToLowerInvariant() is ".zip" or ".7z" or ".rar")
             {
                 // A game in several files (a CD and its tracks, a PS3 game's folder, a Switch 2 dump): RomM sends them zipped; a PS3 ISO or a Switch card may be zipped too
-                var sevenZip = new SevenZipHelper();
+                var sevenZip = unpacking = new SevenZipHelper();
                 sevenZip.Process += (_, e) => Preparing(Loc.F("Unpacking... {0}%", e.PercentageDone));
                 State = Loc.F("Unpacking... {0}%", 0);
-                if (await sevenZip.ExtractArchive(downloaded, Folder) != 0)
+                int code;
+                try { code = await sevenZip.ExtractArchive(downloaded, Folder); }
+                finally { unpacking = null; }
+                if (cancelled)
+                    throw new OperationCanceledException();
+                if (code != 0)
                     throw new IOException(sevenZip.LastError);
                 File.Delete(downloaded);
             }

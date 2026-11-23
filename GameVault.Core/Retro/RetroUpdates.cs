@@ -23,13 +23,9 @@ namespace GameVault.Core.Retro
                 .ToList();
         }
 
-        /// <summary>Where it goes here: an .nsz/.xcz is decompressed for Eden, the .nsp/.xci stays under its name.</summary>
-        public static string Unpacked(string path) => System.IO.Path.GetExtension(path).ToLowerInvariant() switch
-        {
-            ".nsz" => System.IO.Path.ChangeExtension(path, ".nsp"),
-            ".xcz" => System.IO.Path.ChangeExtension(path, ".xci"),
-            _ => path,
-        };
+        /// <summary>Where it goes here: an .nsz/.xcz is decompressed for Eden into an .nsp (as <see cref="SwitchCompressed.Decompress"/> names it), the others stay under their name.</summary>
+        public static string Unpacked(string path) => System.IO.Path.GetExtension(path).ToLowerInvariant() is ".nsz" or ".xcz"
+            ? System.IO.Path.ChangeExtension(path, ".nsp") : path;
 
         /// <summary>A path that leaves the game's folder (or starts from a drive) is not written.</summary>
         public static bool IsUnsafe(string path) =>

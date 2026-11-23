@@ -123,6 +123,9 @@ namespace gamevault.Helper
         public static async Task<int?> FindGameAsync(string name)
         {
             string simple = Simple(name);
+            // No Latin letter or digit ("ポケモン"): nothing to compare, any result would "hold" it
+            if (simple.Length == 0)
+                return null;
             if (games.TryGetValue(simple, out int? known))
                 return known;
             var found = await GetAsync<Page<Found>>($"/Util/Search/Results?_sModelName=Game&_sSearchString={Uri.EscapeDataString(name)}&_nPage=1");
@@ -164,23 +167,7 @@ namespace gamevault.Helper
             Directory.CreateDirectory(folder);
             string name = SwitchMods.FolderName(Path.GetFileName(file.Name));
             string target = Path.Combine(folder, name);
-            using (HttpResponseMessage response = await HttpClients.Shared.GetAsync(file.Url, HttpCompletionOption.ResponseHeadersRead, ct))
-            {
-                response.EnsureSuccessStatusCode();
-                long total = response.Content.Headers.ContentLength ?? file.Size;
-                await using Stream source = await response.Content.ReadAsStreamAsync(ct);
-                await using FileStream output = File.Create(target);
-                var buffer = new byte[1 << 16];
-                long done = 0;
-                int read;
-                while ((read = await source.ReadAsync(buffer, ct)) > 0)
-                {
-                    await output.WriteAsync(buffer.AsMemory(0, read), ct);
-                    done += read;
-                    if (total > 0)
-                        progress?.Report(Math.Min(1, (double)done / total));
-                }
-            }
+            await RetroArchManager.DownloadAsync(file.Url, target, done => progress?.Report(Math.Min(1, done)), ct);
             if (file.Md5 is { Length: 32 } expected)
             {
                 await using FileStream written = File.OpenRead(target);

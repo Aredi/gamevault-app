@@ -7,15 +7,98 @@
              x:Class="gamevault.UserControls.ActivityUserControl"
              Focusable="True">
     <UserControl.Styles>
-        <!-- The player's own reaction stands out -->
-        <Style Selector="Button.reaction.mine">
+        <!-- A line of the activity: a card, lit under the pointer -->
+        <Style Selector="Border.feed">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.feed:pointerover">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <!-- A reaction: the emoji and how many, a pill -->
+        <Style Selector="Button.react">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.react:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent4}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent3}" />
+        </Style>
+        <Style Selector="Button.react TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Button.react TextBlock.count">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+        </Style>
+        <!-- The player's own reaction stands out -->
+        <Style Selector="Button.react.mine">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent4}" />
             <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+        </Style>
+        <Style Selector="Button.react.mine TextBlock.count">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        </Style>
+        <!-- "Réagir": discreet until the pointer comes -->
+        <Style Selector="Button.react.add">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Line}" />
+            <Setter Property="Opacity" Value="0.75" />
+        </Style>
+        <Style Selector="Border.feed:pointerover Button.react.add">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <!-- The emojis offered, in a row -->
+        <Style Selector="Button.pick">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.pick:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.2)" />
+        </Style>
+        <Style Selector="Button.pick:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Surface3}" />
+        </Style>
+        <Style Selector="Button.pick.mine /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource Brush.Accent4}" />
+        </Style>
+        <Style Selector="Button.pick.text">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
         </Style>
     </UserControl.Styles>
     <!-- What the players of the server played lately: a page of its own, under Community -->
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="40,24,40,40" MaxWidth="900" HorizontalAlignment="Left" Spacing="4">
+    <ScrollViewer x:Name="uiScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="uiPage" Margin="40,24,40,40" HorizontalAlignment="Left" Spacing="4">
             <!-- The games the friends recommend to the player: put away with the cross -->
             <StackPanel x:Name="uiRecommendationsSection" IsVisible="False" Spacing="8" Margin="0,0,0,24">
                 <TextBlock Classes="sectionTitle" Text="{l:T 'Recommended by your friends'}" />
@@ -47,40 +130,51 @@
             <ItemsControl x:Name="uiItems">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ActivityFeedItem">
-                        <StackPanel>
-                        <Button Classes="wrapper" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="10,6" Cursor="Hand" Click="Item_Click">
-                            <Grid ColumnDefinitions="Auto,*">
-                                <Border Width="40" Height="60" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
-                                    <Panel>
-                                        <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" DecodeWidthOverride="120"
-                                                          IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                        <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding Retro, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                    </Panel>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="3" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Text}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding When}" Classes="muted" FontSize="12" />
+                        <Border Classes="feed">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Button Classes="wrapper" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0" Cursor="Hand" Click="Item_Click">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Width="44" Height="64" CornerRadius="8" ClipToBounds="True" Background="{DynamicResource Brush.Surface3}">
+                                            <Panel>
+                                                <local:CacheImage ImageCacheType="GameCover" Stretch="UniformToFill" Data="{Binding Game}" DecodeWidthOverride="132"
+                                                                  IsVisible="{Binding Game, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                <Image Source="{Binding Retro.CoverImage}" Stretch="UniformToFill" IsVisible="{Binding Retro, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="3" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Text}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding When}" Classes="muted" FontSize="12" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                                <!-- The reactions: "🔥 2", their names in the tooltip; "Réagir" offers the emojis. Beside the game's name: the line stays one line high -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0" IsVisible="{Binding Key, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <ItemsControl ItemsSource="{Binding Reactions}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ReactionChip">
+                                                <Button Classes="react" Classes.mine="{Binding Mine}" ToolTip.Tip="{Binding Names}" Click="Reaction_Click">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <TextBlock Text="{Binding Emoji}" />
+                                                        <TextBlock Classes="count" Text="{Binding Count}" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Classes="react add" IsVisible="{Binding CanReact}" Click="AddReaction_Click" ToolTip.Tip="{l:T 'React'}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="☺" FontSize="15" />
+                                            <TextBlock Classes="count" Text="{l:T 'React'}" />
+                                        </StackPanel>
+                                    </Button>
                                 </StackPanel>
                             </Grid>
-                        </Button>
-                        <!-- The reactions of the others: "🔥 2", their names in the tooltip; "+" to put one -->
-                        <WrapPanel Margin="64,0,0,6" IsVisible="{Binding Key, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <ItemsControl ItemsSource="{Binding Reactions}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ReactionChip">
-                                        <Button Classes="chip reaction" Classes.mine="{Binding Mine}" Margin="0,0,6,0" Padding="8,2" Content="{Binding Text}"
-                                                ToolTip.Tip="{Binding Names}" Click="Reaction_Click" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Button Classes="chip reaction" Padding="8,2" Content="+" IsVisible="{Binding CanReact}" Click="AddReaction_Click" ToolTip.Tip="{l:T 'React'}" />
-                        </WrapPanel>
-                        </StackPanel>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

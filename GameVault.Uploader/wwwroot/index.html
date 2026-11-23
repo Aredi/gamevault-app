@@ -17,7 +17,7 @@
     <!-- Sign in with the GameVault account -->
     <section id="login" class="card narrow" hidden>
       <h1>SanctuaryVault</h1>
-      <p class="muted">Connecte-toi avec ton compte SanctuaryVault pour lancer l’installation d’un jeu sur ton PC, ou, pour les administrateurs, publier des jeux sur le serveur.</p>
+      <p class="muted">Connectez-vous avec votre compte SanctuaryVault pour lancer l’installation d’un jeu sur votre PC, ou, pour les administrateurs, publier des jeux sur le serveur.</p>
       <form id="loginForm">
         <label>Nom d’utilisateur<input id="username" autocomplete="username" required></label>
         <label>Mot de passe<input id="password" type="password" autocomplete="current-password" required></label>
@@ -30,9 +30,9 @@
     <!-- Install on my PC: the player's client takes the games from here -->
     <section id="remote" class="card" hidden>
       <h1>Installer sur mon PC</h1>
-      <p class="muted">Choisis un de tes PC et un jeu : il s’y télécharge dès que SanctuaryVault y est ouvert, même si tu n’es pas devant.</p>
+      <p class="muted">Choisissez un de vos PC et un jeu : il s’y télécharge dès que SanctuaryVault y est ouvert, même si vous n’êtes pas devant.</p>
       <label id="remoteDeviceField">PC<select id="remoteDevice"></select></label>
-      <p id="remoteNoDevice" class="muted" hidden>Aucun PC pour l’instant : ouvre SanctuaryVault (version 1.25 ou plus récente) sur ton PC, il apparaîtra ici dans la minute.</p>
+      <p id="remoteNoDevice" class="muted" hidden>Aucun PC pour l’instant : ouvrez SanctuaryVault (version 1.25 ou plus récente) sur votre PC, il apparaîtra ici dans la minute.</p>
       <label>Jeu<input id="remoteSearch" placeholder="Rechercher un jeu…" autocomplete="off"></label>
       <div id="remoteResults" class="matchList"></div>
       <p id="remoteStatus" class="status" hidden></p>
@@ -44,7 +44,7 @@
     <!-- Publish -->
     <section id="publish" class="card" hidden>
       <h1>Publier un jeu</h1>
-      <p class="muted">Envoie une archive (.zip, .7z, .rar, .iso, .tar.gz…) dans le dossier des jeux du serveur, avec le nom de fichier que SanctuaryVault comprend. Un envoi interrompu reprend où il s’était arrêté.</p>
+      <p class="muted">Envoyez une archive (.zip, .7z, .rar, .iso, .tar.gz…) dans le dossier des jeux du serveur, avec le nom de fichier que SanctuaryVault comprend. Un envoi interrompu reprend où il s’était arrêté.</p>
 
       <h2>1. Archive du jeu</h2>
       <label id="drop" class="drop">

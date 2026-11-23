@@ -51,24 +51,27 @@ namespace GameVault.Core.Publishing
         /// </summary>
         public static string Build(string title, string? version, PublishedGameType type, int? year, bool earlyAccess, string extension = ".zip")
         {
-            string clean = title.Replace('(', '[').Replace(')', ']');
-            foreach (char c in Path.GetInvalidFileNameChars().Concat(new[] { '<', '>', ':', '"', '/', '\\', '|', '?', '*' }).Distinct())
-                clean = clean.Replace(c.ToString(), "");
-            clean = Regex.Replace(clean, @"\s+", " ").Trim();
+            string clean = Clean(title);
             if (clean.Length == 0)
                 throw new ArgumentException("The title is empty.");
             var name = new StringBuilder(clean);
-            if (!string.IsNullOrWhiteSpace(version))
-            {
-                string v = version.Trim().TrimStart('v', 'V').Replace('(', '[').Replace(')', ']');
-                name.Append($" (v{v})");
-            }
+            if (ExistingGameMatch.VersionTag(version) is string tag)
+                name.Append($" ({tag})");
             if (earlyAccess)
                 name.Append(" (EA)");
             name.Append($" ({Tag(type)})");
             if (year is >= 1950 and <= 2100)
                 name.Append($" ({year})");
             return name + extension;
+        }
+
+        /// <summary>Brackets for parentheses (read as tags), without the characters a file name may not have (Windows' too).</summary>
+        internal static string Clean(string text)
+        {
+            string clean = text.Replace('(', '[').Replace(')', ']');
+            foreach (char c in Path.GetInvalidFileNameChars().Concat(new[] { '<', '>', ':', '"', '/', '\\', '|', '?', '*' }).Distinct())
+                clean = clean.Replace(c.ToString(), "");
+            return Regex.Replace(clean, @"\s+", " ").Trim();
         }
 
         /// <summary>

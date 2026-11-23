@@ -84,7 +84,7 @@ namespace GameVault.Core.Retro
             var profiles = new byte[ProfilesSize];
             byte[] id = UserId(player);
             Span<byte> mine = profiles.AsSpan(0x10, UserSize);
-            // shortcut: the console has 8 users, a 9th player on this PC drops the last one (Eden then warns of its saves), until it happens
+            // shortcut: the console has 8 users, a 9th player on this PC drops the last one (Eden then warns of its saves); give each PC's players their own slots (the oldest freed) once a PC has 9 players
             int count = 1;
             for (int i = 0; existing?.Length >= ProfilesSize && i < Users; i++)
             {

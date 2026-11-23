@@ -229,6 +229,17 @@ namespace GameVault.Uploader
                     }
                     catch (Exception ex) when (ex is JsonException or FormatException or CryptographicException) { }
                 }
+            // A line cut by a crash ends the file: closed, so the next message is a line of its own and not lost with it
+            if (File.Exists(file))
+            {
+                using FileStream stream = File.Open(file, FileMode.Open, FileAccess.ReadWrite);
+                if (stream.Length > 0)
+                {
+                    stream.Seek(-1, SeekOrigin.End);
+                    if (stream.ReadByte() != '\n')
+                        stream.WriteByte((byte)'\n');
+                }
+            }
             return messages[id] = list;
         }
 

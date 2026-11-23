@@ -360,6 +360,7 @@ namespace GameVault.UiTests
                 MainWindowViewModel.Instance.SetActiveControl(MainControl.Retro);
                 Dispatcher.UIThread.RunJobs();
                 var layout = grid.Layout;
+                Assert.Null(page.ShowsNothing());
                 Assert.False(page.RebuildGridIfEmpty());
                 Assert.Same(layout, grid.Layout);
 
@@ -370,11 +371,17 @@ namespace GameVault.UiTests
                 Assert.Equal(((UniformGridLayout)layout!).MinItemHeight, rebuilt.MinItemHeight);
                 Assert.True(grid.Bounds.Height > 1000);
                 Assert.Contains(grid.Children, c => c.IsVisible && c.DataContext is RetroGame);
+                // Continue playing filled above it afterwards: the grid still shows its first cards
+                page.ViewModel.Recent = page.ViewModel.AllGames.Take(11).ToList();
+                Dispatcher.UIThread.RunJobs();
+                Assert.Null(page.ShowsNothing());
+                Assert.Same(rebuilt, grid.Layout);
             }
             finally
             {
                 SanctuaryService.Current = SanctuaryService.Url;
                 MainWindowViewModel.Instance.Retro.ViewModel.AllGames = new();
+                MainWindowViewModel.Instance.Retro.ViewModel.Recent = new();
             }
         }
 

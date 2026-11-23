@@ -34,6 +34,8 @@ namespace GameVault.Core.Tests
             Assert.Equal("v2.0", ExistingGameMatch.VersionTag("2.0"));
             Assert.Equal("v2.0", ExistingGameMatch.VersionTag("V2.0"));
             Assert.Null(ExistingGameMatch.VersionTag(" "));
+            Assert.Equal("v1.0hotfix", ExistingGameMatch.VersionTag("1.0/hotfix"));
+            Assert.Equal("v12", ExistingGameMatch.VersionTag("1:2"));
         }
 
         [Fact]

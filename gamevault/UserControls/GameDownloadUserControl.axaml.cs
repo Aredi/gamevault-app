@@ -230,7 +230,7 @@ namespace gamevault.UserControls
         private async Task OpenExtractedDiscImages()
         {
             string directory = Path.Combine(m_DownloadPath, "Extract");
-            if (Directory.Exists(directory) && GameVault.Core.Library.DiscImages.ToOpen(Directory.GetFiles(directory, "*", SearchOption.AllDirectories)).Count > 0)
+            if (await Task.Run(() => Directory.Exists(directory) && GameVault.Core.Library.DiscImages.ToOpen(Directory.GetFiles(directory, "*", SearchOption.AllDirectories)).Count > 0))
             {
                 string state = ViewModel.State;
                 ViewModel.State = "Extracting...";
@@ -613,7 +613,6 @@ namespace gamevault.UserControls
             extractionCancelled = true;
             sevenZipHelper.Cancel();
         }
-        private static string FormatBytesHumanReadable(double size, double tspan = 1, int baseVal = 1024) => GameSizeConverter.Text(size / tspan, baseVal);
 
         /// <summary>A speed near zero once gave seconds no TimeSpan holds: the download failed on it.</summary>
         private async void DeleteFile_Click(object sender, RoutedEventArgs e)
@@ -621,9 +620,13 @@ namespace gamevault.UserControls
             await DeleteFile(confirm: true);
         }
 
+        /// <summary>Waiting in the queue: "Delete all" (canceled and completed downloads) leaves it.</summary>
+        public bool IsQueued() => ViewModel.IsQueued || DownloadQueue.IsWaiting(this);
+
         public async Task DeleteFile(bool confirm = true)
         {
-            if (IsDownloadActive)
+            // Extracting or installing too: its folder is in use
+            if (IsBusy())
             {
                 MainWindowViewModel.Instance.AppBarText = Loc.T("Can not delete during the download, extraction, installing process");
                 return;
@@ -644,8 +647,13 @@ namespace gamevault.UserControls
                 {
                     downloadRetryTimer?.Stop();
 
-                    if (Directory.Exists(m_DownloadPath))
-                        Directory.Delete(m_DownloadPath, true);
+                    // A big game takes a while to delete: not on the window's thread
+                    string folder = m_DownloadPath;
+                    await Task.Run(() =>
+                    {
+                        if (Directory.Exists(folder))
+                            Directory.Delete(folder, true);
+                    });
 
                     DownloadsViewModel.Instance.DownloadedGames.Remove(this);
 
@@ -1035,9 +1043,13 @@ namespace gamevault.UserControls
             if (Directory.Exists(targedDir))
             {
                 Dictionary<string, string> allExecutables = new Dictionary<string, string>();
-                foreach (string fileType in Globals.SupportedExecutables)
+                // One walk of the folder, not one per type (a game of 30k files froze the window): grouped by type as before
+                var types = Globals.SupportedExecutables.Select((type, index) => (type, index)).ToDictionary(t => "." + t.type, t => t.index, StringComparer.OrdinalIgnoreCase);
+                var found = Directory.EnumerateFiles(targedDir, "*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true })
+                    .Where(f => types.ContainsKey(Path.GetExtension(f)))
+                    .OrderBy(f => types[Path.GetExtension(f)]);
                 {
-                    foreach (string entry in Directory.GetFiles(targedDir, $"*.{fileType}", new EnumerationOptions { RecurseSubdirectories = true, MatchCasing = MatchCasing.CaseInsensitive }))
+                    foreach (string entry in found)
                     {
                         string keyToAdd = Path.GetFileName(entry);
                         if (!allExecutables.ContainsKey(keyToAdd))

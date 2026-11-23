@@ -24,17 +24,7 @@ namespace GameVault.Core.Retro
         protected override string WindowsExecutable => Program ?? Path.GetRelativePath(console.AppDirectory, console.Executable);
         protected override string MacExecutable => Program ?? Path.GetRelativePath(console.AppDirectory, console.Executable);
 
-        /// <summary>The program given, by this system's separators; null when none or when it would leave the build's folder.</summary>
-        private string? Program
-        {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(executable))
-                    return null;
-                string[] parts = executable.Trim().Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-                return parts.Length == 0 || parts.Any(p => p.Trim() is "." or "..") || Path.IsPathRooted(executable.Trim()) ? null : Path.Combine(parts);
-            }
-        }
+        private string? Program => RecompLayout.InFolder(executable);
 
         public override bool HasFirmware => console.HasFirmware;
         /// <summary>The console's storage is the other emulator's (linked): nothing of it here.</summary>

@@ -23,9 +23,20 @@ namespace GameVault.Core.Retro
             {
                 if (string.IsNullOrWhiteSpace(executable))
                     return IsAppImage ? Path.GetFileName(new Uri(Url!).LocalPath) : null;
-                string[] parts = executable.Trim().Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-                return parts.Length == 0 || parts.Any(p => p.Trim() is "." or "..") || Path.IsPathRooted(executable.Trim()) || executable.Contains(':') ? null : Path.Combine(parts);
+                return InFolder(executable);
             }
+        }
+
+        /// <summary>
+        /// A program named by the administrator ("bin/game.exe"), by this system's separators; null when none or when
+        /// it would leave the build's folder. Also the per-game Switch emulators'.
+        /// </summary>
+        public static string? InFolder(string? executable)
+        {
+            if (string.IsNullOrWhiteSpace(executable))
+                return null;
+            string[] parts = executable.Trim().Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length == 0 || parts.Any(p => p.Trim() is "." or "..") || Path.IsPathRooted(executable.Trim()) || executable.Contains(':') ? null : Path.Combine(parts);
         }
 
         /// <summary>It has a build for this system and its program is known: else the game's console emulator plays it.</summary>

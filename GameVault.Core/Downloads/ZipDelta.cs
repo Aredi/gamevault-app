@@ -242,7 +242,8 @@ namespace GameVault.Core.Downloads
         /// <summary>A relative path with "/" that stays inside the folder and that every tool reads the same way.</summary>
         internal static bool IsPlain(string path) =>
             path.Length > 0 && !path.StartsWith('/') && !path.Contains('\\') && !path.Contains(':') && !path.Contains('�')
-            && !path.Split('/').Any(part => part is "" or "." or "..");
+            // Windows drops a final dot or space: "data./f" and "data/f" would be the same file
+            && !path.Split('/').Any(part => part is "" or "." or ".." || part.EndsWith('.') || part.EndsWith(' '));
 
         /// <summary>
         /// Reads the changed files out of the zip into <paramref name="staging"/> and checks each one. Files already

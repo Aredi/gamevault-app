@@ -50,7 +50,8 @@ namespace GameVault.Core.Retro
 
         /// <summary>
         /// shortcut: the saves stay in the player's hard disk on this PC, not sent to the cloud (a folder never written):
-        /// a game's saves are files inside its FATX partition, to read from the image before they can be sent alone.
+        /// a game's saves are files inside its FATX partition, to read from the image before they can be sent alone. Do it once
+        /// a player loses Xbox saves changing PC, or asks for them on another one.
         /// </summary>
         public override string SavesDirectory(string player) => Path.Combine(Directory, "saves");
         /// <summary>xemu keeps its save states in the hard disk: a folder never written.</summary>

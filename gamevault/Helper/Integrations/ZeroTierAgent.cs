@@ -84,21 +84,53 @@ namespace gamevault.Helper
         /// <summary>Windows: ZeroTier's installer, from ZeroTier's site, with the administrator's rights.</summary>
         public static async Task InstallAsync(Action<string> status)
         {
-            string msi = Path.Combine(Path.GetTempPath(), "ZeroTierOne.msi");
-            status(Loc.T("Downloading ZeroTier..."));
-            using (HttpResponseMessage response = await new HttpClient { Timeout = TimeSpan.FromMinutes(5) }.GetAsync(WindowsInstaller))
+            // A folder of its own: nothing else can put or swap a file at a known path before it runs as administrator
+            string folder = Path.Combine(Path.GetTempPath(), "gamevault-zerotier-" + Guid.NewGuid().ToString("N"));
+            string msi = Path.Combine(folder, "ZeroTierOne.msi");
+            Directory.CreateDirectory(folder);
+            try
             {
-                response.EnsureSuccessStatusCode();
-                await using FileStream file = File.Create(msi);
-                await response.Content.CopyToAsync(file);
+                status(Loc.T("Downloading ZeroTier..."));
+                using (var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) })
+                using (HttpResponseMessage response = await client.GetAsync(WindowsInstaller, HttpCompletionOption.ResponseHeadersRead))
+                {
+                    response.EnsureSuccessStatusCode();
+                    await using FileStream file = File.Create(msi);
+                    await response.Content.CopyToAsync(file);
+                }
+                if (!await SignedByZeroTierAsync(msi))
+                    throw new InvalidOperationException(Loc.T("ZeroTier could not be installed."));
+                status(Loc.T("Installing ZeroTier: accept Windows' prompt..."));
+                using Process process = Process.Start(new ProcessStartInfo("msiexec", $"/i \"{msi}\" /qb /norestart") { UseShellExecute = true, Verb = "runas" })
+                    ?? throw new InvalidOperationException(Loc.T("ZeroTier could not be installed."));
+                await process.WaitForExitAsync();
+                // 3010: installed, a restart is advised
+                if (process.ExitCode is not (0 or 3010))
+                    throw new InvalidOperationException(Loc.T("ZeroTier could not be installed."));
             }
-            status(Loc.T("Installing ZeroTier: accept Windows' prompt..."));
-            using Process process = Process.Start(new ProcessStartInfo("msiexec", $"/i \"{msi}\" /qb /norestart") { UseShellExecute = true, Verb = "runas" })
-                ?? throw new InvalidOperationException(Loc.T("ZeroTier could not be installed."));
-            await process.WaitForExitAsync();
-            // 3010: installed, a restart is advised
-            if (process.ExitCode is not (0 or 3010))
-                throw new InvalidOperationException(Loc.T("ZeroTier could not be installed."));
+            finally
+            {
+                try { Directory.Delete(folder, true); }
+                catch (Exception ex) { Log.Ignored(ex); }
+            }
+        }
+
+        /// <summary>Windows says the installer is signed by ZeroTier and unchanged since (before it gets the administrator's rights).</summary>
+        private static async Task<bool> SignedByZeroTierAsync(string file)
+        {
+            string script = $"$s = Get-AuthenticodeSignature -LiteralPath '{file.Replace("'", "''")}'; if ($s.Status -eq 'Valid' -and $s.SignerCertificate.Subject -like '*ZeroTier*') {{ exit 0 }} else {{ exit 1 }}";
+            string encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
+            try
+            {
+                using Process? process = Process.Start(new ProcessStartInfo("powershell.exe", $"-NoProfile -NonInteractive -EncodedCommand {encoded}") { UseShellExecute = false, CreateNoWindow = true });
+                if (process == null)
+                    return false;
+                await process.WaitForExitAsync();
+                if (process.ExitCode != 0)
+                    Log.Info("The ZeroTier installer is not signed by ZeroTier: not run");
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex) { Log.Error(ex, "Checking the ZeroTier installer's signature"); return false; }
         }
 
         /// <summary>

@@ -14,6 +14,8 @@ namespace GameVault.Uploader
         /// <summary>A new set is refused past these: far more than any player's emulators, but a cap on a token's misuse.</summary>
         public const int MaxSets = 200;
         public const long MaxTotal = 20L << 30;
+        /// <summary><see cref="MaxTotal"/>, smaller in the tests.</summary>
+        internal long Total { get; set; } = MaxTotal;
 
         private readonly string directory;
         private readonly ILogger<RetroSaveStore> logger;
@@ -66,19 +68,41 @@ namespace GameVault.Uploader
         public string? HistoryFile(int userId, string set, string name) =>
             History(userId, set).Any(v => v.Name == name) ? Path.Combine(HistoryOf(userId), name) : null;
 
-        /// <summary>Why the player may not start this set (one they do not have yet); null when they may.</summary>
-        public string? NewSetRefusal(int userId, string set)
+        /// <summary>
+        /// Why the player may not save this set now; null when they may. A new set past <see cref="MaxSets"/> is refused;
+        /// past <see cref="Total"/>, the oldest versions of the history go first, and only saves that still take it all are refused.
+        /// </summary>
+        public string? Refusal(int userId, string set)
         {
             string folder = Path.GetDirectoryName(FileOf(userId, set))!;
-            // A set being saved is in its history for a moment, not at its place
-            if (File.Exists(FileOf(userId, set)) || !Directory.Exists(folder) || History(userId, set).Count > 0)
+            if (!Directory.Exists(folder))
                 return null;
-            if (Directory.GetFiles(folder, "*.zip").Length >= MaxSets)
+            // A set being saved is in its history for a moment, not at its place
+            bool known = File.Exists(FileOf(userId, set)) || History(userId, set).Count > 0;
+            if (!known && Directory.GetFiles(folder, "*.zip").Length >= MaxSets)
                 return $"You already have {MaxSets} sets of retro saves.";
             static long SizeOf(string file) { try { return new FileInfo(file).Length; } catch (FileNotFoundException) { return 0; } }
-            if (Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Sum(SizeOf) >= MaxTotal)
-                return $"Your retro saves already take {MaxTotal >> 30} GB.";
-            return null;
+            long total = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Sum(SizeOf);
+            if (total < Total)
+                return null;
+            string history = HistoryOf(userId);
+            if (Directory.Exists(history))
+                foreach (FileInfo old in new DirectoryInfo(history).GetFiles("*.zip").OrderBy(f => f.LastWriteTimeUtc))
+                {
+                    if (total < Total)
+                        break;
+                    try
+                    {
+                        // Its size read first: a deleted file has none
+                        long size = old.Length;
+                        old.Delete();
+                        total -= size;
+                    }
+                    catch (IOException) { }
+                }
+            if (total < Total)
+                logger.LogInformation("Oldest retro saves versions of user {User} deleted: {Max} GB reached", userId, Total >> 30);
+            return total < Total ? null : $"Your retro saves already take {Total >> 30} GB.";
         }
 
         /// <returns>When it was saved (unix ms); null when it is larger than <see cref="MaxSize"/>.</returns>

@@ -335,7 +335,18 @@ namespace gamevault.UserControls
                         return;
                     }
                 }
-                await WebHelper.PutAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users/{selectedUser.ID}", JsonSerializer.Serialize(new UpdateUserDto() { Role = selectedUser.Role }));
+                try
+                {
+                    await WebHelper.PutAsync(@$"{SettingsViewModel.Instance.ServerUrl}/api/users/{selectedUser.ID}", JsonSerializer.Serialize(new UpdateUserDto() { Role = selectedUser.Role }));
+                }
+                catch
+                {
+                    // Refused: the list shows the role the server kept, not the one asked
+                    ((ComboBox)sender).SelectionChanged -= PermissionRole_SelectionChanged;
+                    ((ComboBox)sender).SelectedItem = e.RemovedItems[0];
+                    ((ComboBox)sender).SelectionChanged += PermissionRole_SelectionChanged;
+                    throw;
+                }
                 MainWindowViewModel.Instance.AppBarText = Loc.F("Successfully updated permission role of user '{0}' to '{1}'", selectedUser.Username, selectedUser.Role);
             }
             catch (Exception ex)
@@ -356,6 +367,9 @@ namespace gamevault.UserControls
             }
             catch (Exception ex)
             {
+                // Refused: the switch goes back to what the server kept (a click only, setting it does not send again)
+                if (sender is ToggleSwitch toggle)
+                    toggle.IsChecked = !toggle.IsChecked;
                 string msg = WebExceptionHelper.TryGetServerMessage(ex);
                 MainWindowViewModel.Instance.AppBarText = msg;
             }

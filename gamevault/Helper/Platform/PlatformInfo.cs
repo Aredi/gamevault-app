@@ -204,17 +204,20 @@ namespace gamevault.Helper.Platform
                 return (inPath, Array.Empty<string>());
 
             string? flatpak = PlatformInfo.FindInPath("flatpak");
-            if (flatpak != null && FlatpakInstalled(flatpak, "com.github.mtkennerly.ludusavi"))
+            // Asked once it is there (each save sync calls this several times); not kept while missing, so installing it works at once
+            if (flatpak != null && (ludusaviFlatpak || (ludusaviFlatpak = FlatpakInstalled(flatpak, "com.github.mtkennerly.ludusavi"))))
                 return (flatpak, new[] { "run", "com.github.mtkennerly.ludusavi" });
             return null;
         }
+        private static bool ludusaviFlatpak;
 
         private static bool FlatpakInstalled(string flatpak, string appId)
         {
             try
             {
-                var process = Process.Start(new ProcessStartInfo(flatpak, $"info {appId}") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false });
-                process!.WaitForExit(5000);
+                using var process = Process.Start(new ProcessStartInfo(flatpak, $"info {appId}") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false });
+                if (!process!.WaitForExit(5000))
+                    return false;
                 return process.ExitCode == 0;
             }
             catch

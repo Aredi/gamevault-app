@@ -22,6 +22,8 @@ namespace gamevault.UserControls
         private const double CardWidth = 170;
         internal IEnumerable<RetroGame> Shown => ViewModel.Games;
         private Task? loading;
+        /// <summary>The last load failed or was offline: the next visit loads again.</summary>
+        private bool loadFailed;
         /// <summary>Set when the service can not be reached: the games installed on this PC, found on disk.</summary>
         private List<RetroGame>? offlineGames;
         /// <summary>Each platform's games, asked once (RomM sends megabytes for a big one); Reload asks again.</summary>
@@ -36,8 +38,10 @@ namespace gamevault.UserControls
             {
                 Focus();
                 _ = EnsureLoadedAsync();
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => RebuildGridIfEmpty(), Avalonia.Threading.DispatcherPriority.Background);
+                CheckGrid();
             };
+            // Whatever moved it (Continue playing filled above it, the window resized, a scroll): checked once laid out
+            uiScroll.LayoutUpdated += (_, _) => CheckGrid();
             KeyDown += Page_KeyDown;
             ViewModel.PropertyChanged += (_, e) =>
             {
@@ -46,7 +50,7 @@ namespace gamevault.UserControls
                 if (e.PropertyName == nameof(RetroViewModel.Games))
                 {
                     uiScroll.Offset = default;
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => RebuildGridIfEmpty(), Avalonia.Threading.DispatcherPriority.Background);
+                    CheckGrid();
                 }
                 // As the collections' list: new items, the chosen one set back
                 else if (e.PropertyName == nameof(RetroViewModel.Genres))
@@ -56,23 +60,66 @@ namespace gamevault.UserControls
             };
         }
 
+        private bool checking;
+        /// <summary>The list the grid was last rebuilt for, and how many times: a layout that does not help is not rebuilt forever.</summary>
+        private List<RetroGame>? rebuiltFor;
+        private int rebuilds;
+
+        /// <summary>Once the layout settled: the grid rebuilt when it shows none of its games.</summary>
+        private void CheckGrid()
+        {
+            if (checking)
+                return;
+            checking = true;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                checking = false;
+                RebuildGridIfEmpty();
+            }, Avalonia.Threading.DispatcherPriority.Background);
+        }
+
         /// <summary>
-        /// On Windows the grid was seen with all its games yet no height (only Continue playing shown), and a new list did not
-        /// bring it back: a new layout, which forgets the card size the old one kept.
+        /// On Windows the grid was seen with all its games yet none drawn (only Continue playing shown): with no height, or
+        /// with its height and its top in view but not one card made. A new list did not bring it back: a new layout, which
+        /// forgets what the old one kept.
         /// </summary>
         /// <returns>True when the grid was rebuilt.</returns>
         internal bool RebuildGridIfEmpty(bool force = false)
         {
-            if (!force && (VisualRoot == null || ViewModel.Games.Count == 0 || uiGames.Bounds.Height >= 1))
+            string? why = force ? "asked" : ShowsNothing();
+            if (why == null)
                 return false;
+            if (!force)
+            {
+                if (!ReferenceEquals(rebuiltFor, ViewModel.Games))
+                    (rebuiltFor, rebuilds) = (ViewModel.Games, 0);
+                if (++rebuilds > 3)
+                    return false;
+            }
             var old = (UniformGridLayout)uiGames.Layout!;
-            Log.Info($"Retro grid empty with {ViewModel.Games.Count} games (grid {uiGames.Bounds}, viewport {uiScroll.Viewport}, cards {old.MinItemWidth}x{old.MinItemHeight}): layout rebuilt");
+            Log.Info($"Retro grid empty ({why}) with {ViewModel.Games.Count} games (grid {uiGames.Bounds}, viewport {uiScroll.Viewport}, offset {uiScroll.Offset}, cards {old.MinItemWidth}x{old.MinItemHeight}, made {uiGames.Children.Count(c => c.IsVisible)}): layout rebuilt");
             uiGames.Layout = new UniformGridLayout
             {
                 ItemsStretch = old.ItemsStretch, MinItemWidth = old.MinItemWidth, MinItemHeight = old.MinItemHeight,
                 MinRowSpacing = old.MinRowSpacing, MinColumnSpacing = old.MinColumnSpacing,
             };
+            uiGames.InvalidateMeasure();
+            uiScroll.InvalidateMeasure();
             return true;
+        }
+
+        /// <summary>Why the grid shows none of its games though it has some; null when it shows them (or is not shown).</summary>
+        internal string? ShowsNothing()
+        {
+            if (VisualRoot == null || !IsEffectivelyVisible || !uiGames.IsEffectivelyVisible || ViewModel.Games.Count == 0)
+                return null;
+            if (uiGames.Bounds.Height < 1)
+                return "no height";
+            // Its top row in view: its first card is made and shown
+            if (Avalonia.VisualExtensions.TranslatePoint(uiGames, default, uiScroll) is Avalonia.Point top && top.Y >= 0 && top.Y < uiScroll.Viewport.Height - 60
+                && uiGames.TryGetElement(0) is not { IsVisible: true })
+                return "first card not made";
+            return null;
         }
 
         /// <summary>A list whose items change loses its selection (Avalonia does not take the bound index again): set back.</summary>
@@ -83,7 +130,13 @@ namespace gamevault.UserControls
         }
 
         /// <summary>Loaded once; again after a failure or offline, when the page is shown again.</summary>
-        internal Task EnsureLoadedAsync() => loading ??= LoadPlatformsAsync();
+        internal Task EnsureLoadedAsync()
+        {
+            // Not in the load itself: offline, it ends before "??=" keeps it
+            if (loading is { IsCompleted: true } && loadFailed)
+                loading = null;
+            return loading ??= LoadPlatformsAsync();
+        }
 
         private void Show(string? message, bool loading = false)
         {
@@ -93,6 +146,7 @@ namespace gamevault.UserControls
 
         internal async Task LoadPlatformsAsync()
         {
+            loadFailed = false;
             Show(null, loading: true);
             lists.Clear();
             LoadCollections();
@@ -112,7 +166,7 @@ namespace gamevault.UserControls
             if (failure != null || platforms == null)
             {
                 // As the library offline: the games installed here stay playable
-                loading = null;
+                loadFailed = true;
                 var installed = RetroLibrary.InstalledGames();
                 if (installed.Count == 0)
                 {

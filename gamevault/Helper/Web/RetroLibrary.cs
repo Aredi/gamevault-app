@@ -144,7 +144,7 @@ namespace gamevault.Helper
                 {
                     var pending = ReadPending();
                     pending.Add(play with { Minutes = left });
-                    File.WriteAllText(PendingFile, JsonSerializer.Serialize(pending));
+                    WritePending(pending);
                 }
                 catch (Exception ex) { Log.Ignored(ex); }
                 finally { pendingGate.Release(); }
@@ -155,6 +155,14 @@ namespace gamevault.Helper
         {
             try { return File.Exists(PendingFile) ? JsonSerializer.Deserialize<List<Play>>(File.ReadAllText(PendingFile)) ?? new() : new(); }
             catch (Exception ex) { Log.Ignored(ex); return new(); }
+        }
+
+        /// <summary>Written beside, then swapped: a crash while writing leaves the old list, not half of one (all the time lost).</summary>
+        private static void WritePending(List<Play> plays)
+        {
+            string part = PendingFile + ".part";
+            File.WriteAllText(part, JsonSerializer.Serialize(plays));
+            File.Move(part, PendingFile, overwrite: true);
         }
 
         private static async Task SendPendingAsync()
@@ -172,7 +180,7 @@ namespace gamevault.Helper
                 if (left.Count == 0)
                     File.Delete(PendingFile);
                 else
-                    File.WriteAllText(PendingFile, JsonSerializer.Serialize(left));
+                    WritePending(left);
             }
             finally { pendingGate.Release(); }
         }

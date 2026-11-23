@@ -108,10 +108,6 @@ namespace gamevault.UserControls
             uiForkLinkText.Text = Loc.F("{0}/{1} (unofficial fork)", AppRepository.Owner, AppRepository.Name);
             Loaded += UserControl_Loaded;
         }
-        public void SetTabIndex(int index)
-        {
-            uiTabControl.SelectedIndex = index;
-        }
         private void ClearImageCache_Clicked(object sender, RoutedEventArgs e)
         {
 

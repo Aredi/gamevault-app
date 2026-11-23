@@ -114,15 +114,30 @@ namespace gamevault.Helper
         {
             string root = await UrlAsync() ?? throw new InvalidOperationException(Loc.T("RomM is not set up on this server."));
             using var request = new HttpRequestMessage(method, root + path) { Content = content };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
+            string token = Token;
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await HttpClients.Shared.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            // One refused request may be a route this account may not use, or RomM restarting: the token itself is asked
+            // again, and the link only ends when RomM refuses it too (and it was not linked again meanwhile)
+            if (response.StatusCode == HttpStatusCode.Unauthorized && token.Length > 0 && await RefusedAsync(root, token) && Token == token)
             {
                 // Revoked or expired in RomM: the saves go to the service again until it is linked again
                 Unlink();
                 MainWindowViewModel.Instance.AppBarText = Loc.T("The link with your RomM account has ended: link it again in Settings > Retro.");
             }
             return response;
+        }
+
+        private static async Task<bool> RefusedAsync(string root, string token)
+        {
+            try
+            {
+                using var check = new HttpRequestMessage(HttpMethod.Get, root + "/api/users/me");
+                check.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                using HttpResponseMessage answer = await HttpClients.Shared.SendAsync(check, HttpCompletionOption.ResponseHeadersRead);
+                return answer.StatusCode == HttpStatusCode.Unauthorized;
+            }
+            catch (Exception ex) { Log.Ignored(ex); return false; }
         }
 
         private static StringContent Json(object value) => new(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");

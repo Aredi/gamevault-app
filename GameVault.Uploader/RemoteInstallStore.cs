@@ -97,7 +97,7 @@ namespace GameVault.Uploader
         }
 
         /// <summary>For the administrators: when each player's client was last open, by GameVault user id.</summary>
-        // shortcut: a player whose PCs said nothing for 30 days has none (the devices are forgotten), enough to tell who stopped playing
+        // shortcut: a player whose PCs said nothing for 30 days has none (the devices are forgotten), enough to tell who stopped playing; keep a last-seen date per player apart from the devices once an administrator needs it beyond 30 days
         public Dictionary<int, DateTime> LastSeen()
         {
             var seen = new Dictionary<int, DateTime>();

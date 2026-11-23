@@ -135,6 +135,7 @@ namespace gamevault.Helper
                 {
                     string result = await WebHelper.GetAsync(@$"{profile.ServerUrl}/api/users/me");
                     m_User = JsonSerializer.Deserialize<User>(result);
+                    m_LoginState = LoginState.Success;
                     return LoginState.Success;
                 }
                 sessionTokenReuseFailed = true;

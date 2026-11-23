@@ -15,6 +15,11 @@ namespace GameVault.Core.Tests
         [InlineData("https://admin:hunter2@gamevault.example.com/api", "https://[hidden]@gamevault.example.com")]
         [InlineData("GET /api/x?token=abc123&page=2", "token=[hidden]&page=2")]
         [InlineData("X-Otp: 98aed746ef2d9265b39940c2e8a4576394940675", "X-Otp: [hidden]")]
+        [InlineData("cheevos_password = \"hunter2 two\"", "cheevos_password = [hidden]")]
+        [InlineData("cheevos_token = \"abc123\"", "cheevos_token = [hidden]")]
+        [InlineData("password = 'hunter2'", "password = [hidden]")]
+        [InlineData("{\"cheevos_password\":\"hunter2\"}", "\"cheevos_password\":\"[hidden]\"")]
+        [InlineData("X-Api-Key=abc ApiKey: hunter2", "ApiKey: [hidden]")]
         public void Secrets_AreHidden(string text, string expected)
         {
             string redacted = Redactor.Redact(text);

@@ -93,13 +93,14 @@ namespace gamevault.Helper
         internal async Task<bool> IsArchiveEncrypted(string archivePath)
         {
             bool result = false;
-            Process process = new Process();
-            ProcessShepherd.Instance.AddProcess(process);
+            using Process process = new Process();
             process.StartInfo = CreateProcessHeader();
             // A wrong password makes 7-Zip report encrypted headers instead of asking for one
             foreach (string arg in new[] { "l", "-slt", "-pskibidibopmmdadap", archivePath })
                 process.StartInfo.ArgumentList.Add(arg);
             process.Start();
+            // Registered once started: 7-Zip missing leaves nothing in the list
+            ProcessShepherd.Instance.AddProcess(process);
             // Both streams at once: a full stderr pipe would block 7-Zip while stdout is read
             Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
             Task<string> errorTask = process.StandardError.ReadToEndAsync();
@@ -123,7 +124,6 @@ namespace gamevault.Helper
             await Task.Run(() =>
              {
                  process = new Process();
-                 ProcessShepherd.Instance.AddProcess(process);
                  process.StartInfo = CreateProcessHeader();
                  foreach (string arg in new[] { "x", "-y", "-bsp1", $"-o{outputDir}", archivePath })
                      process.StartInfo.ArgumentList.Add(arg);
@@ -154,6 +154,7 @@ namespace gamevault.Helper
                  }
 
                  process.Start();
+                 ProcessShepherd.Instance.AddProcess(process);
                  process.BeginErrorReadLine();
                  Task progress = ReadProgressAsync(process.StandardOutput, percentage => Process?.Invoke(this, new SevenZipProgressEventArgs(percentage)));
                  process.WaitForExit();
@@ -209,7 +210,6 @@ namespace gamevault.Helper
             await Task.Run(() =>
             {
                 process = new Process();
-                ProcessShepherd.Instance.AddProcess(process);
                 process.StartInfo = CreateProcessHeader();
                 process.StartInfo.ArgumentList.Add("a");
                 process.StartInfo.ArgumentList.Add(archiveName);
@@ -223,6 +223,7 @@ namespace gamevault.Helper
                     Debug.WriteLine(e.Data);
                 };
                 process.Start();
+                ProcessShepherd.Instance.AddProcess(process);
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
                 process.WaitForExit();

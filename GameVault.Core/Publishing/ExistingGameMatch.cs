@@ -45,9 +45,9 @@ namespace GameVault.Core.Publishing
         /// <summary>The version tag the file will have ("2.0" → "v2.0"), as the server reads it.</summary>
         public static string? VersionTag(string? version)
         {
-            if (string.IsNullOrWhiteSpace(version))
-                return null;
-            return "v" + version.Trim().TrimStart('v', 'V').Replace('(', '[').Replace(')', ']');
+            // "1.0/hotfix" or "1:2" would make a path, or a name Windows refuses
+            string clean = string.IsNullOrWhiteSpace(version) ? "" : GameFileName.Clean(version.Trim().TrimStart('v', 'V'));
+            return clean.Length == 0 ? null : "v" + clean;
         }
     }
 }

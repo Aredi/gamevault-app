@@ -133,6 +133,17 @@ namespace GameVault.Uploader.Tests
             state = await ChallengesAsync(player);
             Assert.Equal(JsonValueKind.Null, state.GetProperty("challenge").GetProperty("game").ValueKind);
             Assert.Equal((4, JsonValueKind.String), (state.GetProperty("board")[0].GetProperty("value").GetInt32(), state.GetProperty("board")[0].GetProperty("doneAt").ValueKind));
+
+            // More than the 20 a client tells at once, two of them in the same second: all count
+            Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync("/challenges/week", new { kind = "achievements", goal = 30, game = mario })).StatusCode);
+            DateTime evening = monday.AddHours(40);
+            DateTime[] thirty = Enumerable.Range(0, 30).Select(i => evening.AddMinutes(i == 1 ? 0 : i)).ToArray();
+            await player.PutAsJsonAsync("/retro/players/me/achievements/snes/77", Earned("Super Mario World", thirty.Take(20).ToArray()));
+            await player.PutAsJsonAsync("/retro/players/me/achievements/snes/77", Earned("Super Mario World", thirty.ToArray()));
+            // Told again: nothing more
+            await player.PutAsJsonAsync("/retro/players/me/achievements/snes/77", Earned("Super Mario World", thirty.ToArray()));
+            state = await ChallengesAsync(player);
+            Assert.Equal(32, state.GetProperty("board")[0].GetProperty("value").GetInt32());
         }
 
         [Fact]

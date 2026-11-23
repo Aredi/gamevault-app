@@ -36,12 +36,20 @@ namespace gamevault.UserControls
                 if (changed == game)
                     Dispatcher.UIThread.Post(Show);
             }
+            // The game lives the whole session, a page is made at each visit: listened to while shown only
             AttachedToVisualTree += (_, _) =>
             {
                 SwitchModsService.Changed += Refresh;
+                if (game != null)
+                    game.PropertyChanged += Game_PropertyChanged;
                 Show();
             };
-            DetachedFromVisualTree += (_, _) => SwitchModsService.Changed -= Refresh;
+            DetachedFromVisualTree += (_, _) =>
+            {
+                SwitchModsService.Changed -= Refresh;
+                if (game != null)
+                    game.PropertyChanged -= Game_PropertyChanged;
+            };
         }
 
         internal RetroGame? Game
@@ -49,10 +57,11 @@ namespace gamevault.UserControls
             get => game;
             set
             {
-                if (game != null)
+                bool shown = VisualRoot != null;
+                if (game != null && shown)
                     game.PropertyChanged -= Game_PropertyChanged;
                 game = value;
-                if (game != null)
+                if (game != null && shown)
                     game.PropertyChanged += Game_PropertyChanged;
                 Show();
             }

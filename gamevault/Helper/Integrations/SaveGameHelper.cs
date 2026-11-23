@@ -210,7 +210,7 @@ namespace gamevault.Helper.Integrations
                 extractFolder = Path.GetDirectoryName(Path.GetDirectoryName(mappingFile[0]));
                 int exitCode = await WithConfig(installationDir, async () =>
                 {
-                    Process process = new Process();
+                    using Process process = new Process();
                     ProcessShepherd.Instance.AddProcess(process);
                     process.StartInfo = CreateProcessHeader();
                     process.StartInfo.ArgumentList.Add("--config");
@@ -367,10 +367,21 @@ namespace gamevault.Helper.Integrations
                 string target = Path.Combine(history, DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture));
                 Directory.CreateDirectory(target);
                 await WithConfig(installationDir, async () => { await CreateBackup(ludusaviTitle, target); return true; });
-                foreach (string old in Directory.GetDirectories(history).OrderByDescending(d => d, StringComparer.Ordinal).Skip(5))
-                    Directory.Delete(old, true);
+                // No copy, no restore: the local save would be replaced with nothing to take it back
+                if (Directory.GetFiles(target, "mapping.yaml", SearchOption.AllDirectories).Length == 0)
+                    throw new IOException(Loc.T("Failed to create a copy of your Savegame"));
+                try
+                {
+                    foreach (string old in Directory.GetDirectories(history).OrderByDescending(d => d, StringComparer.Ordinal).Skip(5))
+                        Directory.Delete(old, true);
+                }
+                catch (Exception ex) { Log.Ignored(ex); }
             }
-            catch (Exception ex) { Log.Ignored(ex); }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Keeping a copy of the local save of game {gameId}");
+                throw;
+            }
         }
         #endregion
         private string GetGameInstallationId(string installationDir)
@@ -405,11 +416,15 @@ namespace gamevault.Helper.Integrations
                 {
                     MainWindowViewModel.Instance.AppBarText = Loc.T("Uploading Savegame to the Server...");
                     string status = await BackupSaveGame(removedId);
+                    // Sent again when the client next reaches the server
+                    if (status == CloudSaveStatus.BackupUploadFailed)
+                        AddPendingBackup(removedId);
                     MainWindowViewModel.Instance.AppBarText = status;
                 }
                 catch (Exception ex)
                 {
-                    GameVault.Core.Log.Ignored(ex);
+                    Log.Error(ex, $"Backing up the save of game {removedId}");
+                    AddPendingBackup(removedId);
                     MainWindowViewModel.Instance.AppBarText = CloudSaveStatus.BackupFailed;
                 }
             }
@@ -617,7 +632,7 @@ namespace gamevault.Helper.Integrations
         {
             return await Task.Run<string>(() =>
             {
-                Process process = new Process();
+                using Process process = new Process();
                 ProcessShepherd.Instance.AddProcess(process);
                 process.StartInfo = CreateProcessHeader(true);
                 //process.StartInfo.Arguments = $"find \"{title}\" --fuzzy --api";//--normalized
@@ -659,8 +674,7 @@ namespace gamevault.Helper.Integrations
         {
             await Task.Run(() =>
            {
-               Process process = new Process();
-               ProcessShepherd.Instance.AddProcess(process);
+               using Process process = new Process();
                process.StartInfo = CreateProcessHeader();
                //process.StartInfo.Arguments = $"--config {LoginManager.Instance.GetUserProfile().CloudSaveConfigDir} backup --force --format \"zip\" --path \"{tempFolder}\" \"{lunusaviTitle}\"";
                process.StartInfo.ArgumentList.Add("--config");
@@ -674,9 +688,12 @@ namespace gamevault.Helper.Integrations
                process.StartInfo.ArgumentList.Add(lunusaviTitle);
 
                process.Start();
+               ProcessShepherd.Instance.AddProcess(process);
                process.WaitForExit();
                ProcessShepherd.Instance.RemoveProcess(process);
-
+               // Some games may fail while others are kept: the callers check that a backup was written
+               if (process.ExitCode != 0)
+                   Log.Info($"Ludusavi backup of '{lunusaviTitle}' ended with exit code {process.ExitCode}");
            });
         }
         private async Task<bool> UploadSavegame(string saveFilePath, int gameId, string installationDir, int? rom)
